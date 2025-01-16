@@ -19,6 +19,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
@@ -54,9 +56,16 @@ fun SettingsListDropdown(
     ) {
         Row {
             Text(
-                modifier = Modifier.align(Alignment.CenterVertically),
+                modifier = Modifier
+                    .align(Alignment.CenterVertically)
+                    .width(128.dp),
                 text = items[value],
-                style = TextStyle(fontSize = 16.sp),
+                style = TextStyle(
+                    fontSize = 16.sp,
+                    textAlign = TextAlign.End,
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Spacer(modifier.width(16.dp))
             Icon(
@@ -79,6 +88,7 @@ fun SettingsListDropdown(
         ) {
             items.forEachIndexed { index, text ->
                 DropdownMenuItem(
+                    enabled = enabled,
                     text = { Text(text = text) },
                     onClick = {
                         onItemSelected(index)
