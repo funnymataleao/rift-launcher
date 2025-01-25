@@ -71,7 +71,7 @@ fun AppThemeDialog(
                             onClick = null,
                         )
                         Text(
-                            text = entry.name,
+                            text = entry.text,
                             style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier.padding(start = 16.dp),
                         )
