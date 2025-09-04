@@ -44,19 +44,20 @@ object GameFeedbackUtils {
     suspend fun submitGameFeedback(
         context: Context,
         supabase: SupabaseClient,
-        appId: Int,
+        appId: String,
         rating: Int,
         tags: List<String>,
         notes: String?,
     ) = withContext(Dispatchers.IO) {
         Timber.d("GameFeedbackUtils: Starting submitGameFeedback method with rating=$rating")
         try {
+            val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
             val container = ContainerUtils.getContainer(context, appId)
             val configJson = Json.parseToJsonElement(FileUtils.readString(container.getConfigFile()).replace("\\u0000", "").replace("\u0000", "")).jsonObject
             Timber.d("config string is: " + FileUtils.readString(container.getConfigFile()).replace("\\u0000", "").replace("\u0000", ""))
             Timber.d("configJson: $configJson")
             // Get the game name from container or use a fallback
-            val appInfo = SteamService.getAppInfoOf(appId)!!
+            val appInfo = SteamService.getAppInfoOf(gameId)!!
             val gameName = appInfo.name
             Timber.d("GameFeedbackUtils: Game name: $gameName")
 
