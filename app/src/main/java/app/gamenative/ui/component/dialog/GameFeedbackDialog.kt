@@ -2,6 +2,7 @@ package app.gamenative.ui.component.dialog
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -17,7 +18,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.ui.component.dialog.state.GameFeedbackDialogState
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(
+    ExperimentalLayoutApi::class,
+    ExperimentalMaterial3Api::class
+)
 @Composable
 fun GameFeedbackDialog(
     state: GameFeedbackDialogState,
@@ -142,9 +146,9 @@ fun GameFeedbackDialog(
                         }
 
                         Button(
-                            onClick = { 
+                            onClick = {
                                 timber.log.Timber.d("GameFeedback: Submit button clicked with rating=${state.rating}")
-                                onSubmit(state) 
+                                onSubmit(state)
                             },
                             modifier = Modifier.padding(start = 8.dp),
                             enabled = state.rating > 0 // Require at least a rating
