@@ -59,9 +59,15 @@ interface SteamLicenseDao {
         if (packageIds.isEmpty()) return getAllLicenses()
 
         val out = mutableListOf<SteamLicense>()
+        // Combine multiple queries if needed
         for (i in packageIds.indices step SQLITE_MAX_VARS) {
             val end = min(i + SQLITE_MAX_VARS, packageIds.size)
-            out += _findStaleLicences(packageIds.subList(i, end))
+            val chunkResult = _findStaleLicences(packageIds.subList(i, end))
+            if (out.isEmpty()) {
+                out += chunkResult // First chunk
+            } else {
+                out.retainAll(chunkResult) // Intersect to only keep entries in both lists
+            }
         }
         return out.distinct()
     }
