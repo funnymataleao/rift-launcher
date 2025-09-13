@@ -53,6 +53,8 @@ fun HomeLibraryScreen(
     onClickPlay: (Int, Boolean) -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
+    onGoOnline: () -> Unit,
+    isOffline: Boolean = false,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -69,6 +71,8 @@ fun HomeLibraryScreen(
         onClickPlay = onClickPlay,
         onNavigateRoute = onNavigateRoute,
         onLogout = onLogout,
+        onGoOnline = onGoOnline,
+        isOffline = isOffline,
     )
 }
 
@@ -86,6 +90,8 @@ private fun LibraryScreenContent(
     onClickPlay: (Int, Boolean) -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
+    onGoOnline: () -> Unit,
+    isOffline: Boolean = false,
 ) {
     var selectedAppId by remember { mutableStateOf<Int?>(null) }
 
@@ -111,7 +117,9 @@ private fun LibraryScreenContent(
                 onSearchQuery = onSearchQuery,
                 onNavigateRoute = onNavigateRoute,
                 onLogout = onLogout,
-                onNavigate = { appId -> selectedAppId = appId }
+                onNavigate = { appId -> selectedAppId = appId },
+                onGoOnline = onGoOnline,
+                isOffline = isOffline,
             )
         } else {
             LibraryDetailPane(
@@ -174,6 +182,7 @@ private fun Preview_LibraryScreenContent() {
             onClickPlay = { _, _ -> },
             onNavigateRoute = {},
             onLogout = {},
+            onGoOnline = {},
         )
     }
 }

@@ -221,6 +221,7 @@ class SteamService : Service(), IChallengeUrlChanged {
     private lateinit var connectivityManager: ConnectivityManager
     private lateinit var networkCallback: ConnectivityManager.NetworkCallback
     private var isWifiConnected: Boolean = true
+    private var isConnected: Boolean = true
 
     // Add these as class properties
     private var picsGetProductInfoJob: Job? = null
@@ -913,7 +914,11 @@ class SteamService : Service(), IChallengeUrlChanged {
             ignorePendingOperations: Boolean = false,
             preferredSave: SaveLocation = SaveLocation.None,
             prefixToPath: (String) -> String,
+            isOffline: Boolean = false,
         ): Deferred<PostSyncInfo> = parentScope.async {
+            if (isOffline || !isConnected) {
+                return@async PostSyncInfo(SyncResult.UpToDate)
+            }
             if (syncInProgress) {
                 Timber.w("Cannot launch app when sync already in progress")
                 return@async PostSyncInfo(SyncResult.InProgress)
@@ -1499,6 +1504,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         val activeNetwork = connectivityManager.activeNetwork
         val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
         isWifiConnected = capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+        isConnected = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
         // Register callback for Wi-Fi connectivity
         networkCallback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {

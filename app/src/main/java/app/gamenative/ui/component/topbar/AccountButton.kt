@@ -30,6 +30,8 @@ import timber.log.Timber
 fun AccountButton(
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
+    onGoOnline: () -> Unit,
+    isOffline: Boolean = false,
 ) {
     val scope = rememberCoroutineScope()
     var persona by remember { mutableStateOf<SteamFriend?>(null) }
@@ -72,9 +74,14 @@ fun AccountButton(
             onLogout()
             showDialog = false
         },
+        onGoOnline = {
+            onGoOnline()
+            showDialog = false
+        },
         onDismiss = {
             showDialog = false
         },
+        isOffline = isOffline,
     )
 
     IconButton(
@@ -99,6 +106,7 @@ private fun Preview_AccountButton() {
                 AccountButton(
                     onNavigateRoute = {},
                     onLogout = {},
+                    onGoOnline = {},
                 )
             },
         )

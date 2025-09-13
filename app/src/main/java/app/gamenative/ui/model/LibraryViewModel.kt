@@ -121,9 +121,13 @@ class LibraryViewModel @Inject constructor(
                         SteamService.userSteamId?.let { steamId ->
                             listOf(steamId.accountID.toInt())
                         } ?: emptyList()
-                    }.map {
-                        item.ownerAccountId.contains(it)
-                    }.any()
+                    }.let { owners ->
+                        if (owners.isEmpty()) {
+                            true                       // no owner info ⇒ don’t filter the item out
+                        } else {
+                            owners.any { item.ownerAccountId.contains(it) }
+                        }
+                    }
                 }
                 .filter { item ->
                     currentFilter.any { item.type == it }
@@ -132,7 +136,7 @@ class LibraryViewModel @Inject constructor(
                     if (currentState.appInfoSortType.contains(AppFilter.SHARED)) {
                         true
                     } else {
-                        item.ownerAccountId.contains(PrefManager.steamUserAccountId)
+                        item.ownerAccountId.contains(PrefManager.steamUserAccountId) || PrefManager.steamUserAccountId == 0
                     }
                 }
                 .filter { item ->

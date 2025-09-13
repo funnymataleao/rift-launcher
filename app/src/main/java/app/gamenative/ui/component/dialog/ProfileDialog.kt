@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Settings
@@ -50,6 +51,8 @@ fun ProfileDialog(
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onDismiss: () -> Unit,
+    onGoOnline: () -> Unit,
+    isOffline: Boolean = false,
 ) {
     if (!openDialog) {
         return
@@ -118,10 +121,18 @@ fun ProfileDialog(
                     Text(text = "Help & Support")
                 }
 
-                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onLogout) {
-                    Icon(imageVector = Icons.AutoMirrored.Filled.Logout, contentDescription = null)
-                    Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
-                    Text(text = "Log Out")
+                if(isOffline) {
+                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onGoOnline) {
+                        Icon(imageVector = Icons.AutoMirrored.Filled.Login, contentDescription = null)
+                        Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Text(text = "Go Online")
+                    }
+                } else {
+                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onLogout) {
+                        Icon(imageVector = Icons.AutoMirrored.Filled.Logout, contentDescription = null)
+                        Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Text(text = "Log Out")
+                    }
                 }
             }
         },
@@ -146,6 +157,7 @@ private fun Preview_ProfileDialog() {
             onNavigateRoute = {},
             onLogout = {},
             onDismiss = {},
+            onGoOnline = {},
         )
     }
 }
