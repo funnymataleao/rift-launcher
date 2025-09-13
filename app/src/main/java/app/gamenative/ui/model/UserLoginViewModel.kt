@@ -10,6 +10,7 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
 import app.gamenative.ui.data.UserLoginState
+import app.gamenative.ui.screen.PluviaScreen
 import `in`.dragonbra.javasteam.steam.authentication.IAuthenticator
 import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.channels.Channel
@@ -142,7 +143,7 @@ class UserLoginViewModel : ViewModel() {
         val twoFactorMethod = prevState.lastTwoFactorMethod
         val eventProps = mutableMapOf("method" to method)
         twoFactorMethod?.let { eventProps["2fa_method"] = it }
-        
+
         if (it.loginResult == LoginResult.Success) {
             PostHog.capture(event = "login_success", properties = eventProps)
         } else if (it.loginResult == LoginResult.Failed) {

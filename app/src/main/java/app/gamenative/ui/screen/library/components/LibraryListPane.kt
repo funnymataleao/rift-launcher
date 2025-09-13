@@ -72,6 +72,8 @@ internal fun LibraryListPane(
     onNavigate: (Int) -> Unit,
     onSearchQuery: (String) -> Unit,
     onNavigateRoute: (String) -> Unit,
+    onGoOnline: () -> Unit,
+    isOffline: Boolean = false,
 ) {
     val expandedFab by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
     val snackBarHost = remember { SnackbarHostState() }
@@ -155,7 +157,9 @@ internal fun LibraryListPane(
                     ) {
                         AccountButton(
                             onNavigateRoute = onNavigateRoute,
-                            onLogout = onLogout
+                            onLogout = onLogout,
+                            onGoOnline = onGoOnline,
+                            isOffline = isOffline,
                         )
                     }
                 }
@@ -291,6 +295,7 @@ private fun Preview_LibraryListPane() {
                 onNavigateRoute = { },
                 onLogout = { },
                 onNavigate = { },
+                onGoOnline = { },
             )
         }
     }

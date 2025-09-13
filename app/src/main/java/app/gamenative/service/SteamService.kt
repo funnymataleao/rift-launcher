@@ -138,13 +138,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import okhttp3.ConnectionPool
-import okhttp3.Dispatcher
-import okhttp3.OkHttpClient
 import timber.log.Timber
 import java.lang.NullPointerException
-import java.util.concurrent.TimeUnit
-import android.os.Environment
 import android.os.SystemClock
 import kotlinx.coroutines.ensureActive
 import app.gamenative.enums.Marker
@@ -278,26 +273,20 @@ class SteamService : Service(), IChallengeUrlChanged {
             private set
 
         private val serverListPath: String
-            get() = Paths.get(instance!!.cacheDir.path, "server_list.bin").pathString
+            get() = Paths.get(DownloadService.baseCacheDirPath, "server_list.bin").pathString
 
         private val depotManifestsPath: String
-            get() = Paths.get(instance!!.dataDir.path, "Steam", "depot_manifests.zip").pathString
+            get() = Paths.get(DownloadService.baseDataDirPath, "Steam", "depot_manifests.zip").pathString
 
         val internalAppInstallPath: String
-            get() {
-                if (instance != null) {
-                    return Paths.get(instance!!.dataDir.path, "Steam", "steamapps", "common").pathString
-                }
-                return ""
-            }
+            get() = Paths.get(DownloadService.baseDataDirPath, "Steam", "steamapps", "common").pathString
+
         val externalAppInstallPath: String
-            get() {
-                return Paths.get(PrefManager.externalStoragePath, "Steam", "steamapps", "common").pathString
-            }
+            get() = Paths.get(PrefManager.externalStoragePath, "Steam", "steamapps", "common").pathString
 
         private val internalAppStagingPath: String
             get() {
-                return Paths.get(instance!!.dataDir.path, "Steam", "steamapps", "staging").pathString
+                return Paths.get(DownloadService.baseDataDirPath, "Steam", "steamapps", "staging").pathString
             }
         private val externalAppStagingPath: String
             get() {
@@ -312,7 +301,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     PrefManager.externalStoragePath
                 } else {
                     if (instance != null) {
-                        return instance!!.dataDir.path
+                        return DownloadService.baseDataDirPath
                     }
                     return ""
                 }
@@ -861,58 +850,60 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         suspend fun notifyRunningProcesses(vararg gameProcesses: GameProcessInfo) = withContext(Dispatchers.IO) {
             instance?.let { steamInstance ->
-                val gamesPlayed = gameProcesses.mapNotNull { gameProcess ->
-                    getAppInfoOf(gameProcess.appId)?.let { appInfo ->
-                        getPkgInfoOf(gameProcess.appId)?.let { pkgInfo ->
-                            appInfo.branches[gameProcess.branch]?.let { branch ->
-                                val processId = gameProcess.processes
-                                    .firstOrNull { it.parentIsSteam }
-                                    ?.processId
-                                    ?: gameProcess.processes.firstOrNull()?.processId
-                                    ?: 0
+                if (isConnected) {
+                    val gamesPlayed = gameProcesses.mapNotNull { gameProcess ->
+                        getAppInfoOf(gameProcess.appId)?.let { appInfo ->
+                            getPkgInfoOf(gameProcess.appId)?.let { pkgInfo ->
+                                appInfo.branches[gameProcess.branch]?.let { branch ->
+                                    val processId = gameProcess.processes
+                                        .firstOrNull { it.parentIsSteam }
+                                        ?.processId
+                                        ?: gameProcess.processes.firstOrNull()?.processId
+                                        ?: 0
 
-                                val userAccountId = userSteamId!!.accountID.toInt()
-                                GamePlayedInfo(
-                                    gameId = gameProcess.appId.toLong(),
-                                    processId = processId,
-                                    ownerId = if (pkgInfo.ownerAccountId.contains(userAccountId)) {
-                                        userAccountId
-                                    } else {
-                                        pkgInfo.ownerAccountId.first()
-                                    },
-                                    // TODO: figure out what this is and un-hardcode
-                                    launchSource = 100,
-                                    gameBuildId = branch.buildId.toInt(),
-                                    processIdList = gameProcess.processes,
-                                )
+                                    val userAccountId = userSteamId!!.accountID.toInt()
+                                    GamePlayedInfo(
+                                        gameId = gameProcess.appId.toLong(),
+                                        processId = processId,
+                                        ownerId = if (pkgInfo.ownerAccountId.contains(userAccountId)) {
+                                            userAccountId
+                                        } else {
+                                            pkgInfo.ownerAccountId.first()
+                                        },
+                                        // TODO: figure out what this is and un-hardcode
+                                        launchSource = 100,
+                                        gameBuildId = branch.buildId.toInt(),
+                                        processIdList = gameProcess.processes,
+                                    )
+                                }
                             }
                         }
                     }
-                }
 
-                Timber.i(
-                    "GameProcessInfo:%s",
-                    gamesPlayed.joinToString("\n") { game ->
-                        """
+                    Timber.i(
+                        "GameProcessInfo:%s",
+                        gamesPlayed.joinToString("\n") { game ->
+                            """
                         |   processId: ${game.processId}
                         |   gameId: ${game.gameId}
                         |   processes: ${
-                            game.processIdList.joinToString("\n") { process ->
-                                """
+                                game.processIdList.joinToString("\n") { process ->
+                                    """
                                 |   processId: ${process.processId}
                                 |   processIdParent: ${process.processIdParent}
                                 |   parentIsSteam: ${process.parentIsSteam}
                                 """.trimMargin()
+                                }
                             }
-                        }
                         """.trimMargin()
-                    },
-                )
+                        },
+                    )
 
-                steamInstance._steamApps?.notifyGamesPlayed(
-                    gamesPlayed = gamesPlayed,
-                    clientOsType = EOSType.AndroidUnknown,
-                )
+                    steamInstance._steamApps?.notifyGamesPlayed(
+                        gamesPlayed = gamesPlayed,
+                        clientOsType = EOSType.AndroidUnknown,
+                    )
+                }
             }
         }
 
@@ -922,7 +913,11 @@ class SteamService : Service(), IChallengeUrlChanged {
             ignorePendingOperations: Boolean = false,
             preferredSave: SaveLocation = SaveLocation.None,
             prefixToPath: (String) -> String,
+            isOffline: Boolean = false,
         ): Deferred<PostSyncInfo> = parentScope.async {
+            if (isOffline || !isConnected) {
+                return@async PostSyncInfo(SyncResult.UpToDate)
+            }
             if (syncInProgress) {
                 Timber.w("Cannot launch app when sync already in progress")
                 return@async PostSyncInfo(SyncResult.InProgress)
@@ -1451,6 +1446,9 @@ class SteamService : Service(), IChallengeUrlChanged {
             appId: Int,
             branch: String = "public",
         ): Boolean = withContext(Dispatchers.IO) {
+            // Don't try if there's no internet
+            if (!isConnected) return@withContext false
+
             val steamApps = instance?._steamApps ?: return@withContext false
 
             // ── 1. Fetch the latest app header from Steam (PICS).
@@ -1659,12 +1657,16 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 try {
                     steamClient!!.servers.tryMark(steamClient!!.currentEndpoint, PROTOCOL_TYPES, ServerQuality.BAD)
+                } catch (e: NullPointerException) {
+                    // I don't care
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to mark endpoint as bad:")
                 }
 
                 try {
                     steamClient!!.disconnect()
+                } catch (e:  NullPointerException) {
+                    // I don't care
                 } catch (e: Exception) {
                     Timber.e(e, "There was an issue when disconnecting:")
                 }
@@ -1781,6 +1783,11 @@ class SteamService : Service(), IChallengeUrlChanged {
     private fun onLoggedOn(callback: LoggedOnCallback) {
         Timber.i("Logged onto Steam: ${callback.result}")
 
+        if (userSteamId?.isValid == true && PrefManager.steamUserAccountId != userSteamId!!.accountID.toInt()) {
+            PrefManager.steamUserAccountId = userSteamId!!.accountID.toInt()
+            Timber.d("Saving logged in Steam accountID ${userSteamId!!.accountID.toInt()}")
+        }
+
         when (callback.result) {
             EResult.TryAnotherCM -> {
                 _loginResult = LoginResult.Failed
@@ -1821,7 +1828,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         }
                     }
                 }
-                
+
                 picsChangesCheckerJob = continuousPICSChangesChecker()
                 picsGetProductInfoJob = continuousPICSGetProductInfo()
 
@@ -2300,7 +2307,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     ensureActive()
                     if (!isLoggedIn) return@collect
                     val steamApps = instance?._steamApps ?: return@collect
-                    
+
                     val callback = steamApps.picsGetProductInfo(
                         apps = emptyList(),
                         packages = packageRequests,
@@ -2334,7 +2341,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                             }
                         }
 
-                        // TODO: This could be an issue. (Stalling)                        
+                        // TODO: This could be an issue. (Stalling)
                         steamApps.picsGetAccessTokens(
                             appIds = queue,
                             packageIds = emptyList(),

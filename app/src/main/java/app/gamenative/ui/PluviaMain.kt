@@ -2,6 +2,7 @@ package app.gamenative.ui
 
 import android.content.Context
 import android.content.Intent
+import android.net.NetworkCapabilities
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
@@ -64,6 +65,7 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.GameFeedbackUtils
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.R
+import app.gamenative.ui.component.ConnectingServersScreen
 import com.google.android.play.core.splitcompat.SplitCompat
 import com.winlator.container.ContainerManager
 import com.winlator.xenvironment.ImageFsInstaller
@@ -370,7 +372,23 @@ fun PluviaMain(
     // Show loading or error UI as appropriate
     when {
         isConnecting -> {
-            LoadingScreen()
+            PluviaTheme(
+                isDark = when (state.appTheme) {
+                    AppTheme.AUTO   -> isSystemInDarkTheme()
+                    AppTheme.DAY    -> false
+                    AppTheme.NIGHT  -> true
+                    AppTheme.AMOLED -> true
+                },
+                isAmoled = state.appTheme == AppTheme.AMOLED,
+                style = state.paletteStyle
+            ) {
+                ConnectingServersScreen(
+                    onContinueOffline = {
+                        isConnecting = false
+                        navController.navigate(PluviaScreen.Home.route + "?offline=true")
+                    }
+                )
+            }
             return
         }
     }
@@ -436,13 +454,13 @@ fun PluviaMain(
         }
 
         DialogType.SYNC_FAIL -> {
+            onConfirmClick = null
             onDismissClick = {
                 setMessageDialogState(MessageDialogState(false))
             }
             onDismissRequest = {
                 setMessageDialogState(MessageDialogState(false))
             }
-            onConfirmClick = null
         }
 
         DialogType.PENDING_UPLOAD_IN_PROGRESS -> {
@@ -679,14 +697,26 @@ fun PluviaMain(
             /** Login **/
             /** Login **/
             composable(route = PluviaScreen.LoginUser.route) {
-                UserLoginScreen()
+                UserLoginScreen(
+                    onContinueOffline = {
+                        navController.navigate(PluviaScreen.Home.route + "?offline=true")
+                    }
+                )
             }
             /** Library, Downloads, Friends **/
             /** Library, Downloads, Friends **/
             composable(
-                route = PluviaScreen.Home.route,
+                route = PluviaScreen.Home.route + "?offline={offline}",
                 deepLinks = listOf(navDeepLink { uriPattern = "pluvia://home" }),
+                arguments = listOf(
+                    navArgument("offline") {
+                        type = NavType.BoolType
+                        defaultValue = false          // default when the query param isn’t present
+                    }
+                )
             ) {
+                backStackEntry ->
+                val isOffline = backStackEntry.arguments?.getBoolean("offline") ?: false
                 HomeScreen(
                     onClickPlay = { launchAppId, asContainer ->
                         viewModel.setLaunchedAppId(launchAppId)
@@ -698,6 +728,7 @@ fun PluviaMain(
                             setLoadingProgress = viewModel::setLoadingDialogProgress,
                             setMessageDialogState = { msgDialogState = it },
                             onSuccess = viewModel::launchApp,
+                            isOffline = isOffline,
                         )
                     },
                     onClickExit = {
@@ -712,6 +743,10 @@ fun PluviaMain(
                     onLogout = {
                         SteamService.logOut()
                     },
+                    onGoOnline = {
+                        navController.navigate(PluviaScreen.LoginUser.route)
+                    },
+                    isOffline = isOffline,
                 )
             }
 
@@ -788,6 +823,7 @@ fun preLaunchApp(
     setMessageDialogState: (MessageDialogState) -> Unit,
     onSuccess: KFunction2<Context, Int, Unit>,
     retryCount: Int = 0,
+    isOffline: Boolean = false,
 ) {
     setLoadingDialogVisible(true)
     // TODO: add a way to cancel
@@ -823,6 +859,7 @@ fun preLaunchApp(
             ignorePendingOperations = ignorePendingOperations,
             preferredSave = preferredSave,
             parentScope = this,
+            isOffline = isOffline,
         ).await()
 
         setLoadingDialogVisible(false)
@@ -877,7 +914,6 @@ fun preLaunchApp(
                     )
                 }
             }
-
             SyncResult.UnknownFail,
             SyncResult.DownloadFail,
             SyncResult.UpdateFail,
@@ -887,7 +923,7 @@ fun preLaunchApp(
                         visible = true,
                         type = DialogType.SYNC_FAIL,
                         title = context.getString(R.string.sync_error_title),
-                        message = "Failed to sync save files: ${postSyncInfo.syncResult}. Please restart app.",
+                        message = "Failed to sync save files: ${postSyncInfo.syncResult}.",
                         dismissBtnText = context.getString(R.string.ok),
                     ),
                 )
