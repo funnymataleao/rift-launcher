@@ -54,6 +54,7 @@ public class Container {
     private String wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
     private boolean showFPS;
     private boolean launchRealSteam;
+    private boolean allowSteamUpdates;
     private boolean wow64Mode = true;
     private boolean needsUnpacking = true;
     private byte startupSelection = STARTUP_SELECTION_AGGRESSIVE;
@@ -262,6 +263,14 @@ public class Container {
 
     public void setLaunchRealSteam(boolean launchRealSteam) {
         this.launchRealSteam = launchRealSteam;
+    }
+
+    public boolean isAllowSteamUpdates() {
+        return allowSteamUpdates;
+    }
+
+    public void setAllowSteamUpdates(boolean allowSteamUpdates) {
+        this.allowSteamUpdates = allowSteamUpdates;
     }
 
     public boolean isSdlControllerAPI() {
@@ -520,6 +529,7 @@ public class Container {
             data.put("drives", drives);
             data.put("showFPS", showFPS);
             data.put("launchRealSteam", launchRealSteam);
+            data.put("allowSteamUpdates", allowSteamUpdates);
             data.put("inputType", inputType);
             data.put("dinputMapperType", dinputMapperType);
             data.put("wow64Mode", wow64Mode);
@@ -605,6 +615,9 @@ public class Container {
                     break;
                 case "launchRealSteam" :
                     setLaunchRealSteam(data.getBoolean(key));
+                    break;
+                case "allowSteamUpdates" :
+                    setAllowSteamUpdates(data.getBoolean(key));
                     break;
                 case "steamType" :
                     setSteamType(data.getString(key));

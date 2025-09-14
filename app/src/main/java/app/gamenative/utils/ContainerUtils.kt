@@ -166,6 +166,7 @@ object ContainerUtils {
             executablePath = container.executablePath,
             showFPS = container.isShowFPS,
             launchRealSteam = container.isLaunchRealSteam,
+            allowSteamUpdates = container.isAllowSteamUpdates,
             steamType = container.getSteamType(),
             cpuList = container.cpuList,
             cpuListWoW64 = container.cpuListWoW64,
@@ -248,6 +249,7 @@ object ContainerUtils {
         container.executablePath = containerData.executablePath
         container.isShowFPS = containerData.showFPS
         container.isLaunchRealSteam = containerData.launchRealSteam
+        container.isAllowSteamUpdates = containerData.allowSteamUpdates
         container.setSteamType(containerData.steamType)
         container.cpuList = containerData.cpuList
         container.cpuListWoW64 = containerData.cpuListWoW64

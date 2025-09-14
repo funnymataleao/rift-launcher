@@ -513,6 +513,20 @@ object SteamUtils {
     fun restoreSteamApi(context: Context, appId: Int) {
         Timber.i("Starting restoreSteamApi for appId: $appId")
         val imageFs = ImageFs.find(context)
+        val container = ContainerUtils.getOrCreateContainer(context, appId)
+        val cfgFile = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/steam.cfg")
+        if (container.isAllowSteamUpdates){
+            Timber.i("Allowing steam updates, deleting the steam.cfg file")
+            if (cfgFile.exists()){
+                Timber.i("Allowing steam updates and file exists, deleting the steam.cfg file")
+                cfgFile.delete()
+            }
+        } else {
+            if (!cfgFile.exists()){
+                Files.createFile(cfgFile.toPath())
+                cfgFile.writeText("BootStrapperInhibitAll=Enable\nBootStrapperForceSelfUpdate=False")
+            }
+        }
         skipFirstTimeSteamSetup(imageFs.rootDir)
         val appDirPath = SteamService.getAppDirPath(appId)
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_RESTORED)) {

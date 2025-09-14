@@ -693,6 +693,17 @@ fun ContainerConfigDialog(
                                     config = config.copy(launchRealSteam = it)
                                 },
                             )
+                            if (config.launchRealSteam){
+                                SettingsSwitch(
+                                    colors = settingsTileColorsAlt(),
+                                    title = { Text(text = "Allow Steam updates") },
+                                    subtitle = { Text(text = "Updates Steam to the latest version. Significantly reduces performance.") },
+                                    state = config.allowSteamUpdates,
+                                    onCheckedChange = {
+                                        config = config.copy(allowSteamUpdates = it)
+                                    },
+                                )
+                            }
                             // Steam Type Dropdown
                             val steamTypeItems = listOf("Normal", "Light", "Ultra Light")
                             val currentSteamTypeIndex = when (config.steamType.lowercase()) {
