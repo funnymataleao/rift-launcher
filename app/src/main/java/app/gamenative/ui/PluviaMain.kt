@@ -721,6 +721,7 @@ fun PluviaMain(
                     onClickPlay = { launchAppId, asContainer ->
                         viewModel.setLaunchedAppId(launchAppId)
                         viewModel.setBootToContainer(asContainer)
+                        viewModel.setOffline(isOffline)
                         preLaunchApp(
                             context = context,
                             appId = launchAppId,

@@ -681,6 +681,8 @@ object SteamAutoCloud {
                         } == true
                     }.inWholeMicroseconds
 
+                    /*TODO: hasLocalChanges should be true if the user plays offline for the first time without ever pulling cloud saves
+                       If that happens, the next time they go online, their change number is -1, and saves are always overwritten by cloud*/
                     if (!hasLocalChanges) {
                         // we can safely download the new changes since no changes have been
                         // made locally

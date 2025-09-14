@@ -145,6 +145,7 @@ import kotlinx.coroutines.ensureActive
 import app.gamenative.enums.Marker
 import app.gamenative.utils.MarkerUtils
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.StateFlow
 
 @AndroidEntryPoint
 class SteamService : Service(), IChallengeUrlChanged {
@@ -1029,10 +1030,14 @@ class SteamService : Service(), IChallengeUrlChanged {
             return@async syncResult
         }
 
-        suspend fun closeApp(appId: Int, prefixToPath: (String) -> String) = withContext(Dispatchers.IO) {
+        suspend fun closeApp(appId: Int, isOffline: Boolean, prefixToPath: (String) -> String) = withContext(Dispatchers.IO) {
             async {
                 if (syncInProgress) {
                     Timber.w("Cannot close app when sync already in progress")
+                    return@async
+                }
+
+                if (isOffline || !isConnected) {
                     return@async
                 }
 
