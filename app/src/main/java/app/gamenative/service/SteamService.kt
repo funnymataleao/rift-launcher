@@ -802,6 +802,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     downloadJobs.remove(appId)
                     // Write download complete marker on disk
                     MarkerUtils.addMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
+                    MarkerUtils.removeMarker(getAppDirPath(appId), Marker.STEAM_DLL_REPLACED)
                 })
             }
 

@@ -607,6 +607,7 @@ fun AppScreen(
                                 AppOptionMenuType.ResetDrm,
                                 onClick = {
                                     val container = ContainerUtils.getOrCreateContainer(context, appId)
+                                    MarkerUtils.removeMarker(getAppDirPath(appId), Marker.STEAM_DLL_RESTORED)
                                     container.isNeedsUnpacking = true
                                     container.saveData()
                                 },
