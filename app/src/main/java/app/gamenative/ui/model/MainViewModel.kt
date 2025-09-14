@@ -61,6 +61,11 @@ class MainViewModel @Inject constructor(
     private val _uiEvent = Channel<MainUiEvent>()
     val uiEvent = _uiEvent.receiveAsFlow()
 
+    private val _offline = MutableStateFlow(false)
+    val isOffline: StateFlow<Boolean> get() = _offline
+
+    fun setOffline(value: Boolean) { _offline.value = value }
+
     private val onSteamConnected: (SteamEvent.Connected) -> Unit = {
         Timber.i("Received is connected")
         _state.update { it.copy(isSteamConnected = true) }
@@ -240,7 +245,7 @@ class MainViewModel @Inject constructor(
             val hadTemporaryOverride = IntentLaunchManager.hasTemporaryOverride(appId)
 
             SteamService.notifyRunningProcesses()
-            SteamService.closeApp(appId) { prefix ->
+            SteamService.closeApp(appId, isOffline.value) { prefix ->
                 PathType.from(prefix).toAbsPath(context, appId, SteamService.userSteamId!!.accountID)
             }.await()
 
