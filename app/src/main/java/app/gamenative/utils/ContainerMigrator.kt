@@ -8,12 +8,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import timber.log.Timber
+import android.os.Handler
+import android.os.Looper
 
 /**
  * Handles migration of legacy container formats.
  */
 object ContainerMigrator {
     private const val LATEST_CONTAINER_MIGRATION_VERSION = 1
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private inline fun postMain(crossinline block: () -> Unit) = mainHandler.post { block() }
 
     /**
      * Creates a container migration version file to track completed migrations
@@ -53,9 +57,9 @@ object ContainerMigrator {
     /**
      * Checks if container migration is needed by comparing versions
      */
-    suspend fun isContainerMigrationNeeded(context: Context): Boolean = withContext(Dispatchers.IO) {
+    fun isContainerMigrationNeeded(context: Context): Boolean {
         val currentVersion = getContainerMigrationVersion(context)
-        return@withContext currentVersion < LATEST_CONTAINER_MIGRATION_VERSION
+        return currentVersion < LATEST_CONTAINER_MIGRATION_VERSION
     }
 
     /**
@@ -63,19 +67,19 @@ object ContainerMigrator {
      * Legacy: xuser-12345/ -> New: xuser-STEAM_12345/
      * Runs only once based on version tracking like ImageFsInstaller
      */
-    suspend fun migrateLegacyContainersIfNeeded(
+    fun migrateLegacyContainersIfNeeded(
         context: Context,
         onProgressUpdate: ((currentContainer: String, migratedContainers: Int, totalContainers: Int) -> Unit)? = null,
         onComplete: ((migratedCount: Int) -> Unit)? = null,
-    ) = withContext(Dispatchers.IO) {
+    ) {
         try {
             // Check if migration is needed based on version
             if (!isContainerMigrationNeeded(context)) {
                 Timber.i("Container migration not needed, already at version $LATEST_CONTAINER_MIGRATION_VERSION")
-                withContext(Dispatchers.Main) {
+                postMain {
                     onComplete?.invoke(0)
                 }
-                return@withContext
+                return
             }
 
             val imageFs = ImageFs.find(context)
@@ -103,7 +107,7 @@ object ContainerMigrator {
                 val newContainerId = "STEAM_$legacyId"
                 val newDir = File(homeDir, "${ImageFs.USER}-$newContainerId") // WITH xuser- prefix
 
-                withContext(Dispatchers.Main) {
+                postMain {
                     onProgressUpdate?.invoke(legacyId, migratedContainers, totalContainers)
                 }
 
@@ -145,7 +149,7 @@ object ContainerMigrator {
             // Mark migration as complete regardless of success/failure
             createContainerMigrationVersionFile(context, LATEST_CONTAINER_MIGRATION_VERSION)
 
-            withContext(Dispatchers.Main) {
+            postMain {
                 onComplete?.invoke(migratedContainers)
             }
 
@@ -154,36 +158,9 @@ object ContainerMigrator {
             Timber.e(e, "Error during container migration")
             // Still mark as complete to avoid repeated attempts
             createContainerMigrationVersionFile(context, LATEST_CONTAINER_MIGRATION_VERSION)
-            withContext(Dispatchers.Main) {
+            postMain {
                 onComplete?.invoke(0)
             }
-        }
-    }
-
-    /**
-     * Checks if there are any legacy containers that need migration
-     * (Kept for backward compatibility, but prefer using isContainerMigrationNeeded)
-     */
-    suspend fun hasLegacyContainers(context: Context): Boolean = withContext(Dispatchers.IO) {
-        try {
-            val imageFs = ImageFs.find(context)
-            val homeDir = File(imageFs.rootDir, "home")
-
-            val legacyContainers = homeDir.listFiles()?.filter { file ->
-                file.isDirectory() &&
-                    file.name != ImageFs.USER &&
-                    // Skip active symlink
-                    file.name.startsWith("${ImageFs.USER}-") &&
-                    // Must have xuser- prefix
-                    file.name.removePrefix("${ImageFs.USER}-").matches(Regex("\\d+")) &&
-                    // Numeric ID after prefix
-                    File(file, ".container").exists() // Has container config
-            } ?: emptyList()
-
-            return@withContext legacyContainers.isNotEmpty()
-        } catch (e: Exception) {
-            Timber.e(e, "Error checking for legacy containers")
-            return@withContext false
         }
     }
 

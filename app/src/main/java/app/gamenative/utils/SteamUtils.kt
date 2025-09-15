@@ -132,14 +132,14 @@ object SteamUtils {
      * Replaces any existing `steam_api.dll` or `steam_api64.dll` in the app directory
      * with our pipe dll stored in assets
      */
-    suspend fun replaceSteamApi(context: Context, libraryItem: LibraryItem) {
-        val steamAppId = libraryItem.gameId
+    suspend fun replaceSteamApi(context: Context, appId: String) {
+        val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_REPLACED)) {
             return
         }
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
-        Timber.i("Starting replaceSteamApi for appId: $libraryItem.appId")
+        Timber.i("Starting replaceSteamApi for appId: $appId")
         Timber.i("Checking directory: $appDirPath")
         var replaced32 = false
         var replaced64 = false
@@ -161,7 +161,7 @@ object SteamUtils {
                 }
                 Timber.i("Replaced steam_api.dll")
                 replaced32 = true
-                ensureSteamSettings(context, it, libraryItem.appId)
+                ensureSteamSettings(context, it, appId)
             }
             if (it.name == "steam_api64.dll" && it.exists()) {
                 Timber.i("Found steam_api64.dll at ${it.absolutePathString()}, replacing...")
@@ -176,10 +176,10 @@ object SteamUtils {
                 }
                 Timber.i("Replaced steam_api64.dll")
                 replaced64 = true
-                ensureSteamSettings(context, it, libraryItem.appId)
+                ensureSteamSettings(context, it, appId)
             }
         }
-        Timber.i("Finished replaceSteamApi for appId: $libraryItem.appId. Replaced 32bit: $replaced32, Replaced 64bit: $replaced64")
+        Timber.i("Finished replaceSteamApi for appId: $appId. Replaced 32bit: $replaced32, Replaced 64bit: $replaced64")
 
         // Restore unpacked executable if it exists (for DRM-free mode)
         restoreUnpackedExecutable(context, steamAppId)
@@ -507,12 +507,12 @@ object SteamUtils {
      * Restores the original steam_api.dll and steam_api64.dll files from their .orig backups
      * if they exist. Does not error if backup files are not found.
      */
-    fun restoreSteamApi(context: Context, libraryItem: LibraryItem) {
+    fun restoreSteamApi(context: Context, appId: String) {
 
-        Timber.i("Starting restoreSteamApi for appId: ${libraryItem.appId}")
-        val steamAppId = libraryItem.gameId
+        Timber.i("Starting restoreSteamApi for appId: ${appId}")
+        val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val imageFs = ImageFs.find(context)
-        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+        val container = ContainerUtils.getOrCreateContainer(context, appId)
         val cfgFile = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/steam.cfg")
         if (container.isAllowSteamUpdates){
             Timber.i("Allowing steam updates, deleting the steam.cfg file")
@@ -581,7 +581,7 @@ object SteamUtils {
             }
         }
 
-        Timber.i("Finished restoreSteamApi for appId: ${libraryItem.appId}. Restored 32bit: $restored32, Restored 64bit: $restored64")
+        Timber.i("Finished restoreSteamApi for appId: ${appId}. Restored 32bit: $restored32, Restored 64bit: $restored64")
 
         // Restore original executable if it exists (for real Steam mode)
         restoreOriginalExecutable(context, steamAppId)
@@ -633,10 +633,11 @@ object SteamUtils {
      * Sibling folder “steam_settings” + empty “offline.txt” file, no-ops if they already exist.
      */
     private fun ensureSteamSettings(context: Context, dllPath: Path, appId: String) {
+        val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val appIdFileUpper = dllPath.parent.resolve("steam_appid.txt")
         if (Files.notExists(appIdFileUpper)) {
             Files.createFile(appIdFileUpper)
-            appIdFileUpper.toFile().writeText(appId)
+            appIdFileUpper.toFile().writeText(steamAppId.toString())
         }
         val settingsDir = dllPath.parent.resolve("steam_settings")
         if (Files.notExists(settingsDir)) {
@@ -645,7 +646,7 @@ object SteamUtils {
         val appIdFile = settingsDir.resolve("steam_appid.txt")
         if (Files.notExists(appIdFile)) {
             Files.createFile(appIdFile)
-            appIdFile.toFile().writeText(appId)
+            appIdFile.toFile().writeText(steamAppId.toString())
         }
 
         val configsIni = settingsDir.resolve("configs.user.ini")

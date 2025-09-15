@@ -216,18 +216,18 @@ class MainViewModel @Inject constructor(
         _state.update { it.copy(bootToContainer = value) }
     }
 
-    fun launchApp(context: Context, libraryItem: LibraryItem) {
+    fun launchApp(context: Context, appId: String) {
         // Show booting splash before launching the app
         viewModelScope.launch {
             setShowBootingSplash(true)
             PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
 
             val apiJob = viewModelScope.async(Dispatchers.IO) {
-                val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+                val container = ContainerUtils.getOrCreateContainer(context, appId)
                 if (container.isLaunchRealSteam()) {
-                    SteamUtils.restoreSteamApi(context, libraryItem)
+                    SteamUtils.restoreSteamApi(context, appId)
                 } else {
-                    SteamUtils.replaceSteamApi(context, libraryItem)
+                    SteamUtils.replaceSteamApi(context, appId)
                 }
             }
 
@@ -240,12 +240,12 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun exitSteamApp(context: Context, libraryItem: LibraryItem) {
+    fun exitSteamApp(context: Context, appId: String) {
         viewModelScope.launch {
             // Check if we have a temporary override before doing anything
-            val hadTemporaryOverride = IntentLaunchManager.hasTemporaryOverride(libraryItem.appId)
+            val hadTemporaryOverride = IntentLaunchManager.hasTemporaryOverride(appId)
 
-            val gameId = libraryItem.gameId
+            val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
 
             SteamService.notifyRunningProcesses()
             SteamService.closeApp(gameId, isOffline.value) { prefix ->
@@ -254,19 +254,19 @@ class MainViewModel @Inject constructor(
 
             // Prompt user to save temporary container configuration if one was applied
             if (hadTemporaryOverride) {
-                PluviaApp.events.emit(AndroidEvent.PromptSaveContainerConfig(libraryItem.appId))
+                PluviaApp.events.emit(AndroidEvent.PromptSaveContainerConfig(appId))
                 // Dialog handler in PluviaMain manages the save/discard logic
             }
 
             // After app closes, check if we need to show the feedback dialog
             try {
-                val container = ContainerUtils.getContainer(context, libraryItem.appId)
+                val container = ContainerUtils.getContainer(context, appId)
                 val shown = container.getExtra("discord_support_prompt_shown", "false") == "true"
                 val configChanged = container.getExtra("config_changed", "false") == "true"
                 if (!shown) {
                     container.putExtra("discord_support_prompt_shown", "true")
                     container.saveData()
-                    _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(libraryItem.appId))
+                    _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
                 }
 
                 // Only show feedback if container config was changed before this game run
@@ -275,7 +275,7 @@ class MainViewModel @Inject constructor(
                     container.putExtra("config_changed", "false")
                     container.saveData()
                     // Show the feedback dialog
-                    _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(libraryItem.appId))
+                    _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
                 }
             } catch (_: Exception) {
                 // ignore container errors
@@ -283,14 +283,14 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun onWindowMapped(context: Context, window: Window, libraryItem: LibraryItem) {
+    fun onWindowMapped(context: Context, window: Window, appId: String) {
         viewModelScope.launch {
             // Hide the booting splash when a window is mapped
             bootingSplashTimeoutJob?.cancel()
             bootingSplashTimeoutJob = null
             setShowBootingSplash(false)
 
-            val gameId = libraryItem.gameId
+            val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
 
             SteamService.getAppInfoOf(gameId)?.let { appInfo ->
                 // TODO: this should not be a search, the app should have been launched with a specific launch config that we then use to compare
@@ -320,11 +320,11 @@ class MainViewModel @Inject constructor(
                         processes.add(process)
                     } while (parentWindow != null)
 
-                    GameProcessInfo(appId = libraryItem.gameId, processes = processes).let {
+                    GameProcessInfo(appId = gameId, processes = processes).let {
                         // Only notify Steam if we're not using real Steam
                         // When launchRealSteam is true, let the real Steam client handle the "game is running" notification
                         val shouldLaunchRealSteam = try {
-                            val container = ContainerUtils.getContainer(context, libraryItem.appId)
+                            val container = ContainerUtils.getContainer(context, appId)
                             container.isLaunchRealSteam()
                         } catch (e: Exception) {
                             // Container might not exist, default to notifying Steam
