@@ -2,6 +2,7 @@ package app.gamenative.ui
 
 import android.content.Context
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,13 +20,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import android.widget.Toast
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -56,6 +55,7 @@ import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
+import app.gamenative.ui.component.ConnectingServersScreen
 import app.gamenative.ui.component.dialog.GameFeedbackDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.MessageDialog
@@ -72,22 +72,22 @@ import app.gamenative.ui.screen.login.UserLoginScreen
 import app.gamenative.ui.screen.settings.SettingsScreen
 import app.gamenative.ui.screen.xserver.XServerScreen
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.utils.ContainerMigrator
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.GameFeedbackUtils
 import app.gamenative.utils.IntentLaunchManager
-import app.gamenative.ui.component.ConnectingServersScreen
 import com.google.android.play.core.splitcompat.SplitCompat
 import com.winlator.container.ContainerManager
 import com.winlator.xenvironment.ImageFsInstaller
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
 import java.util.Date
 import java.util.EnumSet
+import kotlin.reflect.KFunction2
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import kotlin.reflect.KFunction2
 
 @Composable
 fun PluviaMain(
@@ -108,14 +108,14 @@ fun PluviaMain(
     var totalToMigrate by rememberSaveable { mutableIntStateOf(0) }
     var migratedCount by rememberSaveable { mutableIntStateOf(0) }
 
-    // Check for legacy containers on startup
+    // Check for container migration on startup
     LaunchedEffect(Unit) {
         scope.launch {
-            // Check if there are legacy containers to migrate
-            val hasLegacyContainers = ContainerUtils.hasLegacyContainers(context)
-            if (hasLegacyContainers) {
+            // Check if container migration is needed based on version
+            val migrationNeeded = ContainerMigrator.isContainerMigrationNeeded(context)
+            if (migrationNeeded) {
                 showMigrationDialog = true
-                ContainerUtils.migrateLegacyContainers(
+                ContainerMigrator.migrateLegacyContainersIfNeeded(
                     context = context,
                     onProgressUpdate = { current, migrated, total ->
                         currentMigrating = current
@@ -126,7 +126,7 @@ fun PluviaMain(
                     onComplete = { count ->
                         showMigrationDialog = false
                         Timber.i("Container migration completed: $count containers migrated")
-                    }
+                    },
                 )
             }
         }
@@ -146,11 +146,11 @@ fun PluviaMain(
                     }
                     LinearProgressIndicator(
                         progress = migrationProgress,
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     )
                 }
             },
-            confirmButton = { /* No buttons during migration */ }
+            confirmButton = { /* No buttons during migration */ },
         )
     }
 
@@ -316,7 +316,7 @@ fun PluviaMain(
                 is MainViewModel.MainUiEvent.ShowGameFeedbackDialog -> {
                     gameFeedbackState = GameFeedbackDialogState(
                         visible = true,
-                        appId = event.appId
+                        appId = event.appId,
                     )
                 }
 
@@ -405,7 +405,7 @@ fun PluviaMain(
     val onShowGameFeedback: (AndroidEvent.ShowGameFeedback) -> Unit = { event ->
         gameFeedbackState = GameFeedbackDialogState(
             visible = true,
-            appId = event.appId
+            appId = event.appId,
         )
     }
 
@@ -438,19 +438,19 @@ fun PluviaMain(
         isConnecting -> {
             PluviaTheme(
                 isDark = when (state.appTheme) {
-                    AppTheme.AUTO   -> isSystemInDarkTheme()
-                    AppTheme.DAY    -> false
-                    AppTheme.NIGHT  -> true
+                    AppTheme.AUTO -> isSystemInDarkTheme()
+                    AppTheme.DAY -> false
+                    AppTheme.NIGHT -> true
                     AppTheme.AMOLED -> true
                 },
                 isAmoled = state.appTheme == AppTheme.AMOLED,
-                style = state.paletteStyle
+                style = state.paletteStyle,
             ) {
                 ConnectingServersScreen(
                     onContinueOffline = {
                         isConnecting = false
                         navController.navigate(PluviaScreen.Home.route + "?offline=true")
-                    }
+                    },
                 )
             }
             return
@@ -712,7 +712,7 @@ fun PluviaMain(
                                 appId = appId,
                                 rating = feedbackState.rating,
                                 tags = feedbackState.selectedTags.toList(),
-                                notes = feedbackState.feedbackText.takeIf { it.isNotBlank() }
+                                notes = feedbackState.feedbackText.takeIf { it.isNotBlank() },
                             )
 
                             Timber.d("GameFeedback: Submission returned $result")
@@ -742,7 +742,7 @@ fun PluviaMain(
             },
             onDiscordSupport = {
                 uriHandler.openUri("https://discord.gg/2hKv4VfZfE")
-            }
+            },
         )
 
         Box(modifier = Modifier.zIndex(10f)) {
@@ -764,7 +764,7 @@ fun PluviaMain(
                 UserLoginScreen(
                     onContinueOffline = {
                         navController.navigate(PluviaScreen.Home.route + "?offline=true")
-                    }
+                    },
                 )
             }
             /** Library, Downloads, Friends **/
@@ -775,11 +775,10 @@ fun PluviaMain(
                 arguments = listOf(
                     navArgument("offline") {
                         type = NavType.BoolType
-                        defaultValue = false          // default when the query param isn’t present
-                    }
-                )
-            ) {
-                backStackEntry ->
+                        defaultValue = false // default when the query param isn’t present
+                    },
+                ),
+            ) { backStackEntry ->
                 val isOffline = backStackEntry.arguments?.getBoolean("offline") ?: false
                 HomeScreen(
                     onClickPlay = { gameId, asContainer ->
@@ -1133,6 +1132,6 @@ private fun createLibraryItemFromAppId(appId: String): LibraryItem {
         appId = appId,
         name = appInfo?.name ?: "Unknown Game",
         iconHash = appInfo?.iconHash ?: "",
-        gameSource = gameSource
+        gameSource = gameSource,
     )
 }
