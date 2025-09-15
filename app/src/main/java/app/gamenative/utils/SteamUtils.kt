@@ -8,14 +8,9 @@ import app.gamenative.data.DepotInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
-import app.gamenative.utils.ContainerUtils.extractGameIdFromContainerId
 import com.winlator.core.WineRegistryEditor
 import com.winlator.xenvironment.ImageFs
 import `in`.dragonbra.javasteam.util.HardwareUtils
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -33,7 +28,6 @@ import kotlin.io.path.name
 import timber.log.Timber
 import okhttp3.*
 import org.json.JSONObject
-import java.net.URLDecoder
 import java.net.URLEncoder
 
 object SteamUtils {
