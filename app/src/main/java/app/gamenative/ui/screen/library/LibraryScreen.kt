@@ -33,6 +33,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gamenative.PrefManager
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.GameSource
 import app.gamenative.service.SteamService
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.enums.AppFilter
@@ -53,6 +54,8 @@ fun HomeLibraryScreen(
     onClickPlay: (Int, Boolean) -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
+    onGoOnline: () -> Unit,
+    isOffline: Boolean = false,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -69,6 +72,8 @@ fun HomeLibraryScreen(
         onClickPlay = onClickPlay,
         onNavigateRoute = onNavigateRoute,
         onLogout = onLogout,
+        onGoOnline = onGoOnline,
+        isOffline = isOffline,
     )
 }
 
@@ -86,8 +91,10 @@ private fun LibraryScreenContent(
     onClickPlay: (Int, Boolean) -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
+    onGoOnline: () -> Unit,
+    isOffline: Boolean = false,
 ) {
-    var selectedAppId by remember { mutableStateOf<Int?>(null) }
+    var selectedAppId by remember { mutableStateOf<String?>(null) }
 
     BackHandler(selectedAppId != null) { selectedAppId = null }
     val safePaddingModifier =
@@ -111,13 +118,24 @@ private fun LibraryScreenContent(
                 onSearchQuery = onSearchQuery,
                 onNavigateRoute = onNavigateRoute,
                 onLogout = onLogout,
-                onNavigate = { appId -> selectedAppId = appId }
+                onNavigate = { appId -> selectedAppId = appId },
+                onGoOnline = onGoOnline,
+                isOffline = isOffline,
             )
         } else {
+            // Find the LibraryItem from the state based on selectedAppId
+            val selectedLibraryItem = selectedAppId?.let { appId ->
+                state.appInfoList.find { it.appId == appId }
+            }
+
             LibraryDetailPane(
-                appId = selectedAppId ?: SteamService.INVALID_APP_ID,
+                libraryItem = selectedLibraryItem,
                 onBack = { selectedAppId = null },
-                onClickPlay = { onClickPlay(selectedAppId!!, it) },
+                onClickPlay = {
+                    selectedLibraryItem?.let { libraryItem ->
+                        onClickPlay(libraryItem.gameId, it)
+                    }
+                },
             )
         }
     }
@@ -149,7 +167,7 @@ private fun Preview_LibraryScreenContent() {
                     val item = fakeAppInfo(idx)
                     LibraryItem(
                         index = idx,
-                        appId = item.id,
+                        appId = "${GameSource.STEAM.name}_${item.id}",
                         name = item.name,
                         iconHash = item.iconHash,
                     )
@@ -174,6 +192,7 @@ private fun Preview_LibraryScreenContent() {
             onClickPlay = { _, _ -> },
             onNavigateRoute = {},
             onLogout = {},
+            onGoOnline = {},
         )
     }
 }

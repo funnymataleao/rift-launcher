@@ -2,6 +2,7 @@ package app.gamenative.ui
 
 import android.content.Context
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
@@ -9,6 +10,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -21,6 +23,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -34,6 +37,8 @@ import app.gamenative.Constants
 import app.gamenative.MainActivity
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.R
+import app.gamenative.data.GameSource
 import app.gamenative.enums.AppTheme
 import app.gamenative.enums.LoginResult
 import app.gamenative.enums.PathType
@@ -41,9 +46,11 @@ import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
-import app.gamenative.ui.component.LoadingScreen
+import app.gamenative.ui.component.ConnectingServersScreen
+import app.gamenative.ui.component.dialog.GameFeedbackDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.MessageDialog
+import app.gamenative.ui.component.dialog.state.GameFeedbackDialogState
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.components.BootingSplash
 import app.gamenative.ui.enums.DialogType
@@ -56,20 +63,21 @@ import app.gamenative.ui.screen.login.UserLoginScreen
 import app.gamenative.ui.screen.settings.SettingsScreen
 import app.gamenative.ui.screen.xserver.XServerScreen
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.utils.ContainerMigrator
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.GameFeedbackUtils
 import app.gamenative.utils.IntentLaunchManager
-import app.gamenative.R
 import com.google.android.play.core.splitcompat.SplitCompat
 import com.winlator.container.ContainerManager
 import com.winlator.xenvironment.ImageFsInstaller
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
-import java.util.Date
-import java.util.EnumSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.Date
+import java.util.EnumSet
 import kotlin.reflect.KFunction2
 
 @Composable
@@ -80,6 +88,7 @@ fun PluviaMain(
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
+    val scope = rememberCoroutineScope()
 
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -87,6 +96,10 @@ fun PluviaMain(
         mutableStateOf(MessageDialogState(false))
     }
     val setMessageDialogState: (MessageDialogState) -> Unit = { msgDialogState = it }
+
+    var gameFeedbackState by rememberSaveable(stateSaver = GameFeedbackDialogState.Saver) {
+        mutableStateOf(GameFeedbackDialogState(false))
+    }
 
     var hasBack by rememberSaveable { mutableStateOf(navController.previousBackStackEntry?.destination?.route != null) }
 
@@ -99,8 +112,9 @@ fun PluviaMain(
                 Timber.i("[PluviaMain]: Processing pending launch request for app ${launchRequest.appId} (user is now logged in)")
 
                 // Check if the game is installed
-                if (!SteamService.isAppInstalled(launchRequest.appId)) {
-                    val appName = SteamService.getAppInfoOf(launchRequest.appId)?.name ?: "App ${launchRequest.appId}"
+                val gameId = ContainerUtils.extractGameIdFromContainerId(launchRequest.appId)
+                if (!SteamService.isAppInstalled(gameId)) {
+                    val appName = SteamService.getAppInfoOf(gameId)?.name ?: "App ${launchRequest.appId}"
                     Timber.w("[PluviaMain]: Game not installed: $appName (${launchRequest.appId})")
 
                     // Show error message
@@ -236,6 +250,17 @@ fun PluviaMain(
                         dismissBtnText = "Close",
                     )
                 }
+
+                is MainViewModel.MainUiEvent.ShowGameFeedbackDialog -> {
+                    gameFeedbackState = GameFeedbackDialogState(
+                        visible = true,
+                        appId = event.appId,
+                    )
+                }
+
+                is MainViewModel.MainUiEvent.ShowToast -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -301,7 +326,7 @@ fun PluviaMain(
     }
 
     // Listen for save container config prompt
-    var pendingSaveAppId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var pendingSaveAppId by rememberSaveable { mutableStateOf<String?>(null) }
     val onPromptSaveConfig: (AndroidEvent.PromptSaveContainerConfig) -> Unit = { event ->
         pendingSaveAppId = event.appId
         msgDialogState = MessageDialogState(
@@ -314,13 +339,23 @@ fun PluviaMain(
         )
     }
 
+    // Listen for game feedback request
+    val onShowGameFeedback: (AndroidEvent.ShowGameFeedback) -> Unit = { event ->
+        gameFeedbackState = GameFeedbackDialogState(
+            visible = true,
+            appId = event.appId,
+        )
+    }
+
     LaunchedEffect(Unit) {
         PluviaApp.events.on<AndroidEvent.PromptSaveContainerConfig, Unit>(onPromptSaveConfig)
+        PluviaApp.events.on<AndroidEvent.ShowGameFeedback, Unit>(onShowGameFeedback)
     }
 
     DisposableEffect(Unit) {
         onDispose {
             PluviaApp.events.off<AndroidEvent.PromptSaveContainerConfig, Unit>(onPromptSaveConfig)
+            PluviaApp.events.off<AndroidEvent.ShowGameFeedback, Unit>(onShowGameFeedback)
         }
     }
 
@@ -339,7 +374,23 @@ fun PluviaMain(
     // Show loading or error UI as appropriate
     when {
         isConnecting -> {
-            LoadingScreen()
+            PluviaTheme(
+                isDark = when (state.appTheme) {
+                    AppTheme.AUTO -> isSystemInDarkTheme()
+                    AppTheme.DAY -> false
+                    AppTheme.NIGHT -> true
+                    AppTheme.AMOLED -> true
+                },
+                isAmoled = state.appTheme == AppTheme.AMOLED,
+                style = state.paletteStyle,
+            ) {
+                ConnectingServersScreen(
+                    onContinueOffline = {
+                        isConnecting = false
+                        navController.navigate(PluviaScreen.Home.route + "?offline=true")
+                    },
+                )
+            }
             return
         }
     }
@@ -405,13 +456,13 @@ fun PluviaMain(
         }
 
         DialogType.SYNC_FAIL -> {
+            onConfirmClick = null
             onDismissClick = {
                 setMessageDialogState(MessageDialogState(false))
             }
             onDismissRequest = {
                 setMessageDialogState(MessageDialogState(false))
             }
-            onConfirmClick = null
         }
 
         DialogType.PENDING_UPLOAD_IN_PROGRESS -> {
@@ -577,6 +628,61 @@ fun PluviaMain(
             message = msgDialogState.message,
         )
 
+        GameFeedbackDialog(
+            state = gameFeedbackState,
+            onStateChange = { gameFeedbackState = it },
+            onSubmit = { feedbackState ->
+                Timber.d("GameFeedback: onSubmit called with rating=${feedbackState.rating}, tags=${feedbackState.selectedTags}, text=${feedbackState.feedbackText.take(20)}")
+                try {
+                    // Get the container for the app
+                    val appId = feedbackState.appId
+                    Timber.d("GameFeedback: Got appId=$appId")
+
+                    // Submit feedback to Supabase
+                    Timber.d("GameFeedback: Starting coroutine for submission")
+                    viewModel.viewModelScope.launch {
+                        Timber.d("GameFeedback: Inside coroutine scope")
+                        try {
+                            Timber.d("GameFeedback: Calling submitGameFeedback with rating=${feedbackState.rating}")
+                            val result = GameFeedbackUtils.submitGameFeedback(
+                                context = context,
+                                supabase = PluviaApp.supabase,
+                                appId = appId,
+                                rating = feedbackState.rating,
+                                tags = feedbackState.selectedTags.toList(),
+                                notes = feedbackState.feedbackText.takeIf { it.isNotBlank() },
+                            )
+
+                            Timber.d("GameFeedback: Submission returned $result")
+                            if (result) {
+                                Timber.d("GameFeedback: Showing success toast")
+                                viewModel.showToast("Thank you for your feedback!")
+                            } else {
+                                Timber.d("GameFeedback: Showing failure toast")
+                                viewModel.showToast("Failed to submit feedback")
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "GameFeedback: Error submitting game feedback")
+                            viewModel.showToast("Error submitting feedback")
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "GameFeedback: Error preparing game feedback")
+                    viewModel.showToast("Failed to submit feedback")
+                } finally {
+                    // Close the dialog regardless of success
+                    Timber.d("GameFeedback: Closing dialog")
+                    gameFeedbackState = GameFeedbackDialogState(visible = false)
+                }
+            },
+            onDismiss = {
+                gameFeedbackState = GameFeedbackDialogState(visible = false)
+            },
+            onDiscordSupport = {
+                uriHandler.openUri("https://discord.gg/2hKv4VfZfE")
+            },
+        )
+
         Box(modifier = Modifier.zIndex(10f)) {
             BootingSplash(
                 visible = state.showBootingSplash,
@@ -593,25 +699,39 @@ fun PluviaMain(
             /** Login **/
             /** Login **/
             composable(route = PluviaScreen.LoginUser.route) {
-                UserLoginScreen()
+                UserLoginScreen(
+                    onContinueOffline = {
+                        navController.navigate(PluviaScreen.Home.route + "?offline=true")
+                    },
+                )
             }
             /** Library, Downloads, Friends **/
             /** Library, Downloads, Friends **/
             composable(
-                route = PluviaScreen.Home.route,
+                route = PluviaScreen.Home.route + "?offline={offline}",
                 deepLinks = listOf(navDeepLink { uriPattern = "pluvia://home" }),
-            ) {
+                arguments = listOf(
+                    navArgument("offline") {
+                        type = NavType.BoolType
+                        defaultValue = false // default when the query param isn’t present
+                    },
+                ),
+            ) { backStackEntry ->
+                val isOffline = backStackEntry.arguments?.getBoolean("offline") ?: false
                 HomeScreen(
-                    onClickPlay = { launchAppId, asContainer ->
-                        viewModel.setLaunchedAppId(launchAppId)
+                    onClickPlay = { gameId, asContainer ->
+                        val appId = "${GameSource.STEAM.name}_$gameId"
+                        viewModel.setLaunchedAppId(appId)
                         viewModel.setBootToContainer(asContainer)
+                        viewModel.setOffline(isOffline)
                         preLaunchApp(
                             context = context,
-                            appId = launchAppId,
+                            appId = appId,
                             setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
                             setLoadingProgress = viewModel::setLoadingDialogProgress,
                             setMessageDialogState = { msgDialogState = it },
                             onSuccess = viewModel::launchApp,
+                            isOffline = isOffline,
                         )
                     },
                     onClickExit = {
@@ -626,6 +746,10 @@ fun PluviaMain(
                     onLogout = {
                         SteamService.logOut()
                     },
+                    onGoOnline = {
+                        navController.navigate(PluviaScreen.LoginUser.route)
+                    },
+                    isOffline = isOffline,
                 )
             }
 
@@ -693,19 +817,23 @@ fun PluviaMain(
 
 fun preLaunchApp(
     context: Context,
-    appId: Int,
+    appId: String,
     ignorePendingOperations: Boolean = false,
     preferredSave: SaveLocation = SaveLocation.None,
     useTemporaryOverride: Boolean = false,
     setLoadingDialogVisible: (Boolean) -> Unit,
     setLoadingProgress: (Float) -> Unit,
     setMessageDialogState: (MessageDialogState) -> Unit,
-    onSuccess: KFunction2<Context, Int, Unit>,
+    onSuccess: KFunction2<Context, String, Unit>,
     retryCount: Int = 0,
+    isOffline: Boolean = false,
 ) {
     setLoadingDialogVisible(true)
     // TODO: add a way to cancel
     // TODO: add fail conditions
+
+    val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+
     CoroutineScope(Dispatchers.IO).launch {
         // set up Ubuntu file system
         SplitCompat.install(context)
@@ -729,14 +857,15 @@ fun preLaunchApp(
 
         // sync save files and check no pending remote operations are running
         val prefixToPath: (String) -> String = { prefix ->
-            PathType.from(prefix).toAbsPath(context, appId, SteamService.userSteamId!!.accountID)
+            PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
         }
         val postSyncInfo = SteamService.beginLaunchApp(
-            appId = appId,
+            appId = gameId,
             prefixToPath = prefixToPath,
             ignorePendingOperations = ignorePendingOperations,
             preferredSave = preferredSave,
             parentScope = this,
+            isOffline = isOffline,
         ).await()
 
         setLoadingDialogVisible(false)
@@ -791,7 +920,6 @@ fun preLaunchApp(
                     )
                 }
             }
-
             SyncResult.UnknownFail,
             SyncResult.DownloadFail,
             SyncResult.UpdateFail,
@@ -801,7 +929,7 @@ fun preLaunchApp(
                         visible = true,
                         type = DialogType.SYNC_FAIL,
                         title = context.getString(R.string.sync_error_title),
-                        message = "Failed to sync save files: ${postSyncInfo.syncResult}. Please restart app.",
+                        message = "Failed to sync save files: ${postSyncInfo.syncResult}.",
                         dismissBtnText = context.getString(R.string.ok),
                     ),
                 )
@@ -828,7 +956,7 @@ fun preLaunchApp(
                                     visible = true,
                                     type = DialogType.PENDING_UPLOAD_IN_PROGRESS,
                                     title = "Upload in Progress",
-                                    message = "You played ${SteamService.getAppInfoOf(appId)?.name} " +
+                                    message = "You played ${SteamService.getAppInfoOf(ContainerUtils.extractGameIdFromContainerId(appId))?.name} " +
                                         "on the device ${pro.machineName} " +
                                         "(${Date(pro.timeLastUpdated * 1000L)}) and the save of " +
                                         "that session is still uploading.\nTry again later.",
@@ -844,7 +972,7 @@ fun preLaunchApp(
                                     type = DialogType.PENDING_UPLOAD,
                                     title = "Pending Upload",
                                     message = "You played " +
-                                        "${SteamService.getAppInfoOf(appId)?.name} " +
+                                        "${SteamService.getAppInfoOf(ContainerUtils.extractGameIdFromContainerId(appId))?.name} " +
                                         "on the device ${pro.machineName} " +
                                         "(${Date(pro.timeLastUpdated * 1000L)}), " +
                                         "and that save is not yet in the cloud. " +
@@ -865,7 +993,7 @@ fun preLaunchApp(
                                     type = DialogType.APP_SESSION_ACTIVE,
                                     title = "App Running",
                                     message = "You are logged in on another device (${pro.machineName}) " +
-                                        "already playing ${SteamService.getAppInfoOf(appId)?.name} " +
+                                        "already playing ${SteamService.getAppInfoOf(ContainerUtils.extractGameIdFromContainerId(appId))?.name} " +
                                         "(${Date(pro.timeLastUpdated * 1000L)}), and that save " +
                                         "is not yet in the cloud. \nYou can still play this game, " +
                                         "but that will disconnect the other session from Steam " +

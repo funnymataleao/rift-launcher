@@ -95,11 +95,13 @@ import app.gamenative.PluviaApp
 import app.gamenative.events.AndroidEvent
 import java.util.EnumSet
 import android.content.Context
+import androidx.compose.material3.FilledTonalButton
 import app.gamenative.PrefManager
 
 @Composable
 fun UserLoginScreen(
     viewModel: UserLoginViewModel = viewModel(),
+    onContinueOffline: () -> Unit,
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
     val userLoginState by viewModel.loginState.collectAsState()
@@ -122,6 +124,7 @@ fun UserLoginScreen(
         onQrRetry = viewModel::onQrRetry,
         onSetTwoFactor = viewModel::setTwoFactorCode,
         onRetryConnection = viewModel::retryConnection,
+        onContinueOffline = onContinueOffline,
     )
 }
 
@@ -139,6 +142,7 @@ private fun UserLoginScreenContent(
     onQrRetry: () -> Unit,
     onSetTwoFactor: (String) -> Unit,
     onRetryConnection: (Context) -> Unit,
+    onContinueOffline: () -> Unit,
 ) {
     val context = LocalContext.current
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -344,6 +348,7 @@ private fun UserLoginScreenContent(
                                                 onRememberSession = onRememberSession,
                                                 onLoginBtnClick = onCredentialLogin,
                                                 onRetryConnection = onRetryConnection,
+                                                onContinueOffline = onContinueOffline,
                                                 context = context,
                                             )
                                         }
@@ -411,6 +416,7 @@ private fun ModernUsernamePassword(
     onRememberSession: (Boolean) -> Unit,
     onLoginBtnClick: () -> Unit,
     onRetryConnection: (Context) -> Unit,
+    onContinueOffline: () -> Unit,
     context: Context,
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
@@ -449,13 +455,29 @@ private fun ModernUsernamePassword(
                     ) {
                         Text("No connection to Steam", color = Color.White)
                         Box(contentAlignment = Alignment.Center) {
-                            Button(onClick = { onRetryConnection(context) }) {
+                            OutlinedButton (
+                                onClick = { onRetryConnection(context) },
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    // transparent container keeps the outline style
+                                    containerColor = Color.Transparent,
+                                    // secondary-style text instead of primary
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+                            {
                                 Text("Retry Steam Connection")
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Box(contentAlignment = Alignment.Center) {
+                            Button(onClick = { onContinueOffline() }) {
+                                Text("Continue Offline")
                             }
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
             }
             Text(
                 text = "Username",
@@ -740,7 +762,8 @@ private fun Preview_UserLoginScreen(
                 onQrRetry = { },
                 onSetTwoFactor = { },
                 onShowLoginScreen = { },
-                onRetryConnection = { context -> }
+                onRetryConnection = { context -> },
+                onContinueOffline = { }
             )
         }
     }

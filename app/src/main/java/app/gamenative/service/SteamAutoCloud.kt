@@ -189,7 +189,7 @@ object SteamAutoCloud {
 
             if (savePatterns.isNotEmpty()) {
                 savePatterns.associate { userFile ->
-                    val basePath = Paths.get(prefixToPath(userFile.root.toString()), userFile.path)
+                    val basePath = Paths.get(prefixToPath(userFile.root.toString()), userFile.substitutedPath)
 
                     Timber.i("Looking for saves in $basePath with pattern ${userFile.pattern} (prefix ${userFile.prefix})")
 
@@ -204,7 +204,7 @@ object SteamAutoCloud {
 
                         val relativePath = basePath.relativize(it).pathString
 
-                        UserFileInfo(userFile.root, userFile.path, relativePath, Files.getLastModifiedTime(it).toMillis(), sha)
+                        UserFileInfo(userFile.root, userFile.substitutedPath, relativePath, Files.getLastModifiedTime(it).toMillis(), sha)
                     }.collect(Collectors.toList())
 
                     Timber.i("Found ${files.size} file(s) in $basePath for pattern ${userFile.pattern}")
@@ -681,6 +681,8 @@ object SteamAutoCloud {
                         } == true
                     }.inWholeMicroseconds
 
+                    /*TODO: hasLocalChanges should be true if the user plays offline for the first time without ever pulling cloud saves
+                       If that happens, the next time they go online, their change number is -1, and saves are always overwritten by cloud*/
                     if (!hasLocalChanges) {
                         // we can safely download the new changes since no changes have been
                         // made locally

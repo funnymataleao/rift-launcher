@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import app.gamenative.PrefManager
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
+import app.gamenative.data.GameSource
 import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
@@ -117,10 +118,17 @@ class LibraryViewModel @Inject constructor(
                 .asSequence()
                 .filter { item ->
                     SteamService.familyMembers.ifEmpty {
-                        listOf(SteamService.userSteamId!!.accountID.toInt())
-                    }.map {
-                        item.ownerAccountId.contains(it)
-                    }.any()
+                        // Handle the case where userSteamId might be null
+                        SteamService.userSteamId?.let { steamId ->
+                            listOf(steamId.accountID.toInt())
+                        } ?: emptyList()
+                    }.let { owners ->
+                        if (owners.isEmpty()) {
+                            true                       // no owner info ⇒ don’t filter the item out
+                        } else {
+                            owners.any { item.ownerAccountId.contains(it) }
+                        }
+                    }
                 }
                 .filter { item ->
                     currentFilter.any { item.type == it }
@@ -129,7 +137,7 @@ class LibraryViewModel @Inject constructor(
                     if (currentState.appInfoSortType.contains(AppFilter.SHARED)) {
                         true
                     } else {
-                        item.ownerAccountId.contains(SteamService.userSteamId!!.accountID.toInt())
+                        item.ownerAccountId.contains(PrefManager.steamUserAccountId) || PrefManager.steamUserAccountId == 0
                     }
                 }
                 .filter { item ->
@@ -162,16 +170,15 @@ class LibraryViewModel @Inject constructor(
             // Calculate how many items to show: (pagesLoaded * pageSize)
             val endIndex = min((paginationPage + 1) * pageSize, totalFound)
             val pagedSequence = filteredList.take(endIndex)
-            val thisSteamId: Int = SteamService.userSteamId?.accountID?.toInt() ?: 0
             // Map to UI model
             val filteredListPage = pagedSequence
                 .mapIndexed { idx, item ->
                     LibraryItem(
                         index = idx,
-                        appId = item.id,
+                        appId = "${GameSource.STEAM.name}_${item.id}",
                         name = item.name,
                         iconHash = item.clientIconHash,
-                        isShared = (thisSteamId != 0 && !item.ownerAccountId.contains(thisSteamId)),
+                        isShared = (PrefManager.steamUserAccountId != 0 && !item.ownerAccountId.contains(PrefManager.steamUserAccountId)),
                     )
                 }
                 .toList()
