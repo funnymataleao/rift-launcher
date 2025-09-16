@@ -1,28 +1,27 @@
 package app.gamenative.utils
 
 import android.content.Context
-import app.gamenative.enums.Marker
 import app.gamenative.PrefManager
+import app.gamenative.data.GameSource
+import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
 import com.winlator.core.FileUtils
 import com.winlator.core.WineRegistryEditor
 import com.winlator.core.WineThemeManager
-import kotlinx.coroutines.CompletableDeferred
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.InputControlsManager
+import com.winlator.winhandler.WinHandler.PreferredInputApi
 import java.io.File
 import kotlin.Boolean
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
-import com.winlator.winhandler.WinHandler.PreferredInputApi
 
 object ContainerUtils {
     data class GpuInfo(
@@ -177,14 +176,26 @@ object ContainerUtils {
             box86Preset = container.box86Preset,
             box64Preset = container.box64Preset,
             desktopTheme = container.desktopTheme,
-            language = try { container.language } catch (e: Exception) { container.getExtra("language", "english") },
+            language = try {
+                container.language
+            } catch (e: Exception) {
+                container.getExtra("language", "english")
+            },
             sdlControllerAPI = container.isSdlControllerAPI,
             enableXInput = enableX,
             enableDInput = enableD,
             dinputMapperType = mapperType,
             disableMouseInput = disableMouse,
-            emulateKeyboardMouse = try { container.isEmulateKeyboardMouse() } catch (e: Exception) { false },
-            controllerEmulationBindings = try { container.getControllerEmulationBindings()?.toString() ?: "" } catch (e: Exception) { "" },
+            emulateKeyboardMouse = try {
+                container.isEmulateKeyboardMouse()
+            } catch (e: Exception) {
+                false
+            },
+            controllerEmulationBindings = try {
+                container.getControllerEmulationBindings()?.toString() ?: ""
+            } catch (e: Exception) {
+                ""
+            },
             csmt = csmt,
             videoPciDeviceID = videoPciDeviceID,
             offScreenRenderingMode = offScreenRenderingMode,
@@ -194,14 +205,9 @@ object ContainerUtils {
         )
     }
 
-    fun applyToContainer(context: Context, appId: Int, containerData: ContainerData) {
-        val containerManager = ContainerManager(context)
-        if (containerManager.hasContainer(appId)) {
-            val container = containerManager.getContainerById(appId)
-            applyToContainer(context, container, containerData)
-        } else {
-            throw Exception("Container does not exist for $appId")
-        }
+    fun applyToContainer(context: Context, appId: String, containerData: ContainerData) {
+        val container = getContainer(context, appId)
+        applyToContainer(context, container, containerData)
     }
 
     fun applyToContainer(context: Context, container: Container, containerData: ContainerData) {
@@ -270,13 +276,18 @@ object ContainerUtils {
                 container.setControllerEmulationBindings(org.json.JSONObject(bindingsStr))
             }
         } catch (_: Exception) {}
-        try { container.language = containerData.language } catch (e: Exception) { container.putExtra("language", containerData.language) }
+        try {
+            container.language = containerData.language
+        } catch (e: Exception) {
+            container.putExtra("language", containerData.language)
+        }
         // Set container LC_ALL according to selected language
         val lcAll = mapLanguageToLocale(containerData.language)
         container.setLC_ALL(lcAll)
         // If language changed, remove the STEAM_DLL_REPLACED marker so settings regenerate
         if (previousLanguage.lowercase() != containerData.language.lowercase()) {
-            val appDirPath = SteamService.getAppDirPath(container.id)
+            val steamAppId = extractGameIdFromContainerId(container.id)
+            val appDirPath = SteamService.getAppDirPath(steamAppId)
             MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
             Timber.i("Language changed from '$previousLanguage' to '${containerData.language}'. Cleared STEAM_DLL_REPLACED marker for container ${container.id}.")
         }
@@ -344,23 +355,19 @@ object ContainerUtils {
         }
     }
 
-    fun getContainerId(appId: Int): Int {
-        // TODO: set up containers for each appId+depotId combo (intent extra "container_id")
+    fun getContainerId(appId: String): String {
         return appId
     }
 
-    fun hasContainer(context: Context, appId: Int): Boolean {
-        val containerId = getContainerId(appId)
+    fun hasContainer(context: Context, appId: String): Boolean {
         val containerManager = ContainerManager(context)
-        return containerManager.hasContainer(containerId)
+        return containerManager.hasContainer(appId)
     }
 
-    fun getContainer(context: Context, appId: Int): Container {
-        val containerId = getContainerId(appId)
-
+    fun getContainer(context: Context, appId: String): Container {
         val containerManager = ContainerManager(context)
-        return if (containerManager.hasContainer(containerId)) {
-            containerManager.getContainerById(containerId)
+        return if (containerManager.hasContainer(appId)) {
+            containerManager.getContainerById(appId)
         } else {
             throw Exception("Container does not exist for game $appId")
         }
@@ -368,14 +375,15 @@ object ContainerUtils {
 
     private fun createNewContainer(
         context: Context,
-        appId: Int,
-        containerId: Int,
+        appId: String,
+        containerId: String,
         containerManager: ContainerManager,
         customConfig: ContainerData? = null,
     ): Container {
         // Set up container drives to include app
         val defaultDrives = PrefManager.drives
-        val appDirPath = SteamService.getAppDirPath(appId)
+        val gameId = extractGameIdFromContainerId(appId)
+        val appDirPath = SteamService.getAppDirPath(gameId)
         val drive: Char = Container.getNextAvailableDriveLetter(defaultDrives)
         val drives = "$defaultDrives$drive:$appDirPath"
         Timber.d("Prepared container drives: $drives")
@@ -384,7 +392,7 @@ object ContainerUtils {
         val initialDxWrapper = if (customConfig?.dxwrapper != null) {
             customConfig.dxwrapper
         } else {
-            PrefManager.dxWrapper  // Use default until we get the real version
+            PrefManager.dxWrapper // Use default until we get the real version
         }
 
         // Set up data for container creation
@@ -452,7 +460,7 @@ object ContainerUtils {
                 val deferred = kotlinx.coroutines.CompletableDeferred<Int>()
 
                 // Start the async fetch but wait for it to complete
-                SteamUtils.fetchDirect3DMajor(appId) { dxVersion ->
+                SteamUtils.fetchDirect3DMajor(gameId) { dxVersion ->
                     deferred.complete(dxVersion)
                 }
 
@@ -487,23 +495,21 @@ object ContainerUtils {
         return container
     }
 
-    fun getOrCreateContainer(context: Context, appId: Int): Container {
-        val containerId = getContainerId(appId)
+    fun getOrCreateContainer(context: Context, appId: String): Container {
         val containerManager = ContainerManager(context)
 
-        return if (containerManager.hasContainer(containerId)) {
-            containerManager.getContainerById(containerId)
+        return if (containerManager.hasContainer(appId)) {
+            containerManager.getContainerById(appId)
         } else {
-            createNewContainer(context, appId, containerId, containerManager)
+            createNewContainer(context, appId, appId, containerManager)
         }
     }
 
-    fun getOrCreateContainerWithOverride(context: Context, appId: Int): Container {
-        val containerId = getContainerId(appId)
+    fun getOrCreateContainerWithOverride(context: Context, appId: String): Container {
         val containerManager = ContainerManager(context)
 
-        return if (containerManager.hasContainer(containerId)) {
-            val container = containerManager.getContainerById(containerId)
+        return if (containerManager.hasContainer(appId)) {
+            val container = containerManager.getContainerById(appId)
 
             // Apply temporary override if present (without saving to disk)
             if (IntentLaunchManager.hasTemporaryOverride(appId)) {
@@ -539,7 +545,7 @@ object ContainerUtils {
                 null
             }
 
-            createNewContainer(context, appId, containerId, containerManager, overrideConfig)
+            createNewContainer(context, appId, appId, containerManager, overrideConfig)
         }
     }
 
@@ -561,7 +567,11 @@ object ContainerUtils {
         val profileJSONObject = org.json.JSONObject(FileUtils.readString(baseFile))
         val elementsJSONArray = profileJSONObject.getJSONArray("elements")
 
-        val emuJson = try { container.controllerEmulationBindings } catch (_: Exception) { null }
+        val emuJson = try {
+            container.controllerEmulationBindings
+        } catch (_: Exception) {
+            null
+        }
 
         fun optBinding(key: String, fallback: String): String {
             return emuJson?.optString(key, fallback) ?: fallback
@@ -690,16 +700,40 @@ object ContainerUtils {
     /**
      * Deletes the container associated with the given appId, if it exists.
      */
-    fun deleteContainer(context: Context, appId: Int) {
-        val containerId = getContainerId(appId)
+    fun deleteContainer(context: Context, appId: String) {
         val manager = ContainerManager(context)
-        if (manager.hasContainer(containerId)) {
+        if (manager.hasContainer(appId)) {
             // Remove the container directory asynchronously
             manager.removeContainerAsync(
-                manager.getContainerById(containerId),
+                manager.getContainerById(appId),
             ) {
-                Timber.i("Deleted container for appId=$appId (containerId=$containerId)")
+                Timber.i("Deleted container for appId=$appId")
             }
+        }
+    }
+
+    /**
+     * Extracts the game ID from a container ID string
+     * Splits on the first underscore and takes the numeric part, handling duplicate suffixes like (1), (2)
+     */
+    fun extractGameIdFromContainerId(containerId: String): Int {
+        val afterUnderscore = containerId.split("_", limit = 2)[1]
+        // Remove duplicate suffix like (1), (2) if present
+        return if (afterUnderscore.contains("(")) {
+            afterUnderscore.substringBefore("(").toInt()
+        } else {
+            afterUnderscore.toInt()
+        }
+    }
+
+    /**
+     * Extracts the game source from a container ID string
+     */
+    fun extractGameSourceFromContainerId(containerId: String): GameSource {
+        return when {
+            containerId.startsWith("STEAM_") -> GameSource.STEAM
+            // Add other platforms here..
+            else -> GameSource.STEAM // default fallback
         }
     }
 }

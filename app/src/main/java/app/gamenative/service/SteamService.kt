@@ -426,9 +426,9 @@ class SteamService : Service(), IChallengeUrlChanged {
             return appName
         }
 
-        fun getAppDirPath(appId: Int): String {
+        fun getAppDirPath(gameId: Int): String {
 
-            val appName = getAppDirName(getAppInfoOf(appId))
+            val appName = getAppDirName(getAppInfoOf(gameId))
 
             // Internal first (legacy installs), external second
             val internalPath = Paths.get(internalAppInstallPath, appName)

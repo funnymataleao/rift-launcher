@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.GameProcessInfo
+import app.gamenative.data.LibraryItem
 import app.gamenative.di.IAppTheme
 import app.gamenative.enums.AppTheme
 import app.gamenative.enums.LoginResult
@@ -48,10 +49,10 @@ class MainViewModel @Inject constructor(
         data object OnBackPressed : MainUiEvent()
         data object OnLoggedOut : MainUiEvent()
         data object LaunchApp : MainUiEvent()
-        data class ExternalGameLaunch(val appId: Int) : MainUiEvent()
+        data class ExternalGameLaunch(val appId: String) : MainUiEvent()
         data class OnLogonEnded(val result: LoginResult) : MainUiEvent()
         data object ShowDiscordSupportDialog : MainUiEvent()
-        data class ShowGameFeedbackDialog(val appId: Int) : MainUiEvent()
+        data class ShowGameFeedbackDialog(val appId: String) : MainUiEvent()
         data class ShowToast(val message: String) : MainUiEvent()
     }
 
@@ -146,7 +147,7 @@ class MainViewModel @Inject constructor(
             it.copy(
                 isSteamConnected = SteamService.isConnected,
                 hasCrashedLastStart = PrefManager.recentlyCrashed,
-                launchedAppId = SteamService.INVALID_APP_ID,
+                launchedAppId = "",
             )
         }
     }
@@ -207,7 +208,7 @@ class MainViewModel @Inject constructor(
         _state.update { it.copy(resettedScreen = it.currentScreen) }
     }
 
-    fun setLaunchedAppId(value: Int) {
+    fun setLaunchedAppId(value: String) {
         _state.update { it.copy(launchedAppId = value) }
     }
 
@@ -215,7 +216,7 @@ class MainViewModel @Inject constructor(
         _state.update { it.copy(bootToContainer = value) }
     }
 
-    fun launchApp(context: Context, appId: Int) {
+    fun launchApp(context: Context, appId: String) {
         // Show booting splash before launching the app
         viewModelScope.launch {
             setShowBootingSplash(true)
@@ -239,14 +240,16 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun exitSteamApp(context: Context, appId: Int) {
+    fun exitSteamApp(context: Context, appId: String) {
         viewModelScope.launch {
             // Check if we have a temporary override before doing anything
             val hadTemporaryOverride = IntentLaunchManager.hasTemporaryOverride(appId)
 
+            val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+
             SteamService.notifyRunningProcesses()
-            SteamService.closeApp(appId, isOffline.value) { prefix ->
-                PathType.from(prefix).toAbsPath(context, appId, SteamService.userSteamId!!.accountID)
+            SteamService.closeApp(gameId, isOffline.value) { prefix ->
+                PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
             }.await()
 
             // Prompt user to save temporary container configuration if one was applied
@@ -280,16 +283,18 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun onWindowMapped(context: Context, window: Window, appId: Int) {
+    fun onWindowMapped(context: Context, window: Window, appId: String) {
         viewModelScope.launch {
             // Hide the booting splash when a window is mapped
             bootingSplashTimeoutJob?.cancel()
             bootingSplashTimeoutJob = null
             setShowBootingSplash(false)
 
-            SteamService.getAppInfoOf(appId)?.let { appInfo ->
+            val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+
+            SteamService.getAppInfoOf(gameId)?.let { appInfo ->
                 // TODO: this should not be a search, the app should have been launched with a specific launch config that we then use to compare
-                val launchConfig = SteamService.getWindowsLaunchInfos(appId).firstOrNull {
+                val launchConfig = SteamService.getWindowsLaunchInfos(gameId).firstOrNull {
                     val gameExe = Paths.get(it.executable.replace('\\', '/')).name.lowercase()
                     val windowExe = window.className.lowercase()
                     gameExe == windowExe
@@ -315,7 +320,7 @@ class MainViewModel @Inject constructor(
                         processes.add(process)
                     } while (parentWindow != null)
 
-                    GameProcessInfo(appId = appId, processes = processes).let {
+                    GameProcessInfo(appId = gameId, processes = processes).let {
                         // Only notify Steam if we're not using real Steam
                         // When launchRealSteam is true, let the real Steam client handle the "game is running" notification
                         val shouldLaunchRealSteam = try {

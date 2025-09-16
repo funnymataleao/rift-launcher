@@ -1,9 +1,11 @@
 package app.gamenative
 
 import android.os.StrictMode
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.navigation.NavController
 import app.gamenative.events.EventDispatcher
 import app.gamenative.service.DownloadService
+import app.gamenative.utils.ContainerMigrator
 import app.gamenative.utils.IntentLaunchManager
 import com.google.android.play.core.splitcompat.SplitCompatApplication
 import com.posthog.PersonProfiles
@@ -26,11 +28,17 @@ import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.network.supabaseApi
 import io.ktor.client.plugins.HttpTimeout
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 typealias NavChangedListener = NavController.OnDestinationChangedListener
 
 @HiltAndroidApp
 class PluviaApp : SplitCompatApplication() {
+
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
@@ -56,6 +64,14 @@ class PluviaApp : SplitCompatApplication() {
         PrefManager.init(this)
 
         DownloadService.populateDownloadService(this)
+
+        appScope.launch {
+            ContainerMigrator.migrateLegacyContainersIfNeeded(
+                context = applicationContext,
+                onProgressUpdate = null,
+                onComplete = null
+            )
+        }
 
         // Clear any stale temporary config overrides from previous app sessions
         try {

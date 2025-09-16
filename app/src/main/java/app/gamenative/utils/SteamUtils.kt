@@ -5,15 +5,12 @@ import android.content.Context
 import android.provider.Settings
 import app.gamenative.PrefManager
 import app.gamenative.data.DepotInfo
+import app.gamenative.data.LibraryItem
 import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
 import com.winlator.core.WineRegistryEditor
 import com.winlator.xenvironment.ImageFs
 import `in`.dragonbra.javasteam.util.HardwareUtils
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -31,7 +28,6 @@ import kotlin.io.path.name
 import timber.log.Timber
 import okhttp3.*
 import org.json.JSONObject
-import java.net.URLDecoder
 import java.net.URLEncoder
 
 object SteamUtils {
@@ -136,8 +132,9 @@ object SteamUtils {
      * Replaces any existing `steam_api.dll` or `steam_api64.dll` in the app directory
      * with our pipe dll stored in assets
      */
-    suspend fun replaceSteamApi(context: Context, appId: Int) {
-        val appDirPath = SteamService.getAppDirPath(appId)
+    suspend fun replaceSteamApi(context: Context, appId: String) {
+        val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
+        val appDirPath = SteamService.getAppDirPath(steamAppId)
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_REPLACED)) {
             return
         }
@@ -185,10 +182,10 @@ object SteamUtils {
         Timber.i("Finished replaceSteamApi for appId: $appId. Replaced 32bit: $replaced32, Replaced 64bit: $replaced64")
 
         // Restore unpacked executable if it exists (for DRM-free mode)
-        restoreUnpackedExecutable(context, appId)
+        restoreUnpackedExecutable(context, steamAppId)
 
         // Create Steam ACF manifest for real Steam compatibility
-        createAppManifest(context, appId)
+        createAppManifest(context, steamAppId)
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
     }
 
@@ -303,14 +300,14 @@ object SteamUtils {
      * Restores the unpacked executable (.unpacked.exe) if it exists and is different from current .exe
      * This ensures we use the DRM-free version when not using real Steam
      */
-    private fun restoreUnpackedExecutable(context: Context, appId: Int) {
+    private fun restoreUnpackedExecutable(context: Context, steamAppId: Int) {
         try {
             val imageFs = ImageFs.find(context)
-            val appDirPath = SteamService.getAppDirPath(appId)
-            val executablePath = SteamService.getInstalledExe(appId)
+            val appDirPath = SteamService.getAppDirPath(steamAppId)
+            val executablePath = SteamService.getInstalledExe(steamAppId)
 
             // Convert to Wine path format
-            val container = ContainerUtils.getContainer(context, appId)
+            val container = ContainerUtils.getContainer(context, "STEAM_$steamAppId")
             val drives = container.drives
             val driveIndex = drives.indexOf(appDirPath)
             val drive = if (driveIndex > 1) {
@@ -340,7 +337,7 @@ object SteamUtils {
                 Timber.i("No unpacked executable found, using current executable")
             }
         } catch (e: Exception) {
-            Timber.e(e, "Failed to restore unpacked executable for appId $appId")
+            Timber.e(e, "Failed to restore unpacked executable for appId $steamAppId")
         }
     }
 
@@ -348,12 +345,12 @@ object SteamUtils {
      * Creates a Steam ACF (Application Cache File) manifest for the given app
      * This allows real Steam to detect the game as installed
      */
-    private fun createAppManifest(context: Context, appId: Int) {
+    private fun createAppManifest(context: Context, steamAppId: Int) {
         try {
-            Timber.i("Attempting to createAppManifest for appId: $appId")
-            val appInfo = SteamService.getAppInfoOf(appId)
+            Timber.i("Attempting to createAppManifest for appId: $steamAppId")
+            val appInfo = SteamService.getAppInfoOf(steamAppId)
             if (appInfo == null) {
-                Timber.w("No app info found for appId: $appId")
+                Timber.w("No app info found for appId: $steamAppId")
                 return
             }
 
@@ -372,7 +369,7 @@ object SteamUtils {
             }
 
             // Get game directory info
-            val gameDir = File(SteamService.getAppDirPath(appId))
+            val gameDir = File(SteamService.getAppDirPath(steamAppId))
             val gameName = gameDir.name
             val sizeOnDisk = calculateDirectorySize(gameDir)
 
@@ -385,7 +382,7 @@ object SteamUtils {
 
             // Get build ID and depot information
             val buildId = appInfo.branches["public"]?.buildId ?: 0L
-            val downloadableDepots = SteamService.getDownloadableDepots(appId)
+            val downloadableDepots = SteamService.getDownloadableDepots(steamAppId)
 
             // Separate depots into regular depots (with manifests) and shared depots (without manifests)
             val regularDepots = mutableMapOf<Int, DepotInfo>()
@@ -407,7 +404,7 @@ object SteamUtils {
             val acfContent = buildString {
                 appendLine("\"AppState\"")
                 appendLine("{")
-                appendLine("\t\"appid\"\t\t\"$appId\"")
+                appendLine("\t\"appid\"\t\t\"$steamAppId\"")
                 appendLine("\t\"Universe\"\t\t\"1\"")
                 appendLine("\t\"name\"\t\t\"${escapeString(appInfo.name)}\"")
                 appendLine("\t\"StateFlags\"\t\t\"4\"") // 4 = fully installed
@@ -448,7 +445,7 @@ object SteamUtils {
             }
 
             // Write ACF file
-            val acfFile = File(steamappsDir, "appmanifest_$appId.acf")
+            val acfFile = File(steamappsDir, "appmanifest_$steamAppId.acf")
             acfFile.writeText(acfContent)
 
             Timber.i("Created ACF manifest for ${appInfo.name} at ${acfFile.absolutePath}")
@@ -478,7 +475,7 @@ object SteamUtils {
             }
 
         } catch (e: Exception) {
-            Timber.e(e, "Failed to create ACF manifest for appId $appId")
+            Timber.e(e, "Failed to create ACF manifest for appId $steamAppId")
         }
     }
 
@@ -510,8 +507,10 @@ object SteamUtils {
      * Restores the original steam_api.dll and steam_api64.dll files from their .orig backups
      * if they exist. Does not error if backup files are not found.
      */
-    fun restoreSteamApi(context: Context, appId: Int) {
-        Timber.i("Starting restoreSteamApi for appId: $appId")
+    fun restoreSteamApi(context: Context, appId: String) {
+
+        Timber.i("Starting restoreSteamApi for appId: ${appId}")
+        val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val imageFs = ImageFs.find(context)
         val container = ContainerUtils.getOrCreateContainer(context, appId)
         val cfgFile = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/steam.cfg")
@@ -528,7 +527,7 @@ object SteamUtils {
             }
         }
         skipFirstTimeSteamSetup(imageFs.rootDir)
-        val appDirPath = SteamService.getAppDirPath(appId)
+        val appDirPath = SteamService.getAppDirPath(steamAppId)
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_RESTORED)) {
             return
         }
@@ -582,13 +581,13 @@ object SteamUtils {
             }
         }
 
-        Timber.i("Finished restoreSteamApi for appId: $appId. Restored 32bit: $restored32, Restored 64bit: $restored64")
+        Timber.i("Finished restoreSteamApi for appId: ${appId}. Restored 32bit: $restored32, Restored 64bit: $restored64")
 
         // Restore original executable if it exists (for real Steam mode)
-        restoreOriginalExecutable(context, appId)
+        restoreOriginalExecutable(context, steamAppId)
 
         // Create Steam ACF manifest for real Steam compatibility
-        createAppManifest(context, appId)
+        createAppManifest(context, steamAppId)
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
     }
 
@@ -596,9 +595,9 @@ object SteamUtils {
      * Restores the original executable files from their .original.exe backups
      * if they exist. Does not error if backup files are not found.
      */
-    fun restoreOriginalExecutable(context: Context, appId: Int) {
-        Timber.i("Starting restoreOriginalExecutable for appId: $appId")
-        val appDirPath = SteamService.getAppDirPath(appId)
+    fun restoreOriginalExecutable(context: Context, steamAppId: Int) {
+        Timber.i("Starting restoreOriginalExecutable for appId: $steamAppId")
+        val appDirPath = SteamService.getAppDirPath(steamAppId)
         Timber.i("Checking directory: $appDirPath")
         var restoredCount = 0
 
@@ -627,17 +626,18 @@ object SteamUtils {
             }
         }
 
-        Timber.i("Finished restoreOriginalExecutable for appId: $appId. Restored $restoredCount executable(s)")
+        Timber.i("Finished restoreOriginalExecutable for appId: $steamAppId. Restored $restoredCount executable(s)")
     }
 
     /**
      * Sibling folder “steam_settings” + empty “offline.txt” file, no-ops if they already exist.
      */
-    private fun ensureSteamSettings(context: Context, dllPath: Path, appId: Int) {
+    private fun ensureSteamSettings(context: Context, dllPath: Path, appId: String) {
+        val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val appIdFileUpper = dllPath.parent.resolve("steam_appid.txt")
         if (Files.notExists(appIdFileUpper)) {
             Files.createFile(appIdFileUpper)
-            appIdFileUpper.toFile().writeText(appId.toString())
+            appIdFileUpper.toFile().writeText(steamAppId.toString())
         }
         val settingsDir = dllPath.parent.resolve("steam_settings")
         if (Files.notExists(settingsDir)) {
@@ -646,7 +646,7 @@ object SteamUtils {
         val appIdFile = settingsDir.resolve("steam_appid.txt")
         if (Files.notExists(appIdFile)) {
             Files.createFile(appIdFile)
-            appIdFile.toFile().writeText(appId.toString())
+            appIdFile.toFile().writeText(steamAppId.toString())
         }
 
         val configsIni = settingsDir.resolve("configs.user.ini")
@@ -794,10 +794,10 @@ object SteamUtils {
         }
     }
 
-    fun fetchDirect3DMajor(appId: Int, callback: (Int) -> Unit) {
+    fun fetchDirect3DMajor(steamAppId: Int, callback: (Int) -> Unit) {
         // Build a single Cargo query: SELECT API.direct3d_versions WHERE steam_appid="<appId>"
-        Timber.i("[DX Fetch] Starting fetchDirect3DMajor for appId=%d", appId)
-        val where = URLEncoder.encode("Infobox_game.Steam_AppID HOLDS \"$appId\"", "UTF-8")
+        Timber.i("[DX Fetch] Starting fetchDirect3DMajor for appId=%d", steamAppId)
+        val where = URLEncoder.encode("Infobox_game.Steam_AppID HOLDS \"$steamAppId\"", "UTF-8")
         val url =
             "https://pcgamingwiki.com/w/api.php" +
                     "?action=cargoquery" +
