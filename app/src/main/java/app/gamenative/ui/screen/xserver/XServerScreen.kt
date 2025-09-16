@@ -1202,12 +1202,13 @@ private fun getWineStartCommand(
     val args = if (bootToContainer || appLaunchInfo == null) {
         "\"wfm.exe\""
     } else {
-        val appDirPath = SteamService.getAppDirPath(appId)
+        val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
+        val appDirPath = SteamService.getAppDirPath(steamAppId)
         var executablePath = ""
         if (container.executablePath.isNotEmpty()) {
             executablePath = container.executablePath
         } else {
-            executablePath = SteamService.getInstalledExe(appId)
+            executablePath = SteamService.getInstalledExe(steamAppId)
             container.executablePath = executablePath
             container.saveData()
         }
