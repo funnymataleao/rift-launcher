@@ -639,7 +639,6 @@ public class Container {
                     break;
                 case "extraData" : {
                     JSONObject extraData = data.getJSONObject(key);
-                    checkObsoleteOrMissingProperties(extraData);
                     setExtraData(extraData);
                     break;
                 }
