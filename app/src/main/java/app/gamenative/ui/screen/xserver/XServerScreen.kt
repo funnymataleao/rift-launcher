@@ -1202,40 +1202,31 @@ private fun getWineStartCommand(
     val args = if (bootToContainer || appLaunchInfo == null) {
         "\"wfm.exe\""
     } else {
-        // Check if we should launch through real Steam
-        if (container.isLaunchRealSteam()) {
-            // Launch Steam with the applaunch parameter to start the game
-            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" -silent -vgui -tcp " +
-                    "-nobigpicture -nofriendsui -nochatui -nointro -applaunch $appId"
+        val appDirPath = SteamService.getAppDirPath(appId)
+        var executablePath = ""
+        if (container.executablePath.isNotEmpty()) {
+            executablePath = container.executablePath
         } else {
-            // Original logic for direct game launch
-            val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
-            val appDirPath = SteamService.getAppDirPath(gameId)
-            var executablePath = ""
-            if (container.executablePath.isNotEmpty()) {
-                executablePath = container.executablePath
-            } else {
-                executablePath = SteamService.getInstalledExe(gameId)
-                container.executablePath = executablePath
-                container.saveData()
-            }
-            val executableDir = appDirPath + "/" + executablePath.substringBeforeLast("/", "")
-            guestProgramLauncherComponent.workingDir = File(executableDir);
-            Timber.i("Working directory is ${executableDir}")
-
-            Timber.i("Final exe path is " + executablePath)
-            val drives = container.drives
-            val driveIndex = drives.indexOf(appDirPath)
-            // greater than 1 since there is the drive character and the colon before the app dir path
-            val drive = if (driveIndex > 1) {
-                drives[driveIndex - 2]
-            } else {
-                Timber.e("Could not locate game drive")
-                'D'
-            }
-            envVars.put("WINEPATH", "$drive:/${appLaunchInfo.workingDir}")
-            "\"$drive:/${executablePath}\""
+            executablePath = SteamService.getInstalledExe(appId)
+            container.executablePath = executablePath
+            container.saveData()
         }
+        val executableDir = appDirPath + "/" + executablePath.substringBeforeLast("/", "")
+        guestProgramLauncherComponent.workingDir = File(executableDir);
+        Timber.i("Working directory is ${executableDir}")
+
+        Timber.i("Final exe path is " + executablePath)
+        val drives = container.drives
+        val driveIndex = drives.indexOf(appDirPath)
+        // greater than 1 since there is the drive character and the colon before the app dir path
+        val drive = if (driveIndex > 1) {
+            drives[driveIndex - 2]
+        } else {
+            Timber.e("Could not locate game drive")
+            'D'
+        }
+        envVars.put("WINEPATH", "$drive:/${appLaunchInfo.workingDir}")
+        "\"$drive:/${executablePath}\""
     }
 
     return "winhandler.exe $args"

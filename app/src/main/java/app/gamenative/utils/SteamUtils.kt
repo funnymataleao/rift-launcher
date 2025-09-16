@@ -607,7 +607,7 @@ object SteamUtils {
         FileUtils.walkThroughPath(dosDevicesPath.toPath(), -1) {
             if (it.name.endsWith(".original.exe") && it.exists()) {
                 try {
-                    val originalPath = it.parent.resolve(it.name.removeSuffix(".original.exe") + ".exe")
+                    val originalPath = it.parent.resolve(it.name.removeSuffix(".original.exe"))
                     Timber.i("Found ${it.name} at ${it.absolutePathString()}, restoring...")
 
                     // Delete the current exe if it exists
