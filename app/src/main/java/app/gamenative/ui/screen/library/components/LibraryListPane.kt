@@ -46,8 +46,10 @@ import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.service.DownloadService
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.component.topbar.AccountButton
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
@@ -63,7 +65,7 @@ import app.gamenative.data.GameSource
 @Composable
 internal fun LibraryListPane(
     state: LibraryState,
-    listState: LazyListState,
+    listState: LazyGridState,
     sheetState: SheetState,
     onFilterChanged: (AppFilter) -> Unit,
     onModalBottomSheet: (Boolean) -> Unit,
@@ -185,7 +187,8 @@ internal fun LibraryListPane(
             Box(
                 modifier = Modifier.fillMaxSize(),
             ) {
-                LazyColumn(
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(1),
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
@@ -195,14 +198,14 @@ internal fun LibraryListPane(
                     ),
                 ) {
                     items(items = state.appInfoList, key = { it.index }) { item ->
+                        if (item.index > 0) {
+                            HorizontalDivider()
+                        }
                         AppItem(
                             modifier = Modifier.animateItem(),
                             appInfo = item,
                             onClick = { onNavigate(item.appId) }
                         )
-                        if (item.index < state.appInfoList.lastIndex) {
-                            HorizontalDivider()
-                        }
                     }
                     if (state.appInfoList.size < state.totalAppsInFilter) {
                         item {
@@ -281,7 +284,7 @@ private fun Preview_LibraryListPane() {
     PluviaTheme {
         Surface {
             LibraryListPane(
-                listState = LazyListState(2, 64),
+                listState = LazyGridState(2),
                 state = state,
                 sheetState = sheetState,
                 onFilterChanged = { },

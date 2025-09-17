@@ -3,8 +3,8 @@ package app.gamenative.ui.screen.library.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -45,7 +45,7 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun LibrarySearchBar(
     state: LibraryState,
-    listState: LazyListState,
+    listState: LazyGridState,
     onSearchQuery: (String) -> Unit,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -143,7 +143,7 @@ private fun Preview_LibrarySearchBar() {
                         )
                     },
                 ),
-                listState = rememberLazyListState(),
+                listState = rememberLazyGridState(),
                 onSearchQuery = { },
             )
         }
