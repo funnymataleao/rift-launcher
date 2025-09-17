@@ -521,7 +521,7 @@ object PrefManager {
 
     private val ITEMS_PER_PAGE = intPreferencesKey("items_per_page")
     var itemsPerPage: Int
-        get() = getPref(ITEMS_PER_PAGE, 10)
+        get() = getPref(ITEMS_PER_PAGE, 50)
         set(value) {
             setPref(ITEMS_PER_PAGE, value)
         }
