@@ -11,6 +11,7 @@ import app.gamenative.service.SteamService
 import com.winlator.core.WineRegistryEditor
 import com.winlator.xenvironment.ImageFs
 import `in`.dragonbra.javasteam.util.HardwareUtils
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -382,7 +383,7 @@ object SteamUtils {
 
             // Get build ID and depot information
             val buildId = appInfo.branches["public"]?.buildId ?: 0L
-            val downloadableDepots = SteamService.getDownloadableDepots(steamAppId)
+            val downloadableDepots = runBlocking { SteamService.getDownloadableDepots(steamAppId) }
 
             // Separate depots into regular depots (with manifests) and shared depots (without manifests)
             val regularDepots = mutableMapOf<Int, DepotInfo>()

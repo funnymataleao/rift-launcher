@@ -71,8 +71,11 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import app.gamenative.Constants
 import app.gamenative.R
+import app.gamenative.data.DepotInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
+import app.gamenative.enums.OS
+import app.gamenative.enums.OSArch
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
@@ -128,6 +131,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.ui.graphics.compositeOver
 import app.gamenative.utils.MarkerUtils
+import kotlinx.coroutines.runBlocking
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
 
@@ -328,7 +332,7 @@ fun AppScreen(
             if (writePermissionGranted && readPermissionGranted) {
                 hasStoragePermission = true
 
-                val depots = SteamService.getDownloadableDepots(gameId)
+                val depots = runBlocking { SteamService.getDownloadableDepots(gameId) }
                 Timber.i("There are ${depots.size} depots belonging to $appId")
                 // How much free space is on disk
                 val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
@@ -534,7 +538,9 @@ fun AppScreen(
                     downloadInfo?.cancel()
                     downloadInfo = null
                 } else {
-                    downloadInfo = SteamService.downloadApp(gameId)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        downloadInfo = SteamService.downloadApp(gameId)
+                    }
                 }
             },
             onDeleteDownloadClick = {

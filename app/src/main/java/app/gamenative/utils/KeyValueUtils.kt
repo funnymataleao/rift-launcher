@@ -53,6 +53,9 @@ fun KeyValue.generateSteamApp(): SteamApp {
                     osArch = OSArch.from(currentDepot["config"]["osarch"].value),
                     manifests = manifests,
                     encryptedManifests = encryptedManifests,
+                    language = currentDepot["config"]["language"].value.orEmpty(),
+                    realm = currentDepot["config"]["realm"].value.orEmpty(),
+                    optionalDlcId = currentDepot["config"]["optionaldlc"].asInteger(INVALID_APP_ID),
                 )
             },
         branches = this["depots"]["branches"].children.associate {
