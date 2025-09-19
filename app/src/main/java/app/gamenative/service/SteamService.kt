@@ -433,7 +433,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     if (!(depot.osArch == OSArch.Arch64 || depot.osArch == OSArch.Unknown || depot.osArch == OSArch.Arch32))
                         return@filter false
                     // 4. DLC you actually own
-                    if (depot.dlcAppId != INVALID_APP_ID && !ownedDlc.containsKey(depot.dlcAppId))
+                    if (!ownedDlc.containsKey(depot.dlcAppId))
                         return@filter false
                     // 5. Language filter - if depot has language, it must match preferred language
                     if (depot.language.isNotEmpty() && depot.language != preferredLanguage)
