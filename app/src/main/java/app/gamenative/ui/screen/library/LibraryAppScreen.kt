@@ -132,6 +132,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.ui.graphics.compositeOver
 import app.gamenative.utils.MarkerUtils
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
 
@@ -409,10 +410,12 @@ fun AppScreen(
                     properties = mapOf(
                         "game_name" to appInfo.name
                     ))
-                CoroutineScope(Dispatchers.IO).launch {
-                    downloadProgress = 0f
-                    downloadInfo = SteamService.downloadApp(gameId)
-                    msgDialogState = MessageDialogState(false)
+                scope.launch(Dispatchers.IO) {
+                    withContext(Dispatchers.Main) {
+                        downloadInfo = SteamService.downloadApp(gameId)
+                        downloadProgress = 0f
+                        msgDialogState = MessageDialogState(false)
+                    }
                 }
             }
             onDismissClick = { msgDialogState = MessageDialogState(false) }
@@ -514,8 +517,10 @@ fun AppScreen(
                     )
                 } else if (SteamService.hasPartialDownload(gameId)) {
                     // Resume incomplete download
-                    CoroutineScope(Dispatchers.IO).launch {
-                        downloadInfo = SteamService.downloadApp(gameId)
+                    scope.launch(Dispatchers.IO) {
+                        withContext(Dispatchers.Main) {
+                            downloadInfo = SteamService.downloadApp(gameId)
+                        }
                     }
                 } else if (!isInstalled) {
                     permissionLauncher.launch(
@@ -538,8 +543,10 @@ fun AppScreen(
                     downloadInfo?.cancel()
                     downloadInfo = null
                 } else {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        downloadInfo = SteamService.downloadApp(gameId)
+                    scope.launch(Dispatchers.IO) {
+                        withContext(Dispatchers.Main) {
+                            downloadInfo = SteamService.downloadApp(gameId)
+                        }
                     }
                 }
             },
@@ -553,7 +560,11 @@ fun AppScreen(
                     dismissBtnText = context.getString(R.string.no)
                 )
             },
-            onUpdateClick = { CoroutineScope(Dispatchers.IO).launch { downloadInfo = SteamService.downloadApp(gameId) } },
+            onUpdateClick = { scope.launch(Dispatchers.IO) {
+                withContext(Dispatchers.Main) {
+                    downloadInfo = SteamService.downloadApp(gameId)
+                }
+            }},
             onBack = onBack,
             optionsMenu = arrayOf(
                 AppMenuOption(
@@ -625,16 +636,20 @@ fun AppScreen(
                             AppMenuOption(
                                 AppOptionMenuType.VerifyFiles,
                                 onClick = {
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        downloadInfo = SteamService.downloadApp(gameId)
+                                    scope.launch(Dispatchers.IO) {
+                                        withContext(Dispatchers.Main) {
+                                            downloadInfo = SteamService.downloadApp(gameId)
+                                        }
                                     }
                                 },
                             ),
                             AppMenuOption(
                                 AppOptionMenuType.Update,
                                 onClick = {
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        downloadInfo = SteamService.downloadApp(gameId)
+                                    scope.launch(Dispatchers.IO) {
+                                        withContext(Dispatchers.Main) {
+                                            downloadInfo = SteamService.downloadApp(gameId)
+                                        }
                                     }
                                 },
                             ),
