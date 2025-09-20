@@ -389,13 +389,14 @@ class SteamService : Service(), IChallengeUrlChanged {
             val accountId   = client.steamID?.accountID?.toInt() ?: return emptyMap()
             val ownedGameIds = getOwnedGames(userSteamId!!.convertToUInt64()).map { it.appId }.toHashSet()
 
+
             return getAppDlc(appId).filter { (_, depot) ->
                 when {
-                    /* Optional DLC depots are skipped */
-                    depot.optionalDlcId == depot.dlcAppId             -> false
-
                     /* Base-game depots always download */
                     depot.dlcAppId == INVALID_APP_ID                  -> true
+
+                    /* Optional DLC depots are skipped */
+                    depot.optionalDlcId == depot.dlcAppId             -> false
 
                     /* ① licence cache */
                     instance?.licenseDao?.findLicense(depot.dlcAppId) != null -> true
@@ -433,7 +434,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     if (!(depot.osArch == OSArch.Arch64 || depot.osArch == OSArch.Unknown || depot.osArch == OSArch.Arch32))
                         return@filter false
                     // 4. DLC you actually own
-                    if (!ownedDlc.containsKey(depot.dlcAppId))
+                    if (depot.dlcAppId != INVALID_APP_ID && !ownedDlc.containsKey(depot.dlcAppId))
                         return@filter false
                     // 5. Language filter - if depot has language, it must match preferred language
                     if (depot.language.isNotEmpty() && depot.language != preferredLanguage)

@@ -539,9 +539,7 @@ fun AppScreen(
                     downloadInfo?.cancel()
                     downloadInfo = null
                 } else {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        downloadInfo = SteamService.downloadApp(gameId)
-                    }
+                    downloadInfo = SteamService.downloadApp(gameId)
                 }
             },
             onDeleteDownloadClick = {
@@ -620,6 +618,7 @@ fun AppScreen(
                                 AppOptionMenuType.ResetDrm,
                                 onClick = {
                                     val container = ContainerUtils.getOrCreateContainer(context, appId)
+                                    MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
                                     MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
                                     container.isNeedsUnpacking = true
                                     container.saveData()
@@ -629,7 +628,12 @@ fun AppScreen(
                                 AppOptionMenuType.VerifyFiles,
                                 onClick = {
                                     CoroutineScope(Dispatchers.IO).launch {
+                                        val container = ContainerUtils.getOrCreateContainer(context, appId)
                                         downloadInfo = SteamService.downloadApp(gameId)
+                                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
+                                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
+                                        container.isNeedsUnpacking = true
+                                        container.saveData()
                                     }
                                 },
                             ),
@@ -637,7 +641,12 @@ fun AppScreen(
                                 AppOptionMenuType.Update,
                                 onClick = {
                                     CoroutineScope(Dispatchers.IO).launch {
+                                        val container = ContainerUtils.getOrCreateContainer(context, appId)
                                         downloadInfo = SteamService.downloadApp(gameId)
+                                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
+                                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
+                                        container.isNeedsUnpacking = true
+                                        container.saveData()
                                     }
                                 },
                             ),
