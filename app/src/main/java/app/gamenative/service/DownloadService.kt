@@ -55,7 +55,7 @@ object DownloadService {
 
     fun getSizeFromStoreDisplay (appId: Int): String {
         // How big is the game? The store should know. Human readable.
-        val depots = runBlocking { SteamService.getDownloadableDepots(appId) }
+        val depots = SteamService.getDownloadableDepots(appId)
         val installBytes = depots.values.sumOf { it.manifests["public"]?.size ?: 0L }
         return StorageUtils.formatBinarySize(installBytes)
     }

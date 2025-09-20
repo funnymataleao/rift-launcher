@@ -412,9 +412,9 @@ class SteamService : Service(), IChallengeUrlChanged {
             }.toMap()
         }
 
-        suspend fun getDownloadableDepots(appId: Int): Map<Int, DepotInfo> {
+        fun getDownloadableDepots(appId: Int): Map<Int, DepotInfo> {
             val appInfo   = getAppInfoOf(appId) ?: return emptyMap()
-            val ownedDlc  = getOwnedAppDlc(appId)
+            val ownedDlc  = runBlocking { getOwnedAppDlc(appId) }
             val preferredLanguage = PrefManager.containerLanguage
 
             return appInfo.depots
@@ -662,7 +662,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             return File(appDirPath).deleteRecursively()
         }
 
-        suspend fun downloadApp(appId: Int): DownloadInfo? {
+        fun downloadApp(appId: Int): DownloadInfo? {
             // Enforce Wi-Fi-only downloads
             if (PrefManager.downloadOnWifiOnly && instance?.isWifiConnected == false) {
                 instance?.notificationHelper?.notify("Not connected to Wi-Fi")

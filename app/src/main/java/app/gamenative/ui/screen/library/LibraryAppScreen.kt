@@ -333,7 +333,7 @@ fun AppScreen(
             if (writePermissionGranted && readPermissionGranted) {
                 hasStoragePermission = true
 
-                val depots = runBlocking { SteamService.getDownloadableDepots(gameId) }
+                val depots = SteamService.getDownloadableDepots(gameId)
                 Timber.i("There are ${depots.size} depots belonging to $appId")
                 // How much free space is on disk
                 val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
