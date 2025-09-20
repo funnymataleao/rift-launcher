@@ -71,8 +71,11 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import app.gamenative.Constants
 import app.gamenative.R
+import app.gamenative.data.DepotInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
+import app.gamenative.enums.OS
+import app.gamenative.enums.OSArch
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
@@ -128,6 +131,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.ui.graphics.compositeOver
 import app.gamenative.utils.MarkerUtils
+import kotlinx.coroutines.withContext
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
 
@@ -406,8 +410,8 @@ fun AppScreen(
                         "game_name" to appInfo.name
                     ))
                 CoroutineScope(Dispatchers.IO).launch {
-                    downloadProgress = 0f
                     downloadInfo = SteamService.downloadApp(gameId)
+                    downloadProgress = 0f
                     msgDialogState = MessageDialogState(false)
                 }
             }
@@ -547,7 +551,9 @@ fun AppScreen(
                     dismissBtnText = context.getString(R.string.no)
                 )
             },
-            onUpdateClick = { CoroutineScope(Dispatchers.IO).launch { downloadInfo = SteamService.downloadApp(gameId) } },
+            onUpdateClick = { CoroutineScope(Dispatchers.IO).launch {
+                downloadInfo = SteamService.downloadApp(gameId)
+            }},
             onBack = onBack,
             optionsMenu = arrayOf(
                 AppMenuOption(
@@ -611,6 +617,7 @@ fun AppScreen(
                                 AppOptionMenuType.ResetDrm,
                                 onClick = {
                                     val container = ContainerUtils.getOrCreateContainer(context, appId)
+                                    MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
                                     MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
                                     container.isNeedsUnpacking = true
                                     container.saveData()
@@ -620,7 +627,12 @@ fun AppScreen(
                                 AppOptionMenuType.VerifyFiles,
                                 onClick = {
                                     CoroutineScope(Dispatchers.IO).launch {
+                                        val container = ContainerUtils.getOrCreateContainer(context, appId)
                                         downloadInfo = SteamService.downloadApp(gameId)
+                                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
+                                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
+                                        container.isNeedsUnpacking = true
+                                        container.saveData()
                                     }
                                 },
                             ),
@@ -628,7 +640,12 @@ fun AppScreen(
                                 AppOptionMenuType.Update,
                                 onClick = {
                                     CoroutineScope(Dispatchers.IO).launch {
+                                        val container = ContainerUtils.getOrCreateContainer(context, appId)
                                         downloadInfo = SteamService.downloadApp(gameId)
+                                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
+                                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
+                                        container.isNeedsUnpacking = true
+                                        container.saveData()
                                     }
                                 },
                             ),

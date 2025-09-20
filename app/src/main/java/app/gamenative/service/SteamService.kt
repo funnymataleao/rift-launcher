@@ -384,17 +384,39 @@ class SteamService : Service(), IChallengeUrlChanged {
             }.orEmpty()
         }
 
-        fun getOwnedAppDlc(appId: Int): Map<Int, DepotInfo> = getAppDlc(appId).filter {
-            getPkgInfoOf(it.value.dlcAppId)?.let { pkg ->
-                instance?.steamClient?.let { steamClient ->
-                    pkg.ownerAccountId.contains(steamClient.steamID?.accountID?.toInt())
+        suspend fun getOwnedAppDlc(appId: Int): Map<Int, DepotInfo> {
+            val client      = instance?.steamClient ?: return emptyMap()
+            val accountId   = client.steamID?.accountID?.toInt() ?: return emptyMap()
+            val ownedGameIds = getOwnedGames(userSteamId!!.convertToUInt64()).map { it.appId }.toHashSet()
+
+
+            return getAppDlc(appId).filter { (_, depot) ->
+                when {
+                    /* Base-game depots always download */
+                    depot.dlcAppId == INVALID_APP_ID                  -> true
+
+                    /* Optional DLC depots are skipped */
+                    depot.optionalDlcId == depot.dlcAppId             -> false
+
+                    /* ① licence cache */
+                    instance?.licenseDao?.findLicense(depot.dlcAppId) != null -> true
+
+                    /* ② PICS row */
+                    instance?.appDao?.findApp(depot.dlcAppId) != null -> true
+
+                    /* ③ owned-games list */
+                    depot.dlcAppId in ownedGameIds                    -> true
+
+                    /* ④ final online / cached call */
+                    else                                     -> false
                 }
-            } == true
+            }.toMap()
         }
 
         fun getDownloadableDepots(appId: Int): Map<Int, DepotInfo> {
             val appInfo   = getAppInfoOf(appId) ?: return emptyMap()
-            val ownedDlc  = getOwnedAppDlc(appId)
+            val ownedDlc  = runBlocking { getOwnedAppDlc(appId) }
+            val preferredLanguage = PrefManager.containerLanguage
 
             return appInfo.depots
                 .asSequence()
@@ -412,7 +434,13 @@ class SteamService : Service(), IChallengeUrlChanged {
                     if (!(depot.osArch == OSArch.Arch64 || depot.osArch == OSArch.Unknown || depot.osArch == OSArch.Arch32))
                         return@filter false
                     // 4. DLC you actually own
-                    depot.dlcAppId == INVALID_APP_ID || ownedDlc.containsKey(depot.dlcAppId)
+                    if (depot.dlcAppId != INVALID_APP_ID && !ownedDlc.containsKey(depot.dlcAppId))
+                        return@filter false
+                    // 5. Language filter - if depot has language, it must match preferred language
+                    if (depot.language.isNotEmpty() && depot.language != preferredLanguage)
+                        return@filter false
+
+                    true
                 }
                 .associate { it.toPair() }
         }
