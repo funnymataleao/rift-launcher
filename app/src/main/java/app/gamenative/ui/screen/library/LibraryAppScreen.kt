@@ -410,12 +410,10 @@ fun AppScreen(
                     properties = mapOf(
                         "game_name" to appInfo.name
                     ))
-                scope.launch(Dispatchers.IO) {
-                    withContext(Dispatchers.Main) {
-                        downloadInfo = SteamService.downloadApp(gameId)
-                        downloadProgress = 0f
-                        msgDialogState = MessageDialogState(false)
-                    }
+                CoroutineScope(Dispatchers.IO).launch {
+                    downloadInfo = SteamService.downloadApp(gameId)
+                    downloadProgress = 0f
+                    msgDialogState = MessageDialogState(false)
                 }
             }
             onDismissClick = { msgDialogState = MessageDialogState(false) }
@@ -517,10 +515,8 @@ fun AppScreen(
                     )
                 } else if (SteamService.hasPartialDownload(gameId)) {
                     // Resume incomplete download
-                    scope.launch(Dispatchers.IO) {
-                        withContext(Dispatchers.Main) {
-                            downloadInfo = SteamService.downloadApp(gameId)
-                        }
+                    CoroutineScope(Dispatchers.IO).launch {
+                        downloadInfo = SteamService.downloadApp(gameId)
                     }
                 } else if (!isInstalled) {
                     permissionLauncher.launch(
@@ -543,10 +539,8 @@ fun AppScreen(
                     downloadInfo?.cancel()
                     downloadInfo = null
                 } else {
-                    scope.launch(Dispatchers.IO) {
-                        withContext(Dispatchers.Main) {
-                            downloadInfo = SteamService.downloadApp(gameId)
-                        }
+                    CoroutineScope(Dispatchers.IO).launch {
+                        downloadInfo = SteamService.downloadApp(gameId)
                     }
                 }
             },
@@ -560,10 +554,8 @@ fun AppScreen(
                     dismissBtnText = context.getString(R.string.no)
                 )
             },
-            onUpdateClick = { scope.launch(Dispatchers.IO) {
-                withContext(Dispatchers.Main) {
-                    downloadInfo = SteamService.downloadApp(gameId)
-                }
+            onUpdateClick = { CoroutineScope(Dispatchers.IO).launch {
+                downloadInfo = SteamService.downloadApp(gameId)
             }},
             onBack = onBack,
             optionsMenu = arrayOf(
@@ -636,20 +628,16 @@ fun AppScreen(
                             AppMenuOption(
                                 AppOptionMenuType.VerifyFiles,
                                 onClick = {
-                                    scope.launch(Dispatchers.IO) {
-                                        withContext(Dispatchers.Main) {
-                                            downloadInfo = SteamService.downloadApp(gameId)
-                                        }
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        downloadInfo = SteamService.downloadApp(gameId)
                                     }
                                 },
                             ),
                             AppMenuOption(
                                 AppOptionMenuType.Update,
                                 onClick = {
-                                    scope.launch(Dispatchers.IO) {
-                                        withContext(Dispatchers.Main) {
-                                            downloadInfo = SteamService.downloadApp(gameId)
-                                        }
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        downloadInfo = SteamService.downloadApp(gameId)
                                     }
                                 },
                             ),
