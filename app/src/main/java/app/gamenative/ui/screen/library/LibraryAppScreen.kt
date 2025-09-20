@@ -131,7 +131,6 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.ui.graphics.compositeOver
 import app.gamenative.utils.MarkerUtils
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
