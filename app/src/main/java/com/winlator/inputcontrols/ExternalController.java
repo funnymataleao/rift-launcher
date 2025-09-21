@@ -177,14 +177,37 @@ public class ExternalController {
     }
 
     private void processTriggerButton(MotionEvent event) {
-        float l = event.getAxisValue(event.getAxisValue(MotionEvent.AXIS_LTRIGGER) == 0.0f ? MotionEvent.AXIS_BRAKE : MotionEvent.AXIS_LTRIGGER);
-        float r = event.getAxisValue(event.getAxisValue(MotionEvent.AXIS_RTRIGGER) == 0.0f ? MotionEvent.AXIS_GAS : MotionEvent.AXIS_RTRIGGER);
-        if (l > 0.99f) l = 1.0f; else if (l < 0.01f) l = 0.0f;
-        if (r > 0.99f) r = 1.0f; else if (r < 0.01f) r = 0.0f;
+        float l = event.getAxisValue(MotionEvent.AXIS_LTRIGGER);
+        if (l == 0.0f) {
+            l = event.getAxisValue(MotionEvent.AXIS_BRAKE);
+            if (l == 0.0f) {
+                // Z axis is -1 to 1, convert to 0 to 1
+                float zAxis = event.getAxisValue(MotionEvent.AXIS_Z);
+                l = (zAxis + 1.0f) / 2.0f;
+            }
+        }
+
+        float r = event.getAxisValue(MotionEvent.AXIS_RTRIGGER);
+        if (r == 0f) {
+            r = event.getAxisValue(MotionEvent.AXIS_GAS);
+            if (r == 0f) {
+                // RZ axis is -1 to 1, convert to 0 to 1
+                float rzAxis = event.getAxisValue(MotionEvent.AXIS_RZ);
+                r = (rzAxis + 1f) / 2f;
+            }
+        }
+
+        // Apply deadzone (0.15)
+        if (l <= 0.15f) l = 0f;
+        else l = (l - 0.15f) / 0.85f; // Rescale 0.15-1.0 to 0-1.0
+
+        if (r <= 0.15f) r = 0f;
+        else r = (r - 0.15f) / 0.85f; // Rescale 0.15-1.0 to 0-1.0
+
         this.state.triggerL = l;
         this.state.triggerR = r;
-        this.state.setPressed(IDX_BUTTON_L2, l == 1.0f);
-        this.state.setPressed(IDX_BUTTON_R2, r == 1.0f);
+        this.state.setPressed(IDX_BUTTON_L2, l >= 0.9f);
+        this.state.setPressed(IDX_BUTTON_R2, r >= 0.9f);
     }
 
     public boolean updateStateFromMotionEvent(MotionEvent event) {
