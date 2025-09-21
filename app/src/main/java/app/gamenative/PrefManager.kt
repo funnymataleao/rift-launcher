@@ -18,6 +18,7 @@ import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.HomeDestination
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.Constants
+import app.gamenative.ui.enums.PaneType
 import com.materialkolor.PaletteStyle
 import com.winlator.box86_64.Box86_64Preset
 import com.winlator.container.Container
@@ -407,6 +408,16 @@ object PrefManager {
             scope.launch {
                 dataStore.edit { pref -> pref[CLIENT_ID] = value!! }
             }
+        }
+
+    private val LIBRARY_LAYOUT = intPreferencesKey("library_layout")
+    var libraryLayout: PaneType
+        get() {
+            val value = getPref(LIBRARY_LAYOUT, PaneType.GRID_HERO.ordinal)
+            return PaneType.entries.getOrNull(value) ?: PaneType.GRID_HERO
+        }
+        set(value) {
+            setPref(LIBRARY_FILTER, value.ordinal)
         }
 
     private val LIBRARY_FILTER = intPreferencesKey("library_filter")

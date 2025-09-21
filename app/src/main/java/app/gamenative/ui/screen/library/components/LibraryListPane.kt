@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.library.components
 
 import android.content.res.Configuration
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -54,12 +55,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.snapshotFlow
 import app.gamenative.PrefManager
 import app.gamenative.utils.DeviceUtils
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.distinctUntilChanged
 import app.gamenative.data.GameSource
+import app.gamenative.ui.enums.PaneType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,6 +88,9 @@ internal fun LibraryListPane(
     // Responsive width for better layouts
     val isViewWide = DeviceUtils.isViewWide(currentWindowAdaptiveInfo())
 
+    // List view is always 1 column
+    var columns by remember { mutableIntStateOf(1) }
+
     // Infinite scroll: load next page when scrolled to bottom
     LaunchedEffect(listState, state.appInfoList.size) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
@@ -96,6 +102,16 @@ internal fun LibraryListPane(
                     onPageChange(1)
                 }
             }
+    }
+
+    LaunchedEffect(isViewWide) {
+        if (PrefManager.libraryLayout == PaneType.GRID_HERO) {
+            columns = if (isViewWide) {
+                4
+            } else {
+                2
+            }
+        }
     }
 
     Scaffold(
@@ -188,9 +204,10 @@ internal fun LibraryListPane(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(1),
+                    columns = GridCells.Fixed(columns),
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(
                         start = 20.dp,
                         end = 20.dp,
