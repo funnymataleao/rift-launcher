@@ -149,6 +149,8 @@ object ContainerUtils {
         val mapperType = container.getDinputMapperType()
         // Read disable-mouse flag from container
         val disableMouse = container.isDisableMouseInput()
+        // Read touchscreen-mode flag from container
+        val touchscreenMode = container.isTouchscreenMode()
 
         return ContainerData(
             name = container.name,
@@ -186,6 +188,7 @@ object ContainerUtils {
             enableDInput = enableD,
             dinputMapperType = mapperType,
             disableMouseInput = disableMouse,
+            touchscreenMode = touchscreenMode,
             emulateKeyboardMouse = try {
                 container.isEmulateKeyboardMouse()
             } catch (e: Exception) {
@@ -269,6 +272,7 @@ object ContainerUtils {
         container.desktopTheme = containerData.desktopTheme
         container.graphicsDriverVersion = containerData.graphicsDriverVersion
         container.setDisableMouseInput(containerData.disableMouseInput)
+        container.setTouchscreenMode(containerData.touchscreenMode)
         container.setEmulateKeyboardMouse(containerData.emulateKeyboardMouse)
         try {
             val bindingsStr = containerData.controllerEmulationBindings

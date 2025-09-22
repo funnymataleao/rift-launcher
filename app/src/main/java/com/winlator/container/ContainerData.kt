@@ -51,6 +51,8 @@ data class ContainerData(
     val dinputMapperType: Byte = 1,
     /** Disable external mouse input **/
     val disableMouseInput: Boolean = false,
+    /** Touchscreen mode **/
+    val touchscreenMode: Boolean = false,
     /** Preferred game language (Goldberg) **/
     val language: String = "english",
     /** Emulate keyboard/mouse using controller sticks and button bindings **/
@@ -93,6 +95,7 @@ data class ContainerData(
                     "enableDInput" to state.enableDInput,
                     "dinputMapperType" to state.dinputMapperType,
                     "disableMouseInput" to state.disableMouseInput,
+                    "touchscreenMode" to state.touchscreenMode,
                     "language" to state.language,
                     "emulateKeyboardMouse" to state.emulateKeyboardMouse,
                     "controllerEmulationBindings" to state.controllerEmulationBindings,
@@ -131,6 +134,7 @@ data class ContainerData(
                     enableDInput = savedMap["enableDInput"] as Boolean,
                     dinputMapperType = savedMap["dinputMapperType"] as Byte,
                     disableMouseInput = savedMap["disableMouseInput"] as Boolean,
+                    touchscreenMode = savedMap["touchscreenMode"] as Boolean,
                     language = (savedMap["language"] as? String) ?: "english",
                     emulateKeyboardMouse = (savedMap["emulateKeyboardMouse"] as? Boolean) ?: false,
                     controllerEmulationBindings = (savedMap["controllerEmulationBindings"] as? String) ?: "",

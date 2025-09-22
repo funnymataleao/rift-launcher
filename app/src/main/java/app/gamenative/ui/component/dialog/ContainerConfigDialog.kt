@@ -773,6 +773,14 @@ fun ContainerConfigDialog(
                                 onCheckedChange = { config = config.copy(disableMouseInput = it) }
                             )
 
+                            // Touchscreen mode
+                            SettingsSwitch(
+                                colors = settingsTileColorsAlt(),
+                                title = { Text(text = "Touchscreen Mode") },
+                                state = config.touchscreenMode,
+                                onCheckedChange = { config = config.copy(touchscreenMode = it) }
+                            )
+
                             // Emulate keyboard and mouse
                             SettingsSwitch(
                                 colors = settingsTileColorsAlt(),
