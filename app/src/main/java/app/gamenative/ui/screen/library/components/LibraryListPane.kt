@@ -89,7 +89,7 @@ internal fun LibraryListPane(
     val isViewWide = DeviceUtils.isViewWide(currentWindowAdaptiveInfo())
 
     // List view is always 1 column
-    var columns by remember { mutableIntStateOf(1) }
+    var columnType: GridCells by remember { mutableStateOf(GridCells.Fixed(1)) }
 
     // Infinite scroll: load next page when scrolled to bottom
     LaunchedEffect(listState, state.appInfoList.size) {
@@ -106,11 +106,16 @@ internal fun LibraryListPane(
 
     LaunchedEffect(isViewWide) {
         if (PrefManager.libraryLayout == PaneType.GRID_HERO) {
-            columns = if (isViewWide) {
-                4
-            } else {
-                2
-            }
+            columnType = GridCells.Adaptive(minSize = 200.dp)
+        } else if (PrefManager.libraryLayout == PaneType.GRID_CAPSULE) {
+            columnType = GridCells.Adaptive(minSize = 150.dp)
+        }
+    }
+
+    var targetOfScroll by remember { mutableIntStateOf(-1) }
+    LaunchedEffect(targetOfScroll) {
+        if (targetOfScroll != -1) {
+            listState.animateScrollToItem(targetOfScroll, -100)
         }
     }
 
@@ -204,7 +209,7 @@ internal fun LibraryListPane(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(columns),
+                    columns = columnType,
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -215,13 +220,15 @@ internal fun LibraryListPane(
                     ),
                 ) {
                     items(items = state.appInfoList, key = { it.index }) { item ->
-                        if (item.index > 0) {
+                        if (item.index > 0 && PrefManager.libraryLayout == PaneType.LIST) {
+                            // Dividers in list view
                             HorizontalDivider()
                         }
                         AppItem(
-                            modifier = Modifier.animateItem(),
                             appInfo = item,
-                            onClick = { onNavigate(item.appId) }
+                            onClick = { onNavigate(item.appId) },
+                            paneType = PrefManager.libraryLayout,
+                            onFocus = { targetOfScroll = item.index },
                         )
                     }
                     if (state.appInfoList.size < state.totalAppsInFilter) {
