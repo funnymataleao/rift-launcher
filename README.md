@@ -10,7 +10,7 @@ This is a fork of [Pluvia](https://github.com/oxters168/Pluvia), a Steam client 
 ## How to Use
 
 (Note that GameNative is still in its early stages, and all games may not work, or may require tweaking to get working well)
-1. Download the latest release [here](https://github.com/utkarshdalal/GameNative/releases/download/gamenative-v0.3.4/gamenative-v0.3.4.apk)
+1. Download the latest release [here](https://downloads.gamenative.app/releases/0.3.4/gamenative-v0.3.4.apk)
 2. Install the APK on your Android device
 3. Login to your Steam account
 4. Install your game
@@ -18,6 +18,8 @@ This is a fork of [Pluvia](https://github.com/oxters168/Pluvia), a Steam client 
 
 ## Support
 To report issues or receive support, join the [Discord server](https://discord.gg/2hKv4VfZfE)
+
+You can support GameNative on Ko-fi at https://ko-fi.com/gamenative
 
 ## Building
 ### IF YOU JUST WANT TO USE THE APP, PLEASE SEE THE HOW TO USE SECTION ABOVE. THIS IS ONLY NEEDED IF YOU WANT TO CONTRIBUTE FOR DEVELOPMENT.
