@@ -55,6 +55,9 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private static final int UPDATE_FORM_DELAYED_TIME = 50;
     private boolean touchscreenMouseDisabled = false;
     private boolean isTouchscreenMode = false;
+    private Runnable delayedPress;
+
+    private boolean pressExecuted;
 
     public TouchpadView(Context context, XServer xServer, boolean capturePointerOnExternalMouse) {
         super(context);
@@ -380,8 +383,14 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         if (event.getPointerCount() == 1) {
             if (xServer.isRelativeMouseMovement())
                 xServer.getWinHandler().mouseEvent(MouseEventFlags.LEFTDOWN, 0, 0, 0);
-            else
-                xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
+            else {
+                pressExecuted = false;
+                delayedPress = () -> {
+                    pressExecuted = true;
+                    xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
+                };
+                postDelayed(delayedPress, CLICK_DELAYED_TIME);
+            }
         }
     }
 
@@ -396,8 +405,16 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private void handleTouchUp(MotionEvent event) {
         if (xServer.isRelativeMouseMovement())
             xServer.getWinHandler().mouseEvent(MouseEventFlags.LEFTUP, 0, 0, 0);
-        else
-            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+        else {
+            if (pressExecuted) {
+                // press already happened → release immediately
+                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+            } else {
+                // finger lifted *before* the press fires
+                // queue a release to run just after the pending press
+                postDelayed(() -> xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT), CLICK_DELAYED_TIME);
+            }
+        }
     }
 
     private void handleTwoFingerScroll(MotionEvent event) {
