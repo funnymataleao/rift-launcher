@@ -22,10 +22,14 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Face4
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -161,6 +165,31 @@ internal fun AppItem(
                                 .padding(8.dp),
                             appInfo = appInfo,
                         )
+                    } else {
+                        val isInstalled = remember(appInfo.appId) {
+                            SteamService.isAppInstalled(appInfo.gameId)
+                        }
+                        // Cute floating icons for install status/family share
+                        if (isInstalled || appInfo.isShared) {
+                            Row(
+                                modifier = Modifier
+                                    .align(alignment = Alignment.BottomEnd)
+                                    .padding(4.dp) // Padding from the outer card
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+                                    .height(24.dp)
+                                    .padding(2.dp) // Padding for inner icons
+                                    .alpha(0.9f),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                if (isInstalled) {
+                                    Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.onSurface)
+                                }
+                                if (appInfo.isShared) {
+                                    Icon(Icons.Filled.Face4, null, tint = MaterialTheme.colorScheme.tertiary)
+                                }
+                            }
+                        }
                     }
                 }
             }
