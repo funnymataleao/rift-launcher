@@ -452,11 +452,13 @@ public class InputControlsView extends View {
 
             int buttonIdx = binding.ordinal() - Binding.GAMEPAD_BUTTON_A.ordinal();
             if (buttonIdx <= ExternalController.IDX_BUTTON_R2) {
-                if (buttonIdx == ExternalController.IDX_BUTTON_L2)
+                if (buttonIdx == ExternalController.IDX_BUTTON_L2) {
                     state.triggerL = isActionDown ? 1.0f : 0f;
-                else if (buttonIdx == ExternalController.IDX_BUTTON_R2)
+                    state.setPressed(ExternalController.IDX_BUTTON_L2, isActionDown);
+                } else if (buttonIdx == ExternalController.IDX_BUTTON_R2) {
                     state.triggerR = isActionDown ? 1.0f : 0f;
-                else
+                    state.setPressed(ExternalController.IDX_BUTTON_R2, isActionDown);
+                } else
                     state.setPressed(buttonIdx, isActionDown);
             }
             else if (binding == Binding.GAMEPAD_LEFT_THUMB_UP || binding == Binding.GAMEPAD_LEFT_THUMB_DOWN) {
