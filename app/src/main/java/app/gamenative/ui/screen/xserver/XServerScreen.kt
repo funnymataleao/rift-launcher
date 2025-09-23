@@ -1029,13 +1029,18 @@ private fun setupXEnvironment(
             "-all",
     )
     // capture debug output to file if either Wine or Box86/64 logging is enabled
-    if (enableWineDebug || enableBox86Logs) {
+    var logFile: File? = null
+    val captureLogs = enableWineDebug || enableBox86Logs
+    if (captureLogs) {
         val wineLogDir = File(context.getExternalFilesDir(null), "wine_logs")
         wineLogDir.mkdirs()
         val logFile = File(wineLogDir, "wine_debug.log")
         if (logFile.exists()) logFile.delete()
-        ProcessHelper.addDebugCallback { line ->
-            logFile.appendText(line + "\n")
+    }
+
+    ProcessHelper.addDebugCallback { line ->
+        if (captureLogs) {
+            logFile?.appendText(line + "\n")
         }
     }
 
