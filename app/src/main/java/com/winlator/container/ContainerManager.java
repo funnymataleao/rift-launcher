@@ -20,6 +20,7 @@ import com.winlator.xenvironment.ImageFs;
 import com.winlator.core.GPUInformation;
 import com.winlator.core.DefaultVersion;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -70,9 +71,13 @@ public class ContainerManager {
                             String containerId = file.getName().replace(ImageFs.USER+"-", "");
                             Container container = new Container(containerId);
                             container.setRootDir(new File(homeDir, ImageFs.USER+"-"+container.id));
-                            JSONObject data = new JSONObject(FileUtils.readString(container.getConfigFile()));
-                            container.loadData(data);
-                            containers.add(container);
+                            try {
+                                JSONObject data = new JSONObject(FileUtils.readString(container.getConfigFile()));
+                                container.loadData(data);
+                                containers.add(container);
+                            } catch (NullPointerException e){
+                                Log.w("ContainerManager", "Could not load container: " + e);
+                            }
                         }
                     }
                 }
@@ -274,7 +279,7 @@ public class ContainerManager {
         for (Container container : containers) if (container.id.equals(id)) return true;
         return false;
     }
-    
+
     public Container getContainerById(String id) {
         for (Container container : containers) if (container.id.equals(id)) return container;
         return null;
