@@ -144,8 +144,11 @@ import android.os.SystemClock
 import kotlinx.coroutines.ensureActive
 import app.gamenative.enums.Marker
 import app.gamenative.utils.MarkerUtils
+import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.PlayingSessionStateCallback
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 @AndroidEntryPoint
 class SteamService : Service(), IChallengeUrlChanged {
@@ -227,6 +230,9 @@ class SteamService : Service(), IChallengeUrlChanged {
     private var picsGetProductInfoJob: Job? = null
     private var picsChangesCheckerJob: Job? = null
     private var friendCheckerJob: Job? = null
+
+    private val _isPlayingBlocked = MutableStateFlow(false)
+    val isPlayingBlocked = _isPlayingBlocked.asStateFlow()
 
     companion object {
         const val MAX_PICS_BUFFER = 256
@@ -352,6 +358,30 @@ class SteamService : Service(), IChallengeUrlChanged {
         suspend fun requestUserPersona() = withContext(Dispatchers.IO) {
             // in order to get user avatar url and other info
             userSteamId?.let { instance?._steamFriends?.requestFriendInfo(it) }
+        }
+
+        suspend fun getSelfCurrentlyPlayingAppId(): Int? = withContext(Dispatchers.IO) {
+            val selfId = userSteamId?.convertToUInt64() ?: return@withContext null
+            val self = instance?.friendDao?.findFriend(selfId) ?: return@withContext null
+            if (self.isPlayingGame) self.gameAppID else null
+        }
+
+        suspend fun kickPlayingSession(onlyGame: Boolean = true): Boolean = withContext(Dispatchers.IO) {
+            val user = instance?._steamUser ?: return@withContext false
+            try {
+                instance?._isPlayingBlocked?.value = true
+                user.kickPlayingSession(onlyStopGame = onlyGame)
+
+                // Wait for PlayingSessionStateCallback to indicate unblocked
+                val deadline = System.currentTimeMillis() + 5000
+                while (System.currentTimeMillis() < deadline) {
+                    if (instance?._isPlayingBlocked?.value == false) return@withContext true
+                    delay(100)
+                }
+                false
+            } catch (_: Exception) {
+                false
+            }
         }
 
         suspend fun getPersonaStateOf(steamId: SteamID): SteamFriend? = withContext(Dispatchers.IO) {
@@ -1634,6 +1664,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     add(subscribe(FriendsListCallback::class.java, ::onFriendsList))
                     add(subscribe(EmoticonListCallback::class.java, ::onEmoticonList))
                     add(subscribe(AliasHistoryCallback::class.java, ::onAliasHistory))
+                    add(subscribe(PlayingSessionStateCallback::class.java, ::onPlayingSessionState))
                 }
             }
 
@@ -1922,6 +1953,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                 friendDao.updateNicknames(callback.nicknames)
             }
         }
+    }
+
+    private fun onPlayingSessionState(callback: PlayingSessionStateCallback) {
+        Timber.d("onPlayingSessionState called with isPlayingBlocked = " + callback.isPlayingBlocked)
+        _isPlayingBlocked.value = callback.isPlayingBlocked
     }
 
     private fun onFriendsList(callback: FriendsListCallback) {
