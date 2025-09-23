@@ -1,5 +1,8 @@
 package app.gamenative.ui.screen.library.components
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -65,9 +69,20 @@ internal fun LibrarySearchBar(
         }
     }
 
+    // Prevent focus by default, so it doesn't scoop up every controller input for focus
+    val allowFocusing = remember { mutableStateOf(false)  }
+
     // Modern search field with rounded corners
     Box(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                // When tapped, allow and request focus
+                allowFocusing.value = true
+            },
         contentAlignment = Alignment.CenterStart
     ) {
         TextField(
@@ -76,7 +91,8 @@ internal fun LibrarySearchBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
-                .clip(RoundedCornerShape(16.dp)),
+                .clip(RoundedCornerShape(16.dp))
+                .focusable(allowFocusing.value),
             placeholder = {
                 Text(
                     text = "Search your games...",
