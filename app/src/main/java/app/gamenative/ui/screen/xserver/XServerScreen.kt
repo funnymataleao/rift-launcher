@@ -380,7 +380,7 @@ fun XServerScreen(
 
                 // If controls didn't handle it or aren't visible, send to touchMouse
                 if (!controlsHandled) {
-                    touchMouse?.onTouchEvent(it)
+                    PluviaApp.touchpadView?.onTouchEvent(it)
                 }
 
                 true
@@ -526,10 +526,9 @@ fun XServerScreen(
                     val renderer: GLRenderer = xServerView!!.getRenderer()
                     if (container.isDisableMouseInput()) {
                         renderer.setCursorVisible(false)
-                        PluviaApp.touchpadView?.setEnabled(false)
-                    } else {
-                        renderer.setCursorVisible(true)
-                        PluviaApp.touchpadView?.setEnabled(true)
+                        PluviaApp.touchpadView?.setTouchscreenMouseDisabled(true)
+                    } else if (container.isTouchscreenMode()) {
+                        PluviaApp.touchpadView?.setTouchscreenMode(true)
                     }
                     Timber.d("WinHandler configured: preferredInputApi=%s, dinputMapperType=0x%02x", PreferredInputApi.values()[container.inputType], container.dinputMapperType)
                     // Timber.d("1 Container drives: ${container.drives}")
@@ -674,6 +673,10 @@ fun XServerScreen(
                 frameRating = FrameRating(context)
                 frameRating?.setVisibility(View.GONE)
                 frameRating?.let { frameLayout.addView(it) }
+            }
+
+            if (container.isDisableMouseInput){
+                PluviaApp.touchpadView?.setTouchscreenMouseDisabled(true);
             }
 
             frameLayout
