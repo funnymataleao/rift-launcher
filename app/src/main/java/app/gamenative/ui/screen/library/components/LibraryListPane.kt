@@ -92,6 +92,7 @@ internal fun LibraryListPane(
 
     // List view is always 1 column
     var columnType: GridCells by remember { mutableStateOf(GridCells.Fixed(1)) }
+    var paneType: PaneType by remember { mutableStateOf(PrefManager.libraryLayout) }
 
     // Infinite scroll: load next page when scrolled to bottom
     LaunchedEffect(listState, state.appInfoList.size) {
@@ -106,12 +107,12 @@ internal fun LibraryListPane(
             }
     }
 
-    LaunchedEffect(isViewWide, state.appInfoSortType) {
+    LaunchedEffect(isViewWide, paneType) {
         // Set up how much
         columnType = GridCells.Fixed(1)
-        if (PrefManager.libraryLayout == PaneType.GRID_HERO) {
+        if (paneType == PaneType.GRID_HERO) {
             columnType = GridCells.Adaptive(minSize = 200.dp)
-        } else if (PrefManager.libraryLayout == PaneType.GRID_CAPSULE) {
+        } else if (paneType == PaneType.GRID_CAPSULE) {
             columnType = GridCells.Adaptive(minSize = 150.dp)
         }
     }
@@ -231,7 +232,7 @@ internal fun LibraryListPane(
                         AppItem(
                             appInfo = item,
                             onClick = { onNavigate(item.appId) },
-                            paneType = PrefManager.libraryLayout,
+                            paneType = paneType,
                             onFocus = { targetOfScroll = item.index },
                         )
                     }
@@ -272,11 +273,10 @@ internal fun LibraryListPane(
                             LibraryBottomSheet(
                                 selectedFilters = state.appInfoSortType,
                                 onFilterChanged = onFilterChanged,
-                                currentView = PrefManager.libraryLayout,
-                                onViewChanged = { paneType ->
-                                    PrefManager.libraryLayout = paneType
-                                    // Full re-navigation is the safest way to reset all values - from column sizes to image load status
-                                    onNavigateRoute(PluviaScreen.Home.route)
+                                currentView = paneType,
+                                onViewChanged = { newPaneType ->
+                                    PrefManager.libraryLayout = newPaneType
+                                    paneType = newPaneType
                                 },
                             )
                         },

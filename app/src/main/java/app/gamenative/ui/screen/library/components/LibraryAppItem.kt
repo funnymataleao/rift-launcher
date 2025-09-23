@@ -72,6 +72,11 @@ internal fun AppItem(
     var hideText by remember { mutableStateOf(true) }
     var alpha by remember { mutableFloatStateOf(1f) }
 
+    LaunchedEffect(paneType) {
+        hideText = true
+        alpha = 1f
+    }
+
     // True when selected, e.g. with controller
     var isFocused by remember { mutableStateOf(false) }
 
@@ -176,10 +181,9 @@ internal fun AppItem(
                                     .align(alignment = Alignment.BottomEnd)
                                     .padding(4.dp) // Padding from the outer card
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)) // Mid tone colour that shows up on light and dark images
                                     .height(24.dp)
-                                    .padding(2.dp) // Padding for inner icons
-                                    .alpha(0.9f),
+                                    .padding(2.dp), // Padding for inner icons
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
                                 if (isInstalled) {
