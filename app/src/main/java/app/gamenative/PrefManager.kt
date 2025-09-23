@@ -413,8 +413,8 @@ object PrefManager {
     private val LIBRARY_LAYOUT = intPreferencesKey("library_layout")
     var libraryLayout: PaneType
         get() {
-            val value = getPref(LIBRARY_LAYOUT, PaneType.GRID_HERO.ordinal)
-            return PaneType.entries.getOrNull(value) ?: PaneType.GRID_HERO
+            val value = getPref(LIBRARY_LAYOUT, PaneType.UNDECIDED.ordinal)
+            return PaneType.entries.getOrNull(value) ?: PaneType.UNDECIDED
         }
         set(value) {
             setPref(LIBRARY_LAYOUT, value.ordinal)

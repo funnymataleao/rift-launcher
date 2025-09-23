@@ -108,7 +108,18 @@ internal fun LibraryListPane(
     }
 
     LaunchedEffect(isViewWide, paneType) {
-        // Set up how much
+        // Set initial paneType at first launch depending on orientation
+        if (paneType == PaneType.UNDECIDED) {
+            // Default hero for landscape/tablets, or list for portrait phones
+            if (isViewWide) {
+                paneType = PaneType.GRID_HERO
+            } else {
+                paneType = PaneType.LIST
+            }
+            PrefManager.libraryLayout = paneType
+        }
+
+        // How many columns does this view need? 1 for list, or adaptive which can handle rotating the device
         columnType = GridCells.Fixed(1)
         if (paneType == PaneType.GRID_HERO) {
             columnType = GridCells.Adaptive(minSize = 200.dp)
@@ -225,7 +236,7 @@ internal fun LibraryListPane(
                     ),
                 ) {
                     items(items = state.appInfoList, key = { it.index }) { item ->
-                        if (item.index > 0 && PrefManager.libraryLayout == PaneType.LIST) {
+                        if (item.index > 0 && paneType == PaneType.LIST) {
                             // Dividers in list view
                             HorizontalDivider()
                         }
