@@ -417,7 +417,7 @@ object PrefManager {
             return PaneType.entries.getOrNull(value) ?: PaneType.GRID_HERO
         }
         set(value) {
-            setPref(LIBRARY_FILTER, value.ordinal)
+            setPref(LIBRARY_LAYOUT, value.ordinal)
         }
 
     private val LIBRARY_FILTER = intPreferencesKey("library_filter")

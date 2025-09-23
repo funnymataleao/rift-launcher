@@ -63,6 +63,8 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.distinctUntilChanged
 import app.gamenative.data.GameSource
 import app.gamenative.ui.enums.PaneType
+import app.gamenative.ui.screen.PluviaScreen
+import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,7 +106,9 @@ internal fun LibraryListPane(
             }
     }
 
-    LaunchedEffect(isViewWide) {
+    LaunchedEffect(isViewWide, state.appInfoSortType) {
+        // Set up how much
+        columnType = GridCells.Fixed(1)
         if (PrefManager.libraryLayout == PaneType.GRID_HERO) {
             columnType = GridCells.Adaptive(minSize = 200.dp)
         } else if (PrefManager.libraryLayout == PaneType.GRID_CAPSULE) {
@@ -268,6 +272,12 @@ internal fun LibraryListPane(
                             LibraryBottomSheet(
                                 selectedFilters = state.appInfoSortType,
                                 onFilterChanged = onFilterChanged,
+                                currentView = PrefManager.libraryLayout,
+                                onViewChanged = { paneType ->
+                                    PrefManager.libraryLayout = paneType
+                                    // Full re-navigation is the safest way to reset all values - from column sizes to image load status
+                                    onNavigateRoute(PluviaScreen.Home.route)
+                                },
                             )
                         },
                     )
