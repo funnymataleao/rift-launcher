@@ -17,6 +17,7 @@ enum class DialogType(val icon: ImageVector? = null) {
     PENDING_UPLOAD,
     PENDING_UPLOAD_IN_PROGRESS,
     APP_SESSION_ACTIVE,
+    ACCOUNT_SESSION_ACTIVE,
     APP_SESSION_SUSPENDED,
 
     INSTALL_APP,

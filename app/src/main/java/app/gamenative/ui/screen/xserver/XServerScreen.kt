@@ -380,7 +380,7 @@ fun XServerScreen(
 
                 // If controls didn't handle it or aren't visible, send to touchMouse
                 if (!controlsHandled) {
-                    touchMouse?.onTouchEvent(it)
+                    PluviaApp.touchpadView?.onTouchEvent(it)
                 }
 
                 true
@@ -526,10 +526,9 @@ fun XServerScreen(
                     val renderer: GLRenderer = xServerView!!.getRenderer()
                     if (container.isDisableMouseInput()) {
                         renderer.setCursorVisible(false)
-                        PluviaApp.touchpadView?.setEnabled(false)
-                    } else {
-                        renderer.setCursorVisible(true)
-                        PluviaApp.touchpadView?.setEnabled(true)
+                        PluviaApp.touchpadView?.setTouchscreenMouseDisabled(true)
+                    } else if (container.isTouchscreenMode()) {
+                        PluviaApp.touchpadView?.setTouchscreenMode(true)
                     }
                     Timber.d("WinHandler configured: preferredInputApi=%s, dinputMapperType=0x%02x", PreferredInputApi.values()[container.inputType], container.dinputMapperType)
                     // Timber.d("1 Container drives: ${container.drives}")
@@ -674,6 +673,10 @@ fun XServerScreen(
                 frameRating = FrameRating(context)
                 frameRating?.setVisibility(View.GONE)
                 frameRating?.let { frameLayout.addView(it) }
+            }
+
+            if (container.isDisableMouseInput){
+                PluviaApp.touchpadView?.setTouchscreenMouseDisabled(true);
             }
 
             frameLayout
@@ -1026,13 +1029,18 @@ private fun setupXEnvironment(
             "-all",
     )
     // capture debug output to file if either Wine or Box86/64 logging is enabled
-    if (enableWineDebug || enableBox86Logs) {
+    var logFile: File? = null
+    val captureLogs = enableWineDebug || enableBox86Logs
+    if (captureLogs) {
         val wineLogDir = File(context.getExternalFilesDir(null), "wine_logs")
         wineLogDir.mkdirs()
         val logFile = File(wineLogDir, "wine_debug.log")
         if (logFile.exists()) logFile.delete()
-        ProcessHelper.addDebugCallback { line ->
-            logFile.appendText(line + "\n")
+    }
+
+    ProcessHelper.addDebugCallback { line ->
+        if (captureLogs) {
+            logFile?.appendText(line + "\n")
         }
     }
 
@@ -1109,7 +1117,7 @@ private fun setupXEnvironment(
         environment.addComponent(ALSAServerComponent(UnixSocketConfig.createSocket(imageFs.getRootDir().getPath(), UnixSocketConfig.ALSA_SERVER_PATH), options))
     } else if (xServerState.value.audioDriver == "pulseaudio") {
         envVars.put("PULSE_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.PULSE_SERVER_PATH)
-        environment.addComponent(PulseAudioComponent(UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.PULSE_SERVER_PATH)))
+        environment.addComponent(PulseAudioComponent(UnixSocketConfig.createSocket(imageFs.getRootDir().getPath(), UnixSocketConfig.PULSE_SERVER_PATH)))
     }
 
     if (xServerState.value.graphicsDriver == "virgl") {
@@ -1793,7 +1801,7 @@ private fun extractGraphicsDriverFiles(
     var cacheId = graphicsDriver
     if (graphicsDriver == "turnip") {
         cacheId += "-" + turnipVersion + "-" + zinkVersion
-        if (turnipVersion == "25.2.0"){
+        if (turnipVersion == "25.2.0" || turnipVersion == "25.3.0"){
             if (GPUInformation.isAdreno710_720_732(context)) {
                 envVars.put("TU_DEBUG", "gmem");
             } else {

@@ -517,6 +517,31 @@ fun PluviaMain(
             }
         }
 
+        DialogType.ACCOUNT_SESSION_ACTIVE -> {
+            onConfirmClick = {
+                setMessageDialogState(MessageDialogState(false))
+                viewModel.viewModelScope.launch {
+                    // Kick only the game on the other device and wait briefly for confirmation
+                    SteamService.kickPlayingSession(onlyGame = true)
+                    preLaunchApp(
+                        context = context,
+                        appId = state.launchedAppId,
+                        setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                        setLoadingProgress = viewModel::setLoadingDialogProgress,
+                        setMessageDialogState = setMessageDialogState,
+                        onSuccess = viewModel::launchApp,
+                        isOffline = viewModel.isOffline.value,
+                    )
+                }
+            }
+            onDismissClick = {
+                setMessageDialogState(MessageDialogState(false))
+            }
+            onDismissRequest = {
+                setMessageDialogState(MessageDialogState(false))
+            }
+        }
+
         DialogType.APP_SESSION_SUSPENDED -> {
             onDismissClick = {
                 setMessageDialogState(MessageDialogState(false))
@@ -854,6 +879,26 @@ fun preLaunchApp(
         }
         // must activate container before downloading save files
         containerManager.activateContainer(container)
+
+        // If another game is running on this account elsewhere, prompt user first (cross-app session)
+        try {
+            val currentPlaying = SteamService.getSelfCurrentlyPlayingAppId()
+            if (!isOffline && currentPlaying != null && currentPlaying != gameId) {
+                val otherGameName = SteamService.getAppInfoOf(currentPlaying)?.name ?: "another game"
+                setLoadingDialogVisible(false)
+                setMessageDialogState(
+                    MessageDialogState(
+                        visible = true,
+                        type = DialogType.ACCOUNT_SESSION_ACTIVE,
+                        title = "App Running",
+                        message = "You are logged in on another device already playing ${otherGameName}. \nYou can still play this game, but that will disconnect the other session from Steam.",
+                        confirmBtnText = "Play anyway",
+                        dismissBtnText = "Cancel",
+                    ),
+                )
+                return@launch
+            }
+        } catch (_: Exception) { /* ignore persona read errors */ }
 
         // sync save files and check no pending remote operations are running
         val prefixToPath: (String) -> String = { prefix ->

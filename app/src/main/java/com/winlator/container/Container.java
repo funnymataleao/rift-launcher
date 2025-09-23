@@ -89,6 +89,8 @@ public class Container {
     private byte dinputMapperType = 1;  // 1=standard, 2=XInput mapper
     // Disable external mouse input
     private boolean disableMouseInput = false;
+    // Touchscreen mode
+    private boolean touchscreenMode = false;
     // Steam client type for selecting appropriate Box64 RC config: normal, light, ultralight
     private String steamType = DefaultVersion.STEAM_TYPE;
 
@@ -551,6 +553,8 @@ public class Container {
             data.put("sdlControllerAPI", sdlControllerAPI);
             // Disable mouse input flag
             data.put("disableMouseInput", disableMouseInput);
+            // Touchscreen mode flag
+            data.put("touchscreenMode", touchscreenMode);
             data.put("installPath", installPath);
             data.put("steamType", steamType);
             data.put("language", language);
@@ -693,6 +697,9 @@ public class Container {
                 case "disableMouseInput" :
                     setDisableMouseInput(data.getBoolean(key));
                     break;
+                case "touchscreenMode" :
+                    setTouchscreenMode(data.getBoolean(key));
+                    break;
                 case "installPath":
                     setInstallPath(data.getString(key));
                     break;
@@ -833,5 +840,14 @@ public class Container {
 
     public void setDisableMouseInput(boolean disableMouseInput) {
         this.disableMouseInput = disableMouseInput;
+    }
+
+    // Touchscreen mode
+    public boolean isTouchscreenMode() {
+        return touchscreenMode;
+    }
+
+    public void setTouchscreenMode(boolean touchscreenMode) {
+        this.touchscreenMode = touchscreenMode;
     }
 }

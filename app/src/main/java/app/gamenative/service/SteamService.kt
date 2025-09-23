@@ -144,8 +144,11 @@ import android.os.SystemClock
 import kotlinx.coroutines.ensureActive
 import app.gamenative.enums.Marker
 import app.gamenative.utils.MarkerUtils
+import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.PlayingSessionStateCallback
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 @AndroidEntryPoint
 class SteamService : Service(), IChallengeUrlChanged {
@@ -227,6 +230,9 @@ class SteamService : Service(), IChallengeUrlChanged {
     private var picsGetProductInfoJob: Job? = null
     private var picsChangesCheckerJob: Job? = null
     private var friendCheckerJob: Job? = null
+
+    private val _isPlayingBlocked = MutableStateFlow(false)
+    val isPlayingBlocked = _isPlayingBlocked.asStateFlow()
 
     companion object {
         const val MAX_PICS_BUFFER = 256
@@ -354,6 +360,30 @@ class SteamService : Service(), IChallengeUrlChanged {
             userSteamId?.let { instance?._steamFriends?.requestFriendInfo(it) }
         }
 
+        suspend fun getSelfCurrentlyPlayingAppId(): Int? = withContext(Dispatchers.IO) {
+            val selfId = userSteamId?.convertToUInt64() ?: return@withContext null
+            val self = instance?.friendDao?.findFriend(selfId) ?: return@withContext null
+            if (self.isPlayingGame) self.gameAppID else null
+        }
+
+        suspend fun kickPlayingSession(onlyGame: Boolean = true): Boolean = withContext(Dispatchers.IO) {
+            val user = instance?._steamUser ?: return@withContext false
+            try {
+                instance?._isPlayingBlocked?.value = true
+                user.kickPlayingSession(onlyStopGame = onlyGame)
+
+                // Wait for PlayingSessionStateCallback to indicate unblocked
+                val deadline = System.currentTimeMillis() + 5000
+                while (System.currentTimeMillis() < deadline) {
+                    if (instance?._isPlayingBlocked?.value == false) return@withContext true
+                    delay(100)
+                }
+                false
+            } catch (_: Exception) {
+                false
+            }
+        }
+
         suspend fun getPersonaStateOf(steamId: SteamID): SteamFriend? = withContext(Dispatchers.IO) {
             instance!!.db.steamFriendDao().findFriend(steamId.convertToUInt64())
         }
@@ -384,17 +414,39 @@ class SteamService : Service(), IChallengeUrlChanged {
             }.orEmpty()
         }
 
-        fun getOwnedAppDlc(appId: Int): Map<Int, DepotInfo> = getAppDlc(appId).filter {
-            getPkgInfoOf(it.value.dlcAppId)?.let { pkg ->
-                instance?.steamClient?.let { steamClient ->
-                    pkg.ownerAccountId.contains(steamClient.steamID?.accountID?.toInt())
+        suspend fun getOwnedAppDlc(appId: Int): Map<Int, DepotInfo> {
+            val client      = instance?.steamClient ?: return emptyMap()
+            val accountId   = client.steamID?.accountID?.toInt() ?: return emptyMap()
+            val ownedGameIds = getOwnedGames(userSteamId!!.convertToUInt64()).map { it.appId }.toHashSet()
+
+
+            return getAppDlc(appId).filter { (_, depot) ->
+                when {
+                    /* Base-game depots always download */
+                    depot.dlcAppId == INVALID_APP_ID                  -> true
+
+                    /* Optional DLC depots are skipped */
+                    depot.optionalDlcId == depot.dlcAppId             -> false
+
+                    /* ① licence cache */
+                    instance?.licenseDao?.findLicense(depot.dlcAppId) != null -> true
+
+                    /* ② PICS row */
+                    instance?.appDao?.findApp(depot.dlcAppId) != null -> true
+
+                    /* ③ owned-games list */
+                    depot.dlcAppId in ownedGameIds                    -> true
+
+                    /* ④ final online / cached call */
+                    else                                     -> false
                 }
-            } == true
+            }.toMap()
         }
 
         fun getDownloadableDepots(appId: Int): Map<Int, DepotInfo> {
             val appInfo   = getAppInfoOf(appId) ?: return emptyMap()
-            val ownedDlc  = getOwnedAppDlc(appId)
+            val ownedDlc  = runBlocking { getOwnedAppDlc(appId) }
+            val preferredLanguage = PrefManager.containerLanguage
 
             return appInfo.depots
                 .asSequence()
@@ -412,7 +464,13 @@ class SteamService : Service(), IChallengeUrlChanged {
                     if (!(depot.osArch == OSArch.Arch64 || depot.osArch == OSArch.Unknown || depot.osArch == OSArch.Arch32))
                         return@filter false
                     // 4. DLC you actually own
-                    depot.dlcAppId == INVALID_APP_ID || ownedDlc.containsKey(depot.dlcAppId)
+                    if (depot.dlcAppId != INVALID_APP_ID && !ownedDlc.containsKey(depot.dlcAppId))
+                        return@filter false
+                    // 5. Language filter - if depot has language, it must match preferred language
+                    if (depot.language.isNotEmpty() && depot.language != preferredLanguage)
+                        return@filter false
+
+                    true
                 }
                 .associate { it.toPair() }
         }
@@ -1606,6 +1664,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     add(subscribe(FriendsListCallback::class.java, ::onFriendsList))
                     add(subscribe(EmoticonListCallback::class.java, ::onEmoticonList))
                     add(subscribe(AliasHistoryCallback::class.java, ::onAliasHistory))
+                    add(subscribe(PlayingSessionStateCallback::class.java, ::onPlayingSessionState))
                 }
             }
 
@@ -1894,6 +1953,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                 friendDao.updateNicknames(callback.nicknames)
             }
         }
+    }
+
+    private fun onPlayingSessionState(callback: PlayingSessionStateCallback) {
+        Timber.d("onPlayingSessionState called with isPlayingBlocked = " + callback.isPlayingBlocked)
+        _isPlayingBlocked.value = callback.isPlayingBlocked
     }
 
     private fun onFriendsList(callback: FriendsListCallback) {

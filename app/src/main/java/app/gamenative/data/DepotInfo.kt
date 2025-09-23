@@ -3,6 +3,7 @@ package app.gamenative.data
 import app.gamenative.db.serializers.OsEnumSetSerializer
 import app.gamenative.enums.OS
 import app.gamenative.enums.OSArch
+import app.gamenative.service.SteamService
 import java.util.EnumSet
 import kotlinx.serialization.Serializable
 
@@ -10,6 +11,7 @@ import kotlinx.serialization.Serializable
 data class DepotInfo(
     val depotId: Int,
     val dlcAppId: Int,
+    val optionalDlcId: Int = SteamService.INVALID_APP_ID,
     val depotFromApp: Int,
     val sharedInstall: Boolean,
     @Serializable(with = OsEnumSetSerializer::class)
@@ -17,4 +19,6 @@ data class DepotInfo(
     val osArch: OSArch,
     val manifests: Map<String, ManifestInfo>,
     val encryptedManifests: Map<String, ManifestInfo>,
+    val language: String = "",
+    val realm: String = "",
 )
