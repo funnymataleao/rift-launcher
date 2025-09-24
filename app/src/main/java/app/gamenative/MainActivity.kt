@@ -7,10 +7,12 @@ import android.content.res.Configuration
 import android.graphics.Color.TRANSPARENT
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.OrientationEventListener
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -219,7 +221,7 @@ class MainActivity : ComponentActivity() {
             isChangingConfigurations,
         )
 
-        if (SteamService.isConnected && !SteamService.isLoggedIn && !isChangingConfigurations) {
+        if (SteamService.isConnected && !SteamService.isLoggedIn && !isChangingConfigurations && !SteamService.isGameRunning) {
             Timber.i("Stopping Steam Service")
             SteamService.stop()
         }
@@ -249,7 +251,8 @@ class MainActivity : ComponentActivity() {
         if (!isChangingConfigurations &&
             SteamService.isConnected &&
             !SteamService.hasActiveOperations() &&
-            !SteamService.isLoginInProgress
+            !SteamService.isLoginInProgress &&
+            !SteamService.isGameRunning
         ) {
             Timber.i("Stopping SteamService - no active operations")
             SteamService.stop()
@@ -276,12 +279,16 @@ class MainActivity : ComponentActivity() {
         // TODO: Temp'd removed this.
         //  Idealy, compose handles back presses automaticially in which we can override it in certain composables.
         //  Since LibraryScreen uses its own navigation system, this will need to be re-worked accordingly.
-//        if (!eventDispatched) {
-//            if (event.keyCode == KeyEvent.KEYCODE_BACK) {
-//                PluviaApp.events.emit(AndroidEvent.BackPressed)
-//                eventDispatched = true
-//            }
-//        }
+        if (!eventDispatched) {
+            if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
+                Log.d("MainActivity", "NAV-TOP Back key is pressed!")
+                if (SteamService.isGameRunning){
+                    Log.d("MainActivity", "NAV-TOP Game is running!")
+                    PluviaApp.events.emit(AndroidEvent.BackPressed)
+                    eventDispatched = true
+                }
+            }
+        }
 
         return if (!eventDispatched) super.dispatchKeyEvent(event) else true
     }

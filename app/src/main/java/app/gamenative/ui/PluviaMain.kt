@@ -3,6 +3,8 @@ package app.gamenative.ui
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
@@ -10,6 +12,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -105,6 +108,8 @@ fun PluviaMain(
 
     var isConnecting by rememberSaveable { mutableStateOf(false) }
 
+    var gameBackAction by remember { mutableStateOf<() -> Unit>({}) }
+
     // Process any pending launch request from MainActivity after login
     LaunchedEffect(SteamService.isLoggedIn) {
         if (SteamService.isLoggedIn) {
@@ -183,10 +188,14 @@ fun PluviaMain(
                 }
 
                 MainViewModel.MainUiEvent.OnBackPressed -> {
-                    if (hasBack) {
+                    if (SteamService.isGameRunning){
+                        gameBackAction?.invoke() ?: navController.popBackStack()
+                    } else if (hasBack) {
+                        Timber.d("[PluviaMain]: OnBackPressed hasBack!")
                         // TODO: check if back leads to log out and present confidence modal
                         navController.popBackStack()
                     } else {
+                        Timber.d("[PluviaMain]: OnBackPressed does not hasBack!")
                         // TODO: quit app?
                     }
                 }
@@ -312,7 +321,7 @@ fun PluviaMain(
                 isConnecting = true
                 context.startForegroundService(Intent(context, SteamService::class.java))
             }
-            if (SteamService.isLoggedIn && state.currentScreen == PluviaScreen.LoginUser) {
+            if (SteamService.isLoggedIn && !SteamService.isGameRunning && state.currentScreen == PluviaScreen.LoginUser) {
                 navController.navigate(PluviaScreen.Home.route)
             }
         }
@@ -807,6 +816,10 @@ fun PluviaMain(
                 XServerScreen(
                     appId = state.launchedAppId,
                     bootToContainer = state.bootToContainer,
+                    registerBackAction = { cb ->
+                        Timber.d("registerBackAction called: $cb")
+                        gameBackAction = cb
+                    },
                     navigateBack = {
                         CoroutineScope(Dispatchers.Main).launch {
                             navController.popBackStack()

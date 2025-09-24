@@ -122,6 +122,7 @@ fun XServerScreen(
     lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current,
     appId: String,
     bootToContainer: Boolean,
+    registerBackAction: ( ( ) -> Unit ) -> Unit,
     navigateBack: () -> Unit,
     onExit: () -> Unit,
     onWindowMapped: ((Context, Window) -> Unit)? = null,
@@ -205,7 +206,7 @@ fun XServerScreen(
     var isKeyboardVisible = false
     var areControlsVisible = false
 
-    BackHandler {
+    val gameBack: () -> Unit = gameBack@{
         val imeVisible = ViewCompat.getRootWindowInsets(view)
             ?.isVisible(WindowInsetsCompat.Type.ime()) == true
 
@@ -219,7 +220,7 @@ fun XServerScreen(
                     if (view.windowToken != null) imm.hideSoftInputFromWindow(view.windowToken, 0)
                 }
             }
-            return@BackHandler
+            return@gameBack
         }
 
         Timber.i("BackHandler")
@@ -287,7 +288,14 @@ fun XServerScreen(
                 }
             },
         ).show()
+    }
 
+    DisposableEffect(Unit) {
+        registerBackAction(gameBack)
+        onDispose {
+            Timber.d("XServerScreen leaving, clearing back action")
+            registerBackAction { }
+        }   // reset when screen leaves
     }
 
     DisposableEffect(lifecycleOwner) {
