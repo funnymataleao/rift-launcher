@@ -206,6 +206,8 @@ fun XServerScreen(
     var isKeyboardVisible = false
     var areControlsVisible = false
 
+    val emulateKeyboardMouse = ContainerUtils.getContainer(context, appId).isEmulateKeyboardMouse()
+
     val gameBack: () -> Unit = gameBack@{
         val imeVisible = ViewCompat.getRootWindowInsets(view)
             ?.isVisible(WindowInsetsCompat.Type.ime()) == true
@@ -310,8 +312,7 @@ fun XServerScreen(
 
             var handled = false
             if (isGamepad) {
-                val emulate = try { ContainerUtils.getContainer(context, appId).isEmulateKeyboardMouse() } catch (_: Exception) { false }
-                if (emulate) {
+                if (emulateKeyboardMouse) {
                     handled = PluviaApp.inputControlsView?.onKeyEvent(it.event) == true
                     if (!handled) handled = xServerView!!.getxServer().winHandler.onKeyEvent(it.event)
                 } else {
@@ -329,8 +330,7 @@ fun XServerScreen(
 
             var handled = false
             if (isGamepad) {
-                val emulate = try { ContainerUtils.getContainer(context, appId).isEmulateKeyboardMouse() } catch (_: Exception) { false }
-                if (emulate) {
+                if (emulateKeyboardMouse) {
                     handled = PluviaApp.inputControlsView?.onGenericMotionEvent(it.event) == true
                     if (!handled) handled = xServerView!!.getxServer().winHandler.onGenericMotionEvent(it.event)
                 } else {
