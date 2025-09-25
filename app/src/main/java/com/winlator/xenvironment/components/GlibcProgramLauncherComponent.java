@@ -31,6 +31,8 @@ import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.List;
 
+import app.gamenative.service.SteamService;
+
 public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent {
     private String guestExecutable;
     private static int pid = -1;
@@ -81,6 +83,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             if (preUnpack != null) preUnpack.run();
             pid = execGuestProgram();
             Log.d("GlibcProgramLauncherComponent", "Process " + pid + " started");
+            SteamService.setGameRunning(true);
         }
     }
 
@@ -102,6 +105,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
                     );
                     Process.killProcess(subProcess.pid);
                 }
+                SteamService.setGameRunning(false);
             }
         }
     }
@@ -245,6 +249,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             synchronized (lock) {
                 pid = -1;
             }
+            SteamService.setGameRunning(false);
             if (terminationCallback != null) terminationCallback.call(status);
         });
     }

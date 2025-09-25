@@ -266,6 +266,11 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         private var syncInProgress: Boolean = false
 
+        // Track whether a game is currently running to prevent premature service stop
+        @JvmStatic
+        @Volatile
+        var isGameRunning: Boolean = false
+
         var isStopping: Boolean = false
             private set
         var isConnected: Boolean = false
@@ -1763,6 +1768,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         isConnected = false
         isLoggingOut = false
         isWaitingForQRAuth = false
+        isGameRunning = false
 
         steamClient = null
         _steamUser = null
