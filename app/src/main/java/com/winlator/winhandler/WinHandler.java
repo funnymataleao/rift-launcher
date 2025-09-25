@@ -514,6 +514,15 @@ public class WinHandler {
     public boolean onGenericMotionEvent(MotionEvent event) {
         boolean handled = false;
         ExternalController externalController = this.currentController;
+        // Adopt newly connected controller if deviceId mismatches
+        if ((externalController == null || externalController.getDeviceId() != event.getDeviceId()) && ExternalController.isJoystickDevice(event)) {
+            ExternalController adopted = ExternalController.getController(event.getDeviceId());
+            if (adopted != null) {
+                this.currentController = adopted;
+                externalController = adopted;
+                Timber.d("WinHandler.onGenericMotionEvent: adopted controller %s(#%d)", adopted.getName(), adopted.getDeviceId());
+            }
+        }
         if (externalController != null && externalController.getDeviceId() == event.getDeviceId() && (handled = this.currentController.updateStateFromMotionEvent(event))) {
             if (handled) {
                 sendGamepadState();
@@ -525,6 +534,20 @@ public class WinHandler {
     public boolean onKeyEvent(KeyEvent event) {
         boolean handled = false;
         ExternalController externalController = this.currentController;
+        // If this is a gamepad event but our controller is null or mismatched, adopt it
+        InputDevice device = event.getDevice();
+        if ((externalController == null || externalController.getDeviceId() != event.getDeviceId())
+                && device != null && ExternalController.isGameController(device)
+                && event.getRepeatCount() == 0) {
+            ExternalController adopted = ExternalController.getController(event.getDeviceId());
+            if (adopted != null) {
+                this.currentController = adopted;
+                externalController = adopted;
+                Timber.d("WinHandler.onKeyEvent: adopted controller %s(#%d)", adopted.getName(), adopted.getDeviceId());
+            }
+        }
+
+
         if (externalController != null && externalController.getDeviceId() == event.getDeviceId() && event.getRepeatCount() == 0) {
             int action = event.getAction();
             if (action == KeyEvent.ACTION_DOWN) {
