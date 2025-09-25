@@ -281,9 +281,7 @@ class MainActivity : ComponentActivity() {
         //  Since LibraryScreen uses its own navigation system, this will need to be re-worked accordingly.
         if (!eventDispatched) {
             if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
-                Log.d("MainActivity", "NAV-TOP Back key is pressed!")
                 if (SteamService.isGameRunning){
-                    Log.d("MainActivity", "NAV-TOP Game is running!")
                     PluviaApp.events.emit(AndroidEvent.BackPressed)
                     eventDispatched = true
                 }

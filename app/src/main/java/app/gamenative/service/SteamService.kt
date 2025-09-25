@@ -1768,6 +1768,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         isConnected = false
         isLoggingOut = false
         isWaitingForQRAuth = false
+        isGameRunning = false
 
         steamClient = null
         _steamUser = null

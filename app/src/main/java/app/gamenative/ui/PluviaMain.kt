@@ -108,7 +108,7 @@ fun PluviaMain(
 
     var isConnecting by rememberSaveable { mutableStateOf(false) }
 
-    var gameBackAction by remember { mutableStateOf<() -> Unit>({}) }
+    var gameBackAction by remember { mutableStateOf<() -> Unit?>({}) }
 
     // Process any pending launch request from MainActivity after login
     LaunchedEffect(SteamService.isLoggedIn) {
@@ -189,13 +189,11 @@ fun PluviaMain(
 
                 MainViewModel.MainUiEvent.OnBackPressed -> {
                     if (SteamService.isGameRunning){
-                        gameBackAction?.invoke() ?: navController.popBackStack()
+                        gameBackAction?.invoke() ?: run { navController.popBackStack() }
                     } else if (hasBack) {
-                        Timber.d("[PluviaMain]: OnBackPressed hasBack!")
                         // TODO: check if back leads to log out and present confidence modal
                         navController.popBackStack()
                     } else {
-                        Timber.d("[PluviaMain]: OnBackPressed does not hasBack!")
                         // TODO: quit app?
                     }
                 }
