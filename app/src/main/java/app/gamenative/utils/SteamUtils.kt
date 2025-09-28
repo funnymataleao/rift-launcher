@@ -650,8 +650,10 @@ object SteamUtils {
         }
         val depotsFile = settingsDir.resolve("depots.txt")
         if (Files.notExists(depotsFile)) {
-            Files.createFile(depotsFile)
-            depotsFile.toFile().writeText(SteamService.getInstalledDepotsOf(steamAppId)?.joinToString(separator = System.lineSeparator()).toString())
+            SteamService.getInstalledDepotsOf(steamAppId)?.let { depotsList ->
+                Files.createFile(depotsFile)
+                depotsFile.toFile().writeText(depotsList.joinToString(System.lineSeparator()))
+            }
         }
 
         val configsIni = settingsDir.resolve("configs.user.ini")

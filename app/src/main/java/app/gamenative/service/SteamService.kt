@@ -896,7 +896,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
                 if (percent >= 100) {
                     MarkerUtils.addMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
-                    runBlocking { instance?.appInfoDao?.insert(AppInfo(appId, isDownloaded = true, downloadedDepots = depotIds)) }
+                    runBlocking { instance?.appInfoDao?.insert(AppInfo(appId, isDownloaded = true, downloadedDepots = entitledDepotIds)) }
                     MarkerUtils.removeMarker(getAppDirPath(appId), Marker.STEAM_DLL_REPLACED)
                 }
             }
