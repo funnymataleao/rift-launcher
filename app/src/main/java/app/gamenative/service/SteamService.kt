@@ -414,6 +414,10 @@ class SteamService : Service(), IChallengeUrlChanged {
             return runBlocking(Dispatchers.IO) { instance?.appInfoDao?.getInstalledDepots(appId)?.downloadedDepots }
         }
 
+        fun getDlcDepotsOf(appId: Int): List<Int>? {
+            return runBlocking(Dispatchers.IO) { instance?.appInfoDao?.getInstalledDepots(appId)?.dlcDepots }
+        }
+
         fun getAppDownloadInfo(appId: Int): DownloadInfo? {
             return downloadJobs[appId]
         }
@@ -895,8 +899,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                     lastPercent = percent
                 }
                 if (percent >= 100) {
+                    val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
                     MarkerUtils.addMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
-                    runBlocking { instance?.appInfoDao?.insert(AppInfo(appId, isDownloaded = true, downloadedDepots = entitledDepotIds)) }
+                    runBlocking { instance?.appInfoDao?.insert(AppInfo(appId, isDownloaded = true, downloadedDepots = entitledDepotIds,
+                        dlcDepots = ownedDlc.values.map { it.dlcAppId }.distinct())) }
                     MarkerUtils.removeMarker(getAppDirPath(appId), Marker.STEAM_DLL_REPLACED)
                 }
             }
