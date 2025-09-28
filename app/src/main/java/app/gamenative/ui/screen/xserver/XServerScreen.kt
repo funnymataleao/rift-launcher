@@ -1042,7 +1042,7 @@ private fun setupXEnvironment(
     if (captureLogs) {
         val wineLogDir = File(context.getExternalFilesDir(null), "wine_logs")
         wineLogDir.mkdirs()
-        val logFile = File(wineLogDir, "wine_debug.log")
+        logFile = File(wineLogDir, "wine_debug.log")
         if (logFile.exists()) logFile.delete()
     }
 
