@@ -676,6 +676,19 @@ object SteamUtils {
         if (Files.notExists(configsIni)) Files.createFile(configsIni)
         configsIni.toFile().writeText(iniContent)
 
+        val appIni = settingsDir.resolve("configs.app.ini")
+        val dlcIds = SteamService.getDlcDepotsOf(steamAppId)
+        val dlcLines = dlcIds?.joinToString("\n") { id -> "$id=dlc$id" }
+
+        val appIniContent = """
+            [app::dlcs]
+            unlock_all=0
+            $dlcLines
+        """.trimIndent()
+
+        if (Files.notExists(appIni)) Files.createFile(appIni)
+        appIni.toFile().writeText(appIniContent)
+
         // Write supported languages list
         val supportedLanguagesFile = settingsDir.resolve("supported_languages.txt")
         if (Files.notExists(supportedLanguagesFile)) {
