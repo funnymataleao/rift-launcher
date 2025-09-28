@@ -141,6 +141,8 @@ import kotlinx.coroutines.withTimeout
 import timber.log.Timber
 import java.lang.NullPointerException
 import android.os.SystemClock
+import app.gamenative.data.AppInfo
+import app.gamenative.db.dao.AppInfoDao
 import kotlinx.coroutines.ensureActive
 import app.gamenative.enums.Marker
 import app.gamenative.utils.MarkerUtils
@@ -173,6 +175,9 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     @Inject
     lateinit var changeNumbersDao: ChangeNumbersDao
+
+    @Inject
+    lateinit var appInfoDao: AppInfoDao
 
     @Inject
     lateinit var fileChangeListsDao: FileChangeListsDao
@@ -403,6 +408,10 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         fun getAppInfoOf(appId: Int): SteamApp? {
             return runBlocking(Dispatchers.IO) { instance?.appDao?.findApp(appId) }
+        }
+
+        fun getInstalledDepotsOf(appId: Int): List<Int>? {
+            return runBlocking(Dispatchers.IO) { instance?.appInfoDao?.getInstalledDepots(appId)?.downloadedDepots }
         }
 
         fun getAppDownloadInfo(appId: Int): DownloadInfo? {
@@ -687,6 +696,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             with(instance!!) {
                 scope.launch {
                     db.withTransaction {
+                        appInfoDao.deleteApp(appId)
                         changeNumbersDao.deleteByAppId(appId)
                         fileChangeListsDao.deleteByAppId(appId)
                     }
@@ -864,8 +874,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                     downloadJobs.remove(appId)
                     // Write download complete marker on disk
-                    MarkerUtils.addMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
-                    MarkerUtils.removeMarker(getAppDirPath(appId), Marker.STEAM_DLL_REPLACED)
                 })
             }
 
@@ -885,6 +893,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                 val percent = (p * 100).toInt()
                 if (percent != lastPercent) {          // only when it really changed
                     lastPercent = percent
+                }
+                if (percent >= 100) {
+                    MarkerUtils.addMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
+                    runBlocking { instance?.appInfoDao?.insert(AppInfo(appId, isDownloaded = true, downloadedDepots = entitledDepotIds)) }
+                    MarkerUtils.removeMarker(getAppDirPath(appId), Marker.STEAM_DLL_REPLACED)
                 }
             }
             return info
