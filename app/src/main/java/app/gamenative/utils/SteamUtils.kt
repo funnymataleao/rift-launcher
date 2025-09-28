@@ -648,6 +648,11 @@ object SteamUtils {
             Files.createFile(appIdFile)
             appIdFile.toFile().writeText(steamAppId.toString())
         }
+        val depotsFile = settingsDir.resolve("depots.txt")
+        if (Files.notExists(depotsFile)) {
+            Files.createFile(depotsFile)
+            depotsFile.toFile().writeText(SteamService.getInstalledDepotsOf(steamAppId)?.joinToString(separator = System.lineSeparator()).toString())
+        }
 
         val configsIni = settingsDir.resolve("configs.user.ini")
         val accountName   = PrefManager.username
