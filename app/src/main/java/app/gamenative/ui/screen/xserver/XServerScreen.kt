@@ -1139,10 +1139,7 @@ private fun setupXEnvironment(
         Timber.i("Adding VortekRendererComponent to Environment")
         val gcfg = KeyValueSet(container.getGraphicsDriverConfig())
         val graphicsDriver = xServerState.value.graphicsDriver
-        if (graphicsDriver == "adreno"){
-            gcfg.put("adrenotoolsDriver", "vulkan.ad8190.so")
-            container.setGraphicsDriverConfig(gcfg.toString())
-        } else if (graphicsDriver == "sd-8-elite") {
+        if (graphicsDriver == "sd-8-elite" || graphicsDriver == "adreno") {
             gcfg.put("adrenotoolsDriver", "vulkan.adreno.so")
             container.setGraphicsDriverConfig(gcfg.toString())
         }
@@ -1639,7 +1636,7 @@ private fun extractDXWrapperFiles(
             Timber.i("Extracting VKD3D D3D12 DLLs for dxwrapper: $dxwrapper")
             // Determine graphics driver to choose DXVK version
             val vortekLike = container.graphicsDriver == "vortek" || container.graphicsDriver == "adreno" || container.graphicsDriver == "sd-8-elite"
-            val dxvkVersionForVkd3d = if (vortekLike) "1.10.3" else "2.3.1"
+            val dxvkVersionForVkd3d = if (vortekLike) "1.10.3" else "2.4.1"
             Timber.i("Extracting VKD3D DX version for dxwrapper: $dxvkVersionForVkd3d")
             TarCompressorUtils.extract(
                 TarCompressorUtils.Type.ZSTD, context.assets,
@@ -1805,6 +1802,8 @@ private fun extractGraphicsDriverFiles(
     val turnipVersion = container.graphicsDriverVersion.takeIf { it.isNotEmpty() && graphicsDriver == "turnip" } ?: DefaultVersion.TURNIP
     val virglVersion = container.graphicsDriverVersion.takeIf { it.isNotEmpty() && graphicsDriver == "virgl" } ?: DefaultVersion.VIRGL
     val zinkVersion = container.graphicsDriverVersion.takeIf { it.isNotEmpty() && graphicsDriver == "zink" } ?: DefaultVersion.ZINK
+    val adrenoVersion = container.graphicsDriverVersion.takeIf { it.isNotEmpty() && graphicsDriver == "adreno" } ?: DefaultVersion.ADRENO
+    val sd8EliteVersion = container.graphicsDriverVersion.takeIf { it.isNotEmpty() && graphicsDriver == "sd-8-elite" } ?: DefaultVersion.SD8ELITE
 
     var cacheId = graphicsDriver
     if (graphicsDriver == "turnip") {
@@ -1843,7 +1842,8 @@ private fun extractGraphicsDriverFiles(
     if (dxwrapper.contains("dxvk")) {
         DXVKHelper.setEnvVars(context, dxwrapperConfig, envVars)
     } else if (dxwrapper.contains("vkd3d")) {
-        envVars.put("VKD3D_FEATURE_LEVEL", "12_1")
+        val featureLevel = dxwrapperConfig.get("vkd3dFeatureLevel", "12_1")
+        envVars.put("VKD3D_FEATURE_LEVEL", featureLevel)
     }
 
     if (graphicsDriver == "turnip") {
@@ -1908,7 +1908,7 @@ private fun extractGraphicsDriverFiles(
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "graphics_driver/zink-22.2.5.tzst", rootDir)
         }
     } else if (graphicsDriver == "adreno" || graphicsDriver == "sd-8-elite") {
-        val assetZip = if (graphicsDriver == "adreno") "Adreno_819.2_adpkg.zip" else "SD8Elite_800.35.zip"
+        val assetZip = if (graphicsDriver == "adreno") "Adreno_${adrenoVersion}_adpkg.zip" else "SD8Elite_${sd8EliteVersion}.zip"
 
         val componentRoot = com.winlator.core.GeneralComponents.getComponentDir(
             com.winlator.core.GeneralComponents.Type.ADRENOTOOLS_DRIVER,
@@ -1930,7 +1930,7 @@ private fun extractGraphicsDriverFiles(
             destinationDir.mkdirs()
             com.winlator.core.FileUtils.extractZipFromAssets(context, assetZip, destinationDir)
 
-            val targetLibName = if (graphicsDriver == "adreno") "vulkan.ad8190.so" else "vulkan.adreno.so"
+            val targetLibName = "vulkan.adreno.so"
 
             // Update cache and only the adrenotoolsDriver key within graphics driver config
             container.putExtra("graphicsDriverAdreno", adrenoCacheId)

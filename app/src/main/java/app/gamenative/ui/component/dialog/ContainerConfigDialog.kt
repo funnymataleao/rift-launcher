@@ -100,6 +100,7 @@ fun ContainerConfigDialog(
         val graphicsDrivers = stringArrayResource(R.array.graphics_driver_entries).toList()
         val dxWrappers = stringArrayResource(R.array.dxwrapper_entries).toList()
         val dxvkVersionsAll = stringArrayResource(R.array.dxvk_version_entries).toList()
+        val vkd3dVersions = stringArrayResource(R.array.vkd3d_version_entries).toList()
         val audioDrivers = stringArrayResource(R.array.audio_driver_entries).toList()
         val gpuCards = ContainerUtils.getGPUCards(context)
         val renderingModes = stringArrayResource(R.array.offscreen_rendering_modes).toList()
@@ -218,7 +219,13 @@ fun ContainerConfigDialog(
             val isVKD3D = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "vkd3d"
             if (isVKD3D) {
                 val kvs = KeyValueSet(config.dxwrapperConfig)
-                kvs.put("vkd3dVersion", vkd3dForcedVersion())
+                if (kvs.get("vkd3dVersion").isEmpty()) {
+                    kvs.put("vkd3dVersion", vkd3dForcedVersion())
+                }
+                // Ensure a default VKD3D feature level is set
+                if (kvs.get("vkd3dFeatureLevel").isEmpty()) {
+                    kvs.put("vkd3dFeatureLevel", "12_1")
+                }
                 config = config.copy(dxwrapperConfig = kvs.toString())
             }
         }
@@ -646,22 +653,39 @@ fun ContainerConfigDialog(
                             run {
                                 val isVKD3D = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "vkd3d"
                                 if (isVKD3D) {
-                                    val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
-                                    val isVortekLike = driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite"
                                     val label = "VKD3D Version"
-                                    val version = vkd3dForcedVersion()
-
-                                    // Save VKD3D version in config - exact same pattern as DXVK
-                                    val currentConfig = KeyValueSet(config.dxwrapperConfig)
-                                    currentConfig.put("vkd3dVersion", version)
-                                    config = config.copy(dxwrapperConfig = currentConfig.toString())
+                                    val availableVersions = vkd3dVersions
+                                    val selectedVersion = KeyValueSet(config.dxwrapperConfig).get("vkd3dVersion").ifEmpty { vkd3dForcedVersion() }
+                                    val selectedIndex = availableVersions.indexOf(selectedVersion).coerceAtLeast(0)
 
                                     SettingsListDropdown(
                                         colors = settingsTileColors(),
                                         title = { Text(text = label) },
-                                        value = 0,
-                                        items = listOf(version),
-                                        onItemSelected = { _ -> },
+                                        value = selectedIndex,
+                                        items = availableVersions,
+                                        onItemSelected = { idx ->
+                                            val currentConfig = KeyValueSet(config.dxwrapperConfig)
+                                            currentConfig.put("vkd3dVersion", availableVersions[idx])
+                                            config = config.copy(dxwrapperConfig = currentConfig.toString())
+                                        },
+                                    )
+
+                                    // VKD3D Feature Level selector
+                                    val featureLevels = listOf("12_2", "12_1", "12_0", "11_1", "11_0")
+                                    val cfg = KeyValueSet(config.dxwrapperConfig)
+                                    val currentLevel = cfg.get("vkd3dFeatureLevel", "12_1")
+                                    val currentLevelIndex = featureLevels.indexOf(currentLevel).coerceAtLeast(0)
+                                    SettingsListDropdown(
+                                        colors = settingsTileColors(),
+                                        title = { Text(text = "VKD3D Feature Level") },
+                                        value = currentLevelIndex,
+                                        items = featureLevels,
+                                        onItemSelected = {
+                                            val selected = featureLevels[it]
+                                            val currentConfig = KeyValueSet(config.dxwrapperConfig)
+                                            currentConfig.put("vkd3dFeatureLevel", selected)
+                                            config = config.copy(dxwrapperConfig = currentConfig.toString())
+                                        },
                                     )
                                 }
                             }

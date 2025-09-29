@@ -13,5 +13,7 @@ public abstract class DefaultVersion {
     public static String VKD3D = "2.14.1";
     public static final String CNC_DDRAW = "6.6";
     public static final String VORTEK = "2.0-22.2.5";
+    public static final String ADRENO = "819.2";
+    public static final String SD8ELITE = "800.51";
     public static String STEAM_TYPE = STEAM_TYPE_NORMAL;
 }
