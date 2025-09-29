@@ -147,6 +147,7 @@ import kotlinx.coroutines.ensureActive
 import app.gamenative.enums.Marker
 import app.gamenative.utils.MarkerUtils
 import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.PlayingSessionStateCallback
+import `in`.dragonbra.javasteam.steam.steamclient.AsyncJobFailedException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -482,7 +483,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     if (!(depot.osArch == OSArch.Arch64 || depot.osArch == OSArch.Unknown || depot.osArch == OSArch.Arch32))
                         return@filter false
                     // 4. DLC you actually own
-                    if (depot.dlcAppId != INVALID_APP_ID && !ownedDlc.containsKey(depot.dlcAppId))
+                    if (depot.dlcAppId != INVALID_APP_ID && !ownedDlc.containsKey(depot.depotId))
                         return@filter false
                     // 5. Language filter - if depot has language, it must match preferred language
                     if (depot.language.isNotEmpty() && depot.language != preferredLanguage)
@@ -2280,6 +2281,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
             } catch (e: NullPointerException) {
                 Timber.w("No lastPICSChangeNumber, skipping")
+            } catch (e: AsyncJobFailedException) {
+                Timber.w("AsyncJobFailedException, skipping")
             }
         }
     }

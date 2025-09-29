@@ -678,13 +678,12 @@ object SteamUtils {
 
         val appIni = settingsDir.resolve("configs.app.ini")
         val dlcIds = SteamService.getDlcDepotsOf(steamAppId)
-        val dlcLines = dlcIds?.joinToString("\n") { id -> "$id=dlc$id" }
 
-        val appIniContent = """
-            [app::dlcs]
-            unlock_all=0
-            $dlcLines
-        """.trimIndent()
+        val appIniContent = buildString {
+            appendLine("[app::dlcs]")
+            appendLine("unlock_all=0")
+            dlcIds?.forEach { appendLine("$it=dlc$it") }
+        }
 
         if (Files.notExists(appIni)) Files.createFile(appIni)
         appIni.toFile().writeText(appIniContent)
