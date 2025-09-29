@@ -41,9 +41,11 @@
     </string-array>
     <string-array name="adreno_version_entries">
         <item>819.2</item>
+        <item>805</item>
     </string-array>
     <string-array name="sd8elite_version_entries">
-        <item>800.35</item>
+        <item>800.51</item>
+        <item>2-842.6</item>
     </string-array>
     <string-array name="audio_driver_entries">
         <item>ALSA</item>
@@ -65,9 +67,15 @@
         <item>1.10.3</item>
         <item>1.10.9-sarek</item>
         <item>1.9.2</item>
-        <item>2.3.1</item>
-        <item>2.4-gplasync</item>
+        <item>2.4.1</item>
+        <item>2.4.1-gplasync</item>
         <item>async-1.10.3</item>
+    </string-array>
+    <string-array name="vkd3d_version_entries">
+        <item>2.6</item>
+        <item>2.12</item>
+        <item>2.13</item>
+        <item>2.14.1</item>
     </string-array>
     <string-array name="dxvk_max_device_memory_entries">
         <item>0 (Default)</item>

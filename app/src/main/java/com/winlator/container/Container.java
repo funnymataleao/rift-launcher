@@ -524,6 +524,7 @@ public class Container {
             data.put("cpuListWoW64", cpuListWoW64);
             data.put("graphicsDriver", graphicsDriver);
             data.put("graphicsDriverVersion", graphicsDriverVersion); // Ensure this is added
+            if (!graphicsDriverConfig.isEmpty()) data.put("graphicsDriverConfig", graphicsDriverConfig);
             data.put("dxwrapper", dxwrapper);
             if (!dxwrapperConfig.isEmpty()) data.put("dxwrapperConfig", dxwrapperConfig);
             data.put("audioDriver", audioDriver);
@@ -601,6 +602,9 @@ public class Container {
                     break;
                 case "graphicsDriverVersion":
                     setGraphicsDriverVersion(data.getString(key));
+                    break;
+                case "graphicsDriverConfig" :
+                    setGraphicsDriverConfig(data.getString(key));
                     break;
                 case "wincomponents" :
                     setWinComponents(data.getString(key));
