@@ -34,6 +34,8 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
 
     private native void destroyVkContext(long j);
 
+    private native boolean handleExtraDataRequest(long j, int i, int i2);
+
     private native void initVulkanWrapper(String str, String str2);
 
     static {
@@ -42,7 +44,7 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
 
     public static class Options {
         public int vkMaxVersion = VortekRendererComponent.VK_MAX_VERSION;
-        public short maxDeviceMemory = 4096;
+        public short maxDeviceMemory = 0;
         public short imageCacheSize = 256;
         public byte resourceMemoryType = 0;
         public String[] exposedDeviceExtensions = null;
@@ -56,8 +58,6 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
             String exposedDeviceExtensions = config.get("exposedDeviceExtensions", "all");
             if (!exposedDeviceExtensions.isEmpty() && !exposedDeviceExtensions.equals("all")) {
                 options.exposedDeviceExtensions = exposedDeviceExtensions.split("\\|");
-            } else {
-                options.exposedDeviceExtensions = GPUHelper.vkGetDeviceExtensions();
             }
             String str = VortekConfigDialog.DEFAULT_VK_MAX_VERSION;
             String vkMaxVersion = config.get("vkMaxVersion", str);
@@ -65,7 +65,7 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
                 String[] parts = vkMaxVersion.split("\\.");
                 options.vkMaxVersion = GPUHelper.vkMakeVersion(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]), 128);
             }
-            options.maxDeviceMemory = (short) config.getInt("maxDeviceMemory", 4096);
+            options.maxDeviceMemory = (short) config.getInt("maxDeviceMemory");
             options.imageCacheSize = (short) config.getInt("imageCacheSize", 256);
             options.resourceMemoryType = (byte) config.getInt("resourceMemoryType");
             String adrenotoolsDriver = config.get("adrenotoolsDriver");
@@ -90,7 +90,7 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
         }
         XConnectorEpoll xConnectorEpoll = new XConnectorEpoll(this.socketConfig, this, this);
         this.connector = xConnectorEpoll;
-        xConnectorEpoll.setInitialInputBufferCapacity(1);
+        xConnectorEpoll.setInitialInputBufferCapacity(8);
         this.connector.setInitialOutputBufferCapacity(0);
         this.connector.start();
     }
@@ -166,16 +166,23 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
     @Override // com.winlator.xconnector.RequestHandler
     public boolean handleRequest(Client client) throws IOException {
         XInputStream inputStream = client.getInputStream();
-        if (inputStream.available() < 1) {
+        if (inputStream.available() < 8) {
             return false;
         }
-        byte requestCode = inputStream.readByte();
+        int requestCode = inputStream.readInt();
+        int requestLength = inputStream.readInt();
         if (requestCode == 1) {
             long contextPtr = createVkContext(client.clientSocket.fd, this.options);
             if (contextPtr > 0) {
                 client.setTag(Long.valueOf(contextPtr));
             } else {
                 this.connector.killConnection(client);
+            }
+        } else if (requestCode > 32767 && (requestCode >> 16) == 2) {
+            int requestId = 65535 & requestCode;
+            boolean success = handleExtraDataRequest(((Long) client.getTag()).longValue(), requestId, requestLength);
+            if (!success) {
+                throw new IOException("Failed to handle extra data request.");
             }
         }
         return true;
