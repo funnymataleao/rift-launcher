@@ -77,6 +77,7 @@ import com.winlator.core.envvars.EnvVarInfo
 import com.winlator.core.envvars.EnvVars
 import com.winlator.core.envvars.EnvVarSelectionType
 import com.winlator.core.DefaultVersion
+import com.winlator.core.GPUHelper
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -236,7 +237,7 @@ fun ContainerConfigDialog(
             val isVortekLike  = driverType in listOf("vortek", "adreno", "sd-8-elite")
 
             val isVKD3D       = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "vkd3d"
-            val constrained   = if (isVortekLike)
+            val constrained   = if (isVortekLike && GPUHelper.vkGetApiVersion() < GPUHelper.vkMakeVersion(1, 3, 0))
                 listOf("1.10.3", "1.10.9-sarek", "1.9.2", "async-1.10.3")
             else
                 dxvkVersionsAll
@@ -729,7 +730,7 @@ fun ContainerConfigDialog(
                                 val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
                                 val isVortekLike = driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite"
                                 val isVKD3D = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "vkd3d"
-                                val items = if (isVortekLike) listOf("1.10.3", "1.10.9-sarek", "1.9.2", "async-1.10.3") else dxvkVersionsAll
+                                val items = if (isVortekLike && GPUHelper.vkGetApiVersion() < GPUHelper.vkMakeVersion(1, 3, 0)) listOf("1.10.3", "1.10.9-sarek", "1.9.2", "async-1.10.3") else dxvkVersionsAll
                                 if (!isVKD3D) {
                                     SettingsListDropdown(
                                         colors = settingsTileColors(),
@@ -748,7 +749,7 @@ fun ContainerConfigDialog(
                                     )
                                 } else {
                                     // Ensure default version for vortek-like when hidden
-                                    val version = if (isVortekLike) "1.10.3" else "2.3.1"
+                                    val version = if (isVortekLike) "1.10.3" else "2.4.1"
                                     val currentConfig = KeyValueSet(config.dxwrapperConfig)
                                     currentConfig.put("version", version)
                                     config = config.copy(dxwrapperConfig = currentConfig.toString())

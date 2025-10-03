@@ -1,13 +1,30 @@
 package com.winlator.core;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+import androidx.collection.ArrayMap;
+import dalvik.annotation.optimization.CriticalNative;
+import java.util.Locale;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.microedition.khronos.egl.EGL10;
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.egl.EGLContext;
+import javax.microedition.khronos.egl.EGLDisplay;
+import javax.microedition.khronos.egl.EGLSurface;
+import javax.microedition.khronos.opengles.GL10;
 
 public abstract class GPUHelper {
+    public static int VK_API_VERSION_1_3 = vkMakeVersion(1, 3, 0);
+
+    @CriticalNative
+    public static native int vkGetApiVersion();
+
     public static native String[] vkGetDeviceExtensions();
 
     static {
-        System.loadLibrary("winlator_10");
+        System.loadLibrary("winlator_11");
     }
 
     public static int vkMakeVersion(String value) {

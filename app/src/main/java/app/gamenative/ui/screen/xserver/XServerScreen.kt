@@ -51,6 +51,7 @@ import com.winlator.core.Callback
 import com.winlator.core.DXVKHelper
 import com.winlator.core.DefaultVersion
 import com.winlator.core.FileUtils
+import com.winlator.core.GPUHelper
 import com.winlator.core.GPUInformation
 import com.winlator.core.KeyValueSet
 import com.winlator.core.OnExtractFileListener
@@ -1636,7 +1637,7 @@ private fun extractDXWrapperFiles(
             Timber.i("Extracting VKD3D D3D12 DLLs for dxwrapper: $dxwrapper")
             // Determine graphics driver to choose DXVK version
             val vortekLike = container.graphicsDriver == "vortek" || container.graphicsDriver == "adreno" || container.graphicsDriver == "sd-8-elite"
-            val dxvkVersionForVkd3d = if (vortekLike) "1.10.3" else "2.4.1"
+            val dxvkVersionForVkd3d = if (vortekLike && GPUHelper.vkGetApiVersion() < GPUHelper.vkMakeVersion(1, 3, 0)) "1.10.3" else "2.4.1"
             Timber.i("Extracting VKD3D DX version for dxwrapper: $dxvkVersionForVkd3d")
             TarCompressorUtils.extract(
                 TarCompressorUtils.Type.ZSTD, context.assets,
@@ -1904,7 +1905,7 @@ private fun extractGraphicsDriverFiles(
             envVars.put("WINE_D3D_CONFIG", "renderer=gdi")
         }
         if (changed) {
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "graphics_driver/vortek-2.0.tzst", rootDir)
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "graphics_driver/vortek-2.1.tzst", rootDir)
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "graphics_driver/zink-22.2.5.tzst", rootDir)
         }
     } else if (graphicsDriver == "adreno" || graphicsDriver == "sd-8-elite") {
@@ -1946,7 +1947,7 @@ private fun extractGraphicsDriverFiles(
             envVars.put("WINE_D3D_CONFIG", "renderer=gdi")
         }
         if (changed) {
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "graphics_driver/vortek-2.0.tzst", rootDir)
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "graphics_driver/vortek-2.1.tzst", rootDir)
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "graphics_driver/zink-22.2.5.tzst", rootDir)
         }
     }
