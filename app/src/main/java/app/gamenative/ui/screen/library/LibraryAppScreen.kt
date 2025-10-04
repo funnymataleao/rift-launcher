@@ -130,6 +130,8 @@ import app.gamenative.enums.SaveLocation
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.ui.graphics.compositeOver
+import app.gamenative.PluviaApp
+import app.gamenative.events.AndroidEvent
 import app.gamenative.utils.MarkerUtils
 import kotlinx.coroutines.withContext
 
@@ -681,20 +683,6 @@ fun AppScreen(
 //                                    }
 //                            ),
                             AppMenuOption(
-                                AppOptionMenuType.Uninstall,
-                                onClick = {
-                                    // TODO: show loading screen of delete progress
-                                    msgDialogState = MessageDialogState(
-                                        visible = true,
-                                        type = DialogType.DELETE_APP,
-                                        title = context.getString(R.string.delete_prompt_title),
-                                        message = "Are you sure you want to delete this app?",
-                                        confirmBtnText = context.getString(R.string.delete_app),
-                                        dismissBtnText = context.getString(R.string.cancel),
-                                    )
-                                },
-                            ),
-                            AppMenuOption(
                                 AppOptionMenuType.ForceCloudSync,
                                 onClick = {
                                     PostHog.capture(event = "cloud_sync_forced",
@@ -732,79 +720,16 @@ fun AppScreen(
                                     }
                                 },
                             ),
-                            AppMenuOption(
-                                AppOptionMenuType.ForceDownloadRemote,
-                                onClick = {
-                                    PostHog.capture(event = "force_download_remote",
-                                        properties = mapOf(
-                                            "game_name" to appInfo.name
-                                        ))
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        val containerManager = ContainerManager(context)
-                                        val container = ContainerUtils.getOrCreateContainer(context, appId)
-                                        containerManager.activateContainer(container)
-
-                                        val prefixToPath: (String) -> String = { prefix ->
-                                            PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
-                                        }
-                                        val syncResult = SteamService.forceSyncUserFiles(
-                                            appId = gameId,
-                                            prefixToPath = prefixToPath,
-                                            preferredSave = SaveLocation.Remote,
-                                            overrideLocalChangeNumber = -1L
-                                        ).await()
-
-                                        scope.launch(Dispatchers.Main) {
-                                            when (syncResult.syncResult) {
-                                                SyncResult.Success -> {
-                                                    Toast.makeText(context, "Remote saves downloaded successfully", Toast.LENGTH_SHORT).show()
-                                                }
-                                                else -> {
-                                                    Toast.makeText(context, "Download failed: ${syncResult.syncResult}", Toast.LENGTH_SHORT).show()
-                                                }
-                                            }
-                                        }
-                                    }
-                                },
-                            ),
-                            AppMenuOption(
-                                AppOptionMenuType.ForceUploadLocal,
-                                onClick = {
-                                    PostHog.capture(event = "force_upload_local",
-                                        properties = mapOf(
-                                            "game_name" to appInfo.name
-                                        ))
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        val containerManager = ContainerManager(context)
-                                        val container = ContainerUtils.getOrCreateContainer(context, appId)
-                                        containerManager.activateContainer(container)
-
-                                        val prefixToPath: (String) -> String = { prefix ->
-                                            PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
-                                        }
-                                        val syncResult = SteamService.forceSyncUserFiles(
-                                            appId = gameId,
-                                            prefixToPath = prefixToPath,
-                                            preferredSave = SaveLocation.Local
-                                        ).await()
-
-                                        scope.launch(Dispatchers.Main) {
-                                            when (syncResult.syncResult) {
-                                                SyncResult.Success -> {
-                                                    Toast.makeText(context, "Local saves uploaded successfully", Toast.LENGTH_SHORT).show()
-                                                }
-                                                else -> {
-                                                    Toast.makeText(context, "Upload failed: ${syncResult.syncResult}", Toast.LENGTH_SHORT).show()
-                                                }
-                                            }
-                                        }
-                                    }
-                                },
-                            ),
                         )
                     } else {
                         emptyArray()
                     }
+                ),
+                AppMenuOption(
+                    optionType = AppOptionMenuType.SubmitFeedback,
+                    onClick = {
+                        PluviaApp.events.emit(AndroidEvent.ShowGameFeedback(appId))
+                    },
                 ),
                 (
                     AppMenuOption(

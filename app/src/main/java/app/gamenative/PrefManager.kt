@@ -412,7 +412,7 @@ object PrefManager {
     private val LIBRARY_FILTER = intPreferencesKey("library_filter")
     var libraryFilter: EnumSet<AppFilter>
         get() {
-            val value = getPref(LIBRARY_FILTER, AppFilter.toFlags(EnumSet.of(AppFilter.GAME)))
+            val value = getPref(LIBRARY_FILTER, AppFilter.toFlags(EnumSet.of(AppFilter.GAME, AppFilter.SHARED)))
             return AppFilter.fromFlags(value)
         }
         set(value) {
