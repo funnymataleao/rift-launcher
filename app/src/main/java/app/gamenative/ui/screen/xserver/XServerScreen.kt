@@ -1822,8 +1822,12 @@ private fun extractGraphicsDriverFiles(
         cacheId += "-" + DefaultVersion.VORTEK
     }
 
-    val changed = cacheId != container.getExtra("graphicsDriver")
     val imageFs = ImageFs.find(context)
+    val configDir = imageFs.configDir
+    val sentinel = File(configDir, ".current_graphics_driver")   // lives in shared tree
+    val onDiskId = sentinel.takeIf { it.exists() }?.readText() ?: ""
+    val changed = cacheId != container.getExtra("graphicsDriver") || cacheId != onDiskId
+    Timber.i("Changed is " + changed + " will re-extract drivers accordingly.")
     val rootDir = imageFs.rootDir
     envVars.put("vblank_mode", "0")
 
@@ -1839,6 +1843,7 @@ private fun extractGraphicsDriverFiles(
         vulkanICDDir.mkdirs()
         container.putExtra("graphicsDriver", cacheId)
         container.saveData()
+        sentinel.writeText(cacheId)
     }
     if (dxwrapper.contains("dxvk")) {
         DXVKHelper.setEnvVars(context, dxwrapperConfig, envVars)
