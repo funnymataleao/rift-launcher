@@ -553,9 +553,11 @@ fun XServerScreen(
 
                     val wineVersion = container.wineVersion
                     Timber.i("Wine version is: $wineVersion")
-                    Timber.i("Wine info is: " + WineInfo.fromIdentifier(context, wineVersion))
+                    val contentsManager = ContentsManager(context)
+                    contentsManager.syncContents()
+                    Timber.i("Wine info is: " + WineInfo.fromIdentifier(context, contentsManager, wineVersion))
                     xServerState.value = xServerState.value.copy(
-                        wineInfo = WineInfo.fromIdentifier(context, wineVersion),
+                        wineInfo = WineInfo.fromIdentifier(context, contentsManager, wineVersion),
                     )
                     Timber.i("xServerState.value.wineInfo is: " + xServerState.value.wineInfo)
                     Timber.i("WineInfo.MAIN_WINE_VERSION is: " + WineInfo.MAIN_WINE_VERSION)
@@ -1069,7 +1071,7 @@ private fun setupXEnvironment(
         Timber.i("Setting guestProgramLauncherComponent to BionicProgramLauncherComponent")
         BionicProgramLauncherComponent(
             contentsManager,
-            contentsManager.getProfileByEntryName(container.getWineVersion())
+            contentsManager.getProfileByEntryName(container.wineVersion)
         )
     }
 
@@ -1077,7 +1079,8 @@ private fun setupXEnvironment(
         if (container.startupSelection == Container.STARTUP_SELECTION_AGGRESSIVE) xServer.winHandler.killProcess("services.exe")
 
         val wow64Mode = container.isWoW64Mode
-        //            String guestExecutable = wineInfo.getExecutable(this, wow64Mode)+" explorer /desktop=shell,"+xServer.screenInfo+" "+getWineStartCommand();
+        guestProgramLauncherComponent.setContainer(container);
+        guestProgramLauncherComponent.setWineInfo(xServerState.value.wineInfo);
         val guestExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
             getWineStartCommand(appId, container, bootToContainer, appLaunchInfo, envVars, guestProgramLauncherComponent) +
             (if (container.execArgs.isNotEmpty()) " " + container.execArgs else "")

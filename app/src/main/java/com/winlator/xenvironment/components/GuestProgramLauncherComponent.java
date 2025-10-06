@@ -12,6 +12,7 @@ import com.winlator.container.Container;
 import com.winlator.core.Callback;
 import com.winlator.core.DefaultVersion;
 import com.winlator.core.FileUtils;
+import com.winlator.core.WineInfo;
 import com.winlator.core.envvars.EnvVars;
 import com.winlator.core.ProcessHelper;
 import com.winlator.core.TarCompressorUtils;
@@ -37,9 +38,21 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     private static final Object lock = new Object();
     private boolean wow64Mode = true;
     private File workingDir;
+    private WineInfo wineInfo;
+    private Container container;
 
     private Runnable preUnpack;
     private String steamType;
+
+    public void setWineInfo(WineInfo wineInfo) {
+        this.wineInfo = wineInfo;
+    }
+    public WineInfo getWineInfo() {
+        return this.wineInfo;
+    }
+
+    public Container getContainer() { return this.container; }
+    public void setContainer(Container container) { this.container = container; }
 
     public void setPreUnpack(Runnable r) { this.preUnpack = r; }
     @Override

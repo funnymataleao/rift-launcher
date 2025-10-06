@@ -15,6 +15,8 @@ import java.io.File;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import app.gamenative.R;
+
 public class WineInfo implements Parcelable {
     public static final WineInfo MAIN_WINE_VERSION = new WineInfo("wine", "9.2", "x86_64");
     private static final Pattern pattern = Pattern.compile("^(wine|proton|Proton)\\-([0-9\\.]+)\\-?([0-9\\.]+)?\\-(x86|x86_64|arm64ec)$");
