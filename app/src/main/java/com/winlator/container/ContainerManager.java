@@ -10,6 +10,7 @@ import android.util.Log;
 // import com.winlator.R;
 import app.gamenative.R;
 import com.winlator.box86_64.Box86_64Preset;
+import com.winlator.contents.ContentsManager;
 import com.winlator.core.Callback;
 import com.winlator.core.FileUtils;
 import com.winlator.core.OnExtractFileListener;
@@ -319,7 +320,8 @@ public class ContainerManager {
         }
         else {
             File installedWineDir = ImageFs.find(context).getInstalledWineDir();
-            WineInfo wineInfo = WineInfo.fromIdentifier(context, wineVersion);
+            ContentsManager contentsManager = new ContentsManager(context);
+            WineInfo wineInfo = WineInfo.fromIdentifier(context, contentsManager, wineVersion);
             String suffix = wineInfo.fullVersion()+"-"+wineInfo.getArch();
             File file = new File(installedWineDir, "container-pattern-"+suffix+".tzst");
             return TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, file, containerDir, onExtractFileListener);
