@@ -60,22 +60,6 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
     @Override
     public void start() {
         Log.d("GlibcProgramLauncherComponent", "Starting...");
-
-        // Log targetSdk version and related info
-        Context context = environment.getContext();
-        try {
-            int targetSdk = context.getApplicationInfo().targetSdkVersion;
-            int compileSdk = android.os.Build.VERSION_CODES.CUR_DEVELOPMENT;
-            int deviceSdk = android.os.Build.VERSION.SDK_INT;
-
-            Log.d("GlibcProgramLauncherComponent", "App targetSdk: " + targetSdk);
-            Log.d("GlibcProgramLauncherComponent", "Device SDK: " + deviceSdk + " (" + android.os.Build.VERSION.RELEASE + ")");
-            Log.d("GlibcProgramLauncherComponent", "Package name: " + context.getPackageName());
-
-        } catch (Exception e) {
-            Log.e("GlibcProgramLauncherComponent", "Error getting SDK info: " + e.getMessage());
-        }
-
         synchronized (lock) {
             stop();
             extractBox86_64Files();
@@ -94,15 +78,8 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             if (pid != -1) {
                 Process.killProcess(pid);
                 Log.d("GlibcProgramLauncherComponent", "Stopped process " + pid);
-                pid = -1;
                 List<ProcessHelper.ProcessInfo> subProcesses = ProcessHelper.listSubProcesses();
                 for (ProcessHelper.ProcessInfo subProcess : subProcesses) {
-                    Log.d("GlibcProgramLauncherComponent",
-                            "Sub-process still running: "
-                                    + subProcess.name + " | "
-                                    + subProcess.pid + " | "
-                                    + subProcess.ppid + ", stopping..."
-                    );
                     Process.killProcess(subProcess.pid);
                 }
                 SteamService.setGameRunning(false);
@@ -116,25 +93,6 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
 
     public void setTerminationCallback(Callback<Integer> terminationCallback) {
         this.terminationCallback = terminationCallback;
-    }
-
-    public String getSteamType() { return steamType; }
-    public void setSteamType(String steamType) {
-        if (steamType == null) {
-            this.steamType = Container.STEAM_TYPE_NORMAL;
-            return;
-        }
-        String normalized = steamType.toLowerCase();
-        switch (normalized) {
-            case Container.STEAM_TYPE_LIGHT:
-                this.steamType = Container.STEAM_TYPE_LIGHT;
-                break;
-            case Container.STEAM_TYPE_ULTRALIGHT:
-                this.steamType = Container.STEAM_TYPE_ULTRALIGHT;
-                break;
-            default:
-                this.steamType = Container.STEAM_TYPE_NORMAL;
-        }
     }
 
     public String getGuestExecutable() {
@@ -292,25 +250,6 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             }
             PrefManager.putString("current_box64_version", box64Version);
         }
-    }
-
-    private void copyDefaultBox64RCFile() {
-        Context context = environment.getContext();
-        ImageFs imageFs = ImageFs.find(context);
-        File rootDir = imageFs.getRootDir();
-        String assetPath;
-        switch (steamType) {
-            case Container.STEAM_TYPE_LIGHT:
-                assetPath = "box86_64/lightsteam.box64rc";
-                break;
-            case Container.STEAM_TYPE_ULTRALIGHT:
-                assetPath = "box86_64/ultralightsteam.box64rc";
-                break;
-            default:
-                assetPath = "box86_64/default.box64rc";
-                break;
-        }
-        FileUtils.copy(context, assetPath, new File(rootDir, "/etc/config.box64rc"));
     }
 
     private void addBox86EnvVars(EnvVars envVars, boolean enableLogs) {

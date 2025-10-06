@@ -65,6 +65,8 @@ public class Container {
     private String box64Version = DefaultVersion.BOX64;
     private String box86Preset = Box86_64Preset.PERFORMANCE;
     private String box64Preset = Box86_64Preset.PERFORMANCE;
+    private String fexcoreVersion = DefaultVersion.FEXCORE;
+    private String emulator;
     private File rootDir;
     private String installPath = "";
     private JSONObject extraData;
@@ -98,6 +100,7 @@ public class Container {
     private boolean emulateKeyboardMouse = false;
     // Serialized as JSON object: logical button name -> Binding enum name
     private JSONObject controllerEmulationBindings;
+    private boolean gstreamerWorkaround = false;
 
     public String getGraphicsDriverVersion() {
         return graphicsDriverVersion;
@@ -347,6 +350,14 @@ public class Container {
 
     public void setBox64Version(String box64Version) { this.box64Version = box64Version; }
 
+    public void setEmulator(String emulator) {
+        this.emulator = emulator;
+    }
+
+    public String getEmulator() {
+        return this.emulator;
+    }
+
     public String getBox86Preset() {
         return box86Preset;
     }
@@ -362,6 +373,10 @@ public class Container {
     public void setBox64Preset(String box64Preset) {
         this.box64Preset = box64Preset;
     }
+
+    public String getFEXCoreVersion() { return this.fexcoreVersion; }
+
+    public void setFEXCoreVersion(String version) { this.fexcoreVersion = version; }
 
     public File getRootDir() {
         return rootDir;
@@ -381,6 +396,14 @@ public class Container {
 
     public void setExtraData(JSONObject extraData) {
         this.extraData = extraData;
+    }
+
+    public boolean isGstreamerWorkaround() { // Add this getter
+        return this.gstreamerWorkaround;
+    }
+
+    public void setGstreamerWorkaround(boolean gstreamerWorkaround) { // Add this setter
+        this.gstreamerWorkaround = gstreamerWorkaround;
     }
 
     public String getExtra(String name) {

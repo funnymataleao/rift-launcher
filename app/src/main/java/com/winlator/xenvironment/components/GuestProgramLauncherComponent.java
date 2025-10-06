@@ -11,6 +11,7 @@ import com.winlator.box86_64.Box86_64PresetManager;
 import com.winlator.container.Container;
 import com.winlator.core.Callback;
 import com.winlator.core.DefaultVersion;
+import com.winlator.core.FileUtils;
 import com.winlator.core.envvars.EnvVars;
 import com.winlator.core.ProcessHelper;
 import com.winlator.core.TarCompressorUtils;
@@ -100,7 +101,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
                 this.steamType = Container.STEAM_TYPE_NORMAL;
         }
     }
-    
+
     public String getGuestExecutable() {
         return guestExecutable;
     }
@@ -305,6 +306,25 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "box86_64/box64-" + box64Version + ".tzst", rootDir);
             PrefManager.putString("current_box64_version", box64Version);
         }
+    }
+
+    void copyDefaultBox64RCFile() {
+        Context context = environment.getContext();
+        ImageFs imageFs = ImageFs.find(context);
+        File rootDir = imageFs.getRootDir();
+        String assetPath;
+        switch (steamType) {
+            case Container.STEAM_TYPE_LIGHT:
+                assetPath = "box86_64/lightsteam.box64rc";
+                break;
+            case Container.STEAM_TYPE_ULTRALIGHT:
+                assetPath = "box86_64/ultralightsteam.box64rc";
+                break;
+            default:
+                assetPath = "box86_64/default.box64rc";
+                break;
+        }
+        FileUtils.copy(context, assetPath, new File(rootDir, "/etc/config.box64rc"));
     }
 
     private void addBox86EnvVars(EnvVars envVars, boolean enableLogs) {

@@ -89,6 +89,10 @@ public class ImageFs {
         return new File(rootDir, "/tmp");
     }
 
+    public File getLibDir() { return new File(rootDir, "/usr/lib"); }
+
+    public File getBinDir() { return new File(rootDir, "/usr/bin"); }
+
     public File getGlibc32Dir() {
         return new File(rootDir, "/usr/lib/arm-linux-gnueabihf");
     }

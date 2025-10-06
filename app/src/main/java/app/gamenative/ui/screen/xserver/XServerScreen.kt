@@ -81,6 +81,7 @@ import com.winlator.xconnector.UnixSocketConfig
 import com.winlator.xenvironment.ImageFs
 import com.winlator.xenvironment.XEnvironment
 import com.winlator.xenvironment.components.ALSAServerComponent
+import com.winlator.xenvironment.components.BionicProgramLauncherComponent
 import com.winlator.xenvironment.components.GlibcProgramLauncherComponent
 import com.winlator.xenvironment.components.GuestProgramLauncherComponent
 import com.winlator.xenvironment.components.NetworkInfoUpdateComponent
@@ -1058,15 +1059,18 @@ private fun setupXEnvironment(
 
     val usrGlibc: Boolean = PrefManager.getBoolean("use_glibc", true)
     val guestProgramLauncherComponent = if (usrGlibc) {
-        Timber.i("Setting guestProgramLauncherComponent to GlibcProgarmLauncherComponent")
+        Timber.i("Setting guestProgramLauncherComponent to GlibcProgramLauncherComponent")
         GlibcProgramLauncherComponent(
             contentsManager,
             contentsManager.getProfileByEntryName(container.wineVersion),
         )
     }
     else {
-        Timber.i("Setting guestProgramLauncherComponent to GuestProgramLauncherComponent")
-        GuestProgramLauncherComponent()
+        Timber.i("Setting guestProgramLauncherComponent to BionicProgramLauncherComponent")
+        BionicProgramLauncherComponent(
+            contentsManager,
+            contentsManager.getProfileByEntryName(container.getWineVersion())
+        )
     }
 
     if (container != null) {
