@@ -110,13 +110,6 @@ fun PluviaMain(
 
     var gameBackAction by remember { mutableStateOf<() -> Unit?>({}) }
 
-    // Process any pending launch request from MainActivity after login
-    LaunchedEffect(SteamService.isLoggedIn) {
-        if (SteamService.isLoggedIn) {
-
-        }
-    }
-
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collect { event ->
             when (event) {
