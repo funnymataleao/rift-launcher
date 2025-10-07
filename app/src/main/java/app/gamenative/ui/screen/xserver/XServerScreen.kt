@@ -1059,7 +1059,7 @@ private fun setupXEnvironment(
     val rootPath = imageFs.getRootDir().getPath()
     FileUtils.clear(imageFs.getTmpDir())
 
-    val usrGlibc: Boolean = PrefManager.getBoolean("use_glibc", true)
+    val usrGlibc: Boolean = container.getContainerVariant().equals("glibc", ignoreCase = true)
     val guestProgramLauncherComponent = if (usrGlibc) {
         Timber.i("Setting guestProgramLauncherComponent to GlibcProgramLauncherComponent")
         GlibcProgramLauncherComponent(

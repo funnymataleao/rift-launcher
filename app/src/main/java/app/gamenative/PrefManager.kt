@@ -149,6 +149,20 @@ object PrefManager {
             setPref(GRAPHICS_DRIVER_VERSION, value)
         }
 
+    private val CONTAINER_VARIANT = stringPreferencesKey("containerVariant")
+    var containerVariant: String
+        get() = getPref(CONTAINER_VARIANT, Container.DEFAULT_VARIANT)
+        set(value) {
+            setPref(CONTAINER_VARIANT, value)
+        }
+
+    private val WINE_VERSION = stringPreferencesKey("wineVersion")
+    var wineVersion: String
+        get() = getPref(WINE_VERSION, com.winlator.core.WineInfo.MAIN_WINE_VERSION.identifier())
+        set(value) {
+            setPref(WINE_VERSION, value)
+        }
+
     private val DXWRAPPER = stringPreferencesKey("dxwrapper")
     var dxWrapper: String
         get() = getPref(DXWRAPPER, Container.DEFAULT_DXWRAPPER)

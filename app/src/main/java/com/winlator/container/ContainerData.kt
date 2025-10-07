@@ -3,6 +3,7 @@ package com.winlator.container
 import androidx.compose.runtime.saveable.mapSaver
 import com.winlator.box86_64.Box86_64Preset
 import com.winlator.core.DefaultVersion
+import com.winlator.core.WineInfo
 import com.winlator.core.WineThemeManager
 import kotlin.String
 
@@ -34,6 +35,10 @@ data class ContainerData(
     val box86Preset: String = Box86_64Preset.COMPATIBILITY,
     val box64Preset: String = Box86_64Preset.COMPATIBILITY,
     val desktopTheme: String = WineThemeManager.DEFAULT_DESKTOP_THEME,
+    // container runtime variant (glibc or bionic)
+    val containerVariant: String = Container.DEFAULT_VARIANT,
+    // wine version identifier (used for bionic variant), defaults to main wine
+    val wineVersion: String = WineInfo.MAIN_WINE_VERSION.identifier(),
     // wine registry values
     val csmt: Boolean = true,
     val videoPciDeviceID: Int = 1728,
@@ -92,6 +97,8 @@ data class ContainerData(
                     "box86Preset" to state.box86Preset,
                     "box64Preset" to state.box64Preset,
                     "desktopTheme" to state.desktopTheme,
+                    "containerVariant" to state.containerVariant,
+                    "wineVersion" to state.wineVersion,
                     "sdlControllerAPI" to state.sdlControllerAPI,
                     "enableXInput" to state.enableXInput,
                     "enableDInput" to state.enableDInput,
@@ -132,6 +139,8 @@ data class ContainerData(
                     box86Preset = savedMap["box86Preset"] as String,
                     box64Preset = savedMap["box64Preset"] as String,
                     desktopTheme = savedMap["desktopTheme"] as String,
+                    containerVariant = (savedMap["containerVariant"] as? String) ?: Container.DEFAULT_VARIANT,
+                    wineVersion = (savedMap["wineVersion"] as? String) ?: WineInfo.MAIN_WINE_VERSION.identifier(),
                     sdlControllerAPI = savedMap["sdlControllerAPI"] as Boolean,
                     enableXInput = savedMap["enableXInput"] as Boolean,
                     enableDInput = savedMap["enableDInput"] as Boolean,

@@ -78,6 +78,7 @@ import com.winlator.core.envvars.EnvVars
 import com.winlator.core.envvars.EnvVarSelectionType
 import com.winlator.core.DefaultVersion
 import com.winlator.core.GPUHelper
+import com.winlator.core.WineInfo
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -117,6 +118,8 @@ fun ContainerConfigDialog(
         val vortekVersions = stringArrayResource(R.array.vortek_version_entries).toList()
         val adrenoVersions = stringArrayResource(R.array.adreno_version_entries).toList()
         val sd8EliteVersions = stringArrayResource(R.array.sd8elite_version_entries).toList()
+        val containerVariants = stringArrayResource(R.array.container_variant_entries).toList()
+        val wineEntries = stringArrayResource(R.array.wine_entries).toList()
         val languages = listOf(
             "arabic",
             "bulgarian",
@@ -534,6 +537,46 @@ fun ContainerConfigDialog(
                         SettingsGroup(
                             title = { Text(text = "General") },
                         ) {
+                            // Variant selector (glibc/bionic)
+                            run {
+                                val variantIndex = rememberSaveable {
+                                    mutableIntStateOf(containerVariants.indexOfFirst { it.equals(config.containerVariant, true) }.coerceAtLeast(0))
+                                }
+                                SettingsListDropdown(
+                                    colors = settingsTileColors(),
+                                    title = { Text(text = "Container Variant") },
+                                    value = variantIndex.value,
+                                    items = containerVariants,
+                                    onItemSelected = { idx ->
+                                        variantIndex.value = idx
+                                        val newVariant = containerVariants[idx]
+                                        config = if (newVariant.equals("glibc", ignoreCase = true)) {
+                                            config.copy(
+                                                containerVariant = newVariant,
+                                                wineVersion = WineInfo.MAIN_WINE_VERSION.identifier(),
+                                            )
+                                        } else {
+                                            config.copy(containerVariant = newVariant)
+                                        }
+                                    },
+                                )
+                                // Wine version only if bionic variant
+                                if (config.containerVariant.equals("bionic", ignoreCase = true)) {
+                                    val wineIndex = rememberSaveable {
+                                        mutableIntStateOf(wineEntries.indexOfFirst { it == config.wineVersion }.coerceAtLeast(0))
+                                    }
+                                    SettingsListDropdown(
+                                        colors = settingsTileColors(),
+                                        title = { Text(text = "Wine Version") },
+                                        value = wineIndex.value,
+                                        items = wineEntries,
+                                        onItemSelected = { idx ->
+                                            wineIndex.value = idx
+                                            config = config.copy(wineVersion = wineEntries[idx])
+                                        },
+                                    )
+                                }
+                            }
                             OutlinedTextField(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                                 value = config.executablePath,

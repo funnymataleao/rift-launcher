@@ -69,6 +69,8 @@ object ContainerUtils {
             box64Preset = PrefManager.box64Preset,
             desktopTheme = WineThemeManager.DEFAULT_DESKTOP_THEME,
             language = PrefManager.containerLanguage,
+            containerVariant = PrefManager.containerVariant,
+            wineVersion = PrefManager.wineVersion,
 
             csmt = PrefManager.csmt,
             videoPciDeviceID = PrefManager.videoPciDeviceID,
@@ -110,6 +112,8 @@ object ContainerUtils {
         PrefManager.mouseWarpOverride = containerData.mouseWarpOverride
         PrefManager.disableMouseInput = containerData.disableMouseInput
         PrefManager.containerLanguage = containerData.language
+        PrefManager.containerVariant = containerData.containerVariant
+        PrefManager.wineVersion = containerData.wineVersion
     }
 
     fun toContainerData(container: Container): ContainerData {
@@ -182,27 +186,17 @@ object ContainerUtils {
             box86Preset = container.box86Preset,
             box64Preset = container.box64Preset,
             desktopTheme = container.desktopTheme,
-            language = try {
-                container.language
-            } catch (e: Exception) {
-                container.getExtra("language", "english")
-            },
+            containerVariant = container.getContainerVariant(),
+            wineVersion = container.getWineVersion(),
+            language = container.language,
             sdlControllerAPI = container.isSdlControllerAPI,
             enableXInput = enableX,
             enableDInput = enableD,
             dinputMapperType = mapperType,
             disableMouseInput = disableMouse,
             touchscreenMode = touchscreenMode,
-            emulateKeyboardMouse = try {
-                container.isEmulateKeyboardMouse()
-            } catch (e: Exception) {
-                false
-            },
-            controllerEmulationBindings = try {
-                container.getControllerEmulationBindings()?.toString() ?: ""
-            } catch (e: Exception) {
-                ""
-            },
+            emulateKeyboardMouse = container.isEmulateKeyboardMouse(),
+            controllerEmulationBindings = container.getControllerEmulationBindings()?.toString() ?: "",
             csmt = csmt,
             videoPciDeviceID = videoPciDeviceID,
             offScreenRenderingMode = offScreenRenderingMode,
@@ -277,6 +271,8 @@ object ContainerUtils {
         container.isSdlControllerAPI = containerData.sdlControllerAPI
         container.desktopTheme = containerData.desktopTheme
         container.graphicsDriverVersion = containerData.graphicsDriverVersion
+        container.setContainerVariant(containerData.containerVariant)
+        container.setWineVersion(containerData.wineVersion)
         container.setDisableMouseInput(containerData.disableMouseInput)
         container.setTouchscreenMode(containerData.touchscreenMode)
         container.setEmulateKeyboardMouse(containerData.emulateKeyboardMouse)
