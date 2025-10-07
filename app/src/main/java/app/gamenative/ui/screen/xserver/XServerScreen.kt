@@ -1843,6 +1843,10 @@ private fun extractGraphicsDriverFiles(
         vulkanICDDir.mkdirs()
         container.putExtra("graphicsDriver", cacheId)
         container.saveData()
+        if (!sentinel.exists()) {
+            sentinel.parentFile?.mkdirs()
+            sentinel.createNewFile()
+        }
         sentinel.writeText(cacheId)
     }
     if (dxwrapper.contains("dxvk")) {
