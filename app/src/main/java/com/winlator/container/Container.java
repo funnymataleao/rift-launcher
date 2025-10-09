@@ -36,13 +36,15 @@ public class Container {
     public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1";
     public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=1,directshow=1,directplay=1,vcrun2010=1,wmdecoder=1";
     public static final String DEFAULT_DRIVES = "D:"+Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)+"E:/data/data/app.gamenative/storage";
-    public static final String DEFAULT_VARIANT = "glibc";
+    public static final String DEFAULT_VARIANT = Container.GLIBC;
     public static final byte STARTUP_SELECTION_NORMAL = 0;
     public static final byte STARTUP_SELECTION_ESSENTIAL = 1;
     public static final byte STARTUP_SELECTION_AGGRESSIVE = 2;
     public static final String STEAM_TYPE_NORMAL = "normal";
     public static final String STEAM_TYPE_LIGHT = "light";
     public static final String STEAM_TYPE_ULTRALIGHT = "ultralight";
+    public static final String GLIBC = "glibc";
+    public static final String BIONIC = "bionic";
     public static final byte MAX_DRIVE_LETTERS = 8;
     public final String id;
     private String name;

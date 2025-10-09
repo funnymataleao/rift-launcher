@@ -62,7 +62,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         Log.d("GlibcProgramLauncherComponent", "Starting...");
         synchronized (lock) {
             stop();
-            extractBox86_64Files();
+            extractBox64Files();
             copyDefaultBox64RCFile();
             if (preUnpack != null) preUnpack.run();
             pid = execGuestProgram();
@@ -168,7 +168,6 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         boolean enableBox86_64Logs = PrefManager.getBoolean("enable_box86_64_logs", true);
 
         EnvVars envVars = new EnvVars();
-        if (!wow64Mode) addBox86EnvVars(envVars, enableBox86_64Logs);
         addBox64EnvVars(envVars, enableBox86_64Logs);
         envVars.put("HOME", imageFs.home_path);
         envVars.put("USER", ImageFs.USER);
@@ -212,7 +211,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         });
     }
 
-    private void extractBox86_64Files() {
+    private void extractBox64Files() {
         ImageFs imageFs = environment.getImageFs();
         Context context = environment.getContext();
         PrefManager.init(context);
@@ -220,50 +219,17 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         String currentBox64Version = PrefManager.getString("current_box64_version", "");
         File rootDir = imageFs.getRootDir();
 
-        Log.d("GlibcProgramLauncherComponent", "Extracting box86/64 files to rootDir: " + rootDir.getAbsolutePath());
-
-        if (wow64Mode) {
-            Log.d("GlibcProgramLauncherComponent", "wow64mode");
-            File box86File = new File(rootDir, "/usr/local/bin/box86");
-            if (box86File.isFile()) {
-                box86File.delete();
-                PrefManager.putString("current_box86_version", "");
-            }
-        } else if (!box86Version.equals(currentBox86Version)) {
-            Log.d("GlibcProgramLauncherComponent", "Extracting box86 version " + box86Version + " (current version: " + currentBox86Version + ")");
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "box86_64/box86-" + box86Version + ".tzst", rootDir);
-            PrefManager.putString("current_box86_version", box86Version);
-        }
-
-        Log.d("GlibcProgramLauncherComponent", "box64Version " + box64Version);
-        Log.d("GlibcProgramLauncherComponent", "currentBox64Version " + currentBox64Version);
-
         if (!box64Version.equals(currentBox64Version)) {
             ContentProfile profile = contentsManager.getProfileByEntryName("box64-" + box64Version);
             if (profile != null) {
-                Log.d("GlibcProgramLauncherComponent", "Profile is not null - applying content for box64 version " + box64Version);
                 contentsManager.applyContent(profile);
             }
             else {
-                Log.d("GlibcProgramLauncherComponent", "Profile is null - extracting box64 version " + box64Version + " directly");
+                Log.d("Extraction", "exctracting box64 with box64Version " + box64Version);
                 TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "box86_64/box64-" + box64Version + ".tzst", rootDir);
             }
             PrefManager.putString("current_box64_version", box64Version);
         }
-    }
-
-    private void addBox86EnvVars(EnvVars envVars, boolean enableLogs) {
-        envVars.put("BOX86_NOBANNER", ProcessHelper.PRINT_DEBUG && enableLogs ? "0" : "1");
-        envVars.put("BOX86_DYNAREC", "1");
-
-        if (enableLogs) {
-            envVars.put("BOX86_LOG", "1");
-            envVars.put("BOX86_DYNAREC_MISSING", "1");
-        }
-
-        envVars.putAll(Box86_64PresetManager.getEnvVars("box86", environment.getContext(), box86Preset));
-        envVars.put("BOX86_X11GLX", "1");
-        envVars.put("BOX86_NORCFILES", "1");
     }
 
     private void addBox64EnvVars(EnvVars envVars, boolean enableLogs) {

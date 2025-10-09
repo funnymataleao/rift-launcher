@@ -190,6 +190,7 @@ dependencies {
     // Winlator
     implementation(libs.bundles.winlator)
     implementation(libs.zstd.jni) { artifact { type = "aar" } }
+    implementation(libs.xz)
 
     // Jetpack Compose
     implementation(platform(libs.androidx.compose.bom))

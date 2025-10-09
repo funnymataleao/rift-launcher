@@ -869,12 +869,13 @@ fun preLaunchApp(
     // TODO: add fail conditions
 
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+    val container = ContainerUtils.getContainer(context, appId)
 
     CoroutineScope(Dispatchers.IO).launch {
         // set up Ubuntu file system
         SplitCompat.install(context)
         val imageFsInstallSuccess =
-            ImageFsInstaller.installIfNeededFuture(context, context.assets) { progress ->
+            ImageFsInstaller.installIfNeededFuture(context, context.assets, container) { progress ->
                 // Log.d("XServerScreen", "$progress")
                 setLoadingProgress(progress / 100f)
             }.get()

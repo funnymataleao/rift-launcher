@@ -28,9 +28,9 @@ room-runtime = "2.8.0-rc02" # https://mvnrepository.com/artifact/androidx.room/r
 runner = "1.6.2" # https://mvnrepository.com/artifact/androidx.test/runner
 settings = "2.10.0" # https://github.com/alorma/Compose-Settings/releases
 spongycastle = "1.58.0.0" # https://mvnrepository.com/artifact/com.madgag.spongycastle/prov
-steamkit = "1.6.1-SNAPSHOT" # https://mvnrepository.com/artifact/in.dragonbra/javasteam
+steamkit = "1.7.0" # https://mvnrepository.com/artifact/in.dragonbra/javasteam
 timber = "5.0.1" # https://mvnrepository.com/artifact/com.jakewharton.timber/timber
-zstd-jni = "1.5.6-9" # https://mvnrepository.com/artifact/com.github.luben/zstd-jni
+zstd-jni = "1.5.7-5" # https://mvnrepository.com/artifact/com.github.luben/zstd-jni
 zxing = "3.5.3"
 material = "1.12.0"
 constraintlayoutComposeAndroid = "1.1.1" # https://mvnrepository.com/artifact/com.google.zxing/core
@@ -71,8 +71,7 @@ material-kolor = { group = "com.materialkolor", name = "material-kolor", version
 navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation-compose" }
 protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
 spongycastle = { group = "com.madgag.spongycastle", name = "prov", version.ref = "spongycastle" }
-steamkit = { group = "io.github.utkarshdalal", name = "javasteam", version = "1.6.1-SNAPSHOT" }
-#steamkit = { group = "in.dragonbra", name = "javasteam", version.ref = "steamkit" }
+steamkit = { group = "in.dragonbra", name = "javasteam", version.ref = "steamkit" }
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
 zstd-jni = { group = "com.github.luben", name = "zstd-jni", version.ref = "zstd-jni" }
 zxing = { group = "com.google.zxing", name = "core", version.ref = "zxing" }

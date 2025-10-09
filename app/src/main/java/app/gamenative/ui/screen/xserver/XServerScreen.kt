@@ -3,11 +3,11 @@ package app.gamenative.ui.screen.xserver
 import android.app.Activity
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import android.view.View
 import android.view.WindowInsets
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -26,13 +26,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.ViewCompat
-import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
-import app.gamenative.R
 import app.gamenative.data.LaunchInfo
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
@@ -40,13 +38,13 @@ import app.gamenative.service.SteamService
 import app.gamenative.ui.data.XServerState
 import app.gamenative.utils.ContainerUtils
 import com.posthog.PostHog
+import com.winlator.PrefManager.init
 import com.winlator.alsaserver.ALSAClient
 import com.winlator.container.Container
 import com.winlator.container.ContainerManager
 import com.winlator.contentdialog.NavigationDialog
 import com.winlator.contents.ContentsManager
 import com.winlator.core.AppUtils
-import com.winlator.core.AppUtils.showKeyboard
 import com.winlator.core.Callback
 import com.winlator.core.DXVKHelper
 import com.winlator.core.DefaultVersion
@@ -65,8 +63,6 @@ import com.winlator.core.WineThemeManager
 import com.winlator.core.WineUtils
 import com.winlator.core.envvars.EnvVars
 import com.winlator.inputcontrols.ControlsProfile
-import com.winlator.inputcontrols.ControlElement
-import com.winlator.inputcontrols.Binding
 import com.winlator.inputcontrols.ExternalController
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.inputcontrols.TouchMouse
@@ -100,7 +96,6 @@ import com.winlator.xserver.XServer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
@@ -396,15 +391,7 @@ fun XServerScreen(
                 true
             },
         factory = { context ->
-            // Creates view
-            // if (PluviaApp.xServer == null) {
             Timber.i("Creating XServerView and XServer")
-            // if (PluviaApp.xServerState == null) {
-            //     PluviaApp.xServerState = XServerState()
-            // }
-            // if (PluviaApp.xServer == null) {
-            //     PluviaApp.xServer = XServer(ScreenInfo(xServerState.value.screenSize))
-            // }
             val frameLayout = FrameLayout(context)
             val existingXServer =
                 PluviaApp.xEnvironment
@@ -416,30 +403,6 @@ fun XServerScreen(
                 xServerToUse,
             ).apply {
                 xServerView = this
-                // pointerEventListener = object: Callback<MotionEvent> {
-                //     override fun call(event: MotionEvent) {
-                //         Log.d("XServerScreen", "onMotionEvent:\n\t$event")
-                //         if (TouchMouse.isMouseDevice(event.device)) {
-                //             touchMouse?.onExternalMouseEvent(event) == true
-                //         }
-                //     }
-                // }
-                // this.addPointerEventListener(pointerEventListener)
-                // this.requestFocus()
-                // this.setOnCapturedPointerListener(object: View.OnCapturedPointerListener {
-                //     override fun onCapturedPointer(
-                //         view: View,
-                //         event: MotionEvent
-                //     ): Boolean {
-                //         Log.d("XServerScreen", "onMotionEvent:\n\t$event")
-                //         return if (TouchMouse.isMouseDevice(event.device)) {
-                //             touchMouse?.onExternalMouseEvent(event) == true
-                //         } else false
-                //     }
-                //
-                // })
-                // this.requestPointerCapture()
-                // this.background = ColorDrawable(Color.Green.toArgb())
                 val renderer = this.renderer
                 renderer.isCursorVisible = false
                 getxServer().renderer = renderer
@@ -495,27 +458,11 @@ fun XServerScreen(
                         }
 
                         override fun onMapWindow(window: Window) {
-                            Timber.i(
-                                "onMapWindow:" +
-                                        "\n\twindowName: ${window.name}" +
-                                        "\n\twindowClassName: ${window.className}" +
-                                        "\n\tprocessId: ${window.processId}" +
-                                        "\n\thasParent: ${window.parent != null}" +
-                                        "\n\tchildrenSize: ${window.children.size}",
-                            )
                             win32AppWorkarounds?.applyWindowWorkarounds(window)
                             onWindowMapped?.invoke(context, window)
                         }
 
                         override fun onUnmapWindow(window: Window) {
-                            Timber.i(
-                                "onUnmapWindow:" +
-                                        "\n\twindowName: ${window.name}" +
-                                        "\n\twindowClassName: ${window.className}" +
-                                        "\n\tprocessId: ${window.processId}" +
-                                        "\n\thasParent: ${window.parent != null}" +
-                                        "\n\tchildrenSize: ${window.children.size}",
-                            )
                             changeFrameRatingVisibility(window, null)
                             onWindowUnmapped?.invoke(window)
                         }
@@ -564,8 +511,9 @@ fun XServerScreen(
                     Timber.i("Wine path for wineinfo is " + xServerState.value.wineInfo.path)
 
                     if (xServerState.value.wineInfo != WineInfo.MAIN_WINE_VERSION) {
-                        Timber.i("Settings wine path to: $xServerState.value.wineInfo.path")
-                        ImageFs.find(context).setWinePath(xServerState.value.wineInfo.path)
+                        val imageFs = ImageFs.find(context)
+                        Timber.i("Settings wine path to: ${xServerState.value.wineInfo.path}")
+                        imageFs.setWinePath(xServerState.value.wineInfo.path)
                     }
 
                     val onExtractFileListener = if (!xServerState.value.wineInfo.isWin64) {
@@ -597,6 +545,8 @@ fun XServerScreen(
                         envVars,
                         onExtractFileListener,
                     )
+                    extractArm64ecInputDLLs(context, container) // REQUIRED: Uses updated xinput1_3 main.c from x86_64 build, prevents crashes with 3+ players, avoids need for input shim dlls.
+                    extractx86_64InputDlls(context, container)
                     extractGraphicsDriverFiles(
                         context,
                         xServerState.value.graphicsDriver,
@@ -1059,7 +1009,7 @@ private fun setupXEnvironment(
     val rootPath = imageFs.getRootDir().getPath()
     FileUtils.clear(imageFs.getTmpDir())
 
-    val usrGlibc: Boolean = container.getContainerVariant().equals("glibc", ignoreCase = true)
+    val usrGlibc: Boolean = container.getContainerVariant().equals(Container.GLIBC, ignoreCase = true)
     val guestProgramLauncherComponent = if (usrGlibc) {
         Timber.i("Setting guestProgramLauncherComponent to GlibcProgramLauncherComponent")
         GlibcProgramLauncherComponent(
@@ -1071,7 +1021,7 @@ private fun setupXEnvironment(
         Timber.i("Setting guestProgramLauncherComponent to BionicProgramLauncherComponent")
         BionicProgramLauncherComponent(
             contentsManager,
-            contentsManager.getProfileByEntryName(container.wineVersion)
+            contentsManager.getProfileByEntryName(container.wineVersion),
         )
     }
 
@@ -1490,6 +1440,37 @@ private fun unpackExecutableFile(
     }
 }
 
+private fun extractArm64ecInputDLLs(context: Context, container: Container) {
+    val inputAsset = "arm64ec_input_dlls.tzst"
+    val imageFs = ImageFs.find(context)
+    val wineVersion: String? = container.getWineVersion()
+    Log.d("XServerDisplayActivity", "arm64ec Input DLL Extraction Verification: Container Wine version: " + wineVersion)
+
+    // Check if the wineVersion string is not null and contains "arm64ec"
+    if (wineVersion != null && wineVersion.contains("proton-9.0-arm64ec")) {
+        val wineFolder: File = File(imageFs.getWinePath() + "/lib/wine/")
+        Log.d("XServerDisplayActivity", "Wine version contains arm64ec. Extracting input dlls to " + wineFolder.getPath())
+        val success: Boolean = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, inputAsset, wineFolder)
+        if (!success) {
+            Log.d("XServerDisplayActivity", "Failed to extract input dlls")
+        }
+    } else {
+        // Updated log message for clarity
+        Log.d("XServerDisplayActivity", "Wine version is not arm64ec, skipping input dlls extraction.")
+    }
+}
+
+private fun extractx86_64InputDlls(context: Context, container: Container) {
+    val inputAsset = "x86_64_input_dlls.tzst"
+    val imageFs = ImageFs.find(context)
+    val wineVersion: String? = container.getWineVersion()
+    Log.d("XServerDisplayActivity", "x86_64 Input DLL Extraction Verification: Container Wine version: " + wineVersion)
+    if ("proton-9.0-x86_64" == wineVersion) {
+        val wineFolder: File = File(imageFs.getWinePath() + "/lib/wine/")
+        Log.d("XServerDisplayActivity", "Extracting input dlls to " + wineFolder.getPath())
+    } else Log.d("XServerDisplayActivity", "Wine version is not proton-9.0-x86_64, skipping input dlls extraction")
+}
+
 private fun setupWineSystemFiles(
     context: Context,
     firstTimeBoot: Boolean,
@@ -1505,12 +1486,14 @@ private fun setupWineSystemFiles(
     val imageFs = ImageFs.find(context)
     val appVersion = AppUtils.getVersionCode(context).toString()
     val imgVersion = imageFs.getVersion().toString()
+    val variant = imageFs.getVariant()
     var containerDataChanged = false
 
-    if (!container.getExtra("appVersion").equals(appVersion) || !container.getExtra("imgVersion").equals(imgVersion)) {
-        applyGeneralPatches(context, container, imageFs, xServerState.value.wineInfo, onExtractFileListener)
+    if (!container.getExtra("appVersion").equals(appVersion) || !container.getExtra("imgVersion").equals(imgVersion) || container.containerVariant != variant) {
+        applyGeneralPatches(context, container, imageFs, xServerState.value.wineInfo, containerManager, onExtractFileListener)
         container.putExtra("appVersion", appVersion)
         container.putExtra("imgVersion", imgVersion)
+        container.setContainerVariant(variant)
         containerDataChanged = true
     }
 
@@ -1553,7 +1536,6 @@ private fun setupWineSystemFiles(
     // val wincomponents = if (shortcut != null) shortcut.getExtra("wincomponents", container.winComponents) else container.winComponents
     val wincomponents = container.winComponents
     if (!wincomponents.equals(container.getExtra("wincomponents"))) {
-        // extractWinComponentFiles(context, firstTimeBoot, imageFs, container, containerManager, shortcut, onExtractFileListener)
         extractWinComponentFiles(context, firstTimeBoot, imageFs, container, containerManager, onExtractFileListener)
         container.putExtra("wincomponents", wincomponents)
         containerDataChanged = true
@@ -1584,18 +1566,34 @@ private fun applyGeneralPatches(
     container: Container,
     imageFs: ImageFs,
     wineInfo: WineInfo,
+    containerManager: ContainerManager,
     onExtractFileListener: OnExtractFileListener?,
 ) {
     Timber.i("Applying general patches")
     val rootDir = imageFs.getRootDir()
-    FileUtils.delete(File(rootDir, "/opt/apps"))
-    Timber.i("Applying imagefs_patches_gamenative.tzst")
-    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "imagefs_patches_gamenative.tzst", rootDir, onExtractFileListener)
+    val contentsManager = ContentsManager(context)
+    if (container.containerVariant == Container.GLIBC) {
+        FileUtils.delete(File(rootDir, "/opt/apps"))
+        Timber.i("Extracting imagefs_patches_gamenative.tzst")
+        TarCompressorUtils.extract(
+            TarCompressorUtils.Type.ZSTD,
+            context.assets,
+            "imagefs_patches_gamenative.tzst",
+            rootDir,
+            onExtractFileListener,
+        )
+    } else {
+        Timber.i("Extracting container_pattern_common.tzst")
+        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "container_pattern_common.tzst", rootDir);
+        Timber.i("Attempting to extract _container_pattern.tzst with wine version " + container.wineVersion)
+        containerManager.extractContainerPatternFile(container.getWineVersion(), contentsManager, container.rootDir, null)
+    }
     TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "pulseaudio.tzst", File(context.filesDir, "pulseaudio"))
     WineUtils.applySystemTweaks(context, wineInfo)
     container.putExtra("graphicsDriver", null)
     container.putExtra("desktopTheme", null)
-    // SettingsFragment.resetBox86_64Version(context)
+    WinlatorPrefManager.init(context)
+    WinlatorPrefManager.putString("current_box64_version", "")
 }
 private fun extractDXWrapperFiles(
     context: Context,
@@ -1625,10 +1623,10 @@ private fun extractDXWrapperFiles(
 
     when (splitDxWrapper) {
         "wined3d" -> {
-            restoreOriginalDllFiles(container, containerManager, imageFs, *dlls)
+            restoreOriginalDllFiles(context, container, containerManager, imageFs, *dlls)
         }
         "cnc-ddraw" -> {
-            restoreOriginalDllFiles(container, containerManager, imageFs, *dlls)
+            restoreOriginalDllFiles(context, container, containerManager, imageFs, *dlls)
             val assetDir = "dxwrapper/cnc-ddraw-" + DefaultVersion.CNC_DDRAW
             val configFile = File(rootDir, ImageFs.WINEPREFIX + "/drive_c/ProgramData/cnc-ddraw/ddraw.ini")
             if (!configFile.isFile) FileUtils.copy(context, "$assetDir/ddraw.ini", configFile)
@@ -1664,7 +1662,7 @@ private fun extractDXWrapperFiles(
         else -> {
             // This block handles dxvk-VERSION strings
             Timber.i("Extracting DXVK/D8VK DLLs for dxwrapper: $dxwrapper")
-            restoreOriginalDllFiles(container, containerManager, imageFs, "d3d12.dll", "d3d12core.dll", "ddraw.dll")
+            restoreOriginalDllFiles(context, container, containerManager, imageFs, "d3d12.dll", "d3d12core.dll", "ddraw.dll")
             TarCompressorUtils.extract(
                 TarCompressorUtils.Type.ZSTD, context.assets,
                 "dxwrapper/$dxwrapper.tzst", windowsDir, onExtractFileListener,
@@ -1694,6 +1692,7 @@ private fun cloneOriginalDllFiles(imageFs: ImageFs, vararg dlls: String) {
     }
 }
 private fun restoreOriginalDllFiles(
+    context: Context,
     container: Container,
     containerManager: ContainerManager,
     imageFs: ImageFs,
@@ -1701,6 +1700,7 @@ private fun restoreOriginalDllFiles(
 ) {
     val rootDir = imageFs.rootDir
     val cacheDir = File(rootDir, ImageFs.CACHE_PATH + "/original_dlls")
+    val contentsManager = ContentsManager(context)
     if (cacheDir.isDirectory) {
         val windowsDir = File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
         val dirnames = cacheDir.list()
@@ -1720,7 +1720,7 @@ private fun restoreOriginalDllFiles(
     }
 
     containerManager.extractContainerPatternFile(
-        container.wineVersion, container.rootDir,
+        container.wineVersion, contentsManager, container.rootDir,
         object : OnExtractFileListener {
             override fun onExtractFile(file: File, size: Long): File? {
                 val path = file.path
@@ -1791,7 +1791,7 @@ private fun extractWinComponentFiles(
             WineUtils.setWinComponentRegistryKeys(systemRegFile, identifier, useNative)
         }
 
-        if (!dlls.isEmpty()) restoreOriginalDllFiles(container, containerManager, imageFs, *dlls.toTypedArray())
+        if (!dlls.isEmpty()) restoreOriginalDllFiles(context, container, containerManager, imageFs, *dlls.toTypedArray())
         WineUtils.overrideWinComponentDlls(context, container, wincomponents)
     } catch (e: JSONException) {
         Timber.e("Failed to read JSON: $e")

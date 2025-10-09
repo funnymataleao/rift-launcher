@@ -86,7 +86,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             if (wineInfo.isArm64EC())
                 extractEmulatorsDlls();
             else
-                extractBox86_64Files();
+                extractBox64Files();
             if (preUnpack != null) preUnpack.run();
             pid = execGuestProgram();
             Log.d("BionicProgramLauncherComponent", "Process " + pid + " started");
@@ -270,7 +270,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
 
-        ld_preload += ":" + evshimPath;
+//        ld_preload += ":" + evshimPath;
 
         envVars.put("LD_PRELOAD", ld_preload);
 
@@ -336,12 +336,12 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         return command;
     }
 
-    private void extractBox86_64Files() {
+    private void extractBox64Files() {
         ImageFs imageFs = environment.getImageFs();
         Context context = environment.getContext();
         String box64Version = container.getBox64Version();
 
-        Log.i("BionicProgramLauncherComponent", "Extracting required box64 version: " + box64Version);
+        Log.i("Extraction", "Extracting required box64 version: " + box64Version);
         File rootDir = imageFs.getRootDir();
 
         // No more version check, just extract directly.
@@ -349,7 +349,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (profile != null) {
             contentsManager.applyContent(profile);
         } else {
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "box86_64/box64-" + box64Version + ".tzst", rootDir);
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "box86_64/box64-" + box64Version + "-bionic.tzst", rootDir);
         }
 
         // Update the metadata so the container knows which version is installed.
@@ -375,8 +375,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         String wowbox64Version = container.getBox64Version();
         String fexcoreVersion = container.getFEXCoreVersion();
 
-        Log.d("BionicProgramLauncherComponent", "box64Version in use: " + wowbox64Version);
-        Log.d("BionicProgramLauncherComponent", "fexcoreVersion in use: " + fexcoreVersion);
+        Log.d("Extraction", "box64Version in use: " + wowbox64Version);
+        Log.d("Extraction", "fexcoreVersion in use: " + fexcoreVersion);
 
         if (!wowbox64Version.equals(container.getExtra("box64Version"))) {
             ContentProfile profile = contentsManager.getProfileByEntryName("wowbox64-" + wowbox64Version);

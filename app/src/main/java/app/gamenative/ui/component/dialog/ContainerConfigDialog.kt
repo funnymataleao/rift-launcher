@@ -550,28 +550,27 @@ fun ContainerConfigDialog(
                                     onItemSelected = { idx ->
                                         variantIndex.value = idx
                                         val newVariant = containerVariants[idx]
-                                        config = if (newVariant.equals("glibc", ignoreCase = true)) {
+                                        config = if (newVariant.equals(Container.GLIBC, ignoreCase = true)) {
                                             config.copy(
                                                 containerVariant = newVariant,
                                                 wineVersion = WineInfo.MAIN_WINE_VERSION.identifier(),
                                             )
                                         } else {
-                                            config.copy(containerVariant = newVariant)
+                                            val newWine = if (config.wineVersion == WineInfo.MAIN_WINE_VERSION.identifier()) wineEntries.firstOrNull()
+                                                ?: config.wineVersion else config.wineVersion
+                                            config.copy(containerVariant = newVariant, wineVersion = newWine)
                                         }
                                     },
                                 )
                                 // Wine version only if bionic variant
-                                if (config.containerVariant.equals("bionic", ignoreCase = true)) {
-                                    val wineIndex = rememberSaveable {
-                                        mutableIntStateOf(wineEntries.indexOfFirst { it == config.wineVersion }.coerceAtLeast(0))
-                                    }
+                                if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
+                                    val wineIndex = wineEntries.indexOfFirst { it == config.wineVersion }.coerceAtLeast(0)
                                     SettingsListDropdown(
                                         colors = settingsTileColors(),
                                         title = { Text(text = "Wine Version") },
-                                        value = wineIndex.value,
+                                        value = wineIndex,
                                         items = wineEntries,
                                         onItemSelected = { idx ->
-                                            wineIndex.value = idx
                                             config = config.copy(wineVersion = wineEntries[idx])
                                         },
                                     )
