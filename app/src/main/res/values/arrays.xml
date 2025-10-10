@@ -164,7 +164,10 @@
         <item>FEXCore</item>
         <item>Box64</item>
     </string-array>
-    <string-array name="wine_entries">
+    <string-array name="glibc_wine_entries">
+        <item>wine-9.2-x86_64</item>
+    </string-array>
+    <string-array name="bionic_wine_entries">
         <item>proton-9.0-x86_64</item>
         <item>proton-9.0-arm64ec</item>
     </string-array>

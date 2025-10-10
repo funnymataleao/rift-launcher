@@ -119,7 +119,8 @@ fun ContainerConfigDialog(
         val adrenoVersions = stringArrayResource(R.array.adreno_version_entries).toList()
         val sd8EliteVersions = stringArrayResource(R.array.sd8elite_version_entries).toList()
         val containerVariants = stringArrayResource(R.array.container_variant_entries).toList()
-        val wineEntries = stringArrayResource(R.array.wine_entries).toList()
+        val bionicWineEntries = stringArrayResource(R.array.bionic_wine_entries).toList()
+        val glibcWineEntries = stringArrayResource(R.array.glibc_wine_entries).toList()
         val languages = listOf(
             "arabic",
             "bulgarian",
@@ -553,10 +554,10 @@ fun ContainerConfigDialog(
                                         config = if (newVariant.equals(Container.GLIBC, ignoreCase = true)) {
                                             config.copy(
                                                 containerVariant = newVariant,
-                                                wineVersion = WineInfo.MAIN_WINE_VERSION.identifier(),
+                                                wineVersion = glibcWineEntries.first(),
                                             )
                                         } else {
-                                            val newWine = if (config.wineVersion == WineInfo.MAIN_WINE_VERSION.identifier()) wineEntries.firstOrNull()
+                                            val newWine = if (config.wineVersion == glibcWineEntries.first()) bionicWineEntries.firstOrNull()
                                                 ?: config.wineVersion else config.wineVersion
                                             config.copy(containerVariant = newVariant, wineVersion = newWine)
                                         }
@@ -564,14 +565,14 @@ fun ContainerConfigDialog(
                                 )
                                 // Wine version only if bionic variant
                                 if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
-                                    val wineIndex = wineEntries.indexOfFirst { it == config.wineVersion }.coerceAtLeast(0)
+                                    val wineIndex = bionicWineEntries.indexOfFirst { it == config.wineVersion }.coerceAtLeast(0)
                                     SettingsListDropdown(
                                         colors = settingsTileColors(),
                                         title = { Text(text = "Wine Version") },
                                         value = wineIndex,
-                                        items = wineEntries,
+                                        items = bionicWineEntries,
                                         onItemSelected = { idx ->
-                                            config = config.copy(wineVersion = wineEntries[idx])
+                                            config = config.copy(wineVersion = bionicWineEntries[idx])
                                         },
                                     )
                                 }

@@ -55,7 +55,7 @@ public abstract class ImageFsInstaller {
     }
 
     public static void installWineFromAssets(final Context context, AssetManager assetManager) {
-        String[] versions = context.getResources().getStringArray(R.array.wine_entries);
+        String[] versions = context.getResources().getStringArray(R.array.bionic_wine_entries);
         File rootDir = ImageFs.find(context).getRootDir();
         for (String version : versions) {
             File outFile = new File(rootDir, "/opt/" + version);
@@ -78,7 +78,7 @@ public abstract class ImageFsInstaller {
         return Executors.newSingleThreadExecutor().submit(() -> {
             clearRootDir(rootDir);
             final byte compressionRatio = 22;
-            String imagefsFile = containerVariant == Container.GLIBC ? "imagefs_gamenative.txz" : "imagefs_bionic.txz";
+            String imagefsFile = containerVariant.equals(Container.GLIBC) ? "imagefs_gamenative.txz" : "imagefs_bionic.txz";
             final long contentLength = (long)(FileUtils.getSize(assetManager, imagefsFile) * (100.0f / compressionRatio));
             AtomicLong totalSizeRef = new AtomicLong();
             Log.d("Extraction", "extracting " + imagefsFile);

@@ -510,7 +510,7 @@ fun XServerScreen(
                     Timber.i("WineInfo.MAIN_WINE_VERSION is: " + WineInfo.MAIN_WINE_VERSION)
                     Timber.i("Wine path for wineinfo is " + xServerState.value.wineInfo.path)
 
-                    if (xServerState.value.wineInfo != WineInfo.MAIN_WINE_VERSION) {
+                    if (!xServerState.value.wineInfo.isMainWineVersion()) {
                         val imageFs = ImageFs.find(context)
                         Timber.i("Settings wine path to: ${xServerState.value.wineInfo.path}")
                         imageFs.setWinePath(xServerState.value.wineInfo.path)
@@ -1572,7 +1572,7 @@ private fun applyGeneralPatches(
     Timber.i("Applying general patches")
     val rootDir = imageFs.getRootDir()
     val contentsManager = ContentsManager(context)
-    if (container.containerVariant == Container.GLIBC) {
+    if (container.containerVariant.equals(Container.GLIBC)) {
         FileUtils.delete(File(rootDir, "/opt/apps"))
         Timber.i("Extracting imagefs_patches_gamenative.tzst")
         TarCompressorUtils.extract(
