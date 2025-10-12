@@ -185,7 +185,7 @@ object IntentLaunchManager {
             graphicsDriverVersion = if (json.has("graphicsDriverVersion")) json.getString("graphicsDriverVersion") else "",
             dxwrapper = if (json.has("dxwrapper")) json.getString("dxwrapper") else Container.DEFAULT_DXWRAPPER,
             dxwrapperConfig = if (json.has("dxwrapperConfig")) {
-                json.getString("dxwrapperConfig")
+                "version=" + json.getString("dxwrapperConfig")
             } else {
                 ""
             },

@@ -683,6 +683,20 @@ fun AppScreen(
 //                                    }
 //                            ),
                             AppMenuOption(
+                                AppOptionMenuType.Uninstall,
+                                onClick = {
+                                    // TODO: show loading screen of delete progress
+                                    msgDialogState = MessageDialogState(
+                                        visible = true,
+                                        type = DialogType.DELETE_APP,
+                                        title = context.getString(R.string.delete_prompt_title),
+                                        message = "Are you sure you want to delete this app?",
+                                        confirmBtnText = context.getString(R.string.delete_app),
+                                        dismissBtnText = context.getString(R.string.cancel),
+                                    )
+                                },
+                            ),
+                            AppMenuOption(
                                 AppOptionMenuType.ForceCloudSync,
                                 onClick = {
                                     PostHog.capture(event = "cloud_sync_forced",
