@@ -23,6 +23,18 @@
         <item>Adreno (Adreno)</item>
         <item>SD 8 Elite (SD 8 Elite)</item>
     </string-array>
+    <string-array name="bionic_graphics_driver_entries">
+        <item>Wrapper</item>
+        <item>Wrapper-v2</item>
+    </string-array>
+    <string-array name="wrapper_graphics_driver_version_entries">
+        <item>System</item>
+        <item>v762</item>
+        <item>v805</item>
+        <item>turnip25.1.0</item>
+        <item>turnip25.3.0_R3_Auto</item>
+        <item>turnip25.3.0_R3_Gmem</item>
+    </string-array>
     <string-array name="turnip_version_entries">
         <item>25.1.0</item>
         <item>25.2.0</item>
@@ -84,6 +96,11 @@
         <item>2048 MB</item>
         <item>4096 MB</item>
     </string-array>
+    <string-array name="frame_sync_entries">
+        <item>Never</item>
+        <item>Normal</item>
+        <item>Always</item>
+    </string-array>
     <string-array name="video_memory_size_entries">
         <item>32 MB</item>
         <item>64 MB</item>
@@ -115,6 +132,14 @@
     <string-array name="box64_version_entries">
         <item>0.3.6 (Default)</item>
         <item>0.3.4</item>
+    </string-array>
+    <string-array name="wowbox64_version_entries">
+        <item>0.3.4</item>
+        <item>0.3.7</item>
+    </string-array>
+    <string-array name="fexcore_version_entries">
+        <item>2505</item>
+        <item>2507</item>
     </string-array>
     <string-array name="dinput_mapper_type_entries">
         <item>Standard (Old Gamepads)</item>

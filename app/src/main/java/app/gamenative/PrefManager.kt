@@ -163,6 +163,41 @@ object PrefManager {
             setPref(WINE_VERSION, value)
         }
 
+    private val EMULATOR = stringPreferencesKey("emulator")
+    var emulator: String
+        get() = getPref(EMULATOR, Container.DEFAULT_EMULATOR)
+        set(value) {
+            setPref(EMULATOR, value)
+        }
+
+    private val FEXCORE_VERSION = stringPreferencesKey("fexcore_version")
+    var fexcoreVersion: String
+        get() = getPref(FEXCORE_VERSION, DefaultVersion.FEXCORE)
+        set(value) {
+            setPref(FEXCORE_VERSION, value)
+        }
+
+    private val FEXCORE_TSO_MODE = stringPreferencesKey("fexcore_tso_mode")
+    var fexcoreTSOMode: String
+        get() = getPref(FEXCORE_TSO_MODE, "Fast")
+        set(value) {
+            setPref(FEXCORE_TSO_MODE, value)
+        }
+
+    private val FEXCORE_X87_MODE = stringPreferencesKey("fexcore_x87_mode")
+    var fexcoreX87Mode: String
+        get() = getPref(FEXCORE_X87_MODE, "Fast")
+        set(value) {
+            setPref(FEXCORE_X87_MODE, value)
+        }
+
+    private val FEXCORE_MULTIBLOCK = stringPreferencesKey("fexcore_multiblock")
+    var fexcoreMultiBlock: String
+        get() = getPref(FEXCORE_MULTIBLOCK, "Disabled")
+        set(value) {
+            setPref(FEXCORE_MULTIBLOCK, value)
+        }
+
     private val DXWRAPPER = stringPreferencesKey("dxwrapper")
     var dxWrapper: String
         get() = getPref(DXWRAPPER, Container.DEFAULT_DXWRAPPER)

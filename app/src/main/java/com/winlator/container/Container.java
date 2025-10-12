@@ -72,7 +72,7 @@ public class Container {
     private String box86Preset = Box86_64Preset.PERFORMANCE;
     private String box64Preset = Box86_64Preset.PERFORMANCE;
     private String fexcoreVersion = DefaultVersion.FEXCORE;
-    private String emulator;
+    private String emulator = DEFAULT_EMULATOR;
     private File rootDir;
     private String installPath = "";
     private JSONObject extraData;
@@ -599,6 +599,9 @@ public class Container {
             data.put("steamType", steamType);
             data.put("language", language);
             data.put("containerVariant", containerVariant);
+            if (emulator != null && !emulator.isEmpty()) {
+                data.put("emulator", emulator);
+            }
 
             // Emulated keyboard/mouse controller mappings
             data.put("emulateKeyboardMouse", emulateKeyboardMouse);
@@ -695,6 +698,9 @@ public class Container {
                 }
                 case "wineVersion" :
                     setWineVersion(data.getString(key));
+                    break;
+                case "emulator" :
+                    setEmulator(data.getString(key));
                     break;
                 case "box86Version":
                     setBox86Version(data.getString(key));

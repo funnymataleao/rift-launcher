@@ -1,6 +1,8 @@
 package app.gamenative.ui.component.dialog
 
 import android.widget.Toast
+import android.widget.Spinner
+import android.widget.ArrayAdapter
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -65,6 +67,7 @@ import app.gamenative.ui.component.settings.SettingsMultiListDropdown
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.service.SteamService
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.SettingsSwitch
@@ -79,6 +82,7 @@ import com.winlator.core.envvars.EnvVarSelectionType
 import com.winlator.core.DefaultVersion
 import com.winlator.core.GPUHelper
 import com.winlator.core.WineInfo
+import com.winlator.fexcore.FEXCoreManager
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -111,6 +115,10 @@ fun ContainerConfigDialog(
         val winCompOpts = stringArrayResource(R.array.win_component_entries).toList()
         val box64Versions = stringArrayResource(R.array.box64_version_entries).toList()
         val box64Presets = Box86_64PresetManager.getPresets("box64", context)
+        val fexcoreVersions = stringArrayResource(R.array.fexcore_version_entries).toList()
+        val fexcoreTSOPresets = stringArrayResource(R.array.fexcore_preset_entries).toList()
+        val fexcoreX87Presets = stringArrayResource(R.array.x87mode_preset_entries).toList()
+        val fexcoreMultiblockValues = stringArrayResource(R.array.multiblock_values).toList()
         val startupSelectionEntries = stringArrayResource(R.array.startup_selection_entries).toList()
         val turnipVersions = stringArrayResource(R.array.turnip_version_entries).toList()
         val virglVersions = stringArrayResource(R.array.virgl_version_entries).toList()
@@ -121,6 +129,10 @@ fun ContainerConfigDialog(
         val containerVariants = stringArrayResource(R.array.container_variant_entries).toList()
         val bionicWineEntries = stringArrayResource(R.array.bionic_wine_entries).toList()
         val glibcWineEntries = stringArrayResource(R.array.glibc_wine_entries).toList()
+        val emulatorEntries = stringArrayResource(R.array.emulator_entries).toList()
+        val bionicGraphicsDrivers = stringArrayResource(R.array.bionic_graphics_driver_entries).toList()
+        val wrapperVersions = stringArrayResource(R.array.wrapper_graphics_driver_version_entries).toList()
+        val frameSyncEntries = stringArrayResource(R.array.frame_sync_entries).toList()
         val languages = listOf(
             "arabic",
             "bulgarian",
@@ -157,7 +169,7 @@ fun ContainerConfigDialog(
         var imageCacheIndex by rememberSaveable { mutableIntStateOf(2) }
         // Exposed device extensions selection indices; populated dynamically when UI opens
         var exposedExtIndices by rememberSaveable { mutableStateOf(listOf<Int>()) }
-        val gpuExtensions = remember { com.winlator.core.GPUHelper.vkGetDeviceExtensions().toList() }
+        val gpuExtensions = remember { GPUHelper.vkGetDeviceExtensions().toList() }
         LaunchedEffect(config.graphicsDriverConfig) {
             val cfg = KeyValueSet(config.graphicsDriverConfig)
             // Sync Vulkan version index from config
@@ -179,6 +191,35 @@ fun ContainerConfigDialog(
                 valStr.split("|").mapNotNull { ext -> gpuExtensions.indexOf(ext).takeIf { it >= 0 } }
             }
         }
+
+        // Emulator selections (shown for bionic variant): 64-bit and 32-bit
+        var emulator64Index by rememberSaveable {
+            // Default based on wine arch: x86_64 -> Box64 (index 1); arm64ec -> FEXCore (index 0)
+            val idx = when {
+                config.wineVersion.contains("x86_64", true) -> 1
+                config.wineVersion.contains("arm64ec", true) -> 0
+                else -> 0
+            }
+            mutableIntStateOf(idx)
+        }
+        var emulator32Index by rememberSaveable {
+            val current = config.emulator.ifEmpty { Container.DEFAULT_EMULATOR }
+            val idx = emulatorEntries.indexOfFirst { it.equals(current, true) }.coerceAtLeast(0)
+            mutableIntStateOf(idx)
+        }
+
+        // Keep emulator defaults in sync when wineVersion changes
+        LaunchedEffect(config.wineVersion) {
+            if (config.wineVersion.contains("x86_64", true)) {
+                emulator64Index = 1 // Box64
+                emulator32Index = 1 // Box64
+                // lock both later via enabled flags
+            } else if (config.wineVersion.contains("arm64ec", true)) {
+                emulator64Index = 0 // FEXCore
+                if (emulator32Index !in 0..1) emulator32Index = 0
+                // Leave 32-bit editable between FEXCore(0) and Box64(1)
+            }
+        }
         // Max Device Memory (MB) for Vortek/Adreno
         var maxDeviceMemoryIndex by rememberSaveable { mutableIntStateOf(4) } // default 4096
         LaunchedEffect(config.graphicsDriverConfig) {
@@ -187,6 +228,36 @@ fun ContainerConfigDialog(
             val current = cfg.get("maxDeviceMemory", "4096")
             val found = options.indexOf(current)
             maxDeviceMemoryIndex = if (found >= 0) found else 4
+        }
+
+        // Bionic-specific state
+        var bionicDriverIndex by rememberSaveable {
+            val idx = bionicGraphicsDrivers.indexOfFirst { StringUtils.parseIdentifier(it) == config.graphicsDriver }
+            mutableIntStateOf(if (idx >= 0) idx else 0)
+        }
+        var wrapperVersionIndex by rememberSaveable {
+            val cfg = KeyValueSet(config.graphicsDriverConfig)
+            val selected = cfg.get("version", DefaultVersion.WRAPPER)
+            val idx = wrapperVersions.indexOfFirst { it == selected }
+            mutableIntStateOf(if (idx >= 0) idx else 0)
+        }
+        var frameSyncIndex by rememberSaveable {
+            val cfg = KeyValueSet(config.graphicsDriverConfig)
+            val selected = cfg.get("frameSync", "Normal")
+            val idx = frameSyncEntries.indexOfFirst { it.equals(selected, ignoreCase = true) }
+            mutableIntStateOf(if (idx >= 0) idx else frameSyncEntries.indexOf("Normal").coerceAtLeast(0))
+        }
+        var adrenotoolsTurnipChecked by rememberSaveable {
+            val cfg = KeyValueSet(config.graphicsDriverConfig)
+            mutableStateOf(cfg.get("adrenotoolsTurnip", "1") != "0")
+        }
+        LaunchedEffect(config.graphicsDriverConfig) {
+            val cfg = KeyValueSet(config.graphicsDriverConfig)
+            val ver = cfg.get("version", DefaultVersion.WRAPPER)
+            wrapperVersionIndex = wrapperVersions.indexOfFirst { it == ver }.coerceAtLeast(0)
+            val fs = cfg.get("frameSync", "Normal")
+            frameSyncIndex = frameSyncEntries.indexOfFirst { it.equals(fs, true) }.let { if (it >= 0) it else frameSyncEntries.indexOf("Normal").coerceAtLeast(0) }
+            adrenotoolsTurnipChecked = cfg.get("adrenotoolsTurnip", "1") != "0"
         }
 
         var screenSizeIndex by rememberSaveable {
@@ -551,15 +622,51 @@ fun ContainerConfigDialog(
                                     onItemSelected = { idx ->
                                         variantIndex.value = idx
                                         val newVariant = containerVariants[idx]
-                                        config = if (newVariant.equals(Container.GLIBC, ignoreCase = true)) {
-                                            config.copy(
+                                        if (newVariant.equals(Container.GLIBC, ignoreCase = true)) {
+                                            // Switch to glibc: reset to default graphics driver and clear wrapper-specific version
+                                            val defaultDriver = Container.DEFAULT_GRAPHICS_DRIVER
+                                            val newCfg = KeyValueSet(config.graphicsDriverConfig).apply {
+                                                put("version", "")
+                                                put("frameSync", "Normal")
+                                                put("adrenotoolsTurnip", "1")
+                                            }
+                                            graphicsDriverIndex = graphicsDrivers.indexOfFirst { StringUtils.parseIdentifier(it) == defaultDriver }.coerceAtLeast(0)
+                                            graphicsDriverVersionIndex = 0
+                                            frameSyncIndex = frameSyncEntries.indexOf("Normal").coerceAtLeast(0)
+                                            adrenotoolsTurnipChecked = true
+
+                                            config = config.copy(
                                                 containerVariant = newVariant,
                                                 wineVersion = glibcWineEntries.first(),
+                                                graphicsDriver = defaultDriver,
+                                                graphicsDriverVersion = "",
+                                                graphicsDriverConfig = newCfg.toString(),
                                             )
                                         } else {
+                                            // Switch to bionic: set wrapper defaults
+                                            val defaultBionicDriver = StringUtils.parseIdentifier(bionicGraphicsDrivers.first())
                                             val newWine = if (config.wineVersion == glibcWineEntries.first()) bionicWineEntries.firstOrNull()
                                                 ?: config.wineVersion else config.wineVersion
-                                            config.copy(containerVariant = newVariant, wineVersion = newWine)
+                                            val newCfg = KeyValueSet(config.graphicsDriverConfig).apply {
+                                                put("version", DefaultVersion.WRAPPER)
+                                                put("frameSync", "Normal")
+                                                put("adrenotoolsTurnip", "1")
+                                                if (get("exposedDeviceExtensions").isEmpty()) put("exposedDeviceExtensions", "all")
+                                                if (get("maxDeviceMemory").isEmpty()) put("maxDeviceMemory", "4096")
+                                            }
+                                            bionicDriverIndex = 0
+                                            wrapperVersionIndex = wrapperVersions.indexOfFirst { it == DefaultVersion.WRAPPER }.let { if (it >= 0) it else 0 }
+                                            frameSyncIndex = frameSyncEntries.indexOf("Normal").coerceAtLeast(0)
+                                            adrenotoolsTurnipChecked = true
+                                            maxDeviceMemoryIndex = listOf("0", "512", "1024", "2048", "4096").indexOf("4096").coerceAtLeast(0)
+
+                                            config = config.copy(
+                                                containerVariant = newVariant,
+                                                wineVersion = newWine,
+                                                graphicsDriver = defaultBionicDriver,
+                                                graphicsDriverVersion = "",
+                                                graphicsDriverConfig = newCfg.toString(),
+                                            )
                                         }
                                     },
                                 )
@@ -658,89 +765,51 @@ fun ContainerConfigDialog(
                                     null
                                 },
                             )
-                            // TODO: add way to pick driver version
-                            SettingsListDropdown(
-                                colors = settingsTileColors(),
-                                title = { Text(text = "Graphics Driver") },
-                                value = graphicsDriverIndex,
-                                items = graphicsDrivers,
-                                onItemSelected = {
-                                    graphicsDriverIndex = it
-                                    config = config.copy(graphicsDriver = StringUtils.parseIdentifier(graphicsDrivers[it]))
-                                    // Reset version index when driver changes
-                                    graphicsDriverVersionIndex = 0
-                                    config = config.copy(graphicsDriverVersion = "")
-                                },
-                            )
-                            SettingsListDropdown(
-                                colors = settingsTileColors(),
-                                title = { Text(text = "Graphics Driver Version") },
-                                value = graphicsDriverVersionIndex,
-                                items = getVersionsForDriver(),
-                                onItemSelected = {
-                                    graphicsDriverVersionIndex = it
-                                    // Get the version directly from the selected item
-                                    val selectedVersion = if (it == 0) {
-                                        "" // Default
-                                    } else {
-                                        getVersionsForDriver()[it]
-                                    }
-                                    config = config.copy(graphicsDriverVersion = selectedVersion)
-                                },
-                            )
-                            // Vortek/Adreno specific settings
-                            run {
-                                val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
-                                val isVortekLike = driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite"
-                                if (isVortekLike) {
-                                    // Vulkan Max Version
-                                    val vkVersions = listOf("1.0", "1.1", "1.2", "1.3")
-                                    SettingsListDropdown(
-                                        colors = settingsTileColors(),
-                                        title = { Text(text = "Vulkan Version") },
-                                        value = vkMaxVersionIndex.coerceIn(0, 3),
-                                        items = vkVersions,
-                                        onItemSelected = { idx ->
-                                            vkMaxVersionIndex = idx
-                                            val cfg = KeyValueSet(config.graphicsDriverConfig)
-                                            cfg.put("vkMaxVersion", vkVersions[idx])
-                                            config = config.copy(graphicsDriverConfig = cfg.toString())
-                                        },
-                                    )
-                                    // Exposed Extensions (multi-select)
-                                    SettingsMultiListDropdown(
-                                        colors = settingsTileColors(),
-                                        title = { Text(text = "Exposed Vulkan Extensions") },
-                                        values = exposedExtIndices,
-                                        items = gpuExtensions,
-                                        fallbackDisplay = "all",
-                                        onItemSelected = { idx ->
-                                            exposedExtIndices = if (exposedExtIndices.contains(idx)) exposedExtIndices.filter { it != idx } else exposedExtIndices + idx
-                                            val cfg = KeyValueSet(config.graphicsDriverConfig)
-                                            val allSelected = exposedExtIndices.size == gpuExtensions.size
-                                            if (allSelected) cfg.put("exposedDeviceExtensions", "all") else cfg.put(
-                                                "exposedDeviceExtensions",
-                                                exposedExtIndices.sorted().joinToString("|") { gpuExtensions[it] },
-                                            )
-                                            config = config.copy(graphicsDriverConfig = cfg.toString())
-                                        },
-                                    )
-                                    // Image Cache Size
-                                    val imageSizes = listOf("64", "128", "256", "512", "1024")
-                                    val imageLabels = listOf("64", "128", "256", "512", "1024").map { "$it MB" }
-                                    SettingsListDropdown(
-                                        colors = settingsTileColors(),
-                                        title = { Text(text = "Image Cache Size") },
-                                        value = imageCacheIndex.coerceIn(0, imageSizes.lastIndex),
-                                        items = imageLabels,
-                                        onItemSelected = { idx ->
-                                            imageCacheIndex = idx
-                                            val cfg = KeyValueSet(config.graphicsDriverConfig)
-                                            cfg.put("imageCacheSize", imageSizes[idx])
-                                            config = config.copy(graphicsDriverConfig = cfg.toString())
-                                        },
-                                    )
-                                    // Max Device Memory
+                            if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
+                                // Bionic: Graphics Driver (Wrapper/Wrapper-v2)
+                                SettingsListDropdown(
+                                    colors = settingsTileColors(),
+                                    title = { Text(text = "Graphics Driver") },
+                                    value = bionicDriverIndex,
+                                    items = bionicGraphicsDrivers,
+                                    onItemSelected = { idx ->
+                                        bionicDriverIndex = idx
+                                        config = config.copy(graphicsDriver = StringUtils.parseIdentifier(bionicGraphicsDrivers[idx]))
+                                    },
+                                )
+                                // Bionic: Graphics Driver Version (stored in graphicsDriverConfig.version)
+                                SettingsListDropdown(
+                                    colors = settingsTileColors(),
+                                    title = { Text(text = "Graphics Driver Version") },
+                                    value = wrapperVersionIndex,
+                                    items = wrapperVersions,
+                                    onItemSelected = { idx ->
+                                        wrapperVersionIndex = idx
+                                        val cfg = KeyValueSet(config.graphicsDriverConfig)
+                                        cfg.put("version", wrapperVersions[idx])
+                                        config = config.copy(graphicsDriverConfig = cfg.toString())
+                                    },
+                                )
+                                // Bionic: Exposed Vulkan Extensions (same UI as Vortek)
+                                SettingsMultiListDropdown(
+                                    colors = settingsTileColors(),
+                                    title = { Text(text = "Exposed Vulkan Extensions") },
+                                    values = exposedExtIndices,
+                                    items = gpuExtensions,
+                                    fallbackDisplay = "all",
+                                    onItemSelected = { idx ->
+                                        exposedExtIndices = if (exposedExtIndices.contains(idx)) exposedExtIndices.filter { it != idx } else exposedExtIndices + idx
+                                        val cfg = KeyValueSet(config.graphicsDriverConfig)
+                                        val allSelected = exposedExtIndices.size == gpuExtensions.size
+                                        if (allSelected) cfg.put("exposedDeviceExtensions", "all") else cfg.put(
+                                            "exposedDeviceExtensions",
+                                            exposedExtIndices.sorted().joinToString("|") { gpuExtensions[it] },
+                                        )
+                                        config = config.copy(graphicsDriverConfig = cfg.toString())
+                                    },
+                                )
+                                // Bionic: Max Device Memory (same as Vortek)
+                                run {
                                     val memValues = listOf("0", "512", "1024", "2048", "4096")
                                     val memLabels = listOf("0 MB", "512 MB", "1024 MB", "2048 MB", "4096 MB")
                                     SettingsListDropdown(
@@ -755,6 +824,179 @@ fun ContainerConfigDialog(
                                             config = config.copy(graphicsDriverConfig = cfg.toString())
                                         },
                                     )
+                                }
+                                // Bionic: Frame Synchronization
+                                SettingsListDropdown(
+                                    colors = settingsTileColors(),
+                                    title = { Text(text = "Frame Synchronization") },
+                                    value = frameSyncIndex,
+                                    items = frameSyncEntries,
+                                    onItemSelected = { idx ->
+                                        frameSyncIndex = idx
+                                        val cfg = KeyValueSet(config.graphicsDriverConfig)
+                                        cfg.put("frameSync", frameSyncEntries[idx])
+                                        config = config.copy(graphicsDriverConfig = cfg.toString())
+                                    },
+                                )
+                                // Bionic: Use Adrenotools Turnip
+                                SettingsSwitch(
+                                    colors = settingsTileColorsAlt(),
+                                    title = { Text(text = "Use Adrenotools Turnip") },
+                                    state = adrenotoolsTurnipChecked,
+                                    onCheckedChange = { checked ->
+                                        adrenotoolsTurnipChecked = checked
+                                        val cfg = KeyValueSet(config.graphicsDriverConfig)
+                                        cfg.put("adrenotoolsTurnip", if (checked) "1" else "0")
+                                        config = config.copy(graphicsDriverConfig = cfg.toString())
+                                    },
+                                )
+
+                                // Bionic: Emulators
+                                val wineIsX8664 = config.wineVersion.contains("x86_64", true)
+                                val wineIsArm64Ec = config.wineVersion.contains("arm64ec", true)
+
+                                // 64-bit Emulator (locked based on wine arch)
+                                SettingsListDropdown(
+                                    colors = settingsTileColors(),
+                                    title = { Text(text = "64-bit Emulator") },
+                                    value = emulator64Index,
+                                    items = emulatorEntries,
+                                    enabled = false, // Always non-editable per requirements
+                                    onItemSelected = { /* locked */ },
+                                )
+                                // Ensure correct locked value displayed
+                                LaunchedEffect(wineIsX8664, wineIsArm64Ec) {
+                                    emulator64Index = if (wineIsX8664) 1 else 0
+                                }
+
+                                // 32-bit Emulator
+                                SettingsListDropdown(
+                                    colors = settingsTileColors(),
+                                    title = { Text(text = "32-bit Emulator") },
+                                    value = emulator32Index,
+                                    items = emulatorEntries,
+                                    enabled = when {
+                                        wineIsX8664 -> false // locked to Box64
+                                        wineIsArm64Ec -> true // editable between FEXCore and Box64
+                                        else -> true
+                                    },
+                                    onItemSelected = { idx ->
+                                        emulator32Index = idx
+                                        // Persist to config.emulator
+                                        config = config.copy(emulator = emulatorEntries[idx])
+                                    },
+                                )
+                                // Enforce locking defaults when variant/wine changes
+                                LaunchedEffect(wineIsX8664) {
+                                    if (wineIsX8664) {
+                                        emulator32Index = 1
+                                        if (config.emulator != emulatorEntries[1]) {
+                                            config = config.copy(emulator = emulatorEntries[1])
+                                        }
+                                    }
+                                }
+                                LaunchedEffect(wineIsArm64Ec) {
+                                    if (wineIsArm64Ec) {
+                                        if (emulator32Index !in 0..1) emulator32Index = 0
+                                        if (config.emulator.isEmpty()) {
+                                            config = config.copy(emulator = emulatorEntries[0])
+                                        }
+                                    }
+                                }
+                            } else {
+                                // Non-bionic: existing driver/version UI and Vortek-specific options
+                                SettingsListDropdown(
+                                    colors = settingsTileColors(),
+                                    title = { Text(text = "Graphics Driver") },
+                                    value = graphicsDriverIndex,
+                                    items = graphicsDrivers,
+                                    onItemSelected = {
+                                        graphicsDriverIndex = it
+                                        config = config.copy(graphicsDriver = StringUtils.parseIdentifier(graphicsDrivers[it]))
+                                        // Reset version index when driver changes
+                                        graphicsDriverVersionIndex = 0
+                                        config = config.copy(graphicsDriverVersion = "")
+                                    },
+                                )
+                                SettingsListDropdown(
+                                    colors = settingsTileColors(),
+                                    title = { Text(text = "Graphics Driver Version") },
+                                    value = graphicsDriverVersionIndex,
+                                    items = getVersionsForDriver(),
+                                    onItemSelected = {
+                                        graphicsDriverVersionIndex = it
+                                        val selectedVersion = if (it == 0) "" else getVersionsForDriver()[it]
+                                        config = config.copy(graphicsDriverVersion = selectedVersion)
+                                    },
+                                )
+                                // Vortek/Adreno specific settings
+                                run {
+                                    val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
+                                    val isVortekLike = driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite"
+                                    if (isVortekLike) {
+                                        // Vulkan Max Version
+                                        val vkVersions = listOf("1.0", "1.1", "1.2", "1.3")
+                                        SettingsListDropdown(
+                                            colors = settingsTileColors(),
+                                            title = { Text(text = "Vulkan Version") },
+                                            value = vkMaxVersionIndex.coerceIn(0, 3),
+                                            items = vkVersions,
+                                            onItemSelected = { idx ->
+                                                vkMaxVersionIndex = idx
+                                                val cfg = KeyValueSet(config.graphicsDriverConfig)
+                                                cfg.put("vkMaxVersion", vkVersions[idx])
+                                                config = config.copy(graphicsDriverConfig = cfg.toString())
+                                            },
+                                        )
+                                        // Exposed Extensions (multi-select)
+                                        SettingsMultiListDropdown(
+                                            colors = settingsTileColors(),
+                                            title = { Text(text = "Exposed Vulkan Extensions") },
+                                            values = exposedExtIndices,
+                                            items = gpuExtensions,
+                                            fallbackDisplay = "all",
+                                            onItemSelected = { idx ->
+                                                exposedExtIndices = if (exposedExtIndices.contains(idx)) exposedExtIndices.filter { it != idx } else exposedExtIndices + idx
+                                                val cfg = KeyValueSet(config.graphicsDriverConfig)
+                                                val allSelected = exposedExtIndices.size == gpuExtensions.size
+                                                if (allSelected) cfg.put("exposedDeviceExtensions", "all") else cfg.put(
+                                                    "exposedDeviceExtensions",
+                                                    exposedExtIndices.sorted().joinToString("|") { gpuExtensions[it] },
+                                                )
+                                                config = config.copy(graphicsDriverConfig = cfg.toString())
+                                            },
+                                        )
+                                        // Image Cache Size
+                                        val imageSizes = listOf("64", "128", "256", "512", "1024")
+                                        val imageLabels = listOf("64", "128", "256", "512", "1024").map { "$it MB" }
+                                        SettingsListDropdown(
+                                            colors = settingsTileColors(),
+                                            title = { Text(text = "Image Cache Size") },
+                                            value = imageCacheIndex.coerceIn(0, imageSizes.lastIndex),
+                                            items = imageLabels,
+                                            onItemSelected = { idx ->
+                                                imageCacheIndex = idx
+                                                val cfg = KeyValueSet(config.graphicsDriverConfig)
+                                                cfg.put("imageCacheSize", imageSizes[idx])
+                                                config = config.copy(graphicsDriverConfig = cfg.toString())
+                                            },
+                                        )
+                                        // Max Device Memory
+                                        val memValues = listOf("0", "512", "1024", "2048", "4096")
+                                        val memLabels = listOf("0 MB", "512 MB", "1024 MB", "2048 MB", "4096 MB")
+                                        SettingsListDropdown(
+                                            colors = settingsTileColors(),
+                                            title = { Text(text = "Max Device Memory") },
+                                            value = maxDeviceMemoryIndex.coerceIn(0, memValues.lastIndex),
+                                            items = memLabels,
+                                            onItemSelected = { idx ->
+                                                maxDeviceMemoryIndex = idx
+                                                val cfg = KeyValueSet(config.graphicsDriverConfig)
+                                                cfg.put("maxDeviceMemory", memValues[idx])
+                                                config = config.copy(graphicsDriverConfig = cfg.toString())
+                                            },
+                                        )
+                                    }
                                 }
                             }
                             // TODO: add way to pick DXVK version
@@ -880,8 +1122,8 @@ fun ContainerConfigDialog(
                             // Steam Type Dropdown
                             val steamTypeItems = listOf("Normal", "Light", "Ultra Light")
                             val currentSteamTypeIndex = when (config.steamType.lowercase()) {
-                                com.winlator.container.Container.STEAM_TYPE_LIGHT -> 1
-                                com.winlator.container.Container.STEAM_TYPE_ULTRALIGHT -> 2
+                                Container.STEAM_TYPE_LIGHT -> 1
+                                Container.STEAM_TYPE_ULTRALIGHT -> 2
                                 else -> 0
                             }
                             SettingsListDropdown(
@@ -891,9 +1133,9 @@ fun ContainerConfigDialog(
                                 items = steamTypeItems,
                                 onItemSelected = {
                                     val type = when (it) {
-                                        1 -> com.winlator.container.Container.STEAM_TYPE_LIGHT
-                                        2 -> com.winlator.container.Container.STEAM_TYPE_ULTRALIGHT
-                                        else -> com.winlator.container.Container.STEAM_TYPE_NORMAL
+                                        1 -> Container.STEAM_TYPE_LIGHT
+                                        2 -> Container.STEAM_TYPE_ULTRALIGHT
+                                        else -> Container.STEAM_TYPE_NORMAL
                                     }
                                     config = config.copy(steamType = type)
                                 },
@@ -1232,6 +1474,50 @@ fun ContainerConfigDialog(
                                     )
                                 },
                             )
+                            // FEXCore Settings (only when Bionic + Wine arm64ec) placed under Box64 settings
+                            run {
+                                val showFexcore = config.containerVariant.equals(Container.BIONIC, true) && config.wineVersion.contains("arm64ec", true)
+                                if (showFexcore) {
+                                    SettingsGroup(title = { Text(text = "FEXCore Settings") }) {
+                                        SettingsListDropdown(
+                                            colors = settingsTileColors(),
+                                            title = { Text(text = "FEXCore Version") },
+                                            value = fexcoreVersions.indexOfFirst { it == config.fexcoreVersion }.coerceAtLeast(0),
+                                            items = fexcoreVersions,
+                                            onItemSelected = { idx ->
+                                                config = config.copy(fexcoreVersion = fexcoreVersions[idx])
+                                            },
+                                        )
+                                        SettingsListDropdown(
+                                            colors = settingsTileColors(),
+                                            title = { Text(text = "TSO Mode") },
+                                            value = fexcoreTSOPresets.indexOfFirst { it == config.fexcoreTSOMode }.coerceAtLeast(0),
+                                            items = fexcoreTSOPresets,
+                                            onItemSelected = { idx ->
+                                                config = config.copy(fexcoreTSOMode = fexcoreTSOPresets[idx])
+                                            },
+                                        )
+                                        SettingsListDropdown(
+                                            colors = settingsTileColors(),
+                                            title = { Text(text = "x87 Mode") },
+                                            value = fexcoreX87Presets.indexOfFirst { it == config.fexcoreX87Mode }.coerceAtLeast(0),
+                                            items = fexcoreX87Presets,
+                                            onItemSelected = { idx ->
+                                                config = config.copy(fexcoreX87Mode = fexcoreX87Presets[idx])
+                                            },
+                                        )
+                                        SettingsListDropdown(
+                                            colors = settingsTileColors(),
+                                            title = { Text(text = "Multiblock") },
+                                            value = fexcoreMultiblockValues.indexOfFirst { it == config.fexcoreMultiBlock }.coerceAtLeast(0),
+                                            items = fexcoreMultiblockValues,
+                                            onItemSelected = { idx ->
+                                                config = config.copy(fexcoreMultiBlock = fexcoreMultiblockValues[idx])
+                                            },
+                                        )
+                                    }
+                                }
+                            }
                             SettingsCPUList(
                                 colors = settingsTileColors(),
                                 title = { Text(text = "Processor Affinity") },

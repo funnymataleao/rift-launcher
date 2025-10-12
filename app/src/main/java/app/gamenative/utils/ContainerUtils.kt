@@ -8,9 +8,11 @@ import app.gamenative.service.SteamService
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
+import com.winlator.core.DefaultVersion
 import com.winlator.core.FileUtils
 import com.winlator.core.WineRegistryEditor
 import com.winlator.core.WineThemeManager
+import com.winlator.fexcore.FEXCoreManager
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.winhandler.WinHandler.PreferredInputApi
@@ -114,6 +116,12 @@ object ContainerUtils {
         PrefManager.containerLanguage = containerData.language
         PrefManager.containerVariant = containerData.containerVariant
         PrefManager.wineVersion = containerData.wineVersion
+        // Persist emulator/fexcore defaults for future containers
+        PrefManager.emulator = containerData.emulator
+        PrefManager.fexcoreVersion = containerData.fexcoreVersion
+        PrefManager.fexcoreTSOMode = containerData.fexcoreTSOMode
+        PrefManager.fexcoreX87Mode = containerData.fexcoreX87Mode
+        PrefManager.fexcoreMultiBlock = containerData.fexcoreMultiBlock
     }
 
     fun toContainerData(container: Container): ContainerData {
@@ -186,8 +194,10 @@ object ContainerUtils {
             box86Preset = container.box86Preset,
             box64Preset = container.box64Preset,
             desktopTheme = container.desktopTheme,
-            containerVariant = container.getContainerVariant(),
-            wineVersion = container.getWineVersion(),
+            containerVariant = container.containerVariant,
+            wineVersion = container.wineVersion,
+            emulator = container.emulator,
+            fexcoreVersion = container.fexCoreVersion,
             language = container.language,
             sdlControllerAPI = container.isSdlControllerAPI,
             enableXInput = enableX,
@@ -273,6 +283,9 @@ object ContainerUtils {
         container.graphicsDriverVersion = containerData.graphicsDriverVersion
         container.setContainerVariant(containerData.containerVariant)
         container.setWineVersion(containerData.wineVersion)
+        // Persist 32-bit emulator selection
+        container.setEmulator(containerData.emulator)
+        container.setFEXCoreVersion(containerData.fexcoreVersion)
         container.setDisableMouseInput(containerData.disableMouseInput)
         container.setTouchscreenMode(containerData.touchscreenMode)
         container.setEmulateKeyboardMouse(containerData.emulateKeyboardMouse)
@@ -310,6 +323,17 @@ object ContainerUtils {
         Timber.d("Container set: preferredInputApi=%s, dinputMapperType=0x%02x", api, containerData.dinputMapperType)
 
         if (saveToDisk) {
+            // If bionic arm64ec, persist FEXCore settings directly
+            if (containerData.containerVariant.equals(Container.BIONIC, true)
+                && containerData.wineVersion.contains("arm64ec", true)) {
+                FEXCoreManager.writeToConfigFile(
+                    context,
+                    container.id,
+                    containerData.fexcoreTSOMode,
+                    containerData.fexcoreMultiBlock,
+                    containerData.fexcoreX87Mode,
+                )
+            }
             // Mark that config has been changed, so we can show feedback dialog after next game run
             container.putExtra("config_changed", "true")
             container.saveData()

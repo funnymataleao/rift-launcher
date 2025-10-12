@@ -54,4 +54,9 @@ public class DXVKHelper {
             envVars.put("DXVK_CONFIG_FILE", imageFs.config_path+"/dxvk.conf");
         }
     }
+
+    public static void setVKD3DEnvVars(Context context, KeyValueSet config, EnvVars envVars) {
+        String featureLevel = config.get("vkd3dFeatureLevel", "12_1");
+        envVars.put("VKD3D_FEATURE_LEVEL", featureLevel);
+    }
 }

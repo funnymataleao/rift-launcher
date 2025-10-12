@@ -45,6 +45,10 @@ public class ImageFs {
         }
     }
 
+    public static ImageFs find(File rootDir) {
+        return new ImageFs(rootDir);
+    }
+
     public File getRootDir() {
         return rootDir;
     }
@@ -122,6 +126,10 @@ public class ImageFs {
     public File getLibDir() { return new File(rootDir, "/usr/lib"); }
 
     public File getBinDir() { return new File(rootDir, "/usr/bin"); }
+
+    public File getShareDir() {
+        return new File(rootDir, "/usr/share");
+    }
 
     public File getGlibc32Dir() {
         return new File(rootDir, "/usr/lib/arm-linux-gnueabihf");

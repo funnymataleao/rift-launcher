@@ -39,6 +39,14 @@ data class ContainerData(
     val containerVariant: String = Container.DEFAULT_VARIANT,
     // wine version identifier (used for bionic variant), defaults to main wine
     val wineVersion: String = WineInfo.MAIN_WINE_VERSION.identifier(),
+    // selected 32-bit emulator for WoW64 processes (FEXCore/Box64)
+    val emulator: String = Container.DEFAULT_EMULATOR,
+    // FEXCore version (used on arm64ec)
+    val fexcoreVersion: String = DefaultVersion.FEXCORE,
+    // FEXCore settings (arm64ec): TSOMode, X87Mode, MultiBlock
+    val fexcoreTSOMode: String = "Fast",
+    val fexcoreX87Mode: String = "Fast",
+    val fexcoreMultiBlock: String = "Disabled",
     // wine registry values
     val csmt: Boolean = true,
     val videoPciDeviceID: Int = 1728,
@@ -99,6 +107,11 @@ data class ContainerData(
                     "desktopTheme" to state.desktopTheme,
                     "containerVariant" to state.containerVariant,
                     "wineVersion" to state.wineVersion,
+                    "emulator" to state.emulator,
+                    "fexcoreVersion" to state.fexcoreVersion,
+                    "fexcoreTSOMode" to state.fexcoreTSOMode,
+                    "fexcoreX87Mode" to state.fexcoreX87Mode,
+                    "fexcoreMultiBlock" to state.fexcoreMultiBlock,
                     "sdlControllerAPI" to state.sdlControllerAPI,
                     "enableXInput" to state.enableXInput,
                     "enableDInput" to state.enableDInput,
@@ -141,6 +154,11 @@ data class ContainerData(
                     desktopTheme = savedMap["desktopTheme"] as String,
                     containerVariant = (savedMap["containerVariant"] as? String) ?: Container.DEFAULT_VARIANT,
                     wineVersion = (savedMap["wineVersion"] as? String) ?: WineInfo.MAIN_WINE_VERSION.identifier(),
+                    emulator = (savedMap["emulator"] as? String) ?: Container.DEFAULT_EMULATOR,
+                    fexcoreVersion = (savedMap["fexcoreVersion"] as? String) ?: DefaultVersion.FEXCORE,
+                    fexcoreTSOMode = (savedMap["fexcoreTSOMode"] as? String) ?: "Fast",
+                    fexcoreX87Mode = (savedMap["fexcoreX87Mode"] as? String) ?: "Fast",
+                    fexcoreMultiBlock = (savedMap["fexcoreMultiBlock"] as? String) ?: "Disabled",
                     sdlControllerAPI = savedMap["sdlControllerAPI"] as Boolean,
                     enableXInput = savedMap["enableXInput"] as Boolean,
                     enableDInput = savedMap["enableDInput"] as Boolean,
