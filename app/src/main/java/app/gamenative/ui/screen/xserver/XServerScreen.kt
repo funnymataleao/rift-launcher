@@ -8,6 +8,7 @@ import android.view.View
 import android.view.WindowInsets
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -26,11 +27,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.data.LaunchInfo
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
@@ -45,6 +48,7 @@ import com.winlator.contentdialog.NavigationDialog
 import com.winlator.contents.AdrenotoolsManager
 import com.winlator.contents.ContentsManager
 import com.winlator.core.AppUtils
+import com.winlator.core.AppUtils.showKeyboard
 import com.winlator.core.Callback
 import com.winlator.core.DXVKHelper
 import com.winlator.core.DefaultVersion
@@ -63,6 +67,8 @@ import com.winlator.core.WineThemeManager
 import com.winlator.core.WineUtils
 import com.winlator.core.envvars.EnvVars
 import com.winlator.inputcontrols.ControlsProfile
+import com.winlator.inputcontrols.ControlElement
+import com.winlator.inputcontrols.Binding
 import com.winlator.inputcontrols.ExternalController
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.inputcontrols.TouchMouse
@@ -96,6 +102,7 @@ import com.winlator.xserver.XServer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
@@ -1857,6 +1864,10 @@ private fun extractGraphicsDriverFiles(
             vulkanICDDir.mkdirs()
             container.putExtra("graphicsDriver", cacheId)
             container.saveData()
+            if (!sentinel.exists()) {
+                sentinel.parentFile?.mkdirs()
+                sentinel.createNewFile()
+            }
             sentinel.writeText(cacheId)
         }
         if (dxwrapper.contains("dxvk")) {
