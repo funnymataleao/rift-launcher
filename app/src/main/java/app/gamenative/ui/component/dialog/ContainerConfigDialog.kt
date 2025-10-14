@@ -805,6 +805,13 @@ fun ContainerConfigDialog(
                                             "exposedDeviceExtensions",
                                             exposedExtIndices.sorted().joinToString("|") { gpuExtensions[it] },
                                         )
+                                        // Maintain blacklist as the complement of exposed selections
+                                        val blacklisted = if (allSelected) "" else
+                                            gpuExtensions.indices
+                                                .filter { it !in exposedExtIndices }
+                                                .sorted()
+                                                .joinToString(",") { gpuExtensions[it] }
+                                        cfg.put("blacklistedExtensions", blacklisted)
                                         config = config.copy(graphicsDriverConfig = cfg.toString())
                                     },
                                 )
@@ -963,6 +970,13 @@ fun ContainerConfigDialog(
                                                     "exposedDeviceExtensions",
                                                     exposedExtIndices.sorted().joinToString("|") { gpuExtensions[it] },
                                                 )
+                                                // Maintain blacklist as the complement of exposed selections
+                                                val blacklisted = if (allSelected) "" else
+                                                    gpuExtensions.indices
+                                                        .filter { it !in exposedExtIndices }
+                                                        .sorted()
+                                                        .joinToString(",") { gpuExtensions[it] }
+                                                cfg.put("blacklistedExtensions", blacklisted)
                                                 config = config.copy(graphicsDriverConfig = cfg.toString())
                                             },
                                         )
@@ -1556,6 +1570,7 @@ private fun winComponentsItemTitle(string: String): String {
         "directx" -> R.string.directx
         "vcrun2010" -> R.string.vcrun2010
         "wmdecoder" -> R.string.wmdecoder
+        "opengl" -> R.string.wmdecoder
         else -> throw IllegalArgumentException("No string res found for Win Components title: $string")
     }
     return stringResource(resource)

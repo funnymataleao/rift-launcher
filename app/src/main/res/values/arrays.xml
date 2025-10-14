@@ -77,6 +77,7 @@
     <string-array name="dxvk_version_entries">
         <item>2.6.1-gplasync</item>
         <item>1.10.3</item>
+        <item>1.10.1</item>
         <item>1.10.9-sarek</item>
         <item>1.9.2</item>
         <item>2.4.1</item>
@@ -131,6 +132,7 @@
     </string-array>
     <string-array name="box64_version_entries">
         <item>0.3.6 (Default)</item>
+        <item>0.3.7</item>
         <item>0.3.4</item>
     </string-array>
     <string-array name="wowbox64_version_entries">

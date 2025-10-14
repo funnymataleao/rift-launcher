@@ -71,6 +71,7 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.GameFeedbackUtils
 import app.gamenative.utils.IntentLaunchManager
 import com.google.android.play.core.splitcompat.SplitCompat
+import com.winlator.container.Container
 import com.winlator.container.ContainerManager
 import com.winlator.xenvironment.ImageFsInstaller
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
@@ -865,9 +866,17 @@ fun preLaunchApp(
     // TODO: add fail conditions
 
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
-    val container = ContainerUtils.getContainer(context, appId)
 
     CoroutineScope(Dispatchers.IO).launch {
+        // create container if it does not already exist
+        // TODO: combine somehow with container creation in HomeLibraryAppScreen
+        val containerManager = ContainerManager(context)
+        val container = if (useTemporaryOverride) {
+            ContainerUtils.getOrCreateContainerWithOverride(context, appId)
+        } else {
+            ContainerUtils.getOrCreateContainer(context, appId)
+        }
+
         // set up Ubuntu file system
         SplitCompat.install(context)
         val imageFsInstallSuccess =
@@ -877,14 +886,6 @@ fun preLaunchApp(
             }.get()
         setLoadingProgress(-1f)
 
-        // create container if it does not already exist
-        // TODO: combine somehow with container creation in HomeLibraryAppScreen
-        val containerManager = ContainerManager(context)
-        val container = if (useTemporaryOverride) {
-            ContainerUtils.getOrCreateContainerWithOverride(context, appId)
-        } else {
-            ContainerUtils.getOrCreateContainer(context, appId)
-        }
         // must activate container before downloading save files
         containerManager.activateContainer(container)
 

@@ -8,7 +8,6 @@ import android.view.View
 import android.view.WindowInsets
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -27,13 +26,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.ViewCompat
-import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
-import app.gamenative.R
 import app.gamenative.data.LaunchInfo
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
@@ -48,7 +45,6 @@ import com.winlator.contentdialog.NavigationDialog
 import com.winlator.contents.AdrenotoolsManager
 import com.winlator.contents.ContentsManager
 import com.winlator.core.AppUtils
-import com.winlator.core.AppUtils.showKeyboard
 import com.winlator.core.Callback
 import com.winlator.core.DXVKHelper
 import com.winlator.core.DefaultVersion
@@ -67,8 +63,6 @@ import com.winlator.core.WineThemeManager
 import com.winlator.core.WineUtils
 import com.winlator.core.envvars.EnvVars
 import com.winlator.inputcontrols.ControlsProfile
-import com.winlator.inputcontrols.ControlElement
-import com.winlator.inputcontrols.Binding
 import com.winlator.inputcontrols.ExternalController
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.inputcontrols.TouchMouse
@@ -102,7 +96,6 @@ import com.winlator.xserver.XServer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
@@ -959,7 +952,6 @@ private fun setupXEnvironment(
     envVars.put("MESA_DEBUG", "silent")
     envVars.put("MESA_NO_ERROR", "1")
     envVars.put("WINEPREFIX", imageFs.wineprefix)
-    envVars.put("WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER", "1")
     if (container.isShowFPS){
         envVars.put("DXVK_HUD", "fps,frametimes")
         envVars.put("VK_INSTANCE_LAYERS", "VK_LAYER_MESA_overlay")
@@ -1708,42 +1700,63 @@ private fun restoreOriginalDllFiles(
     vararg dlls: String,
 ) {
     val rootDir = imageFs.rootDir
-    val cacheDir = File(rootDir, ImageFs.CACHE_PATH + "/original_dlls")
-    val contentsManager = ContentsManager(context)
-    if (cacheDir.isDirectory) {
-        val windowsDir = File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
-        val dirnames = cacheDir.list()
-        var filesCopied = 0
+    if (container.containerVariant.equals(Container.GLIBC)) {
+        val cacheDir = File(rootDir, ImageFs.CACHE_PATH + "/original_dlls")
+        val contentsManager = ContentsManager(context)
+        if (cacheDir.isDirectory) {
+            val windowsDir = File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
+            val dirnames = cacheDir.list()
+            var filesCopied = 0
 
-        for (dll in dlls) {
-            var success = false
-            for (dirname in dirnames!!) {
-                val srcFile = File(cacheDir, "$dirname/$dll")
-                val dstFile = File(windowsDir, "$dirname/$dll")
-                if (FileUtils.copy(srcFile, dstFile)) success = true
+            for (dll in dlls) {
+                var success = false
+                for (dirname in dirnames!!) {
+                    val srcFile = File(cacheDir, "$dirname/$dll")
+                    val dstFile = File(windowsDir, "$dirname/$dll")
+                    if (FileUtils.copy(srcFile, dstFile)) success = true
+                }
+                if (success) filesCopied++
             }
-            if (success) filesCopied++
+
+            if (filesCopied == dlls.size) return
         }
 
-        if (filesCopied == dlls.size) return
-    }
-
-    containerManager.extractContainerPatternFile(
-        container.wineVersion, contentsManager, container.rootDir,
-        object : OnExtractFileListener {
-            override fun onExtractFile(file: File, size: Long): File? {
-                val path = file.path
-                if (path.contains("system32/") || path.contains("syswow64/")) {
-                    for (dll in dlls) {
-                        if (path.endsWith("system32/$dll") || path.endsWith("syswow64/$dll")) return file
+        containerManager.extractContainerPatternFile(
+            container.wineVersion, contentsManager, container.rootDir,
+            object : OnExtractFileListener {
+                override fun onExtractFile(file: File, size: Long): File? {
+                    val path = file.path
+                    if (path.contains("system32/") || path.contains("syswow64/")) {
+                        for (dll in dlls) {
+                            if (path.endsWith("system32/$dll") || path.endsWith("syswow64/$dll")) return file
+                        }
                     }
+                    return null
                 }
-                return null
-            }
-        },
-    )
+            },
+        )
 
-    cloneOriginalDllFiles(imageFs, *dlls)
+        cloneOriginalDllFiles(imageFs, *dlls)
+    } else {
+        val windowsDir = File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
+        var system32dlls: File? = null
+        var syswow64dlls: File? = null
+
+        if (container.wineVersion.contains("arm64ec")) system32dlls = File(imageFs.getWinePath() + "/lib/wine/aarch64-windows")
+        else system32dlls = File(imageFs.getWinePath() + "/lib/wine/x86_64-windows")
+
+        syswow64dlls = File(imageFs.getWinePath() + "/lib/wine/i386-windows")
+
+
+        for (dll in dlls) {
+            var srcFile = File(system32dlls, dll)
+            var dstFile = File(windowsDir, "system32/" + dll)
+            FileUtils.copy(srcFile, dstFile)
+            srcFile = File(syswow64dlls, dll)
+            dstFile = File(windowsDir, "syswow64/" + dll)
+            FileUtils.copy(srcFile, dstFile)
+        }
+    }
 }
 private fun extractWinComponentFiles(
     context: Context,
@@ -1783,6 +1796,8 @@ private fun extractWinComponentFiles(
             if (wincomponent[1].equals(oldWinComponentsIter.next()[1])) continue
             val identifier = wincomponent[0]
             val useNative = wincomponent[1].equals("1")
+
+            if (!container.wineVersion.contains("proton-9.0-arm64ec") && identifier.contains("opengl") && useNative) continue
 
             if (useNative) {
                 TarCompressorUtils.extract(
