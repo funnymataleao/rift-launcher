@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -42,6 +43,11 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import android.content.pm.ShortcutManager
+import android.content.pm.ShortcutInfo
+import android.graphics.drawable.Icon
+import app.gamenative.MainActivity
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -495,6 +501,49 @@ fun AppScreen(
         progress = loadingProgress,
     )
 
+    // State and UI for Create Shortcut dialog
+    var showCreateShortcutDialog by remember { mutableStateOf(false) }
+    var shortcutLabel by rememberSaveable(appId) { mutableStateOf(appInfo.name) }
+    if (showCreateShortcutDialog) {
+        AlertDialog(
+            onDismissRequest = { showCreateShortcutDialog = false },
+            title = { Text("Create Shortcut") },
+            text = {
+                Column {
+                    Text(text = "Label")
+                    TextField(
+                        value = shortcutLabel,
+                        onValueChange = { shortcutLabel = it },
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = "Icon")
+                        Spacer(Modifier.width(12.dp))
+                        Icon(
+                            imageVector = Icons.Filled.FilterList,
+                            contentDescription = null
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    try {
+                        createPinnedShortcut(context, gameId, shortcutLabel)
+                        Toast.makeText(context, "Shortcut created", Toast.LENGTH_SHORT).show()
+                    } catch (t: Throwable) {
+                        Toast.makeText(context, "Failed to create shortcut: ${t.message}", Toast.LENGTH_LONG).show()
+                    }
+                    showCreateShortcutDialog = false
+                }) { Text("Create") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCreateShortcutDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
     Scaffold {
         AppScreenContent(
             modifier = Modifier.padding(it),
@@ -568,6 +617,14 @@ fun AppScreen(
                         )
                         context.startActivity(browserIntent)
                     },
+                ),
+                *(
+                    if (isInstalled) arrayOf(
+                        AppMenuOption(
+                            optionType = AppOptionMenuType.CreateShortcut,
+                            onClick = { showCreateShortcutDialog = true }
+                        ),
+                    ) else emptyArray()
                 ),
                 AppMenuOption(
                     optionType = AppOptionMenuType.EditContainer,
@@ -1457,5 +1514,30 @@ private fun Preview_AppScreen() {
                 }.toTypedArray(),
             )
         }
+    }
+}
+
+private fun createPinnedShortcut(context: Context, gameId: Int, label: String) {
+    val shortcutManager = context.getSystemService(ShortcutManager::class.java)
+
+    val intent = Intent("app.gamenative.LAUNCH_GAME").apply {
+        setClass(context, MainActivity::class.java)
+        putExtra("app_id", gameId)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+    }
+
+    val shortcut = ShortcutInfo.Builder(context, "game_$gameId")
+        .setShortLabel(label)
+        .setLongLabel(label)
+        .setIcon(Icon.createWithResource(context, R.drawable.ic_filter_list))
+        .setIntent(intent)
+        .build()
+
+    if (shortcutManager?.isRequestPinShortcutSupported == true) {
+        shortcutManager.requestPinShortcut(shortcut, null)
+    } else {
+        // Fallback: add as dynamic shortcut
+        val existing = shortcutManager?.dynamicShortcuts ?: emptyList()
+        shortcutManager?.dynamicShortcuts = (existing + shortcut).take(4)
     }
 }
