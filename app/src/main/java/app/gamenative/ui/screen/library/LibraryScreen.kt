@@ -7,8 +7,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetState
@@ -81,7 +81,7 @@ fun HomeLibraryScreen(
 @Composable
 private fun LibraryScreenContent(
     state: LibraryState,
-    listState: LazyListState,
+    listState: LazyGridState,
     sheetState: SheetState,
     onFilterChanged: (AppFilter) -> Unit,
     onPageChange: (Int) -> Unit,
@@ -177,7 +177,7 @@ private fun Preview_LibraryScreenContent() {
     }
     PluviaTheme {
         LibraryScreenContent(
-            listState = rememberLazyListState(),
+            listState = rememberLazyGridState(),
             state = state,
             sheetState = sheetState,
             onIsSearching = {},

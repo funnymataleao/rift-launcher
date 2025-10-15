@@ -1,6 +1,6 @@
 package app.gamenative.ui.screen.library.components
 
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -28,7 +28,7 @@ internal fun LibraryDetailPane(
     Surface {
         if (libraryItem == null) {
             // Simply use the regular LibraryListPane with empty data
-            val listState = rememberLazyListState()
+            val listState = rememberLazyGridState()
             val sheetState = rememberModalBottomSheetState()
             val emptyState = remember {
                 LibraryState(

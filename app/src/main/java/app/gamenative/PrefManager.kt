@@ -18,6 +18,7 @@ import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.HomeDestination
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.Constants
+import app.gamenative.ui.enums.PaneType
 import com.materialkolor.PaletteStyle
 import com.winlator.box86_64.Box86_64Preset
 import com.winlator.container.Container
@@ -409,6 +410,16 @@ object PrefManager {
             }
         }
 
+    private val LIBRARY_LAYOUT = intPreferencesKey("library_layout")
+    var libraryLayout: PaneType
+        get() {
+            val value = getPref(LIBRARY_LAYOUT, PaneType.UNDECIDED.ordinal)
+            return PaneType.entries.getOrNull(value) ?: PaneType.UNDECIDED
+        }
+        set(value) {
+            setPref(LIBRARY_LAYOUT, value.ordinal)
+        }
+
     private val LIBRARY_FILTER = intPreferencesKey("library_filter")
     var libraryFilter: EnumSet<AppFilter>
         get() {
@@ -521,7 +532,7 @@ object PrefManager {
 
     private val ITEMS_PER_PAGE = intPreferencesKey("items_per_page")
     var itemsPerPage: Int
-        get() = getPref(ITEMS_PER_PAGE, 10)
+        get() = getPref(ITEMS_PER_PAGE, 50)
         set(value) {
             setPref(ITEMS_PER_PAGE, value)
         }
