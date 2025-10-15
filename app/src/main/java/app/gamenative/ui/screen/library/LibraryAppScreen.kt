@@ -520,22 +520,29 @@ fun AppScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(text = "Icon")
                         Spacer(Modifier.width(12.dp))
-                        Icon(
-                            imageVector = Icons.Filled.FilterList,
-                            contentDescription = null
+                        CoilImage(
+                            imageModel = { appInfo.iconUrl },
+                            imageOptions = ImageOptions(contentDescription = "Game icon"),
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
             },
             confirmButton = {
                 Button(onClick = {
-                    try {
-                        createPinnedShortcut(context, gameId, shortcutLabel)
-                        Toast.makeText(context, "Shortcut created", Toast.LENGTH_SHORT).show()
-                    } catch (t: Throwable) {
-                        Toast.makeText(context, "Failed to create shortcut: ${t.message}", Toast.LENGTH_LONG).show()
+                    scope.launch {
+                        try {
+                            createPinnedShortcut(context.applicationContext, gameId, shortcutLabel, appInfo.iconUrl)
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, "Shortcut created", Toast.LENGTH_SHORT).show()
+                            }
+                        } catch (t: Throwable) {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, "Failed to create shortcut: ${t.message}", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                        showCreateShortcutDialog = false
                     }
-                    showCreateShortcutDialog = false
                 }) { Text("Create") }
             },
             dismissButton = {
@@ -1517,27 +1524,66 @@ private fun Preview_AppScreen() {
     }
 }
 
-private fun createPinnedShortcut(context: Context, gameId: Int, label: String) {
-    val shortcutManager = context.getSystemService(ShortcutManager::class.java)
+private suspend fun createPinnedShortcut(context: Context, gameId: Int, label: String, iconUrl: String?) {
+    val appContext = context.applicationContext
+    val shortcutManager = appContext.getSystemService(ShortcutManager::class.java)
 
     val intent = Intent("app.gamenative.LAUNCH_GAME").apply {
-        setClass(context, MainActivity::class.java)
+        setClass(appContext, MainActivity::class.java)
         putExtra("app_id", gameId)
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
     }
 
-    val shortcut = ShortcutInfo.Builder(context, "game_$gameId")
+    // Try to load game's icon bitmap; fallback to built-in adaptive icon
+    val bitmapIcon: android.graphics.Bitmap? = withContext(Dispatchers.IO) {
+        try {
+            if (!iconUrl.isNullOrBlank()) {
+                val loader = coil.ImageLoader(appContext)
+                val request = coil.request.ImageRequest.Builder(appContext)
+                    .data(iconUrl)
+                    .allowHardware(false)
+                    .build()
+                val result = loader.execute(request)
+                val drawable = (result as? coil.request.SuccessResult)?.drawable
+                when (drawable) {
+                    is android.graphics.drawable.BitmapDrawable -> drawable.bitmap
+                    else -> {
+                        if (drawable != null) {
+                            val bmp = android.graphics.Bitmap.createBitmap(
+                                drawable.intrinsicWidth.coerceAtLeast(1),
+                                drawable.intrinsicHeight.coerceAtLeast(1),
+                                android.graphics.Bitmap.Config.ARGB_8888
+                            )
+                            val canvas = android.graphics.Canvas(bmp)
+                            drawable.setBounds(0, 0, canvas.width, canvas.height)
+                            drawable.draw(canvas)
+                            bmp
+                        } else null
+                    }
+                }
+            } else null
+        } catch (_: Throwable) { null }
+    }
+
+    val shortcut = ShortcutInfo.Builder(appContext, "game_$gameId")
         .setShortLabel(label)
         .setLongLabel(label)
-        .setIcon(Icon.createWithResource(context, R.drawable.ic_filter_list))
+        .apply {
+            if (bitmapIcon != null) {
+                setIcon(Icon.createWithBitmap(bitmapIcon))
+            } else {
+                setIcon(Icon.createWithResource(appContext, R.mipmap.ic_shortcut_filter))
+            }
+        }
         .setIntent(intent)
         .build()
 
-    if (shortcutManager?.isRequestPinShortcutSupported == true) {
-        shortcutManager.requestPinShortcut(shortcut, null)
-    } else {
-        // Fallback: add as dynamic shortcut
-        val existing = shortcutManager?.dynamicShortcuts ?: emptyList()
-        shortcutManager?.dynamicShortcuts = (existing + shortcut).take(4)
+    withContext(Dispatchers.Main) {
+        if (shortcutManager?.isRequestPinShortcutSupported == true) {
+            shortcutManager.requestPinShortcut(shortcut, null)
+        } else {
+            val existing = shortcutManager?.dynamicShortcuts ?: emptyList()
+            shortcutManager?.dynamicShortcuts = (existing + shortcut).take(4)
+        }
     }
 }

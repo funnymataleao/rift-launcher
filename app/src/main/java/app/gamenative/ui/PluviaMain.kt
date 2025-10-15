@@ -121,15 +121,18 @@ fun PluviaMain(
                     Timber.i("[PluviaMain]: Received ExternalGameLaunch UI event for app ${event.appId}")
                     viewModel.setLaunchedAppId(event.appId)
                     viewModel.setBootToContainer(false)
-                    preLaunchApp(
-                        context = context,
-                        appId = event.appId,
-                        useTemporaryOverride = true,
-                        setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
-                        setLoadingProgress = viewModel::setLoadingDialogProgress,
-                        setMessageDialogState = setMessageDialogState,
-                        onSuccess = viewModel::launchApp,
-                    )
+
+                    // Ensure we're on the Home (Library) screen and show the game's page
+                    if (navController.currentDestination?.route != PluviaScreen.Home.route) {
+                        navController.navigate(PluviaScreen.Home.route) {
+                            popUpTo(navController.graph.startDestinationId) { saveState = false }
+                        }
+                    }
+                    // Ask Library screen to open the game page and auto press Play (after navigation commits)
+                    scope.launch {
+                        kotlinx.coroutines.delay(250)
+                        PluviaApp.events.emit(AndroidEvent.OpenLibraryApp(event.appId))
+                    }
                 }
 
                 MainViewModel.MainUiEvent.OnBackPressed -> {
@@ -195,15 +198,20 @@ fun PluviaMain(
 
                                     viewModel.setLaunchedAppId(launchRequest.appId)
                                     viewModel.setBootToContainer(false)
-                                    preLaunchApp(
-                                        context = context,
-                                        appId = launchRequest.appId,
-                                        useTemporaryOverride = true,
-                                        setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
-                                        setLoadingProgress = viewModel::setLoadingDialogProgress,
-                                        setMessageDialogState = setMessageDialogState,
-                                        onSuccess = viewModel::launchApp,
-                                    )
+
+                                    if (navController.currentDestination?.route != PluviaScreen.Home.route) {
+                                        navController.navigate(PluviaScreen.Home.route) {
+                                            popUpTo(navController.graph.startDestinationId) {
+                                                saveState = false
+                                            }
+                                        }
+                                    }
+
+                                    // Ask Library screen to open the specific game and auto-press Play (after navigation commits)
+                                    scope.launch {
+                                        kotlinx.coroutines.delay(250)
+                                        PluviaApp.events.emit(AndroidEvent.OpenLibraryApp(launchRequest.appId))
+                                    }
                                 }
                             }
                             else if (PluviaApp.xEnvironment == null) {
