@@ -1534,6 +1534,42 @@ private fun createAdaptiveIconBitmap(context: Context, src: android.graphics.Bit
     val canvas = android.graphics.Canvas(outBmp)
     val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG or android.graphics.Paint.FILTER_BITMAP_FLAG)
 
+    // --- Compute a background color from the icon's edge-center pixels (top/bottom/left/right) ---
+    fun medianChannel(a: Int, b: Int, c: Int, d: Int): Int {
+        // Median-of-four by sorting 4 values; small fixed-size so simple sort is fine
+        val arr = intArrayOf(a, b, c, d)
+        java.util.Arrays.sort(arr)
+        // For even count, take average of the two middle values to avoid bias
+        return ((arr[1] + arr[2]) / 2f).toInt()
+    }
+    fun sampleEdgeColor(bmp: android.graphics.Bitmap): Int {
+        if (bmp.width <= 1 || bmp.height <= 1) return 0 // transparent fallback
+        val midX = bmp.width / 2
+        val midY = bmp.height / 2
+        val top = bmp.getPixel(midX.coerceIn(0, bmp.width - 1), 0)
+        val bottom = bmp.getPixel(midX.coerceIn(0, bmp.width - 1), bmp.height - 1)
+        val left = bmp.getPixel(0, midY.coerceIn(0, bmp.height - 1))
+        val right = bmp.getPixel(bmp.width - 1, midY.coerceIn(0, bmp.height - 1))
+
+        // If three or more of the four edge-center pixels are exactly the same color, use that color
+        val counts = hashMapOf<Int, Int>()
+        listOf(top, bottom, left, right).forEach { c -> counts[c] = (counts[c] ?: 0) + 1 }
+        val majority = counts.entries.firstOrNull { it.value >= 3 }?.key
+        if (majority != null) return majority
+
+        // Otherwise, fall back to median per channel to get a robust blended background
+        val r = medianChannel(android.graphics.Color.red(top), android.graphics.Color.red(bottom), android.graphics.Color.red(left), android.graphics.Color.red(right))
+        val g = medianChannel(android.graphics.Color.green(top), android.graphics.Color.green(bottom), android.graphics.Color.green(left), android.graphics.Color.green(right))
+        val b = medianChannel(android.graphics.Color.blue(top), android.graphics.Color.blue(bottom), android.graphics.Color.blue(left), android.graphics.Color.blue(right))
+        val a = medianChannel(android.graphics.Color.alpha(top), android.graphics.Color.alpha(bottom), android.graphics.Color.alpha(left), android.graphics.Color.alpha(right))
+        return android.graphics.Color.argb(a, r, g, b)
+    }
+
+    val bgColor = sampleEdgeColor(src)
+
+    // Fill background first so transparent icons still have a pleasant backdrop
+    canvas.drawColor(bgColor)
+
     // Add uniform inset so icons are not cropped too tightly
     val insetFraction = 0.18f // 18% padding around
     val availSize = targetSize * (1f - insetFraction * 2f)
@@ -1548,7 +1584,9 @@ private fun createAdaptiveIconBitmap(context: Context, src: android.graphics.Bit
     val left = (targetSize - drawW) / 2f
     val top = (targetSize - drawH) / 2f
     val dest = android.graphics.RectF(left, top, left + drawW, top + drawH)
+
     canvas.drawBitmap(src, null, dest, paint)
+
     return outBmp
 }
 
