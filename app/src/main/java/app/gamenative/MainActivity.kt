@@ -64,6 +64,7 @@ class MainActivity : ComponentActivity() {
         fun consumePendingLaunchRequest(): IntentLaunchManager.LaunchRequest? {
             synchronized(this) {
                 val request = pendingLaunchRequest
+                Timber.d("[IntentLaunch]: Consuming pending launch request for app ${request?.appId}")
                 pendingLaunchRequest = null
                 return request
             }
@@ -72,8 +73,13 @@ class MainActivity : ComponentActivity() {
         // Atomically set a new pending launch request
         fun setPendingLaunchRequest(request: IntentLaunchManager.LaunchRequest) {
             synchronized(this) {
+                Timber.d("[IntentLaunch]: Setting pending launch request for app ${request?.appId}")
                 pendingLaunchRequest = request
             }
+        }
+
+        fun hasPendingLaunchRequest(): Boolean {
+            return pendingLaunchRequest != null
         }
     }
 
@@ -172,16 +178,16 @@ class MainActivity : ComponentActivity() {
         handleLaunchIntent(intent)
     }
     private fun handleLaunchIntent(intent: Intent) {
-        Timber.d("[MainActivity]: handleLaunchIntent called with action=${intent.action}")
+        Timber.d("[IntentLaunch]: handleLaunchIntent called with action=${intent.action}")
         try {
             val launchRequest = IntentLaunchManager.parseLaunchIntent(intent)
             if (launchRequest != null) {
-                Timber.d("[MainActivity]: Received external launch intent for app ${launchRequest.appId}")
+                Timber.d("[IntentLaunch]: Received external launch intent for app ${launchRequest.appId}")
 
                 // If already logged in, emit event immediately
                 // Otherwise store for processing after login
                 if (SteamService.isLoggedIn) {
-                    Timber.d("[MainActivity]: User already logged in, emitting ExternalGameLaunch event immediately")
+                    Timber.d("[IntentLaunch]: User already logged in, emitting ExternalGameLaunch event immediately")
                     lifecycleScope.launch {
                         PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(launchRequest.appId))
                     }
@@ -193,13 +199,13 @@ class MainActivity : ComponentActivity() {
                 } else {
                     // Store the launch request to be processed after login
                     setPendingLaunchRequest(launchRequest)
-                    Timber.d("[MainActivity]: User not logged in, stored pending launch request for app ${launchRequest.appId}")
+                    Timber.d("[IntentLaunch]: User not logged in, stored pending launch request for app ${launchRequest.appId}")
                 }
             } else {
-                Timber.d("[MainActivity]: parseLaunchIntent returned null")
+                Timber.d("[IntentLaunch]: parseLaunchIntent returned null")
             }
         } catch (e: Exception) {
-            Timber.e(e, "[MainActivity]: Failed to handle launch intent")
+            Timber.e(e, "[IntentLaunch]: Failed to handle launch intent")
         }
     }
 

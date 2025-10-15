@@ -648,6 +648,13 @@ object SteamUtils {
             Files.createFile(appIdFile)
             appIdFile.toFile().writeText(steamAppId.toString())
         }
+        val depotsFile = settingsDir.resolve("depots.txt")
+        if (Files.notExists(depotsFile)) {
+            SteamService.getInstalledDepotsOf(steamAppId)?.let { depotsList ->
+                Files.createFile(depotsFile)
+                depotsFile.toFile().writeText(depotsList.joinToString(System.lineSeparator()))
+            }
+        }
 
         val configsIni = settingsDir.resolve("configs.user.ini")
         val accountName   = PrefManager.username
@@ -668,6 +675,18 @@ object SteamUtils {
 
         if (Files.notExists(configsIni)) Files.createFile(configsIni)
         configsIni.toFile().writeText(iniContent)
+
+        val appIni = settingsDir.resolve("configs.app.ini")
+        val dlcIds = SteamService.getDlcDepotsOf(steamAppId)
+
+        val appIniContent = buildString {
+            appendLine("[app::dlcs]")
+            appendLine("unlock_all=0")
+            dlcIds?.forEach { appendLine("$it=dlc$it") }
+        }
+
+        if (Files.notExists(appIni)) Files.createFile(appIni)
+        appIni.toFile().writeText(appIniContent)
 
         // Write supported languages list
         val supportedLanguagesFile = settingsDir.resolve("supported_languages.txt")

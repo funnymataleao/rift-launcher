@@ -51,7 +51,7 @@ android {
         targetSdk = 28
 
         versionCode = 4
-        versionName = "0.4.0"
+        versionName = "0.4.1"
 
         buildConfigField("boolean", "GOLD", "false")
         buildConfigField("String", "POSTHOG_API_KEY", "\"$posthogApiKey\"")
@@ -190,6 +190,7 @@ dependencies {
     // Winlator
     implementation(libs.bundles.winlator)
     implementation(libs.zstd.jni) { artifact { type = "aar" } }
+    implementation(libs.xz)
 
     // Jetpack Compose
     implementation(platform(libs.androidx.compose.bom))

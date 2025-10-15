@@ -141,10 +141,13 @@ import kotlinx.coroutines.withTimeout
 import timber.log.Timber
 import java.lang.NullPointerException
 import android.os.SystemClock
+import app.gamenative.data.AppInfo
+import app.gamenative.db.dao.AppInfoDao
 import kotlinx.coroutines.ensureActive
 import app.gamenative.enums.Marker
 import app.gamenative.utils.MarkerUtils
 import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.PlayingSessionStateCallback
+import `in`.dragonbra.javasteam.steam.steamclient.AsyncJobFailedException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -173,6 +176,9 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     @Inject
     lateinit var changeNumbersDao: ChangeNumbersDao
+
+    @Inject
+    lateinit var appInfoDao: AppInfoDao
 
     @Inject
     lateinit var fileChangeListsDao: FileChangeListsDao
@@ -405,6 +411,14 @@ class SteamService : Service(), IChallengeUrlChanged {
             return runBlocking(Dispatchers.IO) { instance?.appDao?.findApp(appId) }
         }
 
+        fun getInstalledDepotsOf(appId: Int): List<Int>? {
+            return runBlocking(Dispatchers.IO) { instance?.appInfoDao?.getInstalledDepots(appId)?.downloadedDepots }
+        }
+
+        fun getDlcDepotsOf(appId: Int): List<Int>? {
+            return runBlocking(Dispatchers.IO) { instance?.appInfoDao?.getInstalledDepots(appId)?.dlcDepots }
+        }
+
         fun getAppDownloadInfo(appId: Int): DownloadInfo? {
             return downloadJobs[appId]
         }
@@ -469,7 +483,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     if (!(depot.osArch == OSArch.Arch64 || depot.osArch == OSArch.Unknown || depot.osArch == OSArch.Arch32))
                         return@filter false
                     // 4. DLC you actually own
-                    if (depot.dlcAppId != INVALID_APP_ID && !ownedDlc.containsKey(depot.dlcAppId))
+                    if (depot.dlcAppId != INVALID_APP_ID && !ownedDlc.containsKey(depot.depotId))
                         return@filter false
                     // 5. Language filter - if depot has language, it must match preferred language
                     if (depot.language.isNotEmpty() && depot.language != preferredLanguage)
@@ -687,6 +701,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             with(instance!!) {
                 scope.launch {
                     db.withTransaction {
+                        appInfoDao.deleteApp(appId)
                         changeNumbersDao.deleteByAppId(appId)
                         fileChangeListsDao.deleteByAppId(appId)
                     }
@@ -864,8 +879,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                     downloadJobs.remove(appId)
                     // Write download complete marker on disk
-                    MarkerUtils.addMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
-                    MarkerUtils.removeMarker(getAppDirPath(appId), Marker.STEAM_DLL_REPLACED)
                 })
             }
 
@@ -885,6 +898,13 @@ class SteamService : Service(), IChallengeUrlChanged {
                 val percent = (p * 100).toInt()
                 if (percent != lastPercent) {          // only when it really changed
                     lastPercent = percent
+                }
+                if (percent >= 100) {
+                    val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
+                    MarkerUtils.addMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
+                    runBlocking { instance?.appInfoDao?.insert(AppInfo(appId, isDownloaded = true, downloadedDepots = entitledDepotIds,
+                        dlcDepots = ownedDlc.values.map { it.dlcAppId }.distinct())) }
+                    MarkerUtils.removeMarker(getAppDirPath(appId), Marker.STEAM_DLL_REPLACED)
                 }
             }
             return info
@@ -2261,6 +2281,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
             } catch (e: NullPointerException) {
                 Timber.w("No lastPICSChangeNumber, skipping")
+            } catch (e: AsyncJobFailedException) {
+                Timber.w("AsyncJobFailedException, skipping")
             }
         }
     }

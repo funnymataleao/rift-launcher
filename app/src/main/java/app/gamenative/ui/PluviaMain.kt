@@ -110,61 +110,6 @@ fun PluviaMain(
 
     var gameBackAction by remember { mutableStateOf<() -> Unit?>({}) }
 
-    // Process any pending launch request from MainActivity after login
-    LaunchedEffect(SteamService.isLoggedIn) {
-        if (SteamService.isLoggedIn) {
-            MainActivity.consumePendingLaunchRequest()?.let { launchRequest ->
-                Timber.i("[PluviaMain]: Processing pending launch request for app ${launchRequest.appId} (user is now logged in)")
-
-                // Check if the game is installed
-                val gameId = ContainerUtils.extractGameIdFromContainerId(launchRequest.appId)
-                if (!SteamService.isAppInstalled(gameId)) {
-                    val appName = SteamService.getAppInfoOf(gameId)?.name ?: "App ${launchRequest.appId}"
-                    Timber.w("[PluviaMain]: Game not installed: $appName (${launchRequest.appId})")
-
-                    // Show error message
-                    msgDialogState = MessageDialogState(
-                        visible = true,
-                        type = DialogType.SYNC_FAIL,
-                        title = context.getString(R.string.game_not_installed_title),
-                        message = context.getString(R.string.game_not_installed_message, appName),
-                        dismissBtnText = context.getString(R.string.ok),
-                    )
-                    return@let
-                }
-
-                if (launchRequest.containerConfig != null) {
-                    IntentLaunchManager.applyTemporaryConfigOverride(
-                        context,
-                        launchRequest.appId,
-                        launchRequest.containerConfig,
-                    )
-                    Timber.i("[PluviaMain]: Applied container config override for app ${launchRequest.appId}")
-                }
-
-                if (navController.currentDestination?.route != PluviaScreen.Home.route) {
-                    navController.navigate(PluviaScreen.Home.route) {
-                        popUpTo(navController.graph.startDestinationId) {
-                            saveState = false
-                        }
-                    }
-                }
-
-                viewModel.setLaunchedAppId(launchRequest.appId)
-                viewModel.setBootToContainer(false)
-                preLaunchApp(
-                    context = context,
-                    appId = launchRequest.appId,
-                    useTemporaryOverride = true,
-                    setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
-                    setLoadingProgress = viewModel::setLoadingDialogProgress,
-                    setMessageDialogState = setMessageDialogState,
-                    onSuccess = viewModel::launchApp,
-                )
-            }
-        }
-    }
-
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collect { event ->
             when (event) {
@@ -210,7 +155,58 @@ fun PluviaMain(
                 is MainViewModel.MainUiEvent.OnLogonEnded -> {
                     when (event.result) {
                         LoginResult.Success -> {
-                            if (PluviaApp.xEnvironment == null) {
+                            if (MainActivity.hasPendingLaunchRequest()) {
+                                MainActivity.consumePendingLaunchRequest()?.let { launchRequest ->
+                                    Timber.i("[IntentLaunch]: Processing pending launch request for app ${launchRequest.appId} (user is now logged in)")
+
+                                    // Check if the game is installed
+                                    val gameId = ContainerUtils.extractGameIdFromContainerId(launchRequest.appId)
+                                    if (!SteamService.isAppInstalled(gameId)) {
+                                        val appName = SteamService.getAppInfoOf(gameId)?.name ?: "App ${launchRequest.appId}"
+                                        Timber.w("[IntentLaunch]: Game not installed: $appName (${launchRequest.appId})")
+
+                                        // Show error message
+                                        msgDialogState = MessageDialogState(
+                                            visible = true,
+                                            type = DialogType.SYNC_FAIL,
+                                            title = context.getString(R.string.game_not_installed_title),
+                                            message = context.getString(R.string.game_not_installed_message, appName),
+                                            dismissBtnText = context.getString(R.string.ok),
+                                        )
+                                        return@let
+                                    }
+
+                                    if (launchRequest.containerConfig != null) {
+                                        IntentLaunchManager.applyTemporaryConfigOverride(
+                                            context,
+                                            launchRequest.appId,
+                                            launchRequest.containerConfig,
+                                        )
+                                        Timber.i("[IntentLaunch]: Applied container config override for app ${launchRequest.appId}")
+                                    }
+
+                                    if (navController.currentDestination?.route != PluviaScreen.Home.route) {
+                                        navController.navigate(PluviaScreen.Home.route) {
+                                            popUpTo(navController.graph.startDestinationId) {
+                                                saveState = false
+                                            }
+                                        }
+                                    }
+
+                                    viewModel.setLaunchedAppId(launchRequest.appId)
+                                    viewModel.setBootToContainer(false)
+                                    preLaunchApp(
+                                        context = context,
+                                        appId = launchRequest.appId,
+                                        useTemporaryOverride = true,
+                                        setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                                        setLoadingProgress = viewModel::setLoadingDialogProgress,
+                                        setMessageDialogState = setMessageDialogState,
+                                        onSuccess = viewModel::launchApp,
+                                    )
+                                }
+                            }
+                            else if (PluviaApp.xEnvironment == null) {
                                 Timber.i("Navigating to library")
                                 navController.navigate(PluviaScreen.Home.route)
 
@@ -314,7 +310,7 @@ fun PluviaMain(
 
     LaunchedEffect(Unit) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            if (!state.isSteamConnected && !isConnecting) {
+            if (!state.isSteamConnected && !isConnecting && !SteamService.isGameRunning) {
                 Timber.d("[PluviaMain]: Steam not connected - attempt")
                 isConnecting = true
                 context.startForegroundService(Intent(context, SteamService::class.java))

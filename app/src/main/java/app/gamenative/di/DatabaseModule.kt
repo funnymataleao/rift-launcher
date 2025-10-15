@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import app.gamenative.db.DATABASE_NAME
 import app.gamenative.db.PluviaDatabase
+import app.gamenative.db.dao.AppInfoDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -52,4 +53,8 @@ class DatabaseModule {
     @Provides
     @Singleton
     fun provideEmoticonDao(db: PluviaDatabase) = db.emoticonDao()
+
+    @Provides
+    @Singleton
+    fun provideAppInfoDao(db: PluviaDatabase): AppInfoDao = db.appInfoDao()
 }

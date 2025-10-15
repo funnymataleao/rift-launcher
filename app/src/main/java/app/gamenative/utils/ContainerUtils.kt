@@ -158,6 +158,10 @@ object ContainerUtils {
             envVars = container.envVars,
             graphicsDriver = container.graphicsDriver,
             graphicsDriverVersion = container.graphicsDriverVersion,
+            // Persist driver config (Vortek/Adreno settings)
+            graphicsDriverConfig = try {
+                container.getGraphicsDriverConfig()
+            } catch (_: Exception) { "" },
             dxwrapper = container.dxWrapper,
             dxwrapperConfig = container.dxWrapperConfig,
             audioDriver = container.audioDriver,
@@ -246,6 +250,8 @@ object ContainerUtils {
         container.screenSize = containerData.screenSize
         container.envVars = containerData.envVars
         container.graphicsDriver = containerData.graphicsDriver
+        // Save driver config through to container
+        container.setGraphicsDriverConfig(containerData.graphicsDriverConfig)
         container.dxWrapper = containerData.dxwrapper
         container.dxWrapperConfig = containerData.dxwrapperConfig
         container.audioDriver = containerData.audioDriver
