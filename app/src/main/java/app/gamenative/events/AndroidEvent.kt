@@ -17,5 +17,8 @@ interface AndroidEvent<T> : Event<T> {
     data class OpenLibraryApp(val appId: String) : AndroidEvent<Unit>
     data class PromptSaveContainerConfig(val appId: String) : AndroidEvent<Unit>
     data class ShowGameFeedback(val appId: String) : AndroidEvent<Unit>
+    // Overlay to indicate launching state until we land on the game page
+    data class ShowLaunchingOverlay(val appName: String) : AndroidEvent<Unit>
+    data object HideLaunchingOverlay : AndroidEvent<Unit>
     // data class SetAppBarVisibility(val visible: Boolean) : AndroidEvent<Unit>
 }

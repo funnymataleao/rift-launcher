@@ -122,6 +122,13 @@ fun PluviaMain(
                     viewModel.setLaunchedAppId(event.appId)
                     viewModel.setBootToContainer(false)
 
+                    // Show launching overlay with game name (only if installed)
+                    val gameId = app.gamenative.utils.ContainerUtils.extractGameIdFromContainerId(event.appId)
+                    if (app.gamenative.service.SteamService.isAppInstalled(gameId)) {
+                        val appName = app.gamenative.service.SteamService.getAppInfoOf(gameId)?.name ?: "Launching"
+                        Toast.makeText(context, "Launching ${appName}…", Toast.LENGTH_SHORT).show()
+                    }
+
                     // Ensure we're on the Home (Library) screen and show the game's page
                     if (navController.currentDestination?.route != PluviaScreen.Home.route) {
                         navController.navigate(PluviaScreen.Home.route) {
@@ -194,6 +201,13 @@ fun PluviaMain(
                                                 saveState = false
                                             }
                                         }
+                                    }
+
+                                    // Show launching overlay with game name
+                                    run {
+                                        val gid = ContainerUtils.extractGameIdFromContainerId(launchRequest.appId)
+                                        val name = SteamService.getAppInfoOf(gid)?.name ?: "Launching"
+                                        Toast.makeText(context, "Launching ${name}…", Toast.LENGTH_SHORT).show()
                                     }
 
                                     viewModel.setLaunchedAppId(launchRequest.appId)
