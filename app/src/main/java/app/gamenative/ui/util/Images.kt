@@ -36,7 +36,7 @@ internal fun ListItemImage(
             .then(imageModifier),
         imageModel = image,
         imageOptions = ImageOptions(
-            contentScale = ContentScale.Crop,
+            contentScale = ContentScale.Fit,
             contentDescription = contentDescription,
         ),
         loading = {

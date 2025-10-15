@@ -49,6 +49,9 @@ import android.content.pm.ShortcutInfo
 import android.graphics.drawable.Icon
 import app.gamenative.MainActivity
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -1524,6 +1527,31 @@ private fun Preview_AppScreen() {
     }
 }
 
+private fun createAdaptiveIconBitmap(context: Context, src: android.graphics.Bitmap): android.graphics.Bitmap {
+    val density = context.resources.displayMetrics.density
+    val targetSize = (108f * density).toInt().coerceAtLeast(108)
+    val outBmp = android.graphics.Bitmap.createBitmap(targetSize, targetSize, android.graphics.Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(outBmp)
+    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG or android.graphics.Paint.FILTER_BITMAP_FLAG)
+
+    // Add uniform inset so icons are not cropped too tightly
+    val insetFraction = 0.18f // 18% padding around
+    val availSize = targetSize * (1f - insetFraction * 2f)
+
+    // Center-fit scale to keep entire icon visible inside the padded area
+    val scale = minOf(
+        availSize.toFloat() / src.width.coerceAtLeast(1),
+        availSize.toFloat() / src.height.coerceAtLeast(1)
+    )
+    val drawW = src.width * scale
+    val drawH = src.height * scale
+    val left = (targetSize - drawW) / 2f
+    val top = (targetSize - drawH) / 2f
+    val dest = android.graphics.RectF(left, top, left + drawW, top + drawH)
+    canvas.drawBitmap(src, null, dest, paint)
+    return outBmp
+}
+
 private suspend fun createPinnedShortcut(context: Context, gameId: Int, label: String, iconUrl: String?) {
     val appContext = context.applicationContext
     val shortcutManager = appContext.getSystemService(ShortcutManager::class.java)
@@ -1545,7 +1573,7 @@ private suspend fun createPinnedShortcut(context: Context, gameId: Int, label: S
                     .build()
                 val result = loader.execute(request)
                 val drawable = (result as? coil.request.SuccessResult)?.drawable
-                when (drawable) {
+                val rawBitmap = when (drawable) {
                     is android.graphics.drawable.BitmapDrawable -> drawable.bitmap
                     else -> {
                         if (drawable != null) {
@@ -1561,20 +1589,26 @@ private suspend fun createPinnedShortcut(context: Context, gameId: Int, label: S
                         } else null
                     }
                 }
+                rawBitmap
             } else null
         } catch (_: Throwable) { null }
+    }
+
+    val finalIcon: Icon = if (bitmapIcon != null) {
+        val adaptiveBmp = createAdaptiveIconBitmap(appContext, bitmapIcon)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            Icon.createWithAdaptiveBitmap(adaptiveBmp)
+        } else {
+            Icon.createWithBitmap(adaptiveBmp)
+        }
+    } else {
+        Icon.createWithResource(appContext, R.mipmap.ic_shortcut_filter)
     }
 
     val shortcut = ShortcutInfo.Builder(appContext, "game_$gameId")
         .setShortLabel(label)
         .setLongLabel(label)
-        .apply {
-            if (bitmapIcon != null) {
-                setIcon(Icon.createWithBitmap(bitmapIcon))
-            } else {
-                setIcon(Icon.createWithResource(appContext, R.mipmap.ic_shortcut_filter))
-            }
-        }
+        .setIcon(finalIcon)
         .setIntent(intent)
         .build()
 
