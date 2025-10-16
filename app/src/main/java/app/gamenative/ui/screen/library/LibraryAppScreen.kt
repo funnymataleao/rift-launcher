@@ -504,13 +504,13 @@ fun AppScreen(
         progress = loadingProgress,
     )
 
-    // State and UI for Create Shortcut dialog
+    // State and UI for Create shortcut dialog
     var showCreateShortcutDialog by remember { mutableStateOf(false) }
     var shortcutLabel by rememberSaveable(appId) { mutableStateOf(appInfo.name) }
     if (showCreateShortcutDialog) {
         AlertDialog(
             onDismissRequest = { showCreateShortcutDialog = false },
-            title = { Text("Create Shortcut") },
+            title = { Text("Create shortcut") },
             text = {
                 Column {
                     Text(text = "Label")
