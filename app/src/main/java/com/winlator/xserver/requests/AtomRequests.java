@@ -39,7 +39,7 @@ public abstract class AtomRequests {
         String name = Atom.getName(id);
         short length = (short) name.length();
         try (XStreamLock lock = outputStream.lock()){
-            outputStream.writeByte((byte) 1);
+            outputStream.writeByte(RESPONSE_CODE_SUCCESS);
             outputStream.writeByte((byte) 0);
             outputStream.writeShort(client.getSequenceNumber());
             outputStream.writeInt((((-length) & 3) + length) / 4);

@@ -159,28 +159,28 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     private int execGuestProgram() {
 
-        // final int MAX_PLAYERS = 1; // old static method
+        final int MAX_PLAYERS = 1; // old static method
 
         // Get the number of enabled players directly from ControllerManager.
-//        final int enabledPlayerCount = ControllerManager.getInstance().getEnabledPlayerCount();
-//        for (int i = 0; i < enabledPlayerCount; i++) {
-//            String memPath;
-//            if (i == 0) {
-//                // Player 1 uses the original, non-numbered path that is known to work.
-//                memPath = "/data/data/com.winlator.cmod/files/imagefs/tmp/gamepad.mem";
-//            } else {
-//                // Players 2, 3, 4 use a 1-based index.
-//                memPath = "/data/data/com.winlator.cmod/files/imagefs/tmp/gamepad" + i + ".mem";
-//            }
-//
-//            File memFile = new File(memPath);
-//            memFile.getParentFile().mkdirs();
-//            try (RandomAccessFile raf = new RandomAccessFile(memFile, "rw")) {
-//                raf.setLength(64);
-//            } catch (IOException e) {
-//                Log.e("EVSHIM_HOST", "Failed to create mem file for player index "+i, e);
-//            }
-//        }
+        final int enabledPlayerCount = MAX_PLAYERS;
+        for (int i = 0; i < enabledPlayerCount; i++) {
+            String memPath;
+            if (i == 0) {
+                // Player 1 uses the original, non-numbered path that is known to work.
+                memPath = "/data/data/app.gamenative/files/imagefs/tmp/gamepad.mem";
+            } else {
+                // Players 2, 3, 4 use a 1-based index.
+                memPath = "/data/data/app.gamenative/files/imagefs/tmp/gamepad" + i + ".mem";
+            }
+
+            File memFile = new File(memPath);
+            memFile.getParentFile().mkdirs();
+            try (RandomAccessFile raf = new RandomAccessFile(memFile, "rw")) {
+                raf.setLength(64);
+            } catch (IOException e) {
+                Log.e("EVSHIM_HOST", "Failed to create mem file for player index "+i, e);
+            }
+        }
         Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
@@ -205,10 +205,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         EnvVars envVars = new EnvVars();
 
         // Use the ControllerManager's dynamic count for the environment variable
-//        envVars.put("EVSHIM_MAX_PLAYERS", String.valueOf(enabledPlayerCount));
-//        if (true) {
-//            envVars.put("EVSHIM_SHM_ID", 1);
-//        }
+        envVars.put("EVSHIM_MAX_PLAYERS", String.valueOf(enabledPlayerCount));
+        if (true) {
+            envVars.put("EVSHIM_SHM_ID", 1);
+        }
         addBox64EnvVars(envVars, enableBox86_64Logs);
 
         if (envVars.get("BOX64_MMAP32").equals("1") && !wineInfo.isArm64EC())
@@ -270,7 +270,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
 
-//        ld_preload += ":" + evshimPath;
+        ld_preload += ":" + evshimPath;
 
         envVars.put("LD_PRELOAD", ld_preload);
 

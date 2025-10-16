@@ -194,6 +194,7 @@ public class XClientRequestHandler implements RequestHandler {
                     try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.DRAWABLE_MANAGER, XServer.Lockable.INPUT_DEVICE)){
                         WindowRequests.destroySubWindows(client, inputStream, outputStream);
                     }
+                    break;
                 case ClientOpcodes.REPARENT_WINDOW:
                     try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
                         WindowRequests.reparentWindow(client, inputStream, outputStream);
@@ -233,9 +234,7 @@ public class XClientRequestHandler implements RequestHandler {
                     AtomRequests.internAtom(client, inputStream, outputStream);
                     break;
                 case ClientOpcodes.GET_ATOM_NAME:
-                    try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.INPUT_DEVICE)){
-                        AtomRequests.getAtomName(client, inputStream, outputStream);
-                    }
+                    AtomRequests.getAtomName(client, inputStream, outputStream);
                     break;
                 case ClientOpcodes.CHANGE_PROPERTY:
                     try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
@@ -422,7 +421,7 @@ public class XClientRequestHandler implements RequestHandler {
                     client.skipRequest();
                     break;
                 case ClientOpcodes.GET_POINTER_MAPPING:
-                    CursorRequests.getPointerMaping(client, inputStream, outputStream);
+                    CursorRequests.getPointerMapping(client, inputStream, outputStream);
                     break;
                 case ClientOpcodes.GRAB_SERVER:
                     try (XLock lock = client.xServer.lockAll()){
@@ -446,10 +445,12 @@ public class XClientRequestHandler implements RequestHandler {
                         if (extension != null) extension.handleRequest(client, inputStream, outputStream);
                     }
                     else Log.d("XClientRequestHandler", "Unsupported opcode " + opcode);
+                    break;
             }
         }
         catch (XRequestError e) {
             client.skipRequest();
+            Log.d("DRI3", "Unsupported opcode error " + e);
             e.sendError(client, opcode);
         }
 

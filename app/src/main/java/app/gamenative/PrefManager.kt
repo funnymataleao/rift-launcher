@@ -296,6 +296,13 @@ object PrefManager {
             setPref(BOX64_PRESET, value)
         }
 
+    private val RENDERER = stringPreferencesKey("renderer")
+    var renderer: String
+        get() = getPref(RENDERER, "gl")
+        set(value) {
+            setPref(RENDERER, value)
+        }
+
     private val CSMT = booleanPreferencesKey("csmt")
     var csmt: Boolean
         get() = getPref(CSMT, true)

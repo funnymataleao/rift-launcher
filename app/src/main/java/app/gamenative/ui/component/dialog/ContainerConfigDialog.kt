@@ -1265,6 +1265,16 @@ fun ContainerConfigDialog(
                             // TODO: add desktop settings
                             SettingsListDropdown(
                                 colors = settingsTileColors(),
+                                title = { Text(text = "Renderer") },
+                                value = gpuNameIndex,
+                                items = gpuCards.values.map { it.name },
+                                onItemSelected = {
+                                    gpuNameIndex = it
+                                    config = config.copy(videoPciDeviceID = gpuCards.values.toList()[it].deviceId)
+                                },
+                            )
+                            SettingsListDropdown(
+                                colors = settingsTileColors(),
                                 title = { Text(text = "GPU Name") },
                                 subtitle = { Text(text = "WineD3D") },
                                 value = gpuNameIndex,

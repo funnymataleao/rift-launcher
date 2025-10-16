@@ -47,7 +47,8 @@ data class ContainerData(
     val fexcoreTSOMode: String = "Fast",
     val fexcoreX87Mode: String = "Fast",
     val fexcoreMultiBlock: String = "Disabled",
-    // wine registry values
+    // wine registry
+    val renderer: String = "gl",
     val csmt: Boolean = true,
     val videoPciDeviceID: Int = 1728,
     val offScreenRenderingMode: String = "fbo",

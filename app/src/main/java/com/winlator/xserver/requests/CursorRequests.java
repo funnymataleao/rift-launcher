@@ -1,5 +1,7 @@
 package com.winlator.xserver.requests;
 
+import static com.winlator.xserver.XClientRequestHandler.RESPONSE_CODE_SUCCESS;
+
 import com.winlator.xconnector.XInputStream;
 import com.winlator.xconnector.XOutputStream;
 import com.winlator.xconnector.XStreamLock;
@@ -51,33 +53,17 @@ public abstract class CursorRequests {
         client.xServer.cursorManager.freeCursor(inputStream.readInt());
     }
 
-    public static void getPointerMaping(XClient client, XInputStream inputStream, XOutputStream outputStream) throws XRequestError, IOException {
-        XStreamLock lock = outputStream.lock();
-        try {
+    public static void getPointerMapping(XClient client, XInputStream inputStream, XOutputStream outputStream) throws XRequestError, IOException {
+        try (XStreamLock lock = outputStream.lock()) {
             byte[] buttonsMap = {1, 2, 3};
-            byte n = (byte) buttonsMap.length;
-            int padLen = 3 & (-n);
-            outputStream.writeByte((byte) 1);
-            outputStream.writeByte(n);
+            byte length = (byte) buttonsMap.length;
+            outputStream.writeByte(RESPONSE_CODE_SUCCESS);
+            outputStream.writeByte(length);
             outputStream.writeShort(client.getSequenceNumber());
-            outputStream.writeInt((n + padLen) / 4);
+            outputStream.writeInt((length + 3) / 4);
             outputStream.writePad(24);
-            for (byte b : buttonsMap) {
-                outputStream.writeByte(b);
-            }
-            outputStream.writePad(padLen);
-            if (lock != null) {
-                lock.close();
-            }
-        } catch (Throwable th) {
-            if (lock != null) {
-                try {
-                    lock.close();
-                } catch (Throwable th2) {
-                    th.addSuppressed(th2);
-                }
-            }
-            throw th;
+            outputStream.write(buttonsMap);
+            outputStream.writePad(3 & (-length));
         }
     }
 }

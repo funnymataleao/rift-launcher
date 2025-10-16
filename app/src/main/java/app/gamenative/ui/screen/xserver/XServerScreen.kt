@@ -62,6 +62,7 @@ import com.winlator.core.WineStartMenuCreator
 import com.winlator.core.WineThemeManager
 import com.winlator.core.WineUtils
 import com.winlator.core.envvars.EnvVars
+import com.winlator.fexcore.FEXCoreManager
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.ExternalController
 import com.winlator.inputcontrols.InputControlsManager
@@ -103,6 +104,7 @@ import java.io.BufferedReader
 import java.io.File
 import java.io.IOException
 import java.io.InputStreamReader
+import java.lang.StringIndexOutOfBoundsException
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
@@ -459,11 +461,27 @@ fun XServerScreen(
                         }
 
                         override fun onMapWindow(window: Window) {
+                            Timber.i(
+                                "onMapWindow:" +
+                                        "\n\twindowName: ${window.name}" +
+                                        "\n\twindowClassName: ${window.className}" +
+                                        "\n\tprocessId: ${window.processId}" +
+                                        "\n\thasParent: ${window.parent != null}" +
+                                        "\n\tchildrenSize: ${window.children.size}",
+                            )
                             win32AppWorkarounds?.applyWindowWorkarounds(window)
                             onWindowMapped?.invoke(context, window)
                         }
 
                         override fun onUnmapWindow(window: Window) {
+                            Timber.i(
+                                "onUnmapWindow:" +
+                                        "\n\twindowName: ${window.name}" +
+                                        "\n\twindowClassName: ${window.className}" +
+                                        "\n\tprocessId: ${window.processId}" +
+                                        "\n\thasParent: ${window.parent != null}" +
+                                        "\n\tchildrenSize: ${window.children.size}",
+                            )
                             changeFrameRatingVisibility(window, null)
                             onWindowUnmapped?.invoke(window)
                         }
@@ -1058,6 +1076,17 @@ private fun setupXEnvironment(
         guestProgramLauncherComponent.setPreUnpack {
             unpackExecutableFile(context, container.isNeedsUnpacking, container, appId, appLaunchInfo, onGameLaunchError)
         }
+
+        val enableGstreamer = container.isGstreamerWorkaround()
+
+        if (enableGstreamer) {
+            for (envVar in Container.MEDIACONV_ENV_VARS) {
+                val parts: Array<String?> = envVar.split("=".toRegex(), limit = 2).toTypedArray()
+                if (parts.size == 2) {
+                    envVars.put(parts[0], parts[1])
+                }
+            }
+        }
     }
 
     val environment = XEnvironment(context, imageFs)
@@ -1117,6 +1146,10 @@ private fun setupXEnvironment(
     }
     environment.addComponent(guestProgramLauncherComponent)
 
+
+    // Generate fexcore per app settings
+    FEXCoreManager.createAppConfigFiles(context)
+
     // Log container settings before starting
     if (container != null) {
         Timber.i("---- Launching Container ----")
@@ -1139,15 +1172,6 @@ private fun setupXEnvironment(
         Timber.i("---------------------------")
     }
 
-    // if (generateWinePrefix) {
-    //     generateWineprefix(
-    //         context,
-    //         imageFs,
-    //         xServerState.value.wineInfo,
-    //         envVars,
-    //         environment,
-    //     )
-    // }
     environment.startEnvironmentComponents()
 
     // put in separate scope since winhandler start method does some network stuff
@@ -1793,7 +1817,11 @@ private fun extractWinComponentFiles(
         val oldWinComponentsIter = KeyValueSet(container.getExtra("wincomponents", Container.FALLBACK_WINCOMPONENTS)).iterator()
 
         for (wincomponent in KeyValueSet(wincomponents)) {
-            if (wincomponent[1].equals(oldWinComponentsIter.next()[1])) continue
+            try {
+                if (wincomponent[1].equals(oldWinComponentsIter.next()[1])) continue
+            } catch (e: StringIndexOutOfBoundsException) {
+                Timber.d("Wincomponent ${wincomponent[0]} does not exist in oldwincomponents, skipping")
+            }
             val identifier = wincomponent[0]
             val useNative = wincomponent[1].equals("1")
 

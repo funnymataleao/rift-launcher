@@ -125,6 +125,7 @@ object ContainerUtils {
     }
 
     fun toContainerData(container: Container): ContainerData {
+        val renderer: String
         val csmt: Boolean
         val videoPciDeviceID: Int
         val offScreenRenderingMode: String
@@ -134,6 +135,8 @@ object ContainerUtils {
 
         val userRegFile = File(container.rootDir, ".wine/user.reg")
         WineRegistryEditor(userRegFile).use { registryEditor ->
+            renderer =
+                registryEditor.getStringValue("Software\\Wine\\Direct3D", "renderer", PrefManager.renderer)
             csmt =
                 registryEditor.getDwordValue("Software\\Wine\\Direct3D", "csmt", if (PrefManager.csmt) 3 else 0) != 0
 
@@ -235,6 +238,7 @@ object ContainerUtils {
         }
         val userRegFile = File(container.rootDir, ".wine/user.reg")
         WineRegistryEditor(userRegFile).use { registryEditor ->
+            registryEditor.setStringValue("Software\\Wine\\Direct3D", "renderer", containerData.renderer)
             registryEditor.setDwordValue("Software\\Wine\\Direct3D", "csmt", if (containerData.csmt) 3 else 0)
             registryEditor.setDwordValue("Software\\Wine\\Direct3D", "VideoPciDeviceID", containerData.videoPciDeviceID)
             registryEditor.setDwordValue(
