@@ -1538,7 +1538,7 @@ private fun setupWineSystemFiles(
         )
     }
 
-    val needReextract = xServerState.value.dxwrapper != container.getExtra("dxwrapper")
+    val needReextract = xServerState.value.dxwrapper != container.getExtra("dxwrapper") || container.wineVersion != wineVersion
 
     Timber.i("needReextract is " + needReextract)
     Timber.i("xServerState.value.dxwrapper is " + xServerState.value.dxwrapper)
