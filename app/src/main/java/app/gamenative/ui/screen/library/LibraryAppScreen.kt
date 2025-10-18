@@ -28,7 +28,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -44,14 +43,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
-import android.content.pm.ShortcutManager
-import android.content.pm.ShortcutInfo
-import android.graphics.drawable.Icon
-import app.gamenative.MainActivity
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -80,11 +72,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import app.gamenative.Constants
 import app.gamenative.R
-import app.gamenative.data.DepotInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
-import app.gamenative.enums.OS
-import app.gamenative.enums.OSArch
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
@@ -131,17 +120,13 @@ import app.gamenative.enums.PathType
 import com.winlator.container.ContainerManager
 import app.gamenative.enums.SyncResult
 import android.widget.Toast
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import app.gamenative.enums.Marker
-import app.gamenative.enums.SaveLocation
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.ui.graphics.compositeOver
 import app.gamenative.PluviaApp
 import app.gamenative.events.AndroidEvent
 import app.gamenative.utils.MarkerUtils
+import app.gamenative.utils.createPinnedShortcut
 import kotlinx.coroutines.withContext
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
@@ -1527,135 +1512,3 @@ private fun Preview_AppScreen() {
     }
 }
 
-private fun createAdaptiveIconBitmap(context: Context, src: android.graphics.Bitmap): android.graphics.Bitmap {
-    val density = context.resources.displayMetrics.density
-    val targetSize = (108f * density).toInt().coerceAtLeast(108)
-    val outBmp = android.graphics.Bitmap.createBitmap(targetSize, targetSize, android.graphics.Bitmap.Config.ARGB_8888)
-    val canvas = android.graphics.Canvas(outBmp)
-    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG or android.graphics.Paint.FILTER_BITMAP_FLAG)
-
-    // --- Compute a background color from the icon's edge-center pixels (top/bottom/left/right) ---
-    fun medianChannel(a: Int, b: Int, c: Int, d: Int): Int {
-        // Median-of-four by sorting 4 values; small fixed-size so simple sort is fine
-        val arr = intArrayOf(a, b, c, d)
-        java.util.Arrays.sort(arr)
-        // For even count, take average of the two middle values to avoid bias
-        return ((arr[1] + arr[2]) / 2f).toInt()
-    }
-    fun sampleEdgeColor(bmp: android.graphics.Bitmap): Int {
-        if (bmp.width <= 1 || bmp.height <= 1) return 0 // transparent fallback
-        val midX = bmp.width / 2
-        val midY = bmp.height / 2
-        val top = bmp.getPixel(midX.coerceIn(0, bmp.width - 1), 0)
-        val bottom = bmp.getPixel(midX.coerceIn(0, bmp.width - 1), bmp.height - 1)
-        val left = bmp.getPixel(0, midY.coerceIn(0, bmp.height - 1))
-        val right = bmp.getPixel(bmp.width - 1, midY.coerceIn(0, bmp.height - 1))
-
-        // If three or more of the four edge-center pixels are exactly the same color, use that color
-        val counts = hashMapOf<Int, Int>()
-        listOf(top, bottom, left, right).forEach { c -> counts[c] = (counts[c] ?: 0) + 1 }
-        val majority = counts.entries.firstOrNull { it.value >= 3 }?.key
-        if (majority != null) return majority
-
-        // Otherwise, fall back to median per channel to get a robust blended background
-        val r = medianChannel(android.graphics.Color.red(top), android.graphics.Color.red(bottom), android.graphics.Color.red(left), android.graphics.Color.red(right))
-        val g = medianChannel(android.graphics.Color.green(top), android.graphics.Color.green(bottom), android.graphics.Color.green(left), android.graphics.Color.green(right))
-        val b = medianChannel(android.graphics.Color.blue(top), android.graphics.Color.blue(bottom), android.graphics.Color.blue(left), android.graphics.Color.blue(right))
-        val a = medianChannel(android.graphics.Color.alpha(top), android.graphics.Color.alpha(bottom), android.graphics.Color.alpha(left), android.graphics.Color.alpha(right))
-        return android.graphics.Color.argb(a, r, g, b)
-    }
-
-    val bgColor = sampleEdgeColor(src)
-
-    // Fill background first so transparent icons still have a pleasant backdrop
-    canvas.drawColor(bgColor)
-
-    // Add uniform inset so icons are not cropped too tightly
-    val insetFraction = 0.18f // 18% padding around
-    val availSize = targetSize * (1f - insetFraction * 2f)
-
-    // Center-fit scale to keep entire icon visible inside the padded area
-    val scale = minOf(
-        availSize.toFloat() / src.width.coerceAtLeast(1),
-        availSize.toFloat() / src.height.coerceAtLeast(1)
-    )
-    val drawW = src.width * scale
-    val drawH = src.height * scale
-    val left = (targetSize - drawW) / 2f
-    val top = (targetSize - drawH) / 2f
-    val dest = android.graphics.RectF(left, top, left + drawW, top + drawH)
-
-    canvas.drawBitmap(src, null, dest, paint)
-
-    return outBmp
-}
-
-private suspend fun createPinnedShortcut(context: Context, gameId: Int, label: String, iconUrl: String?) {
-    val appContext = context.applicationContext
-    val shortcutManager = appContext.getSystemService(ShortcutManager::class.java)
-
-    val intent = Intent("app.gamenative.LAUNCH_GAME").apply {
-        setClass(appContext, MainActivity::class.java)
-        putExtra("app_id", gameId)
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-    }
-
-    // Try to load game's icon bitmap; fallback to built-in adaptive icon
-    val bitmapIcon: android.graphics.Bitmap? = withContext(Dispatchers.IO) {
-        try {
-            if (!iconUrl.isNullOrBlank()) {
-                val loader = coil.ImageLoader(appContext)
-                val request = coil.request.ImageRequest.Builder(appContext)
-                    .data(iconUrl)
-                    .allowHardware(false)
-                    .build()
-                val result = loader.execute(request)
-                val drawable = (result as? coil.request.SuccessResult)?.drawable
-                val rawBitmap = when (drawable) {
-                    is android.graphics.drawable.BitmapDrawable -> drawable.bitmap
-                    else -> {
-                        if (drawable != null) {
-                            val bmp = android.graphics.Bitmap.createBitmap(
-                                drawable.intrinsicWidth.coerceAtLeast(1),
-                                drawable.intrinsicHeight.coerceAtLeast(1),
-                                android.graphics.Bitmap.Config.ARGB_8888
-                            )
-                            val canvas = android.graphics.Canvas(bmp)
-                            drawable.setBounds(0, 0, canvas.width, canvas.height)
-                            drawable.draw(canvas)
-                            bmp
-                        } else null
-                    }
-                }
-                rawBitmap
-            } else null
-        } catch (_: Throwable) { null }
-    }
-
-    val finalIcon: Icon = if (bitmapIcon != null) {
-        val adaptiveBmp = createAdaptiveIconBitmap(appContext, bitmapIcon)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            Icon.createWithAdaptiveBitmap(adaptiveBmp)
-        } else {
-            Icon.createWithBitmap(adaptiveBmp)
-        }
-    } else {
-        Icon.createWithResource(appContext, R.mipmap.ic_shortcut_filter)
-    }
-
-    val shortcut = ShortcutInfo.Builder(appContext, "game_$gameId")
-        .setShortLabel(label)
-        .setLongLabel(label)
-        .setIcon(finalIcon)
-        .setIntent(intent)
-        .build()
-
-    withContext(Dispatchers.Main) {
-        if (shortcutManager?.isRequestPinShortcutSupported == true) {
-            shortcutManager.requestPinShortcut(shortcut, null)
-        } else {
-            val existing = shortcutManager?.dynamicShortcuts ?: emptyList()
-            shortcutManager?.dynamicShortcuts = (existing + shortcut).take(4)
-        }
-    }
-}

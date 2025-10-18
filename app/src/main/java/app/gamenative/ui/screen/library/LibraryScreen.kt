@@ -108,18 +108,6 @@ private fun LibraryScreenContent(
         Modifier.background(MaterialTheme.colorScheme.background)
         .then(safePaddingModifier)) {
 
-        // Listen for external request to open a specific game and auto-launch it
-        androidx.compose.runtime.DisposableEffect(Unit) {
-            val onOpenApp: (AndroidEvent.OpenLibraryApp) -> Unit = { event ->
-                selectedAppId = event.appId
-                val gameId = ContainerUtils.extractGameIdFromContainerId(event.appId)
-                onClickPlay(gameId, false)
-            }
-            PluviaApp.events.on<AndroidEvent.OpenLibraryApp, Unit>(onOpenApp)
-            onDispose {
-                PluviaApp.events.off<AndroidEvent.OpenLibraryApp, Unit>(onOpenApp)
-            }
-        }
         if (selectedAppId == null) {
             LibraryListPane(
                 state = state,

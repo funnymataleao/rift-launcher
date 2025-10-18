@@ -14,10 +14,8 @@ interface AndroidEvent<T> : Event<T> {
     data class MotionEvent(val event: android.view.MotionEvent?) : AndroidEvent<Boolean>
     data object EndProcess : AndroidEvent<Unit>
     data class ExternalGameLaunch(val appId: String) : AndroidEvent<Unit>
-    data class OpenLibraryApp(val appId: String) : AndroidEvent<Unit>
     data class PromptSaveContainerConfig(val appId: String) : AndroidEvent<Unit>
     data class ShowGameFeedback(val appId: String) : AndroidEvent<Unit>
-    // Overlay to indicate launching state until we land on the game page
     data class ShowLaunchingOverlay(val appName: String) : AndroidEvent<Unit>
     data object HideLaunchingOverlay : AndroidEvent<Unit>
     // data class SetAppBarVisibility(val visible: Boolean) : AndroidEvent<Unit>

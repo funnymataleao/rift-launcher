@@ -122,24 +122,14 @@ fun PluviaMain(
                     viewModel.setLaunchedAppId(event.appId)
                     viewModel.setBootToContainer(false)
 
-                    // Show launching overlay with game name (only if installed)
-                    val gameId = app.gamenative.utils.ContainerUtils.extractGameIdFromContainerId(event.appId)
-                    if (app.gamenative.service.SteamService.isAppInstalled(gameId)) {
-                        val appName = app.gamenative.service.SteamService.getAppInfoOf(gameId)?.name ?: "Launching"
-                        Toast.makeText(context, "Launching ${appName}…", Toast.LENGTH_SHORT).show()
-                    }
-
-                    // Ensure we're on the Home (Library) screen and show the game's page
-                    if (navController.currentDestination?.route != PluviaScreen.Home.route) {
-                        navController.navigate(PluviaScreen.Home.route) {
-                            popUpTo(navController.graph.startDestinationId) { saveState = false }
-                        }
-                    }
-                    // Ask Library screen to open the game page and auto press Play (after navigation commits)
-                    scope.launch {
-                        kotlinx.coroutines.delay(250)
-                        PluviaApp.events.emit(AndroidEvent.OpenLibraryApp(event.appId))
-                    }
+                    preLaunchApp(
+                        context = context,
+                        appId = event.appId,
+                        setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                        setLoadingProgress = viewModel::setLoadingDialogProgress,
+                        setMessageDialogState = setMessageDialogState,
+                        onSuccess = viewModel::launchApp,
+                    )
                 }
 
                 MainViewModel.MainUiEvent.OnBackPressed -> {
@@ -203,29 +193,17 @@ fun PluviaMain(
                                         }
                                     }
 
-                                    // Show launching overlay with game name
-                                    run {
-                                        val gid = ContainerUtils.extractGameIdFromContainerId(launchRequest.appId)
-                                        val name = SteamService.getAppInfoOf(gid)?.name ?: "Launching"
-                                        Toast.makeText(context, "Launching ${name}…", Toast.LENGTH_SHORT).show()
-                                    }
-
                                     viewModel.setLaunchedAppId(launchRequest.appId)
                                     viewModel.setBootToContainer(false)
 
-                                    if (navController.currentDestination?.route != PluviaScreen.Home.route) {
-                                        navController.navigate(PluviaScreen.Home.route) {
-                                            popUpTo(navController.graph.startDestinationId) {
-                                                saveState = false
-                                            }
-                                        }
-                                    }
-
-                                    // Ask Library screen to open the specific game and auto-press Play (after navigation commits)
-                                    scope.launch {
-                                        kotlinx.coroutines.delay(250)
-                                        PluviaApp.events.emit(AndroidEvent.OpenLibraryApp(launchRequest.appId))
-                                    }
+                                    preLaunchApp(
+                                        context = context,
+                                        appId = launchRequest.appId,
+                                        setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                                        setLoadingProgress = viewModel::setLoadingDialogProgress,
+                                        setMessageDialogState = setMessageDialogState,
+                                        onSuccess = viewModel::launchApp,
+                                    )
                                 }
                             }
                             else if (PluviaApp.xEnvironment == null) {
