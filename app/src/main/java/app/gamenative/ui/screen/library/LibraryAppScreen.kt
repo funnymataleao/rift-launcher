@@ -373,7 +373,7 @@ fun AppScreen(
 
     /** Export for Frontend (CreateDocument) **/
     val exportFrontendLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("text/plain"),
+        contract = ActivityResultContracts.CreateDocument("application/octet-stream"),
         onResult = { uri ->
             if (uri != null) {
                 try {
