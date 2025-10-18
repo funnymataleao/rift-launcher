@@ -396,6 +396,7 @@ fun XServerScreen(
         factory = { context ->
             Timber.i("Creating XServerView and XServer")
             val frameLayout = FrameLayout(context)
+            val appId = appId
             val existingXServer =
                 PluviaApp.xEnvironment
                     ?.getComponent<XServerComponent>(XServerComponent::class.java)
@@ -446,7 +447,8 @@ fun XServerScreen(
                         }
                         override fun onUpdateWindowContent(window: Window) {
                             if (!xServerState.value.winStarted && window.isApplicationWindow()) {
-                                renderer?.setCursorVisible(true)
+                                val container = ContainerUtils.getContainer(context, appId)
+                                if (!container.isDisableMouseInput && !container.isTouchscreenMode) renderer?.setCursorVisible(true)
                                 xServerState.value.winStarted = true
                             }
                             if (window.id == frameRatingWindowId) {
@@ -499,9 +501,7 @@ fun XServerScreen(
                     }
                     handler.setPreferredInputApi(PreferredInputApi.values()[container.inputType])
                     handler.setDInputMapperType(container.dinputMapperType)
-                    val renderer: GLRenderer = xServerView!!.getRenderer()
                     if (container.isDisableMouseInput()) {
-                        renderer.setCursorVisible(false)
                         PluviaApp.touchpadView?.setTouchscreenMouseDisabled(true)
                     } else if (container.isTouchscreenMode()) {
                         PluviaApp.touchpadView?.setTouchscreenMode(true)
