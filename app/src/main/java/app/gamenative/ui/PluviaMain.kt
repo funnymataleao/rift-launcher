@@ -121,7 +121,6 @@ fun PluviaMain(
                     Timber.i("[PluviaMain]: Received ExternalGameLaunch UI event for app ${event.appId}")
                     viewModel.setLaunchedAppId(event.appId)
                     viewModel.setBootToContainer(false)
-
                     preLaunchApp(
                         context = context,
                         appId = event.appId,
@@ -195,7 +194,6 @@ fun PluviaMain(
 
                                     viewModel.setLaunchedAppId(launchRequest.appId)
                                     viewModel.setBootToContainer(false)
-
                                     preLaunchApp(
                                         context = context,
                                         appId = launchRequest.appId,

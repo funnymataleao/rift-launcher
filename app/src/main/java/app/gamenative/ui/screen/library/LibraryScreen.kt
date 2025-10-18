@@ -46,7 +46,6 @@ import app.gamenative.ui.screen.library.components.LibraryDetailPane
 import app.gamenative.ui.screen.library.components.LibraryListPane
 import app.gamenative.ui.theme.PluviaTheme
 import java.util.EnumSet
-import app.gamenative.utils.ContainerUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -107,7 +106,6 @@ private fun LibraryScreenContent(
     Box(
         Modifier.background(MaterialTheme.colorScheme.background)
         .then(safePaddingModifier)) {
-
         if (selectedAppId == null) {
             LibraryListPane(
                 state = state,
