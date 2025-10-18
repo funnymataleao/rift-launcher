@@ -371,6 +371,28 @@ fun AppScreen(
     )
 
 
+    /** Export for Frontend (CreateDocument) **/
+    val exportFrontendLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/plain"),
+        onResult = { uri ->
+            if (uri != null) {
+                try {
+                    context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                        val content = appInfo.id.toString()
+                        outputStream.write(content.toByteArray(Charsets.UTF_8))
+                        outputStream.flush()
+                    }
+                    Toast.makeText(context, "Exported", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Failed to export: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            } else {
+                Toast.makeText(context, "Export cancelled", Toast.LENGTH_SHORT).show()
+            }
+        },
+    )
+
+
     val onDismissRequest: (() -> Unit)?
     val onDismissClick: (() -> Unit)?
     val onConfirmClick: (() -> Unit)?
@@ -613,14 +635,6 @@ fun AppScreen(
                         context.startActivity(browserIntent)
                     },
                 ),
-                *(
-                    if (isInstalled) arrayOf(
-                        AppMenuOption(
-                            optionType = AppOptionMenuType.CreateShortcut,
-                            onClick = { showCreateShortcutDialog = true }
-                        ),
-                    ) else emptyArray()
-                ),
                 AppMenuOption(
                     optionType = AppOptionMenuType.EditContainer,
                     onClick = {
@@ -676,6 +690,17 @@ fun AppScreen(
                                     container.isNeedsUnpacking = true
                                     container.saveData()
                                 },
+                            ),
+                            AppMenuOption(
+                                optionType = AppOptionMenuType.CreateShortcut,
+                                onClick = { showCreateShortcutDialog = true }
+                            ),
+                            AppMenuOption(
+                                optionType = AppOptionMenuType.ExportFrontend,
+                                onClick = {
+                                    val suggested = "${appInfo.name}.steam"
+                                    exportFrontendLauncher.launch(suggested)
+                                }
                             ),
                             AppMenuOption(
                                 AppOptionMenuType.VerifyFiles,
