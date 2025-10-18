@@ -95,6 +95,23 @@ public class ImageFs {
         }
     }
 
+    public String getArch() {
+        File archFile = getArchFile();
+        return archFile.exists() ? FileUtils.readLines(archFile).get(0) : "";
+    }
+
+    public void createArchFile(String arch) {
+        getConfigDir().mkdirs();
+        File file = getArchFile();
+        try {
+            file.createNewFile();
+            FileUtils.writeString(file, arch);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public String getWinePath() {
         return winePath;
     }
@@ -113,6 +130,10 @@ public class ImageFs {
 
     public File getVariantFile() {
         return new File(getConfigDir(), ".variant");
+    }
+
+    public File getArchFile() {
+        return new File(getConfigDir(), ".arch");
     }
 
     public File getInstalledWineDir() {

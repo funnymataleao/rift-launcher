@@ -1512,10 +1512,12 @@ private fun setupWineSystemFiles(
     val imageFs = ImageFs.find(context)
     val appVersion = AppUtils.getVersionCode(context).toString()
     val imgVersion = imageFs.getVersion().toString()
+    val wineVersion = imageFs.getArch()
     val variant = imageFs.getVariant()
     var containerDataChanged = false
 
-    if (!container.getExtra("appVersion").equals(appVersion) || !container.getExtra("imgVersion").equals(imgVersion) || container.containerVariant != variant) {
+    if (!container.getExtra("appVersion").equals(appVersion) || !container.getExtra("imgVersion").equals(imgVersion) ||
+        container.containerVariant != variant || (container.containerVariant == variant && container.wineVersion != wineVersion)) {
         applyGeneralPatches(context, container, imageFs, xServerState.value.wineInfo, containerManager, onExtractFileListener)
         container.putExtra("appVersion", appVersion)
         container.putExtra("imgVersion", imgVersion)
@@ -1839,12 +1841,11 @@ private fun extractWinComponentFiles(
                     dlls.add(if (!dlname.endsWith(".exe")) "$dlname.dll" else dlname)
                 }
             }
-
+            WineUtils.overrideWinComponentDlls(context, container, identifier, useNative)
             WineUtils.setWinComponentRegistryKeys(systemRegFile, identifier, useNative)
         }
 
         if (!dlls.isEmpty()) restoreOriginalDllFiles(context, container, containerManager, imageFs, *dlls.toTypedArray())
-        WineUtils.overrideWinComponentDlls(context, container, wincomponents)
     } catch (e: JSONException) {
         Timber.e("Failed to read JSON: $e")
     }
@@ -2156,4 +2157,5 @@ private fun setImagefsContainerVariant(context: Context, container: Container) {
     val imageFs = ImageFs.find(context)
     val containerVariant = container.containerVariant
     imageFs.createVariantFile(containerVariant)
+    imageFs.createArchFile(container.wineVersion)
 }

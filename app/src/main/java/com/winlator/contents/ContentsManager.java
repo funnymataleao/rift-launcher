@@ -385,7 +385,7 @@ public class ContentsManager {
     }
 
     public boolean applyContent(ContentProfile profile) {
-        if (profile.type != ContentProfile.ContentType.CONTENT_TYPE_WINE) {
+        if (profile.type != ContentProfile.ContentType.CONTENT_TYPE_WINE && profile.type != ContentProfile.ContentType.CONTENT_TYPE_PROTON) {
             Log.d("ContentsManager", "if condition");
             for (ContentProfile.ContentFile contentFile : profile.fileList) {
                 File targetFile = new File(getPathFromTemplate(contentFile.target));

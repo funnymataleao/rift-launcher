@@ -287,6 +287,28 @@ public class ContainerManager {
         return null;
     }
 
+    private void deleteCommonDlls(String dstName,
+                                  JSONObject commonDlls,
+                                  File containerDir) throws JSONException {
+        // Get the list of DLL names for the given destination folder
+        JSONArray dlnames = commonDlls.getJSONArray(dstName);
+
+        for (int i = 0; i < dlnames.length(); i++) {
+            String dlname = dlnames.getString(i);
+
+            // Compose full path to the target DLL inside the Wine prefix
+            File targetFile = new File(containerDir,
+                    ".wine/drive_c/windows/" + dstName + "/" + dlname);
+
+            // Delete if present
+            Log.d("Extraction", "Attempting to delete: " + targetFile.getPath());
+            if (targetFile.exists()) {
+                //noinspection ResultOfMethodCallIgnored  // intentional, we don't care about the boolean
+                targetFile.delete();
+            }
+        }
+    }
+
     private void extractCommonDlls(String srcName, String dstName, JSONObject commonDlls, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {
         File srcDir = new File(ImageFs.find(context).getRootDir(), "/opt/wine/lib/wine/"+srcName);
         JSONArray dlnames = commonDlls.getJSONArray(dstName);
@@ -303,6 +325,7 @@ public class ContainerManager {
     }
 
     private void extractCommonDlls(WineInfo wineInfo, String srcName, String dstName, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {
+        Log.d("Extraction", "extracting common dlls for bionic: " + srcName);
         File srcDir = new File(wineInfo.path + "/lib/wine/" + srcName);
 
         File[] srcfiles = srcDir.listFiles(file -> file.isFile());
@@ -314,9 +337,11 @@ public class ContainerManager {
             File dstFile = new File(containerDir, ".wine/drive_c/windows/" + dstName + "/" + dllName);
             if (dstFile.exists()) continue;
             if (onExtractFileListener != null ) {
+                Log.d("Extraction", "extracting " + dstFile);
                 dstFile = onExtractFileListener.onExtractFile(dstFile, 0);
                 if (dstFile == null) continue;
             }
+            Log.d("Extraction", "copying " + file + " to " + dstFile);
             FileUtils.copy(file, dstFile);
         }
     }
@@ -341,6 +366,14 @@ public class ContainerManager {
             return result;
         }
         else {
+            try {
+                JSONObject commonDlls = new JSONObject(FileUtils.readString(context, "common_dlls.json"));
+                deleteCommonDlls("system32", commonDlls, containerDir);
+                deleteCommonDlls("syswow64", commonDlls, containerDir);
+            }
+            catch (JSONException e) {
+                return false;
+            }
             String containerPattern = wineVersion + "_container_pattern.tzst";
             Log.d("Extraction", "exctracting " + containerPattern);
             boolean result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, containerPattern, containerDir, onExtractFileListener);

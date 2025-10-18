@@ -265,12 +265,14 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         String ld_preload = "";
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
         String evshimPath = imageFs.getLibDir() + "/libevshim.so";
+        String replacePath = imageFs.getLibDir() + "/libredirect-bionic.so";
 
 
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
 
         ld_preload += ":" + evshimPath;
+        ld_preload += ":" + replacePath;
 
         envVars.put("LD_PRELOAD", ld_preload);
 
