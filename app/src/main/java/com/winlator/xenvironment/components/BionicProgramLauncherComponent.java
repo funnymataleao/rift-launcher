@@ -3,12 +3,14 @@ package com.winlator.xenvironment.components;
 import android.app.Service;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.media.Image;
 import android.net.ConnectivityManager;
 import android.net.InetAddresses;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
+import android.provider.ContactsContract;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -374,13 +376,15 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         File system32dir = new File(rootDir + "/home/xuser/.wine/drive_c/windows/system32");
         boolean containerDataChanged = false;
 
+        ImageFs imageFs = ImageFs.find(context);
+
         String wowbox64Version = container.getBox64Version();
         String fexcoreVersion = container.getFEXCoreVersion();
 
         Log.d("Extraction", "box64Version in use: " + wowbox64Version);
         Log.d("Extraction", "fexcoreVersion in use: " + fexcoreVersion);
 
-        if (!wowbox64Version.equals(container.getExtra("box64Version"))) {
+        if (!wowbox64Version.equals(container.getExtra("box64Version")) || container.getWineVersion() != imageFs.getArch()) {
             ContentProfile profile = contentsManager.getProfileByEntryName("wowbox64-" + wowbox64Version);
             if (profile != null)
                 contentsManager.applyContent(profile);

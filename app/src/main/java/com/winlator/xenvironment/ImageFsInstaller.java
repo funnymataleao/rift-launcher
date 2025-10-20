@@ -1,5 +1,7 @@
 package com.winlator.xenvironment;
 
+import static com.winlator.core.FileUtils.chmod;
+
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.util.Log;
@@ -30,6 +32,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -105,6 +109,7 @@ public abstract class ImageFsInstaller {
 //                    containerManager.extractContainerPatternFile(container.getWineVersion(), contentsManager, containerDir, null);
 //                }
                 installWineFromAssets(context, assetManager);
+                installGuestLibs(context);
                 imageFs.createImgVersionFile(LATEST_VERSION);
                 resetContainerImgVersions(context);
 
@@ -120,6 +125,25 @@ public abstract class ImageFsInstaller {
         });
     }
 
+    private static void installGuestLibs(Context ctx) {
+        final String ASSET_TAR = "redirect.tzst";          // ➊  add this to assets/
+        File imagefs = new File(ctx.getFilesDir(), "imagefs");
+        // ➋  Unpack straight into imagefs, preserving relative paths.
+        try (InputStream in  = ctx.getAssets().open(ASSET_TAR)) {
+            TarCompressorUtils.extract(
+                    TarCompressorUtils.Type.ZSTD,      // you said .tzst
+                    in, imagefs);                      // helper already exists in the project
+        } catch (IOException e) {
+            Log.e("ImageFsInstaller", "redirect deploy failed", e);
+            return;
+        }
+
+        // ➌  Make sure the new libs are world-readable / executable
+        chmod(new File(imagefs, "usr/lib/libredirect.so"));
+        chmod(new File(imagefs, "usr/lib/libredirect-bionic.so"));
+    }
+
+    private static void chmod(File f) { if (f.exists()) FileUtils.chmod(f, 0755);}
 
     public static Future<Boolean> installIfNeededFuture(final Context context, AssetManager assetManager) {
         return installIfNeededFuture(context, assetManager, null, null);
