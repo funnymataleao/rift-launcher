@@ -63,11 +63,11 @@ import com.winlator.core.WineThemeManager
 import com.winlator.core.WineUtils
 import com.winlator.core.envvars.EnvVars
 import com.winlator.fexcore.FEXCoreManager
+import com.winlator.inputcontrols.ControllerManager
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.ExternalController
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.inputcontrols.TouchMouse
-import com.winlator.renderer.GLRenderer
 import com.winlator.widget.FrameRating
 import com.winlator.widget.InputControlsView
 import com.winlator.widget.TouchpadView
@@ -104,7 +104,6 @@ import java.io.BufferedReader
 import java.io.File
 import java.io.IOException
 import java.io.InputStreamReader
-import java.lang.StringIndexOutOfBoundsException
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
@@ -266,7 +265,7 @@ fun XServerScreen(
                                     } else {
                                         profiles[2]
                                     }
-                                    showInputControls(targetProfile)
+                                    showInputControls(targetProfile, xServerView!!.getxServer().winHandler, container)
                                 }
                             }
                             areControlsVisible = !areControlsVisible
@@ -645,7 +644,7 @@ fun XServerScreen(
                 if (ExternalController.getController(0) == null) {
                     val profiles2 = PluviaApp.inputControlsManager?.getProfiles(false) ?: listOf()
                     if (profiles2.size > 2) {
-                        showInputControls(profiles2[2])
+                        showInputControls(profiles2[2], xServerView.getxServer().winHandler, container)
                         areControlsVisible = true
                     }
                 }
@@ -774,7 +773,8 @@ private fun emulateKeyboardMouseOnscreen(
     return targetProfile
 }
 
-private fun showInputControls(profile: ControlsProfile) {
+private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, container: Container) {
+    profile.setVirtualGamepad(true)
     PluviaApp.inputControlsView?.setVisibility(View.VISIBLE)
     PluviaApp.inputControlsView?.requestFocus()
     PluviaApp.inputControlsView?.setProfile(profile)
@@ -783,6 +783,26 @@ private fun showInputControls(profile: ControlsProfile) {
     PluviaApp.touchpadView?.setPointerButtonRightEnabled(false)
 
     PluviaApp.inputControlsView?.invalidate()
+
+
+    // If the selected profile is a virtual gamepad, we must enable the P1 slot.
+    if (container.containerVariant.equals(Container.BIONIC) && profile.isVirtualGamepad()) {
+        val controllerManager: ControllerManager = ControllerManager.getInstance()
+
+
+        // Ensure Player 1 slot is enabled so a vjoy device is created for it.
+        controllerManager.setSlotEnabled(0, true)
+
+
+        // Clear any physical device from P1 to prevent conflicts.
+        controllerManager.unassignSlot(0)
+
+
+        // Tell WinHandler to update its internal state.
+        if (winHandler != null) {
+            winHandler.refreshControllerMappings()
+        }
+    }
 }
 
 private fun hideInputControls() {
@@ -1613,8 +1633,8 @@ private fun applyGeneralPatches(
         Timber.i("Extracting container_pattern_common.tzst")
         TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "container_pattern_common.tzst", rootDir);
         Timber.i("Attempting to extract _container_pattern.tzst with wine version " + container.wineVersion)
-        containerManager.extractContainerPatternFile(container.getWineVersion(), contentsManager, container.rootDir, null)
     }
+    containerManager.extractContainerPatternFile(container.getWineVersion(), contentsManager, container.rootDir, null)
     TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "pulseaudio.tzst", File(context.filesDir, "pulseaudio"))
     WineUtils.applySystemTweaks(context, wineInfo)
     container.putExtra("graphicsDriver", null)
