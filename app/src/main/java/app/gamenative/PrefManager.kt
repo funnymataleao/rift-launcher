@@ -331,6 +331,13 @@ object PrefManager {
             setPref(STRICT_SHADER_MATH, value)
         }
 
+    private val USE_DRI3 = booleanPreferencesKey("useDRI3")
+    var useDRI3: Boolean
+        get() = getPref(USE_DRI3, true)
+        set(value) {
+            setPref(USE_DRI3, value)
+        }
+
     private val VIDEO_MEMORY_SIZE = stringPreferencesKey("videoMemorySize")
     var videoMemorySize: String
         get() = getPref(VIDEO_MEMORY_SIZE, "2048")

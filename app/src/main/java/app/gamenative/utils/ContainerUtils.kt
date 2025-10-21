@@ -73,13 +73,23 @@ object ContainerUtils {
             language = PrefManager.containerLanguage,
             containerVariant = PrefManager.containerVariant,
             wineVersion = PrefManager.wineVersion,
+			emulator = PrefManager.emulator,
+			fexcoreVersion = PrefManager.fexcoreVersion,
+			fexcoreTSOMode = PrefManager.fexcoreTSOMode,
+			fexcoreX87Mode = PrefManager.fexcoreX87Mode,
+			fexcoreMultiBlock = PrefManager.fexcoreMultiBlock,
+			renderer = PrefManager.renderer,
 
-            csmt = PrefManager.csmt,
+			csmt = PrefManager.csmt,
             videoPciDeviceID = PrefManager.videoPciDeviceID,
             offScreenRenderingMode = PrefManager.offScreenRenderingMode,
             strictShaderMath = PrefManager.strictShaderMath,
             videoMemorySize = PrefManager.videoMemorySize,
             mouseWarpOverride = PrefManager.mouseWarpOverride,
+            useDRI3 = PrefManager.useDRI3,
+			enableXInput = PrefManager.xinputEnabled,
+			enableDInput = PrefManager.dinputEnabled,
+			dinputMapperType = PrefManager.dinputMapperType.toByte(),
             disableMouseInput = PrefManager.disableMouseInput,
         )
     }
@@ -112,6 +122,7 @@ object ContainerUtils {
         PrefManager.strictShaderMath = containerData.strictShaderMath
         PrefManager.videoMemorySize = containerData.videoMemorySize
         PrefManager.mouseWarpOverride = containerData.mouseWarpOverride
+        PrefManager.useDRI3 = containerData.useDRI3
         PrefManager.disableMouseInput = containerData.disableMouseInput
         PrefManager.containerLanguage = containerData.language
         PrefManager.containerVariant = containerData.containerVariant
@@ -122,6 +133,11 @@ object ContainerUtils {
         PrefManager.fexcoreTSOMode = containerData.fexcoreTSOMode
         PrefManager.fexcoreX87Mode = containerData.fexcoreX87Mode
         PrefManager.fexcoreMultiBlock = containerData.fexcoreMultiBlock
+		// Persist renderer and controller defaults
+		PrefManager.renderer = containerData.renderer
+		PrefManager.xinputEnabled = containerData.enableXInput
+		PrefManager.dinputEnabled = containerData.enableDInput
+		PrefManager.dinputMapperType = containerData.dinputMapperType.toInt()
     }
 
     fun toContainerData(container: Container): ContainerData {
@@ -173,10 +189,7 @@ object ContainerUtils {
             envVars = container.envVars,
             graphicsDriver = container.graphicsDriver,
             graphicsDriverVersion = container.graphicsDriverVersion,
-            // Persist driver config (Vortek/Adreno settings)
-            graphicsDriverConfig = try {
-                container.getGraphicsDriverConfig()
-            } catch (_: Exception) { "" },
+            graphicsDriverConfig = container.graphicsDriverConfig,
             dxwrapper = container.dxWrapper,
             dxwrapperConfig = container.dxWrapperConfig,
             audioDriver = container.audioDriver,
@@ -214,6 +227,7 @@ object ContainerUtils {
             videoPciDeviceID = videoPciDeviceID,
             offScreenRenderingMode = offScreenRenderingMode,
             strictShaderMath = strictShaderMath,
+            useDRI3 = container.isUseDRI3(),
             videoMemorySize = videoMemorySize,
             mouseWarpOverride = mouseWarpOverride,
         )
@@ -259,7 +273,7 @@ object ContainerUtils {
         container.envVars = containerData.envVars
         container.graphicsDriver = containerData.graphicsDriver
         // Save driver config through to container
-        container.setGraphicsDriverConfig(containerData.graphicsDriverConfig)
+        container.graphicsDriverConfig = containerData.graphicsDriverConfig
         container.dxWrapper = containerData.dxwrapper
         container.dxWrapperConfig = containerData.dxwrapperConfig
         container.audioDriver = containerData.audioDriver
@@ -324,6 +338,7 @@ object ContainerUtils {
         }
         container.setInputType(api.ordinal)
         container.setDinputMapperType(containerData.dinputMapperType)
+        container.setUseDRI3(containerData.useDRI3)
         Timber.d("Container set: preferredInputApi=%s, dinputMapperType=0x%02x", api, containerData.dinputMapperType)
 
         if (saveToDisk) {
@@ -469,12 +484,24 @@ object ContainerUtils {
                 box64Preset = PrefManager.box64Preset,
                 desktopTheme = WineThemeManager.DEFAULT_DESKTOP_THEME,
                 language = PrefManager.containerLanguage,
+				containerVariant = PrefManager.containerVariant,
+				wineVersion = PrefManager.wineVersion,
+				emulator = PrefManager.emulator,
+				fexcoreVersion = PrefManager.fexcoreVersion,
+				fexcoreTSOMode = PrefManager.fexcoreTSOMode,
+				fexcoreX87Mode = PrefManager.fexcoreX87Mode,
+				fexcoreMultiBlock = PrefManager.fexcoreMultiBlock,
+				renderer = PrefManager.renderer,
                 csmt = PrefManager.csmt,
                 videoPciDeviceID = PrefManager.videoPciDeviceID,
                 offScreenRenderingMode = PrefManager.offScreenRenderingMode,
                 strictShaderMath = PrefManager.strictShaderMath,
+				useDRI3 = PrefManager.useDRI3,
                 videoMemorySize = PrefManager.videoMemorySize,
                 mouseWarpOverride = PrefManager.mouseWarpOverride,
+				enableXInput = PrefManager.xinputEnabled,
+				enableDInput = PrefManager.dinputEnabled,
+				dinputMapperType = PrefManager.dinputMapperType.toByte(),
                 disableMouseInput = PrefManager.disableMouseInput,
             )
         }

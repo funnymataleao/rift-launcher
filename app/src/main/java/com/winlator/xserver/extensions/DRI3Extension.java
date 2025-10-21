@@ -118,26 +118,17 @@ public class DRI3Extension implements Extension {
     }
 
     private void pixmapFromBuffers(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
-        Log.d("XWin", "Received pixmap from buffers");
         int pixmapId = inputStream.readInt();
-        Log.d("XWin", "Read pixmap id " + pixmapId);
         int windowId = inputStream.readInt();
-        Log.d("XWin", "Read window id " + windowId);
         inputStream.skip(4);
         short width = inputStream.readShort();
-        Log.d("XWin", "Read width " + width);
         short height = inputStream.readShort();
-        Log.d("XWin", "Read height " + height);
         int stride = inputStream.readInt();
-        Log.d("XWin", "Read stride " + stride);
         int offset = inputStream.readInt();
-        Log.d("XWin", "Read offset " + offset);
         inputStream.skip(24);
         byte depth = inputStream.readByte();
-        Log.d("XWin", "Read depth " + depth);
         inputStream.skip(3);
         long modifiers = inputStream.readLong();
-        Log.d("XWin", "Read modifiers " + modifiers);
 
         Window window = client.xServer.windowManager.getWindow(windowId);
         if (window == null) throw new BadWindow(windowId);
@@ -148,11 +139,9 @@ public class DRI3Extension implements Extension {
         long size = (long)stride * height;
 
         if (modifiers == 1255) {
-            Log.d("XWin", "Creating pixmap from AHardwareBuffer");
             pixmapFromHardwareBuffer(client, pixmapId, width, height, depth, fd);
         }
         else if (modifiers == 1274) {
-            Log.d("XWin", "Creating pixmap from dmabuf filedescriptor");
             pixmapFromFd(client, pixmapId, width, height, stride, offset, depth, fd, size);
         }
     }
@@ -161,10 +150,6 @@ public class DRI3Extension implements Extension {
         try {
             GPUImage gpuImage = new GPUImage(fd);
             Drawable drawable = client.xServer.drawableManager.createDrawable(pixmapId, gpuImage.getStride(), height, depth);
-            Log.d("Drawable", "pixmapId=" + pixmapId +
-                    " stride=" + gpuImage.getStride() +
-                    " drawableW=" + drawable.width +
-                    " drawableH=" + drawable.height);
             drawable.setTexture(gpuImage);
             client.xServer.pixmapManager.createPixmap(drawable);
         }

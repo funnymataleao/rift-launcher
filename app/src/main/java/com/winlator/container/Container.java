@@ -107,6 +107,8 @@ public class Container {
     private boolean disableMouseInput = false;
     // Touchscreen mode
     private boolean touchscreenMode = false;
+    // Prefer DRI3 WSI path
+    private boolean useDRI3 = true;
     // Steam client type for selecting appropriate Box64 RC config: normal, light, ultralight
     private String steamType = DefaultVersion.STEAM_TYPE;
 
@@ -603,6 +605,7 @@ public class Container {
             data.put("disableMouseInput", disableMouseInput);
             // Touchscreen mode flag
             data.put("touchscreenMode", touchscreenMode);
+            data.put("useDRI3", useDRI3);
             data.put("installPath", installPath);
             data.put("steamType", steamType);
             data.put("language", language);
@@ -761,6 +764,9 @@ public class Container {
                 case "touchscreenMode" :
                     setTouchscreenMode(data.getBoolean(key));
                     break;
+                case "useDRI3" :
+                    setUseDRI3(data.getBoolean(key));
+                    break;
                 case "installPath":
                     setInstallPath(data.getString(key));
                     break;
@@ -910,5 +916,14 @@ public class Container {
 
     public void setTouchscreenMode(boolean touchscreenMode) {
         this.touchscreenMode = touchscreenMode;
+    }
+
+    // Use DRI3 WSI
+    public boolean isUseDRI3() {
+        return useDRI3;
+    }
+
+    public void setUseDRI3(boolean useDRI3) {
+        this.useDRI3 = useDRI3;
     }
 }

@@ -1953,12 +1953,6 @@ private fun extractGraphicsDriverFiles(
                 container.envVars = userEnvVars.toString()
             }
 
-            val useDRI3 = PrefManager.getBoolean("use_dri3", true)
-            if (!useDRI3) {
-                envVars.put("MESA_VK_WSI_PRESENT_MODE", "immediate")
-                envVars.put("MESA_VK_WSI_DEBUG", "sw")
-            }
-
             if (changed) {
                 TarCompressorUtils.extract(
                     TarCompressorUtils.Type.ZSTD,
@@ -2068,7 +2062,7 @@ private fun extractGraphicsDriverFiles(
         }
 
 
-        val useDRI3: Boolean = PrefManager.getBoolean("use_dri3", true)
+        val useDRI3: Boolean = container.isUseDRI3
         if (!useDRI3) {
             envVars.put("MESA_VK_WSI_DEBUG", "sw")
         }
@@ -2123,7 +2117,7 @@ private fun extractGraphicsDriverFiles(
         val blacklistedExtensions: String? = graphicsDriverConfig.get("blacklistedExtensions")
         envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions)
 
-        val maxDeviceMemory: String? = graphicsDriverConfig.get("maxDeviceMemory")
+        val maxDeviceMemory: String? = graphicsDriverConfig.get("maxDeviceMemory", "0")
         if (maxDeviceMemory != null && maxDeviceMemory.toInt() > 0) envVars.put("UTIL_LAYER_VMEM_MAX_SIZE", maxDeviceMemory)
 
         val frameSync: String? = graphicsDriverConfig.get("frameSync", "Normal")

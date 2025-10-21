@@ -367,10 +367,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         }
     }
 
-
-
     private void extractEmulatorsDlls() {
-        ;
         Context context = environment.getContext();
         File rootDir = environment.getImageFs().getRootDir();
         File system32dir = new File(rootDir + "/home/xuser/.wine/drive_c/windows/system32");
@@ -449,12 +446,19 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("TMPDIR", imageFs.getRootDir().getPath() + "/tmp");
         envVars.put("DISPLAY", ":0");
 
-        envVars.put("PATH", imageFs.getRootDir().getPath() + "/usr/bin:/usr/local/bin:" + imageFs.getWinePath() + "/bin");
+        envVars.put("PATH", winePath + ":" + rootDir.getPath() + "/usr/bin");
 
-        if ((new File(imageFs.getGlibc64Dir(), "libandroid-sysvshm.so")).exists() ||
-                (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists
-                        ())
-            envVars.put("LD_PRELOAD", "libredirect.so libandroid-sysvshm.so");
+        String ld_preload = "";
+        String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
+        String evshimPath = imageFs.getLibDir() + "/libevshim.so";
+        String replacePath = imageFs.getLibDir() + "/libredirect-bionic.so";
+
+        if (new File(sysvPath).exists()) ld_preload += sysvPath;
+
+        ld_preload += ":" + evshimPath;
+        ld_preload += ":" + replacePath;
+
+        envVars.put("LD_PRELOAD", ld_preload);
         if (this.envVars != null) envVars.putAll(this.envVars);
         String finalCommand = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir());
 
