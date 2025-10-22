@@ -172,6 +172,10 @@ class MainViewModel @Inject constructor(
         _state.update { it.copy(loadingDialogProgress = value) }
     }
 
+    fun setLoadingDialogMessage(value: String) {
+        _state.update { it.copy(loadingDialogMessage = value) }
+    }
+
     fun setHasLaunched(value: Boolean) {
         _state.update { it.copy(hasLaunched = value) }
     }

@@ -128,6 +128,7 @@ fun PluviaMain(
                         useTemporaryOverride = true,
                         setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
                         setLoadingProgress = viewModel::setLoadingDialogProgress,
+                        setLoadingMessage = viewModel::setLoadingDialogMessage,
                         setMessageDialogState = setMessageDialogState,
                         onSuccess = viewModel::launchApp,
                     )
@@ -202,6 +203,7 @@ fun PluviaMain(
                                         useTemporaryOverride = true,
                                         setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
                                         setLoadingProgress = viewModel::setLoadingDialogProgress,
+                                        setLoadingMessage = viewModel::setLoadingDialogMessage,
                                         setMessageDialogState = setMessageDialogState,
                                         onSuccess = viewModel::launchApp,
                                     )
@@ -437,6 +439,7 @@ fun PluviaMain(
                     preferredSave = SaveLocation.Remote,
                     setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
                     setLoadingProgress = viewModel::setLoadingDialogProgress,
+                    setLoadingMessage = viewModel::setLoadingDialogMessage,
                     setMessageDialogState = setMessageDialogState,
                     onSuccess = viewModel::launchApp,
                 )
@@ -449,6 +452,7 @@ fun PluviaMain(
                     preferredSave = SaveLocation.Local,
                     setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
                     setLoadingProgress = viewModel::setLoadingDialogProgress,
+                    setLoadingMessage = viewModel::setLoadingDialogMessage,
                     setMessageDialogState = setMessageDialogState,
                     onSuccess = viewModel::launchApp,
                 )
@@ -488,6 +492,7 @@ fun PluviaMain(
                     ignorePendingOperations = true,
                     setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
                     setLoadingProgress = viewModel::setLoadingDialogProgress,
+                    setLoadingMessage = viewModel::setLoadingDialogMessage,
                     setMessageDialogState = setMessageDialogState,
                     onSuccess = viewModel::launchApp,
                 )
@@ -509,6 +514,7 @@ fun PluviaMain(
                     ignorePendingOperations = true,
                     setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
                     setLoadingProgress = viewModel::setLoadingDialogProgress,
+                    setLoadingMessage = viewModel::setLoadingDialogMessage,
                     setMessageDialogState = setMessageDialogState,
                     onSuccess = viewModel::launchApp,
                 )
@@ -532,6 +538,7 @@ fun PluviaMain(
                         appId = state.launchedAppId,
                         setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
                         setLoadingProgress = viewModel::setLoadingDialogProgress,
+                        setLoadingMessage = viewModel::setLoadingDialogMessage,
                         setMessageDialogState = setMessageDialogState,
                         onSuccess = viewModel::launchApp,
                         isOffline = viewModel.isOffline.value,
@@ -643,6 +650,7 @@ fun PluviaMain(
         LoadingDialog(
             visible = state.loadingDialogVisible,
             progress = state.loadingDialogProgress,
+            message = state.loadingDialogMessage,
         )
 
         MessageDialog(
@@ -758,6 +766,7 @@ fun PluviaMain(
                             appId = appId,
                             setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
                             setLoadingProgress = viewModel::setLoadingDialogProgress,
+                            setLoadingMessage = viewModel::setLoadingDialogMessage,
                             setMessageDialogState = { msgDialogState = it },
                             onSuccess = viewModel::launchApp,
                             isOffline = isOffline,
@@ -856,6 +865,7 @@ fun preLaunchApp(
     useTemporaryOverride: Boolean = false,
     setLoadingDialogVisible: (Boolean) -> Unit,
     setLoadingProgress: (Float) -> Unit,
+    setLoadingMessage: (String) -> Unit,
     setMessageDialogState: (MessageDialogState) -> Unit,
     onSuccess: KFunction2<Context, String, Unit>,
     retryCount: Int = 0,
@@ -879,11 +889,20 @@ fun preLaunchApp(
 
         // set up Ubuntu file system
         SplitCompat.install(context)
+        if (!SteamService.isImageFsInstallable(context, container.containerVariant)) {
+            setLoadingMessage("Downloading required files...")
+            SteamService.downloadImageFs(
+                onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                this,
+                variant = container.containerVariant
+            ).await()
+        }
         val imageFsInstallSuccess =
             ImageFsInstaller.installIfNeededFuture(context, context.assets, container) { progress ->
                 // Log.d("XServerScreen", "$progress")
                 setLoadingProgress(progress / 100f)
             }.get()
+        setLoadingMessage("Installing required files...")
         setLoadingProgress(-1f)
 
         // must activate container before downloading save files
@@ -953,6 +972,7 @@ fun preLaunchApp(
                         useTemporaryOverride = useTemporaryOverride,
                         setLoadingDialogVisible = setLoadingDialogVisible,
                         setLoadingProgress = setLoadingProgress,
+                        setLoadingMessage = setLoadingMessage,
                         setMessageDialogState = setMessageDialogState,
                         onSuccess = onSuccess,
                         retryCount = retryCount + 1,
