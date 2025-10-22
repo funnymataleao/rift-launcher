@@ -269,7 +269,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         String evshimPath = imageFs.getLibDir() + "/libevshim.so";
         String replacePath = imageFs.getLibDir() + "/libredirect-bionic.so";
 
-
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
 
@@ -304,7 +303,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             command = command.trim();
         }
         else {
-            command = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir());
+            command = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir(), guestExecutable);
         }
 
         // **Maybe remove this: Set execute permissions for box64 if necessary (Glibc/Proot artifact)
@@ -326,7 +325,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     }
 
     @NonNull
-    private String getFinalCommand(String winePath, String emulator, EnvVars envVars, File binDir) {
+    private String getFinalCommand(String winePath, String emulator, EnvVars envVars, File binDir, String guestExecutable) {
         String command;
         if (wineInfo.isArm64EC()) {
             command = winePath + "/" + guestExecutable;
@@ -386,16 +385,18 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             if (profile != null)
                 contentsManager.applyContent(profile);
             else
+                Log.d("Extraction", "Extracting box64Version: " + wowbox64Version);
                 TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "wowbox64/wowbox64-" + wowbox64Version + ".tzst", system32dir);
             container.putExtra("box64Version", wowbox64Version);
             containerDataChanged = true;
         }
 
-        if (!fexcoreVersion.equals(container.getExtra("fexcoreVersion"))) {
+        if (!fexcoreVersion.equals(container.getExtra("fexcoreVersion")) || container.getWineVersion() != imageFs.getArch()) {
             ContentProfile profile = contentsManager.getProfileByEntryName("fexcore-" + fexcoreVersion);
             if (profile != null)
                 contentsManager.applyContent(profile);
             else
+                Log.d("Extraction", "Extracting fexcoreVersion: " + fexcoreVersion);
                 TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "fexcore/fexcore-" + fexcoreVersion + ".tzst", system32dir);
             container.putExtra("fexcoreVersion", fexcoreVersion);
             containerDataChanged = true;
@@ -438,29 +439,44 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         File rootDir = imageFs.getRootDir();
         StringBuilder output = new StringBuilder();
         EnvVars envVars = new EnvVars();
-        String winePath = imageFs.getWinePath() + "/bin";
-        String emulator = container.getEmulator();
+        addBox64EnvVars(envVars, false);
 
         envVars.put("HOME", imageFs.home_path);
         envVars.put("USER", ImageFs.USER);
         envVars.put("TMPDIR", imageFs.getRootDir().getPath() + "/tmp");
         envVars.put("DISPLAY", ":0");
 
+        String winePath = imageFs.getWinePath() + "/bin";
+
+        Log.d("BionicProgramLauncherComponent", "WinePath is " + winePath);
+
         envVars.put("PATH", winePath + ":" + rootDir.getPath() + "/usr/bin");
+
+        envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
+        envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
+        envVars.put("WINE_NO_DUPLICATE_EXPLORER", "1");
+        envVars.put("PREFIX", rootDir.getPath() + "/usr");
+        envVars.put("WINE_DISABLE_FULLSCREEN_HACK", "1");
+        envVars.put("SteamGameId", "0");
 
         String ld_preload = "";
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
-        String evshimPath = imageFs.getLibDir() + "/libevshim.so";
         String replacePath = imageFs.getLibDir() + "/libredirect-bionic.so";
 
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
-        ld_preload += ":" + evshimPath;
         ld_preload += ":" + replacePath;
 
         envVars.put("LD_PRELOAD", ld_preload);
+
+        String emulator = container.getEmulator();
         if (this.envVars != null) envVars.putAll(this.envVars);
-        String finalCommand = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir());
+        String finalCommand = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir(), command);
+
+        File box64File = new File(rootDir, "/usr/bin/box64");
+        if (box64File.exists()) {
+            FileUtils.chmod(box64File, 0755);
+        }
 
         // Execute the command and capture its output
         try {
@@ -476,7 +492,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             while ((line = errorReader.readLine()) != null) {
                 output.append(line).append("\n");
             }
-
             process.waitFor();
         } catch (Exception e) {
             output.append("Error: ").append(e.getMessage());

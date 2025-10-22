@@ -158,7 +158,7 @@ object PrefManager {
 
     private val WINE_VERSION = stringPreferencesKey("wine_version")
     var wineVersion: String
-        get() = getPref(WINE_VERSION, com.winlator.core.WineInfo.MAIN_WINE_VERSION.identifier())
+        get() = getPref(WINE_VERSION, Container.DEFAULT_WINE_VERSION)
         set(value) {
             setPref(WINE_VERSION, value)
         }

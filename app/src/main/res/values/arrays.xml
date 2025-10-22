@@ -76,14 +76,14 @@
         <item>CNC DDraw</item>
     </string-array>
     <string-array name="dxvk_version_entries">
-        <item>2.6.1-gplasync</item>
+        <item>async-1.10.3</item>
         <item>1.10.3</item>
         <item>1.10.1</item>
         <item>1.10.9-sarek</item>
         <item>1.9.2</item>
         <item>2.4.1</item>
         <item>2.4.1-gplasync</item>
-        <item>async-1.10.3</item>
+        <item>2.6.1-gplasync</item>
     </string-array>
     <string-array name="vkd3d_version_entries">
         <item>2.6</item>
@@ -132,8 +132,8 @@
         <item>0.3.7</item>
     </string-array>
     <string-array name="box64_version_entries">
-        <item>0.3.6 (Default)</item>
-        <item>0.3.7</item>
+        <item>0.3.7 (Default)</item>
+        <item>0.3.6</item>
         <item>0.3.4</item>
     </string-array>
     <string-array name="wowbox64_version_entries">
@@ -196,8 +196,8 @@
         <item>wine-9.2-x86_64</item>
     </string-array>
     <string-array name="bionic_wine_entries">
-        <item>proton-9.0-x86_64</item>
         <item>proton-9.0-arm64ec</item>
+        <item>proton-9.0-x86_64</item>
     </string-array>
     <string-array name="container_variant_entries">
         <item>glibc</item>

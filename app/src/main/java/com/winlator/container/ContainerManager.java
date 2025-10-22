@@ -41,13 +41,16 @@ public class ContainerManager {
         this.context = context;
         // Override default driver and DXVK version based on Turnip capability
         if (GPUInformation.isTurnipCapable(context)) {
+            DefaultVersion.VARIANT = Container.GLIBC;
             Container.DEFAULT_GRAPHICS_DRIVER = "turnip";
             DefaultVersion.DXVK = "2.6.1-gplasync";
             DefaultVersion.VKD3D = "2.14.1";
             DefaultVersion.STEAM_TYPE = STEAM_TYPE_NORMAL;
         } else {
-            Container.DEFAULT_GRAPHICS_DRIVER = "vortek";
-            DefaultVersion.DXVK = "1.10.9-sarek";
+            DefaultVersion.VARIANT = Container.BIONIC;
+            DefaultVersion.WINE_VERSION = "proton-9.0-arm64ec";
+            Container.DEFAULT_GRAPHICS_DRIVER = "Wrapper";
+            DefaultVersion.DXVK = "async-1.10.3";
             DefaultVersion.VKD3D = "2.6";
             DefaultVersion.STEAM_TYPE = STEAM_TYPE_LIGHT;
         }

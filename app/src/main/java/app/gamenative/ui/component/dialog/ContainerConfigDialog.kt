@@ -1189,7 +1189,7 @@ fun ContainerConfigDialog(
                                     // FEXCore Settings (only when Bionic + Wine arm64ec) placed under Box64 settings
                                     run {
                                         if (wineIsArm64Ec) {
-                                            SettingsGroup(title = { Text(text = "FEXCore Settings") }) {
+                                            SettingsGroup() {
                                                 SettingsListDropdown(
                                                     colors = settingsTileColors(),
                                                     title = { Text(text = "FEXCore Version") },
@@ -1279,30 +1279,29 @@ fun ContainerConfigDialog(
                                             }
                                         }
                                     }
-                                } else {
-                                    SettingsListDropdown(
-                                        colors = settingsTileColors(),
-                                        title = { Text(text = "Box64 Version") },
-                                        value = box64Versions.indexOfFirst { StringUtils.parseIdentifier(it) == config.box64Version },
-                                        items = box64Versions,
-                                        onItemSelected = {
-                                            config = config.copy(
-                                                box64Version = StringUtils.parseIdentifier(box64Versions[it]),
-                                            )
-                                        },
-                                    )
-                                    SettingsListDropdown(
-                                        colors = settingsTileColors(),
-                                        title = { Text(text = "Box64 Preset") },
-                                        value = box64Presets.indexOfFirst { it.id == config.box64Preset },
-                                        items = box64Presets.map { it.name },
-                                        onItemSelected = {
-                                            config = config.copy(
-                                                box64Preset = box64Presets[it].id,
-                                            )
-                                        },
-                                    )
                                 }
+                                SettingsListDropdown(
+                                    colors = settingsTileColors(),
+                                    title = { Text(text = "Box64 Version") },
+                                    value = box64Versions.indexOfFirst { StringUtils.parseIdentifier(it) == config.box64Version },
+                                    items = box64Versions,
+                                    onItemSelected = {
+                                        config = config.copy(
+                                            box64Version = StringUtils.parseIdentifier(box64Versions[it]),
+                                        )
+                                    },
+                                )
+                                SettingsListDropdown(
+                                    colors = settingsTileColors(),
+                                    title = { Text(text = "Box64 Preset") },
+                                    value = box64Presets.indexOfFirst { it.id == config.box64Preset },
+                                    items = box64Presets.map { it.name },
+                                    onItemSelected = {
+                                        config = config.copy(
+                                            box64Preset = box64Presets[it].id,
+                                        )
+                                    },
+                                )
                             }
                             if (selectedTab == 3) SettingsGroup() {
                                 if (!default) {

@@ -141,6 +141,22 @@ public abstract class ImageFsInstaller {
         // ➌  Make sure the new libs are world-readable / executable
         chmod(new File(imagefs, "usr/lib/libredirect.so"));
         chmod(new File(imagefs, "usr/lib/libredirect-bionic.so"));
+
+        final String EXTRAS_TAR = "extras.tzst";          // ➊  add this to assets/
+        // ➋  Unpack straight into imagefs, preserving relative paths.
+        try (InputStream in  = ctx.getAssets().open(EXTRAS_TAR)) {
+            TarCompressorUtils.extract(
+                    TarCompressorUtils.Type.ZSTD,      // you said .tzst
+                    in, imagefs);                      // helper already exists in the project
+        } catch (IOException e) {
+            Log.e("ImageFsInstaller", "extras deploy failed", e);
+            return;
+        }
+
+        // ➌  Make sure the new libs are world-readable / executable
+        chmod(new File(imagefs, "generate_interfaces_file.exe"));
+        chmod(new File(imagefs, "Steamless/Steamless.CLI.exe"));
+        chmod(new File(imagefs, "opt/mono-gecko-offline/wine-mono-9.0.0-x86.msi"));
     }
 
     private static void chmod(File f) { if (f.exists()) FileUtils.chmod(f, 0755);}
