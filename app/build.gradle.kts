@@ -51,7 +51,7 @@ android {
         targetSdk = 28
 
         versionCode = 4
-        versionName = "0.4.1"
+        versionName = "0.5.0"
 
         buildConfigField("boolean", "GOLD", "false")
         buildConfigField("String", "POSTHOG_API_KEY", "\"$posthogApiKey\"")
