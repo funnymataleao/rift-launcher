@@ -1,6 +1,6 @@
 package app.gamenative.ui.model
 
-import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -37,7 +37,7 @@ class LibraryViewModel @Inject constructor(
     val state: StateFlow<LibraryState> = _state.asStateFlow()
 
     // Keep the library scroll state. This will last longer as the VM will stay alive.
-    var listState: LazyListState by mutableStateOf(LazyListState(0, 0))
+    var listState: LazyGridState by mutableStateOf(LazyGridState(0, 0))
 
     // How many items loaded on one page of results
     private var paginationCurrentPage: Int = 0;

@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.library.components
 
 import android.content.res.Configuration
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -46,24 +47,30 @@ import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.service.DownloadService
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.component.topbar.AccountButton
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.snapshotFlow
 import app.gamenative.PrefManager
 import app.gamenative.utils.DeviceUtils
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.distinctUntilChanged
 import app.gamenative.data.GameSource
+import app.gamenative.ui.enums.PaneType
+import app.gamenative.ui.screen.PluviaScreen
+import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LibraryListPane(
     state: LibraryState,
-    listState: LazyListState,
+    listState: LazyGridState,
     sheetState: SheetState,
     onFilterChanged: (AppFilter) -> Unit,
     onModalBottomSheet: (Boolean) -> Unit,
@@ -83,6 +90,10 @@ internal fun LibraryListPane(
     // Responsive width for better layouts
     val isViewWide = DeviceUtils.isViewWide(currentWindowAdaptiveInfo())
 
+    // List view is always 1 column
+    var columnType: GridCells by remember { mutableStateOf(GridCells.Fixed(1)) }
+    var paneType: PaneType by remember { mutableStateOf(PrefManager.libraryLayout) }
+
     // Infinite scroll: load next page when scrolled to bottom
     LaunchedEffect(listState, state.appInfoList.size) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
@@ -94,6 +105,34 @@ internal fun LibraryListPane(
                     onPageChange(1)
                 }
             }
+    }
+
+    LaunchedEffect(isViewWide, paneType) {
+        // Set initial paneType at first launch depending on orientation
+        if (paneType == PaneType.UNDECIDED) {
+            // Default hero for landscape/tablets, or list for portrait phones
+            if (isViewWide) {
+                paneType = PaneType.GRID_HERO
+            } else {
+                paneType = PaneType.LIST
+            }
+            PrefManager.libraryLayout = paneType
+        }
+
+        // How many columns does this view need? 1 for list, or adaptive which can handle rotating the device
+        columnType = GridCells.Fixed(1)
+        if (paneType == PaneType.GRID_HERO) {
+            columnType = GridCells.Adaptive(minSize = 200.dp)
+        } else if (paneType == PaneType.GRID_CAPSULE) {
+            columnType = GridCells.Adaptive(minSize = 150.dp)
+        }
+    }
+
+    var targetOfScroll by remember { mutableIntStateOf(-1) }
+    LaunchedEffect(targetOfScroll) {
+        if (targetOfScroll != -1) {
+            listState.animateScrollToItem(targetOfScroll, -100)
+        }
     }
 
     Scaffold(
@@ -185,9 +224,11 @@ internal fun LibraryListPane(
             Box(
                 modifier = Modifier.fillMaxSize(),
             ) {
-                LazyColumn(
+                LazyVerticalGrid(
+                    columns = columnType,
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(
                         start = 20.dp,
                         end = 20.dp,
@@ -195,14 +236,16 @@ internal fun LibraryListPane(
                     ),
                 ) {
                     items(items = state.appInfoList, key = { it.index }) { item ->
-                        AppItem(
-                            modifier = Modifier.animateItem(),
-                            appInfo = item,
-                            onClick = { onNavigate(item.appId) }
-                        )
-                        if (item.index < state.appInfoList.lastIndex) {
+                        if (item.index > 0 && paneType == PaneType.LIST) {
+                            // Dividers in list view
                             HorizontalDivider()
                         }
+                        AppItem(
+                            appInfo = item,
+                            onClick = { onNavigate(item.appId) },
+                            paneType = paneType,
+                            onFocus = { targetOfScroll = item.index },
+                        )
                     }
                     if (state.appInfoList.size < state.totalAppsInFilter) {
                         item {
@@ -241,6 +284,11 @@ internal fun LibraryListPane(
                             LibraryBottomSheet(
                                 selectedFilters = state.appInfoSortType,
                                 onFilterChanged = onFilterChanged,
+                                currentView = paneType,
+                                onViewChanged = { newPaneType ->
+                                    PrefManager.libraryLayout = newPaneType
+                                    paneType = newPaneType
+                                },
                             )
                         },
                     )
@@ -281,7 +329,7 @@ private fun Preview_LibraryListPane() {
     PluviaTheme {
         Surface {
             LibraryListPane(
-                listState = LazyListState(2, 64),
+                listState = LazyGridState(2),
                 state = state,
                 sheetState = sheetState,
                 onFilterChanged = { },

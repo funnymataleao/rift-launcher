@@ -78,6 +78,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             if (pid != -1) {
                 Process.killProcess(pid);
                 Log.d("GlibcProgramLauncherComponent", "Stopped process " + pid);
+                pid = -1;
                 List<ProcessHelper.ProcessInfo> subProcesses = ProcessHelper.listSubProcesses();
                 for (ProcessHelper.ProcessInfo subProcess : subProcesses) {
                     Process.killProcess(subProcess.pid);

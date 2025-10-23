@@ -125,7 +125,6 @@ fun PluviaMain(
                     preLaunchApp(
                         context = context,
                         appId = event.appId,
-                        useTemporaryOverride = true,
                         setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
                         setLoadingProgress = viewModel::setLoadingDialogProgress,
                         setLoadingMessage = viewModel::setLoadingDialogMessage,
@@ -200,7 +199,6 @@ fun PluviaMain(
                                     preLaunchApp(
                                         context = context,
                                         appId = launchRequest.appId,
-                                        useTemporaryOverride = true,
                                         setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
                                         setLoadingProgress = viewModel::setLoadingDialogProgress,
                                         setLoadingMessage = viewModel::setLoadingDialogMessage,

@@ -6,7 +6,7 @@
         <item>640x480 (4:3)</item>
         <item>800x600 (4:3)</item>
         <item>854x480 (16:9)</item>
-        <item>960x544 (16:9)</item>
+        <item>960x540 (16:9)</item>
         <item>1024x768 (4:3)</item>
         <item>1280x720 (16:9)</item>
         <item>1280x800 (16:10)</item>
@@ -135,6 +135,19 @@
         <item>0.3.7 (Default)</item>
         <item>0.3.6</item>
         <item>0.3.4</item>
+    </string-array>
+    <string-array name="box64_bionic_version_entries">
+        <item>0.3.7 (Default)</item>
+        <item>0.3.6</item>
+        <item>0.3.2</item>
+    </string-array>
+    <string-array name="wowbox64_version_entries">
+        <item>0.3.4</item>
+        <item>0.3.7</item>
+    </string-array>
+    <string-array name="fexcore_version_entries">
+        <item>2505</item>
+        <item>2507</item>
     </string-array>
     <string-array name="wowbox64_version_entries">
         <item>0.3.4</item>

@@ -42,6 +42,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -71,11 +72,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import app.gamenative.Constants
 import app.gamenative.R
-import app.gamenative.data.DepotInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
-import app.gamenative.enums.OS
-import app.gamenative.enums.OSArch
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
@@ -122,17 +120,13 @@ import app.gamenative.enums.PathType
 import com.winlator.container.ContainerManager
 import app.gamenative.enums.SyncResult
 import android.widget.Toast
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import app.gamenative.enums.Marker
-import app.gamenative.enums.SaveLocation
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.ui.graphics.compositeOver
 import app.gamenative.PluviaApp
 import app.gamenative.events.AndroidEvent
 import app.gamenative.utils.MarkerUtils
+import app.gamenative.utils.createPinnedShortcut
 import kotlinx.coroutines.withContext
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
@@ -377,6 +371,28 @@ fun AppScreen(
     )
 
 
+    /** Export for Frontend (CreateDocument) **/
+    val exportFrontendLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/octet-stream"),
+        onResult = { uri ->
+            if (uri != null) {
+                try {
+                    context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                        val content = appInfo.id.toString()
+                        outputStream.write(content.toByteArray(Charsets.UTF_8))
+                        outputStream.flush()
+                    }
+                    Toast.makeText(context, "Exported", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Failed to export: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            } else {
+                Toast.makeText(context, "Export cancelled", Toast.LENGTH_SHORT).show()
+            }
+        },
+    )
+
+
     val onDismissRequest: (() -> Unit)?
     val onDismissClick: (() -> Unit)?
     val onConfirmClick: (() -> Unit)?
@@ -495,6 +511,56 @@ fun AppScreen(
         visible = loadingDialogVisible,
         progress = loadingProgress,
     )
+
+    // State and UI for Create shortcut dialog
+    var showCreateShortcutDialog by remember { mutableStateOf(false) }
+    var shortcutLabel by rememberSaveable(appId) { mutableStateOf(appInfo.name) }
+    if (showCreateShortcutDialog) {
+        AlertDialog(
+            onDismissRequest = { showCreateShortcutDialog = false },
+            title = { Text("Create shortcut") },
+            text = {
+                Column {
+                    Text(text = "Label")
+                    TextField(
+                        value = shortcutLabel,
+                        onValueChange = { shortcutLabel = it },
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = "Icon")
+                        Spacer(Modifier.width(12.dp))
+                        CoilImage(
+                            imageModel = { appInfo.iconUrl },
+                            imageOptions = ImageOptions(contentDescription = "Game icon"),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    scope.launch {
+                        try {
+                            createPinnedShortcut(context.applicationContext, gameId, shortcutLabel, appInfo.iconUrl)
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, "Shortcut created", Toast.LENGTH_SHORT).show()
+                            }
+                        } catch (t: Throwable) {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, "Failed to create shortcut: ${t.message}", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                        showCreateShortcutDialog = false
+                    }
+                }) { Text("Create") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCreateShortcutDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
 
     Scaffold {
         AppScreenContent(
@@ -625,6 +691,17 @@ fun AppScreen(
                                     container.isNeedsUnpacking = true
                                     container.saveData()
                                 },
+                            ),
+                            AppMenuOption(
+                                optionType = AppOptionMenuType.CreateShortcut,
+                                onClick = { showCreateShortcutDialog = true }
+                            ),
+                            AppMenuOption(
+                                optionType = AppOptionMenuType.ExportFrontend,
+                                onClick = {
+                                    val suggested = "${appInfo.name}.steam"
+                                    exportFrontendLauncher.launch(suggested)
+                                }
                             ),
                             AppMenuOption(
                                 AppOptionMenuType.VerifyFiles,
@@ -1460,3 +1537,4 @@ private fun Preview_AppScreen() {
         }
     }
 }
+

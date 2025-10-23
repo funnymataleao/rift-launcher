@@ -28,6 +28,7 @@ internal fun ListItemImage(
     contentDescription: String? = null,
     size: Dp = 40.dp,
     image: () -> Any?,
+    onFailure: () -> Unit = {},
 ) {
     CoilImage(
         modifier = modifier
@@ -35,13 +36,14 @@ internal fun ListItemImage(
             .then(imageModifier),
         imageModel = image,
         imageOptions = ImageOptions(
-            contentScale = ContentScale.Crop,
+            contentScale = ContentScale.Fit,
             contentDescription = contentDescription,
         ),
         loading = {
             CircularProgressIndicator()
         },
         failure = {
+            onFailure()
             Icon(Icons.Filled.QuestionMark, null)
         },
         previewPlaceholder = painterResource(R.drawable.ic_logo_color),
@@ -98,14 +100,6 @@ fun StickerImage(
     image: () -> Any?,
 ) {
     EmoticonImage(size, image)
-}
-
-@Preview
-@Composable
-private fun Preview_ListItemImage() {
-    PluviaTheme {
-        ListItemImage { }
-    }
 }
 
 @Preview
