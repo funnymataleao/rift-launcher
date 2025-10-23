@@ -158,6 +158,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.InputStream
 import java.io.OutputStream
+import java.util.concurrent.TimeUnit
 
 @AndroidEntryPoint
 class SteamService : Service(), IChallengeUrlChanged {
@@ -738,9 +739,9 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun isImageFsInstallable(context: Context, variant: String): Boolean {
             val imageFs = ImageFs.find(context)
             if (variant.equals(Container.BIONIC)) {
-                return File(imageFs.rootDir, "imagefs_bionic.txz").exists()
+                return File(imageFs.filesDir, "imagefs_bionic.txz").exists()
             } else {
-                return File(imageFs.rootDir, "imagefs_gamenative.txz").exists() && File(imageFs.rootDir, "imagefs_patches_gamenative.tzst").exists()
+                return File(imageFs.filesDir, "imagefs_gamenative.txz").exists()
             }
         }
 
@@ -749,16 +750,38 @@ class SteamService : Service(), IChallengeUrlChanged {
             dest: File,
             onProgress: (Float) -> Unit
         ) = withContext(Dispatchers.IO) {
-            val req = Request.Builder().url(url).build()
-            OkHttpClient().newCall(req).execute().use { rsp ->
-                check(rsp.isSuccessful) { "HTTP ${rsp.code}" }
-                val body = rsp.body ?: error("empty body")
-                val total = body.contentLength()
-                dest.outputStream().use { out ->
-                    body.byteStream().copyTo(out, 8 * 1024) { read ->
-                        onProgress(read.toFloat() / total)
+            val tmp = File(dest.absolutePath + ".part")
+            try {
+                val http = OkHttpClient.Builder()
+                    .connectTimeout(30, TimeUnit.SECONDS)   // TCP handshake
+                    .readTimeout(2, TimeUnit.MINUTES)       // per-read idle limit
+                    .writeTimeout(2, TimeUnit.MINUTES)
+                    .callTimeout(0, TimeUnit.MILLISECONDS)  // no overall cap; set if you prefer
+                    .retryOnConnectionFailure(true)
+                    .build()
+
+                val req = Request.Builder().url(url).build()
+                http.newCall(req).execute().use { rsp ->
+                    check(rsp.isSuccessful) { "HTTP ${rsp.code}" }
+                    val body = rsp.body ?: error("empty body")
+                    val total = body.contentLength()
+                    tmp.outputStream().use { out ->
+                        body.byteStream().copyTo(out, 8 * 1024) { read ->
+                            onProgress(read.toFloat() / total)
+                        }
+                    }
+                    if (total > 0 && tmp.length() != total) {
+                        tmp.delete()
+                        error("incomplete download")
+                    }
+                    if (!tmp.renameTo(dest)) {
+                        tmp.copyTo(dest, overwrite = true)
+                        tmp.delete()
                     }
                 }
+            } catch (e: Exception) {
+                tmp.delete()
+                throw e
             }
         }
 
@@ -782,63 +805,18 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun downloadImageFs(
             onDownloadProgress: (Float) -> Unit,
             parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
-            variant: String
+            variant: String,
+            context: Context,
         ) = parentScope.async {
             Timber.i("imagefs will be downloaded")
-//            val splitManager = SplitInstallManagerFactory.create(instance!!)
-//            // if (!splitManager.installedModules.contains("ubuntufs")) {
-//            val moduleInstallSessionId = splitManager.requestInstall(listOf("ubuntufs"))
-//            var isInstalling = true
-//            // try {
-//            do {
-//                val sessionState = splitManager.requestSessionState(moduleInstallSessionId)
-//                // logD("imagefs_gamenative.txz session state status: ${sessionState.status}")
-//                when (sessionState.status) {
-//                    SplitInstallSessionStatus.INSTALLED -> isInstalling = false
-//                    SplitInstallSessionStatus.PENDING,
-//                    SplitInstallSessionStatus.INSTALLING,
-//                    SplitInstallSessionStatus.DOWNLOADED,
-//                    SplitInstallSessionStatus.DOWNLOADING,
-//                    -> {
-//                        if (!isActive) {
-//                            Timber.i("ubuntufs module download cancelling due to scope becoming inactive")
-//                            splitManager.requestCancelInstall(moduleInstallSessionId)
-//                            break
-//                        }
-//                        val downloadPercent =
-//                            sessionState.bytesDownloaded.toFloat() / sessionState.totalBytesToDownload
-//                        // logD("imagefs_gamenative.txz download percent: $downloadPercent")
-//                        // downloadInfo.setProgress(downloadPercent, 0)
-//                        onDownloadProgress(downloadPercent)
-//                        delay(100)
-//                    }
-//
-//                    else -> {
-//                        cancel("Failed to install ubuntufs module: ${sessionState.status}")
-//                    }
-//                }
-//            } while (isInstalling)
-            // } catch (e: Exception) {
-            //     if (moduleInstallSessionId != -1) {
-            //         val splitManager = SplitInstallManagerFactory.create(instance!!)
-            //         val sessionState = splitManager.requestSessionState(moduleInstallSessionId)
-            //         if (sessionState.status == SplitInstallSessionStatus.DOWNLOADING ||
-            //             sessionState.status == SplitInstallSessionStatus.DOWNLOADED ||
-            //             sessionState.status == SplitInstallSessionStatus.INSTALLING
-            //         ) {
-            //             splitManager.requestCancelInstall(moduleInstallSessionId)
-            //         }
-            //     }
-            // }
-//            val installedProperly = splitManager.installedModules.contains("ubuntufs")
             if (variant == Container.BIONIC){
                 val dest = File(instance!!.filesDir, "imagefs_bionic.txz")
+                Timber.d("Downloading imagefs_bionic to " + dest.toString());
                 fetchFile("https://downloads.gamenative.app/imagefs_bionic.txz", dest, onDownloadProgress)
             } else {
+                Timber.d("Downloading imagefs_gamenative to " + File(instance!!.filesDir, "imagefs_gamenative.txz"));
                 fetchFile("https://downloads.gamenative.app/imagefs_gamenative.txz",
                     File(instance!!.filesDir, "imagefs_gamenative.txz"), onDownloadProgress)
-                fetchFile("https://downloads.gamenative.app/imagefs_patches_gamenative.tzst",
-                    File(instance!!.filesDir, "imagefs_patches_gamenative.tzst"), onDownloadProgress)
             }
         }
 

@@ -1552,7 +1552,8 @@ private fun applyGeneralPatches(
         Timber.i("Extracting imagefs_patches_gamenative.tzst")
         TarCompressorUtils.extract(
             TarCompressorUtils.Type.ZSTD,
-            File(imageFs.rootDir, "imagefs_patches_gamenative.tzst"),
+            context.assets,
+            "imagefs_patches_gamenative.tzst",
             rootDir,
             onExtractFileListener,
         )

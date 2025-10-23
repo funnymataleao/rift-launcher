@@ -888,19 +888,21 @@ fun preLaunchApp(
         // set up Ubuntu file system
         SplitCompat.install(context)
         if (!SteamService.isImageFsInstallable(context, container.containerVariant)) {
-            setLoadingMessage("Downloading required files...")
+            setLoadingMessage("Downloading first-time files...")
             SteamService.downloadImageFs(
                 onDownloadProgress = { setLoadingProgress(it / 1.0f) },
                 this,
-                variant = container.containerVariant
+                variant = container.containerVariant,
+                context = context,
             ).await()
         }
+        setLoadingMessage("Installing...")
         val imageFsInstallSuccess =
             ImageFsInstaller.installIfNeededFuture(context, context.assets, container) { progress ->
                 // Log.d("XServerScreen", "$progress")
                 setLoadingProgress(progress / 100f)
             }.get()
-        setLoadingMessage("Installing required files...")
+        setLoadingMessage("Loading...")
         setLoadingProgress(-1f)
 
         // must activate container before downloading save files

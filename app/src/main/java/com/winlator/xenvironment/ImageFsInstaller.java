@@ -83,7 +83,7 @@ public abstract class ImageFsInstaller {
             clearRootDir(rootDir);
             final byte compressionRatio = 22;
             String imagefsFile = containerVariant.equals(Container.GLIBC) ? "imagefs_gamenative.txz" : "imagefs_bionic.txz";
-            File downloaded = new File(rootDir, imagefsFile);
+            File downloaded = new File(imageFs.getFilesDir(), imagefsFile);
             final long contentLength = (long)(FileUtils.getSize(downloaded) * (100.0f / compressionRatio));
             AtomicLong totalSizeRef = new AtomicLong();
             Log.d("Extraction", "extracting " + imagefsFile);

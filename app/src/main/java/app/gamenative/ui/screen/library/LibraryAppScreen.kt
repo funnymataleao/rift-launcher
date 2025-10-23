@@ -461,7 +461,8 @@ fun AppScreen(
                         SteamService.downloadImageFs(
                             onDownloadProgress = { loadingProgress = it },
                             this,
-                            ""
+                            "",
+                            context
                         ).await()
                     }
                     if (!SteamService.isImageFsInstalled(context)) {
