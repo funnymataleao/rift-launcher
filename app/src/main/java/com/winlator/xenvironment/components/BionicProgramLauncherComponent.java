@@ -159,6 +159,14 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         this.box64Preset = box64Preset;
     }
 
+    public File getWorkingDir() {
+        return workingDir;
+    }
+
+    public void setWorkingDir(File workingDir) {
+        this.workingDir = workingDir;
+    }
+
     private int execGuestProgram() {
 
         final int MAX_PLAYERS = 1; // old static method
@@ -312,7 +320,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             FileUtils.chmod(box64File, 0755);
         }
 
-        return ProcessHelper.exec(command, envVars.toStringArray(), rootDir, (status) -> {
+        return ProcessHelper.exec(command, envVars.toStringArray(), workingDir != null ? workingDir : rootDir, (status) -> {
             synchronized (lock) {
                 pid = -1;
             }
@@ -481,7 +489,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         // Execute the command and capture its output
         try {
             Log.d("BionicProgramLauncherComponent", "Shell command is " + finalCommand);
-            java.lang.Process process = Runtime.getRuntime().exec(finalCommand, envVars.toStringArray(), imageFs.getRootDir());
+            java.lang.Process process = Runtime.getRuntime().exec(finalCommand, envVars.toStringArray(), workingDir != null ? workingDir : imageFs.getRootDir());
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
 
