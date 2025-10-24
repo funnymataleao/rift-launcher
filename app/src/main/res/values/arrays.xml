@@ -127,13 +127,8 @@
         <item>Builtin (Wine)</item>
         <item>Native (Windows)</item>
     </string-array>
-    <string-array name="box86_version_entries">
-        <item>0.3.2 (Default)</item>
-        <item>0.3.7</item>
-    </string-array>
     <string-array name="box64_version_entries">
-        <item>0.3.7 (Default)</item>
-        <item>0.3.6</item>
+        <item>0.3.6 (Default)</item>
         <item>0.3.4</item>
     </string-array>
     <string-array name="box64_bionic_version_entries">
