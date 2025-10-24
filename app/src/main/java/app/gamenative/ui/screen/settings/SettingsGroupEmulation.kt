@@ -43,6 +43,12 @@ fun SettingsGroupEmulation() {
             onDismissRequest = { showBox64PresetsDialog = false },
         )
 
+        var showDriverManager by rememberSaveable { mutableStateOf(false) }
+        if (showDriverManager) {
+            // Lazy-load dialog composable to avoid cyclic imports
+            app.gamenative.ui.screen.settings.DriverManagerDialog(open = showDriverManager, onDismiss = { showDriverManager = false })
+        }
+
         SettingsMenuLink(
             colors = settingsTileColors(),
             title = { Text(text = "Allowed Orientations") },
@@ -60,6 +66,12 @@ fun SettingsGroupEmulation() {
             title = { Text(text = "Box64 Presets") },
             subtitle = { Text("View, modify, and create Box64 presets") },
             onClick = { showBox64PresetsDialog = true },
+        )
+        SettingsMenuLink(
+            colors = settingsTileColors(),
+            title = { Text(text = "Driver Manager") },
+            subtitle = { Text(text = "Install or remove custom graphics driver packages") },
+            onClick = { showDriverManager = true },
         )
     }
 }

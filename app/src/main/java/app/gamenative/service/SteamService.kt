@@ -276,6 +276,8 @@ class SteamService : Service(), IChallengeUrlChanged {
         @JvmStatic
         @Volatile
         var isGameRunning: Boolean = false
+        @Volatile
+        var isImporting: Boolean = false
 
         var isStopping: Boolean = false
             private set
