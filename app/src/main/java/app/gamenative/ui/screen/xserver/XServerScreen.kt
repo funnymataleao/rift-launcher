@@ -301,7 +301,7 @@ fun XServerScreen(
     DisposableEffect(lifecycleOwner) {
         val onActivityDestroyed: (AndroidEvent.ActivityDestroyed) -> Unit = {
             Timber.i("onActivityDestroyed")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit, navigateBack)
+            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit, navigateBack, true)
         }
         val onKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = {
             val isKeyboard = Keyboard.isKeyboardDevice(it.event.device)
@@ -1272,7 +1272,7 @@ private fun getSteamlessTarget(
     }
     return "$drive:\\${executablePath}"
 }
-private fun exit(winHandler: WinHandler?, environment: XEnvironment?, onExit: () -> Unit, navigateBack: () -> Unit) {
+private fun exit(winHandler: WinHandler?, environment: XEnvironment?, onExit: () -> Unit, navigateBack: () -> Unit, closeXserverScreen: Boolean = false) {
     Timber.i("Exit called")
     PostHog.capture(event = "game_exited")
     winHandler?.stop()
@@ -1288,7 +1288,7 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, onExit: ()
     // PluviaApp.touchMouse = null
     // PluviaApp.keyboard = null
     onExit()
-    navigateBack()
+    if (closeXserverScreen) navigateBack()
 }
 
 private fun unpackExecutableFile(
