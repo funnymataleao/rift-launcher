@@ -1303,7 +1303,7 @@ private fun unpackExecutableFile(
     var output = StringBuilder()
     if (needsUnpacking || containerVariantChanged){
         try {
-            val monoCmd = "wine msiexec /i Z:\\opt\\mono-gecko-offline\\wine-mono-9.0.0-x86.msi && wineserver -w"
+            val monoCmd = "wine msiexec /i Z:\\opt\\mono-gecko-offline\\wine-mono-9.0.0-x86.msi"
             Timber.i("Install mono command $monoCmd")
             val monoOutput = guestProgramLauncherComponent.execShellCommand(monoCmd)
             output.append(monoOutput)
@@ -1328,7 +1328,7 @@ private fun unpackExecutableFile(
                 if (relDllPath.isNotBlank()) {
                     val origDll = File("${imageFs.wineprefix}/dosdevices/a:/$relDllPath")
                     if (origDll.exists()) {
-                        val genCmd = "wine z:\\generate_interfaces_file.exe A:\\" + relDllPath.replace('/', '\\') + " && wineserver -w"
+                        val genCmd = "wine z:\\generate_interfaces_file.exe A:\\" + relDllPath.replace('/', '\\')
                         Timber.i("Running generate_interfaces_file $genCmd")
                         val genOutput = guestProgramLauncherComponent.execShellCommand(genCmd)
 
@@ -1363,7 +1363,7 @@ private fun unpackExecutableFile(
 
         output = StringBuilder()
         try {
-            val slCmd = "wine z:\\Steamless\\Steamless.CLI.exe $executableFile && wineserver -w"
+            val slCmd = "wine z:\\Steamless\\Steamless.CLI.exe $executableFile"
             Timber.i("Running shell command $slCmd")
             val slOutput = guestProgramLauncherComponent.execShellCommand(slCmd)
             output.append(slOutput)
