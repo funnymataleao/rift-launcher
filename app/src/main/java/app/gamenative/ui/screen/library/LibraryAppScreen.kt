@@ -457,10 +457,12 @@ fun AppScreen(
                 loadingDialogVisible = true
                 msgDialogState = MessageDialogState(false)
                 CoroutineScope(Dispatchers.IO).launch {
-                    if (!SteamService.isImageFsInstallable(context)) {
+                    if (!SteamService.isImageFsInstallable(context, "")) {
                         SteamService.downloadImageFs(
                             onDownloadProgress = { loadingProgress = it },
                             this,
+                            "",
+                            context
                         ).await()
                     }
                     if (!SteamService.isImageFsInstalled(context)) {
@@ -639,7 +641,7 @@ fun AppScreen(
                     optionType = AppOptionMenuType.EditContainer,
                     onClick = {
                         if (!SteamService.isImageFsInstalled(context)) {
-                            if (!SteamService.isImageFsInstallable(context)) {
+                            if (!SteamService.isImageFsInstallable(context, "")) {
                                 msgDialogState = MessageDialogState(
                                     visible = true,
                                     type = DialogType.INSTALL_IMAGEFS,

@@ -226,6 +226,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
                 contentsManager.applyContent(profile);
             }
             else {
+                Log.d("Extraction", "exctracting box64 with box64Version " + box64Version);
                 TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "box86_64/box64-" + box64Version + ".tzst", rootDir);
             }
             PrefManager.putString("current_box64_version", box64Version);

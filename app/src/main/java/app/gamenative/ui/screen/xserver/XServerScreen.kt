@@ -43,6 +43,7 @@ import com.winlator.container.Container
 import com.winlator.container.ContainerManager
 import com.winlator.contentdialog.NavigationDialog
 import com.winlator.contents.AdrenotoolsManager
+import com.winlator.contents.ContentProfile
 import com.winlator.contents.ContentsManager
 import com.winlator.core.AppUtils
 import com.winlator.core.Callback
@@ -100,15 +101,12 @@ import kotlinx.coroutines.launch
 import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
-import java.io.BufferedReader
 import java.io.File
 import java.io.IOException
-import java.io.InputStreamReader
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.util.Arrays
 import java.util.Locale
 import kotlin.io.path.name
 import com.winlator.PrefManager as WinlatorPrefManager
@@ -561,6 +559,7 @@ fun XServerScreen(
                         container,
                         containerManager,
                         envVars,
+                        contentsManager,
                         onExtractFileListener,
                     )
                     extractArm64ecInputDLLs(context, container) // REQUIRED: Uses updated xinput1_3 main.c from x86_64 build, prevents crashes with 3+ players, avoids need for input shim dlls.
@@ -1457,6 +1456,7 @@ private fun setupWineSystemFiles(
     containerManager: ContainerManager,
     // shortcut: Shortcut?,
     envVars: EnvVars,
+    contentsManager: ContentsManager,
     onExtractFileListener: OnExtractFileListener?,
 ) {
     val imageFs = ImageFs.find(context)
@@ -1502,6 +1502,7 @@ private fun setupWineSystemFiles(
             containerManager,
             xServerState.value.dxwrapper,
             imageFs,
+            contentsManager,
             onExtractFileListener,
         )
         container.putExtra("dxwrapper", xServerState.value.dxwrapper)
@@ -1579,6 +1580,7 @@ private fun extractDXWrapperFiles(
     containerManager: ContainerManager,
     dxwrapper: String,
     imageFs: ImageFs,
+    contentsManager: ContentsManager,
     onExtractFileListener: OnExtractFileListener?,
 ) {
     val dlls = arrayOf(
@@ -1617,6 +1619,7 @@ private fun extractDXWrapperFiles(
         }
         "vkd3d" -> {
             Timber.i("Extracting VKD3D D3D12 DLLs for dxwrapper: $dxwrapper")
+            val profile: ContentProfile? = contentsManager.getProfileByEntryName(dxwrapper)
             // Determine graphics driver to choose DXVK version
             val vortekLike = container.graphicsDriver == "vortek" || container.graphicsDriver == "adreno" || container.graphicsDriver == "sd-8-elite"
             val dxvkVersionForVkd3d = if (vortekLike && GPUHelper.vkGetApiVersion() < GPUHelper.vkMakeVersion(1, 3, 0)) "1.10.3" else "2.4.1"
@@ -1625,25 +1628,36 @@ private fun extractDXWrapperFiles(
                 TarCompressorUtils.Type.ZSTD, context.assets,
                 "dxwrapper/dxvk-${dxvkVersionForVkd3d}.tzst", windowsDir, onExtractFileListener,
             )
-            // Determine VKD3D version from state config
-            Timber.i("Extracting VKD3D D3D12 DLLs version: $dxwrapper")
+            if (profile != null) {
+                Timber.d("Applying user-defined VKD3D content profile: " + dxwrapper)
+                contentsManager.applyContent(profile);
+            } else {
+                // Determine VKD3D version from state config
+                Timber.i("Extracting VKD3D D3D12 DLLs version: $dxwrapper")
 
-            TarCompressorUtils.extract(
-                TarCompressorUtils.Type.ZSTD,
-                context.assets,
-                "dxwrapper/$dxwrapper.tzst",
-                windowsDir,
-                onExtractFileListener,
-            )
+                TarCompressorUtils.extract(
+                    TarCompressorUtils.Type.ZSTD,
+                    context.assets,
+                    "dxwrapper/$dxwrapper.tzst",
+                    windowsDir,
+                    onExtractFileListener,
+                )
+            }
         }
         else -> {
+            val profile: ContentProfile? = contentsManager.getProfileByEntryName(dxwrapper)
             // This block handles dxvk-VERSION strings
             Timber.i("Extracting DXVK/D8VK DLLs for dxwrapper: $dxwrapper")
             restoreOriginalDllFiles(context, container, containerManager, imageFs, "d3d12.dll", "d3d12core.dll", "ddraw.dll")
-            TarCompressorUtils.extract(
-                TarCompressorUtils.Type.ZSTD, context.assets,
-                "dxwrapper/$dxwrapper.tzst", windowsDir, onExtractFileListener,
-            )
+            if (profile != null) {
+                Timber.d("Applying user-defined DXVK content profile: " + dxwrapper)
+                contentsManager.applyContent(profile);
+            } else {
+                TarCompressorUtils.extract(
+                    TarCompressorUtils.Type.ZSTD, context.assets,
+                    "dxwrapper/$dxwrapper.tzst", windowsDir, onExtractFileListener,
+                )
+            }
             TarCompressorUtils.extract(
                 TarCompressorUtils.Type.ZSTD,
                 context.assets,
