@@ -299,11 +299,10 @@ object ContainerUtils {
         container.isSdlControllerAPI = containerData.sdlControllerAPI
         container.desktopTheme = containerData.desktopTheme
         container.graphicsDriverVersion = containerData.graphicsDriverVersion
-        container.setContainerVariant(containerData.containerVariant)
-        container.setWineVersion(containerData.wineVersion)
-        // Persist 32-bit emulator selection
-        container.setEmulator(containerData.emulator)
-        container.setFEXCoreVersion(containerData.fexcoreVersion)
+        container.containerVariant = containerData.containerVariant
+        container.wineVersion = containerData.wineVersion
+        container.emulator = containerData.emulator
+        container.fexCoreVersion = containerData.fexcoreVersion
         container.setDisableMouseInput(containerData.disableMouseInput)
         container.setTouchscreenMode(containerData.touchscreenMode)
         container.setEmulateKeyboardMouse(containerData.emulateKeyboardMouse)

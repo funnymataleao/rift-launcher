@@ -611,9 +611,8 @@ public class Container {
             data.put("steamType", steamType);
             data.put("language", language);
             data.put("containerVariant", containerVariant);
-            if (emulator != null && !emulator.isEmpty()) {
-                data.put("emulator", emulator);
-            }
+            data.put("emulator", emulator);
+            data.put("fexcoreVersion", fexcoreVersion);
 
             // Emulated keyboard/mouse controller mappings
             data.put("emulateKeyboardMouse", emulateKeyboardMouse);
@@ -767,6 +766,9 @@ public class Container {
                     break;
                 case "useDRI3" :
                     setUseDRI3(data.getBoolean(key));
+                    break;
+                case "fexcoreVersion" :
+                    setFEXCoreVersion(data.getString(key));
                     break;
                 case "installPath":
                     setInstallPath(data.getString(key));
