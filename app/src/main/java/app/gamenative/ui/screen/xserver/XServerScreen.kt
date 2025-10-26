@@ -284,7 +284,7 @@ fun XServerScreen(
                             } else {
                                 PostHog.capture(event = "game_closed")
                             }
-                            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit)
+                            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit, navigateBack)
                         }
                     }
                 }
@@ -303,7 +303,7 @@ fun XServerScreen(
     DisposableEffect(lifecycleOwner) {
         val onActivityDestroyed: (AndroidEvent.ActivityDestroyed) -> Unit = {
             Timber.i("onActivityDestroyed")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit)
+            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit, navigateBack)
         }
         val onKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = {
             val isKeyboard = Keyboard.isKeyboardDevice(it.event.device)
@@ -344,13 +344,11 @@ fun XServerScreen(
         }
         val onGuestProgramTerminated: (AndroidEvent.GuestProgramTerminated) -> Unit = {
             Timber.i("onGuestProgramTerminated")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit)
-            navigateBack()
+            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit, navigateBack)
         }
         val onForceCloseApp: (SteamEvent.ForceCloseApp) -> Unit = {
             Timber.i("onForceCloseApp")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit)
-            navigateBack()
+            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit, navigateBack)
         }
         val debugCallback = Callback<String> { outputLine ->
             Timber.i(outputLine ?: "")
@@ -589,6 +587,7 @@ fun XServerScreen(
                         xServerView!!.getxServer(),
                         containerVariantChanged,
                         onGameLaunchError,
+                        navigateBack,
                     )
                 }
             }
@@ -979,6 +978,7 @@ private fun setupXEnvironment(
     xServer: XServer,
     containerVariantChanged: Boolean,
     onGameLaunchError: ((String) -> Unit)? = null,
+    navigateBack: () -> Unit,
 ): XEnvironment {
     val lc_all = container!!.lC_ALL
     val imageFs = ImageFs.find(context)
@@ -1165,6 +1165,7 @@ private fun setupXEnvironment(
         if (status != 0) {
             Timber.e("Guest program terminated with status: $status")
             onGameLaunchError?.invoke("Game terminated with error status: $status")
+            navigateBack()
         }
         PluviaApp.events.emit(AndroidEvent.GuestProgramTerminated)
     }
@@ -1272,7 +1273,7 @@ private fun getSteamlessTarget(
     }
     return "$drive:\\${executablePath}"
 }
-private fun exit(winHandler: WinHandler?, environment: XEnvironment?, onExit: () -> Unit) {
+private fun exit(winHandler: WinHandler?, environment: XEnvironment?, onExit: () -> Unit, navigateBack: () -> Unit) {
     Timber.i("Exit called")
     PostHog.capture(event = "game_exited")
     winHandler?.stop()
@@ -1288,6 +1289,7 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, onExit: ()
     // PluviaApp.touchMouse = null
     // PluviaApp.keyboard = null
     onExit()
+    navigateBack()
 }
 
 private fun unpackExecutableFile(

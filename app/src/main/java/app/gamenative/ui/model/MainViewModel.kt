@@ -242,6 +242,9 @@ class MainViewModel @Inject constructor(
 
     fun exitSteamApp(context: Context, appId: String) {
         viewModelScope.launch {
+            bootingSplashTimeoutJob?.cancel()
+            bootingSplashTimeoutJob = null
+            setShowBootingSplash(false)
             // Check if we have a temporary override before doing anything
             val hadTemporaryOverride = IntentLaunchManager.hasTemporaryOverride(appId)
 
