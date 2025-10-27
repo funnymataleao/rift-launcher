@@ -1339,7 +1339,7 @@ fun ContainerConfigDialog(
                                 SettingsListDropdown(
                                     colors = settingsTileColors(),
                                     title = { Text(text = "Box64 Version") },
-                                    value = getVersionsForBox64().indexOfFirst { StringUtils.parseIdentifier(it) == config.box64Version },
+                                    value = getVersionsForBox64().indexOfFirst { StringUtils.parseIdentifier(it) == config.box64Version }.coerceAtLeast(0),
                                     items = getVersionsForBox64(),
                                     onItemSelected = {
                                         config = config.copy(
