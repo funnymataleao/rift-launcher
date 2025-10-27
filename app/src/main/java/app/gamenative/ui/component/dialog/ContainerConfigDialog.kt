@@ -748,7 +748,7 @@ fun ContainerConfigDialog(
                                                     graphicsDriver = defaultDriver,
                                                     graphicsDriverVersion = "",
                                                     graphicsDriverConfig = newCfg.toString(),
-                                                    box64Version = box64Versions[0],
+                                                    box64Version = "0.3.6",
                                                 )
                                             } else {
                                                 // Switch to bionic: set wrapper defaults
@@ -785,7 +785,7 @@ fun ContainerConfigDialog(
                                                     graphicsDriver = defaultBionicDriver,
                                                     graphicsDriverVersion = "",
                                                     graphicsDriverConfig = newCfg.toString(),
-                                                    box64Version = box64BionicVersions[0],
+                                                    box64Version = "0.3.7",
                                                     dxwrapperConfig = currentConfig.toString(),
                                                     envVars = envSet.toString(),
                                                 )
