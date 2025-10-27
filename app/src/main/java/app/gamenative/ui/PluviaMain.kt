@@ -17,6 +17,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.BlendMode.Companion.Screen
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.zIndex
@@ -824,7 +825,13 @@ fun PluviaMain(
                     },
                     navigateBack = {
                         CoroutineScope(Dispatchers.Main).launch {
-                            navController.popBackStack()
+                            val currentRoute = navController.currentBackStackEntry
+                                ?.destination
+                                ?.route          // ← this is the screen’s route string
+
+                            if (currentRoute == PluviaScreen.XServer.route) {
+                                navController.popBackStack()
+                            }
                         }
                     },
                     onWindowMapped = { context, window ->

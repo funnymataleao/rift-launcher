@@ -32,7 +32,7 @@ import java.net.URLEncoder
 
 object SteamUtils {
 
-    private val http = OkHttpClient()
+    internal val http = OkHttpClient()
 
     private val sfd by lazy {
         SimpleDateFormat("MMM d - h:mm a", Locale.getDefault()).apply {

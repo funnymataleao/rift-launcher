@@ -282,7 +282,7 @@ fun XServerScreen(
                             } else {
                                 PostHog.capture(event = "game_closed")
                             }
-                            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit)
+                            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit, navigateBack)
                         }
                     }
                 }
@@ -301,7 +301,7 @@ fun XServerScreen(
     DisposableEffect(lifecycleOwner) {
         val onActivityDestroyed: (AndroidEvent.ActivityDestroyed) -> Unit = {
             Timber.i("onActivityDestroyed")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit)
+            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit, navigateBack, true)
         }
         val onKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = {
             val isKeyboard = Keyboard.isKeyboardDevice(it.event.device)
@@ -342,13 +342,11 @@ fun XServerScreen(
         }
         val onGuestProgramTerminated: (AndroidEvent.GuestProgramTerminated) -> Unit = {
             Timber.i("onGuestProgramTerminated")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit)
-            navigateBack()
+            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit, navigateBack)
         }
         val onForceCloseApp: (SteamEvent.ForceCloseApp) -> Unit = {
             Timber.i("onForceCloseApp")
-            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit)
-            navigateBack()
+            exit(xServerView!!.getxServer().winHandler, PluviaApp.xEnvironment, onExit, navigateBack)
         }
         val debugCallback = Callback<String> { outputLine ->
             Timber.i(outputLine ?: "")
@@ -532,6 +530,8 @@ fun XServerScreen(
                     if (!xServerState.value.wineInfo.isMainWineVersion()) {
                         Timber.i("Settings wine path to: ${xServerState.value.wineInfo.path}")
                         imageFs.setWinePath(xServerState.value.wineInfo.path)
+                    } else {
+                        imageFs.setWinePath(imageFs.rootDir.path + "/opt/wine")
                     }
 
                     val onExtractFileListener = if (!xServerState.value.wineInfo.isWin64) {
@@ -588,6 +588,7 @@ fun XServerScreen(
                         xServerView!!.getxServer(),
                         containerVariantChanged,
                         onGameLaunchError,
+                        navigateBack,
                     )
                 }
             }
@@ -978,6 +979,7 @@ private fun setupXEnvironment(
     xServer: XServer,
     containerVariantChanged: Boolean,
     onGameLaunchError: ((String) -> Unit)? = null,
+    navigateBack: () -> Unit,
 ): XEnvironment {
     val lc_all = container!!.lC_ALL
     val imageFs = ImageFs.find(context)
@@ -1164,6 +1166,7 @@ private fun setupXEnvironment(
         if (status != 0) {
             Timber.e("Guest program terminated with status: $status")
             onGameLaunchError?.invoke("Game terminated with error status: $status")
+            navigateBack()
         }
         PluviaApp.events.emit(AndroidEvent.GuestProgramTerminated)
     }
@@ -1271,11 +1274,12 @@ private fun getSteamlessTarget(
     }
     return "$drive:\\${executablePath}"
 }
-private fun exit(winHandler: WinHandler?, environment: XEnvironment?, onExit: () -> Unit) {
+private fun exit(winHandler: WinHandler?, environment: XEnvironment?, onExit: () -> Unit, navigateBack: () -> Unit, closeXserverScreen: Boolean = false) {
     Timber.i("Exit called")
     PostHog.capture(event = "game_exited")
     winHandler?.stop()
     environment?.stopEnvironmentComponents()
+    SteamService.isGameRunning = false
     // AppUtils.restartApplication(this)
     // PluviaApp.xServerState = null
     // PluviaApp.xServer = null
@@ -1287,6 +1291,7 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, onExit: ()
     // PluviaApp.touchMouse = null
     // PluviaApp.keyboard = null
     onExit()
+    if (closeXserverScreen) navigateBack()
 }
 
 private fun unpackExecutableFile(
