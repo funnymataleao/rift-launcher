@@ -89,6 +89,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
                 }
                 SteamService.setGameRunning(false);
             }
+            execShellCommand("wineserver -k");
         }
     }
 
