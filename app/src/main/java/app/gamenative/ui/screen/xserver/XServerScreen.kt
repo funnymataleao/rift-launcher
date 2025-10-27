@@ -530,6 +530,8 @@ fun XServerScreen(
                     if (!xServerState.value.wineInfo.isMainWineVersion()) {
                         Timber.i("Settings wine path to: ${xServerState.value.wineInfo.path}")
                         imageFs.setWinePath(xServerState.value.wineInfo.path)
+                    } else {
+                        imageFs.setWinePath(imageFs.rootDir.path + "/opt/wine")
                     }
 
                     val onExtractFileListener = if (!xServerState.value.wineInfo.isWin64) {
@@ -1277,6 +1279,7 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, onExit: ()
     PostHog.capture(event = "game_exited")
     winHandler?.stop()
     environment?.stopEnvironmentComponents()
+    SteamService.isGameRunning = false
     // AppUtils.restartApplication(this)
     // PluviaApp.xServerState = null
     // PluviaApp.xServer = null

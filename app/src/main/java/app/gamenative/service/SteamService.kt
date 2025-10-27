@@ -741,9 +741,9 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun isImageFsInstallable(context: Context, variant: String): Boolean {
             val imageFs = ImageFs.find(context)
             if (variant.equals(Container.BIONIC)) {
-                return File(imageFs.filesDir, "imagefs_bionic.txz").exists()
+                return File(imageFs.filesDir, "imagefs_bionic.txz").exists() || context.assets.list("")?.contains("imagefs_bionic.txz") == true
             } else {
-                return File(imageFs.filesDir, "imagefs_gamenative.txz").exists()
+                return File(imageFs.filesDir, "imagefs_gamenative.txz").exists() || context.assets.list("")?.contains("imagefs_gamenative.txz") == true
             }
         }
 
@@ -754,13 +754,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         ) = withContext(Dispatchers.IO) {
             val tmp = File(dest.absolutePath + ".part")
             try {
-                val http = OkHttpClient.Builder()
-                    .connectTimeout(30, TimeUnit.SECONDS)   // TCP handshake
-                    .readTimeout(2, TimeUnit.MINUTES)       // per-read idle limit
-                    .writeTimeout(2, TimeUnit.MINUTES)
-                    .callTimeout(0, TimeUnit.MILLISECONDS)  // no overall cap; set if you prefer
-                    .retryOnConnectionFailure(true)
-                    .build()
+                val http = SteamUtils.http
 
                 val req = Request.Builder().url(url).build()
                 http.newCall(req).execute().use { rsp ->

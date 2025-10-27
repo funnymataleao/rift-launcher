@@ -49,6 +49,10 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
     private final ContentsManager contentsManager;
     private final ContentProfile wineProfile;
     private File workingDir;
+    private Container container;
+
+    public Container getContainer() { return this.container; }
+    public void setContainer(Container container) { this.container = container; }
 
     public GlibcProgramLauncherComponent(ContentsManager contentsManager, ContentProfile wineProfile) {
         this.contentsManager = contentsManager;
@@ -220,7 +224,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         String currentBox64Version = PrefManager.getString("current_box64_version", "");
         File rootDir = imageFs.getRootDir();
 
-        if (!box64Version.equals(currentBox64Version)) {
+        if (!box64Version.equals(currentBox64Version) || container.getWineVersion() != imageFs.getArch()) {
             ContentProfile profile = contentsManager.getProfileByEntryName("box64-" + box64Version);
             if (profile != null) {
                 contentsManager.applyContent(profile);
