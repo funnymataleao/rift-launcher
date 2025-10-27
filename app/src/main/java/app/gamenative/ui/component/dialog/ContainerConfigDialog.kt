@@ -748,6 +748,7 @@ fun ContainerConfigDialog(
                                                     graphicsDriver = defaultDriver,
                                                     graphicsDriverVersion = "",
                                                     graphicsDriverConfig = newCfg.toString(),
+                                                    box64Version = box64Versions[0],
                                                 )
                                             } else {
                                                 // Switch to bionic: set wrapper defaults
@@ -770,12 +771,23 @@ fun ContainerConfigDialog(
                                                 maxDeviceMemoryIndex =
                                                     listOf("0", "512", "1024", "2048", "4096").indexOf("4096").coerceAtLeast(0)
 
+                                                // If transitioning from GLIBC -> BIONIC, set Box64 to default and DXVK to async-1.10.3
+                                                val envSet = EnvVars(config.envVars).apply {
+                                                    put("DXVK_ASYNC", "1")
+                                                }
+                                                val currentConfig = KeyValueSet(config.dxwrapperConfig)
+                                                currentConfig.put("version", "async-1.10.3")
+                                                config = config.copy(dxwrapperConfig = currentConfig.toString())
+
                                                 config = config.copy(
                                                     containerVariant = newVariant,
                                                     wineVersion = newWine,
                                                     graphicsDriver = defaultBionicDriver,
                                                     graphicsDriverVersion = "",
                                                     graphicsDriverConfig = newCfg.toString(),
+                                                    box64Version = box64BionicVersions[0],
+                                                    dxwrapperConfig = currentConfig.toString(),
+                                                    envVars = envSet.toString(),
                                                 )
                                             }
                                         },

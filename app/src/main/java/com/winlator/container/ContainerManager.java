@@ -49,7 +49,7 @@ public class ContainerManager {
         } else {
             DefaultVersion.VARIANT = Container.BIONIC;
             DefaultVersion.WINE_VERSION = "proton-9.0-arm64ec";
-            Container.DEFAULT_GRAPHICS_DRIVER = "Wrapper";
+            Container.DEFAULT_GRAPHICS_DRIVER = "Wrapper-leegao";
             DefaultVersion.DXVK = "async-1.10.3";
             DefaultVersion.VKD3D = "2.6";
             DefaultVersion.STEAM_TYPE = STEAM_TYPE_LIGHT;
