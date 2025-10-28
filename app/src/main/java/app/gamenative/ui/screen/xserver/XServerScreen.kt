@@ -481,6 +481,14 @@ fun XServerScreen(
                                         "\n\tchildrenSize: ${window.children.size}",
                             )
                             changeFrameRatingVisibility(window, null)
+                            val launchConfig = SteamService.getWindowsLaunchInfos(gameId).firstOrNull()
+
+                            val gameExe = Paths.get(launchConfig?.executable?.replace('\\', '/')).name.lowercase()
+                            val windowExe = window.className.lowercase()
+                            if (gameExe == windowExe && !bootToContainer) {
+                                PluviaApp.xEnvironment?.getComponent<BionicProgramLauncherComponent?>(BionicProgramLauncherComponent::class.java)?.execShellCommand("wineserver -k")
+                                PluviaApp.xEnvironment?.getComponent<GlibcProgramLauncherComponent?>(GlibcProgramLauncherComponent::class.java)?.execShellCommand("wineserver -k")
+                            }
                             onWindowUnmapped?.invoke(window)
                         }
                     },
