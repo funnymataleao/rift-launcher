@@ -6,9 +6,12 @@ import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.util.Log;
 
+import com.winlator.container.Container;
 import com.winlator.core.KeyValueSet;
 import com.winlator.math.Mathf;
 import com.winlator.sysvshm.SysVSharedMemory;
+import com.winlator.xenvironment.ImageFs;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -26,6 +29,7 @@ public class ALSAClient {
     private byte channels = 2;
     private int sampleRate = 0;
     private short previousUnderrunCount = 0;
+    private String containerVariant = null;
 
     public enum DataType {
         U8(1),
@@ -42,8 +46,8 @@ public class ALSAClient {
     }
 
     public static class Options {
-        public short latencyMillis = 40;
-        public byte performanceMode = 1;
+        public short latencyMillis = 120;
+        public byte performanceMode = 0;
         public float volume = 1.0f;
 
         public static Options fromKeyValueSet(KeyValueSet config) {
@@ -64,13 +68,14 @@ public class ALSAClient {
                     break;
             }
             options.volume = config.getFloat("volume", 1.0f);
-            options.latencyMillis = (short) config.getInt("latencyMillis", 40);
+            options.latencyMillis = (short) config.getInt("latencyMillis", 120);
             return options;
         }
     }
 
-    public ALSAClient(Options options) {
+    public ALSAClient(Options options, String containerVariant) {
         this.options = options;
+        this.containerVariant = containerVariant;
     }
 
     public void release() {
@@ -204,6 +209,18 @@ public class ALSAClient {
 
     public void setDataType(DataType dataType) {
         this.dataType = dataType;
+    }
+
+    public void setContainerVariant(String containerVariant) {
+        this.containerVariant = containerVariant;
+    }
+
+    public String getContainerVariant() {
+        return containerVariant;
+    }
+
+    public boolean isGlibc() {
+        return containerVariant.equals(Container.GLIBC);
     }
 
     public void setChannels(int channels) {
