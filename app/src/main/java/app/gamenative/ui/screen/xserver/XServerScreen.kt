@@ -422,6 +422,7 @@ fun XServerScreen(
                     // TODO: make 'force fullscreen' be an option of the app being launched
                     appLaunchInfo?.let { renderer.forceFullscreenWMClass = Paths.get(it.executable).name }
                 }
+                val container = ContainerUtils.getContainer(context, appId)
 
                 getxServer().windowManager.addOnWindowModificationListener(
                     object : WindowManager.OnWindowModificationListener {
@@ -443,7 +444,6 @@ fun XServerScreen(
                         }
                         override fun onUpdateWindowContent(window: Window) {
                             if (!xServerState.value.winStarted && window.isApplicationWindow()) {
-                                val container = ContainerUtils.getContainer(context, appId)
                                 if (!container.isDisableMouseInput && !container.isTouchscreenMode) renderer?.setCursorVisible(true)
                                 xServerState.value.winStarted = true
                             }
@@ -483,7 +483,7 @@ fun XServerScreen(
                             changeFrameRatingVisibility(window, null)
                             val launchConfig = SteamService.getWindowsLaunchInfos(gameId).firstOrNull()
 
-                            val gameExe = Paths.get(launchConfig?.executable?.replace('\\', '/')).name.lowercase()
+                            val gameExe = Paths.get(container.executablePath.replace('\\', '/')).name.lowercase()
                             val windowExe = window.className.lowercase()
                             if (gameExe == windowExe && !bootToContainer) {
                                 PluviaApp.xEnvironment?.getComponent<BionicProgramLauncherComponent?>(BionicProgramLauncherComponent::class.java)?.execShellCommand("wineserver -k")

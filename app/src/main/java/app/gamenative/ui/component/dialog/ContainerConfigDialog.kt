@@ -1797,8 +1797,8 @@ private fun ExecutablePathDropdown(
             onValueChange = onValueChange,
             label = { Text("Executable Path") },
             placeholder = { Text("e.g., path\\to\\exe") },
-            trailingIcon = { 
-                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) 
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -1813,7 +1813,7 @@ private fun ExecutablePathDropdown(
             ) {
                 executables.forEach { executable ->
                     DropdownMenuItem(
-                        text = { 
+                        text = {
                             Column {
                                 Text(
                                     text = executable.substringAfterLast('\\'),
@@ -1844,7 +1844,7 @@ private fun ExecutablePathDropdown(
  */
 private fun scanExecutablesInADrive(drives: String): List<String> {
     val executables = mutableListOf<String>()
-    
+
     try {
         // Find the A: drive path from container drives
         val aDrivePath = getADrivePath(drives)
@@ -1860,35 +1860,34 @@ private fun scanExecutablesInADrive(drives: String): List<String> {
         }
 
         timber.log.Timber.d("Scanning for executables in A: drive: $aDrivePath")
-        
+
         // Recursively scan for .exe files using walkTopDown
         aDir.walkTopDown().forEach { file ->
             if (file.isFile && file.name.lowercase().endsWith(".exe")) {
                 // Convert to relative Windows path format
                 val relativePath = aDir.toURI().relativize(file.toURI()).path
-                val windowsPath = relativePath.replace('/', '\\')
-                executables.add(windowsPath)
+                executables.add(relativePath)
             }
         }
-        
+
         // Sort alphabetically and prioritize common game executables
         executables.sortWith { a, b ->
             val aScore = getExecutablePriority(a)
             val bScore = getExecutablePriority(b)
-            
+
             if (aScore != bScore) {
                 bScore.compareTo(aScore) // Higher priority first
             } else {
                 a.compareTo(b, ignoreCase = true) // Alphabetical
             }
         }
-        
+
         timber.log.Timber.d("Found ${executables.size} executables in A: drive")
-        
+
     } catch (e: Exception) {
         timber.log.Timber.e(e, "Error scanning A: drive for executables")
     }
-    
+
     return executables
 }
 
@@ -1911,20 +1910,20 @@ private fun getADrivePath(drives: String): String? {
 private fun getExecutablePriority(exePath: String): Int {
     val fileName = exePath.substringAfterLast('\\').lowercase()
     val baseName = fileName.substringBeforeLast('.')
-    
+
     return when {
         // Highest priority: common game executable patterns
         fileName.contains("game") -> 100
-        fileName.contains("launcher") && !fileName.contains("unins") -> 90
         fileName.contains("start") -> 85
         fileName.contains("main") -> 80
-        
+        fileName.contains("launcher") && !fileName.contains("unins") -> 75
+
         // High priority: probable main executables
         baseName.length >= 4 && !isSystemExecutable(fileName) -> 70
-        
+
         // Medium priority: any non-system executable
         !isSystemExecutable(fileName) -> 50
-        
+
         // Low priority: system/utility executables
         else -> 10
     }
@@ -1935,10 +1934,10 @@ private fun getExecutablePriority(exePath: String): Int {
  */
 private fun isSystemExecutable(fileName: String): Boolean {
     val systemKeywords = listOf(
-        "unins", "setup", "install", "config", "crash", "handler", 
+        "unins", "setup", "install", "config", "crash", "handler",
         "viewer", "compiler", "tool", "redist", "vcredist", "directx",
         "steam", "origin", "uplay", "epic", "battlenet"
     )
-    
+
     return systemKeywords.any { fileName.contains(it) }
 }
