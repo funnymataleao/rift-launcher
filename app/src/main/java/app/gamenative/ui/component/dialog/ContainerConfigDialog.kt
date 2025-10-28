@@ -32,8 +32,11 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -806,12 +809,12 @@ fun ContainerConfigDialog(
                                         )
                                     }
                                 }
-                                OutlinedTextField(
+                                // Executable Path dropdown with all EXEs from A: drive
+                                ExecutablePathDropdown(
                                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                                     value = config.executablePath,
                                     onValueChange = { config = config.copy(executablePath = it) },
-                                    label = { Text(text = "Executable Path") },
-                                    placeholder = { Text(text = "e.g., path\\to\\exe") },
+                                    containerData = config,
                                 )
                                 OutlinedTextField(
                                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -1762,4 +1765,179 @@ private fun Preview_ContainerConfigDialog() {
             onSave = {},
         )
     }
+}
+
+/**
+ * Editable dropdown for selecting executable paths from the container's A: drive
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExecutablePathDropdown(
+    modifier: Modifier = Modifier,
+    value: String,
+    onValueChange: (String) -> Unit,
+    containerData: ContainerData,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var executables by remember { mutableStateOf<List<String>>(emptyList()) }
+    val context = LocalContext.current
+
+    // Load executables from A: drive when component is first created
+    LaunchedEffect(containerData.drives) {
+        executables = scanExecutablesInADrive(containerData.drives)
+    }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            label = { Text("Executable Path") },
+            placeholder = { Text("e.g., path\\to\\exe") },
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(),
+            singleLine = true
+        )
+
+        if (executables.isNotEmpty()) {
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                executables.forEach { executable ->
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text(
+                                    text = executable.substringAfterLast('\\'),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                if (executable.contains('\\')) {
+                                    Text(
+                                        text = executable.substringBeforeLast('\\'),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        },
+                        onClick = {
+                            onValueChange(executable)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Scans the container's A: drive for all .exe files
+ */
+private fun scanExecutablesInADrive(drives: String): List<String> {
+    val executables = mutableListOf<String>()
+
+    try {
+        // Find the A: drive path from container drives
+        val aDrivePath = getADrivePath(drives)
+        if (aDrivePath == null) {
+            timber.log.Timber.w("No A: drive found in container drives")
+            return emptyList()
+        }
+
+        val aDir = java.io.File(aDrivePath)
+        if (!aDir.exists() || !aDir.isDirectory) {
+            timber.log.Timber.w("A: drive path does not exist or is not a directory: $aDrivePath")
+            return emptyList()
+        }
+
+        timber.log.Timber.d("Scanning for executables in A: drive: $aDrivePath")
+
+        // Recursively scan for .exe files using walkTopDown
+        aDir.walkTopDown().forEach { file ->
+            if (file.isFile && file.name.lowercase().endsWith(".exe")) {
+                // Convert to relative Windows path format
+                val relativePath = aDir.toURI().relativize(file.toURI()).path
+                executables.add(relativePath)
+            }
+        }
+
+        // Sort alphabetically and prioritize common game executables
+        executables.sortWith { a, b ->
+            val aScore = getExecutablePriority(a)
+            val bScore = getExecutablePriority(b)
+
+            if (aScore != bScore) {
+                bScore.compareTo(aScore) // Higher priority first
+            } else {
+                a.compareTo(b, ignoreCase = true) // Alphabetical
+            }
+        }
+
+        timber.log.Timber.d("Found ${executables.size} executables in A: drive")
+
+    } catch (e: Exception) {
+        timber.log.Timber.e(e, "Error scanning A: drive for executables")
+    }
+
+    return executables
+}
+
+/**
+ * Gets the file system path for the container's A: drive
+ */
+private fun getADrivePath(drives: String): String? {
+    // Use the existing Container.drivesIterator logic
+    for (drive in Container.drivesIterator(drives)) {
+        if (drive[0] == "A") {
+            return drive[1]
+        }
+    }
+    return null
+}
+
+/**
+ * Assigns priority scores to executables for better sorting
+ */
+private fun getExecutablePriority(exePath: String): Int {
+    val fileName = exePath.substringAfterLast('\\').lowercase()
+    val baseName = fileName.substringBeforeLast('.')
+
+    return when {
+        // Highest priority: common game executable patterns
+        fileName.contains("game") -> 100
+        fileName.contains("start") -> 85
+        fileName.contains("main") -> 80
+        fileName.contains("launcher") && !fileName.contains("unins") -> 75
+
+        // High priority: probable main executables
+        baseName.length >= 4 && !isSystemExecutable(fileName) -> 70
+
+        // Medium priority: any non-system executable
+        !isSystemExecutable(fileName) -> 50
+
+        // Low priority: system/utility executables
+        else -> 10
+    }
+}
+
+/**
+ * Checks if an executable is likely a system/utility file
+ */
+private fun isSystemExecutable(fileName: String): Boolean {
+    val systemKeywords = listOf(
+        "unins", "setup", "install", "config", "crash", "handler",
+        "viewer", "compiler", "tool", "redist", "vcredist", "directx",
+        "steam", "origin", "uplay", "epic", "battlenet"
+    )
+
+    return systemKeywords.any { fileName.contains(it) }
 }
