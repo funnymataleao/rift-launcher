@@ -681,7 +681,7 @@ object SteamUtils {
 
         val appIniContent = buildString {
             appendLine("[app::dlcs]")
-            appendLine("unlock_all=0")
+            appendLine("unlock_all=1")
             dlcIds?.forEach { appendLine("$it=dlc$it") }
         }
 
