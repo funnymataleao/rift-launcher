@@ -46,7 +46,7 @@ public class ALSAClient {
     }
 
     public static class Options {
-        public short latencyMillis = 120;
+        public short latencyMillis = 40;
         public byte performanceMode = 0;
         public float volume = 1.0f;
 
@@ -68,7 +68,7 @@ public class ALSAClient {
                     break;
             }
             options.volume = config.getFloat("volume", 1.0f);
-            options.latencyMillis = (short) config.getInt("latencyMillis", 120);
+            options.latencyMillis = (short) config.getInt("latencyMillis", 40);
             return options;
         }
     }
