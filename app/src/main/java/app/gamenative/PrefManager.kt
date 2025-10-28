@@ -634,4 +634,15 @@ object PrefManager {
     var wineDebugChannels: String
         get() = getPref(WINE_DEBUG_CHANNELS, Constants.XServer.DEFAULT_WINE_DEBUG_CHANNELS)
         set(value) = setPref(WINE_DEBUG_CHANNELS, value)
+
+    // App and notification icon variants
+    private val USE_ALT_LAUNCHER_ICON = booleanPreferencesKey("use_alt_launcher_icon")
+    var useAltLauncherIcon: Boolean
+        get() = getPref(USE_ALT_LAUNCHER_ICON, false)
+        set(value) = setPref(USE_ALT_LAUNCHER_ICON, value)
+
+    private val USE_ALT_NOTIFICATION_ICON = booleanPreferencesKey("use_alt_notification_icon")
+    var useAltNotificationIcon: Boolean
+        get() = getPref(USE_ALT_NOTIFICATION_ICON, false)
+        set(value) = setPref(USE_ALT_NOTIFICATION_ICON, value)
 }
