@@ -32,7 +32,7 @@ import java.net.URLEncoder
 
 object SteamUtils {
 
-    private val http = OkHttpClient()
+    internal val http = OkHttpClient()
 
     private val sfd by lazy {
         SimpleDateFormat("MMM d - h:mm a", Locale.getDefault()).apply {
@@ -681,7 +681,7 @@ object SteamUtils {
 
         val appIniContent = buildString {
             appendLine("[app::dlcs]")
-            appendLine("unlock_all=0")
+            appendLine("unlock_all=1")
             dlcIds?.forEach { appendLine("$it=dlc$it") }
         }
 

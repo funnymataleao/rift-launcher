@@ -77,6 +77,8 @@ import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.service.SteamService
+import com.winlator.contents.ContentProfile
+import com.winlator.contents.ContentsManager
 import com.winlator.contents.AdrenotoolsManager
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
@@ -135,8 +137,9 @@ fun ContainerConfigDialog(
         val baseGraphicsDrivers = stringArrayResource(R.array.graphics_driver_entries).toList()
         var graphicsDrivers by remember { mutableStateOf(baseGraphicsDrivers.toMutableList()) }
         val dxWrappers = stringArrayResource(R.array.dxwrapper_entries).toList()
-        val dxvkVersionsAll = stringArrayResource(R.array.dxvk_version_entries).toList()
-        val vkd3dVersions = stringArrayResource(R.array.vkd3d_version_entries).toList()
+        // Start with defaults from resources
+        val dxvkVersionsBase = stringArrayResource(R.array.dxvk_version_entries).toList()
+        val vkd3dVersionsBase = stringArrayResource(R.array.vkd3d_version_entries).toList()
         val audioDrivers = stringArrayResource(R.array.audio_driver_entries).toList()
         val gpuCards = ContainerUtils.getGPUCards(context)
         val renderingModes = stringArrayResource(R.array.offscreen_rendering_modes).toList()
@@ -144,10 +147,10 @@ fun ContainerConfigDialog(
         val mouseWarps = stringArrayResource(R.array.mouse_warp_override_entries).toList()
         val winCompOpts = stringArrayResource(R.array.win_component_entries).toList()
         val box64Versions = stringArrayResource(R.array.box64_version_entries).toList()
-        val wowBox64Versions = stringArrayResource(R.array.wowbox64_version_entries).toList()
-        val box64BionicVersions = stringArrayResource(R.array.box64_bionic_version_entries).toList()
+        val wowBox64VersionsBase = stringArrayResource(R.array.wowbox64_version_entries).toList()
+        val box64BionicVersionsBase = stringArrayResource(R.array.box64_bionic_version_entries).toList()
         val box64Presets = Box86_64PresetManager.getPresets("box64", context)
-        val fexcoreVersions = stringArrayResource(R.array.fexcore_version_entries).toList()
+        val fexcoreVersionsBase = stringArrayResource(R.array.fexcore_version_entries).toList()
         val fexcoreTSOPresets = stringArrayResource(R.array.fexcore_preset_entries).toList()
         val fexcoreX87Presets = stringArrayResource(R.array.x87mode_preset_entries).toList()
         val fexcoreMultiblockValues = stringArrayResource(R.array.multiblock_values).toList()
@@ -165,12 +168,40 @@ fun ContainerConfigDialog(
         val bionicGraphicsDrivers = stringArrayResource(R.array.bionic_graphics_driver_entries).toList()
         val baseWrapperVersions = stringArrayResource(R.array.wrapper_graphics_driver_version_entries).toList()
         var wrapperVersions by remember { mutableStateOf(baseWrapperVersions) }
+        var dxvkVersionsAll by remember { mutableStateOf(dxvkVersionsBase) }
+        var vkd3dVersions by remember { mutableStateOf(vkd3dVersionsBase) }
+        var box64BionicVersions by remember { mutableStateOf(box64BionicVersionsBase) }
+        var wowBox64Versions by remember { mutableStateOf(wowBox64VersionsBase) } // reuse existing base list
+        var fexcoreVersions by remember { mutableStateOf(fexcoreVersionsBase) }
+
         LaunchedEffect(Unit) {
             try {
                 val installed = AdrenotoolsManager(context).enumarateInstalledDrivers()
                 if (installed.isNotEmpty()) {
                     wrapperVersions = (baseWrapperVersions + installed)
                 }
+            } catch (_: Exception) {}
+
+            // Enhance lists with installed contents
+            try {
+                val mgr = ContentsManager(context)
+                mgr.syncContents()
+
+                // Helper to convert ContentProfile list to display entries
+                fun profilesToDisplay(list: List<ContentProfile>?): List<String> {
+                    if (list == null) return emptyList()
+                    return list.filter { it.remoteUrl == null }.map { profile ->
+                        val entry = ContentsManager.getEntryName(profile)
+                        val firstDash = entry.indexOf('-')
+                        if (firstDash >= 0 && firstDash + 1 < entry.length) entry.substring(firstDash + 1) else entry
+                    }
+                }
+
+                dxvkVersionsAll = (dxvkVersionsBase + profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_DXVK))).distinct()
+                vkd3dVersions = (vkd3dVersionsBase + profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_VKD3D))).distinct()
+                box64BionicVersions = (box64BionicVersionsBase + profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_BOX64))).distinct()
+                wowBox64Versions = (wowBox64Versions + profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64))).distinct()
+                fexcoreVersions = (fexcoreVersionsBase + profilesToDisplay(mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_FEXCORE))).distinct()
             } catch (_: Exception) {}
         }
         val frameSyncEntries = stringArrayResource(R.array.frame_sync_entries).toList()
@@ -720,6 +751,7 @@ fun ContainerConfigDialog(
                                                     graphicsDriver = defaultDriver,
                                                     graphicsDriverVersion = "",
                                                     graphicsDriverConfig = newCfg.toString(),
+                                                    box64Version = "0.3.6",
                                                 )
                                             } else {
                                                 // Switch to bionic: set wrapper defaults
@@ -742,12 +774,23 @@ fun ContainerConfigDialog(
                                                 maxDeviceMemoryIndex =
                                                     listOf("0", "512", "1024", "2048", "4096").indexOf("4096").coerceAtLeast(0)
 
+                                                // If transitioning from GLIBC -> BIONIC, set Box64 to default and DXVK to async-1.10.3
+                                                val envSet = EnvVars(config.envVars).apply {
+                                                    put("DXVK_ASYNC", "1")
+                                                }
+                                                val currentConfig = KeyValueSet(config.dxwrapperConfig)
+                                                currentConfig.put("version", "async-1.10.3")
+                                                config = config.copy(dxwrapperConfig = currentConfig.toString())
+
                                                 config = config.copy(
                                                     containerVariant = newVariant,
                                                     wineVersion = newWine,
                                                     graphicsDriver = defaultBionicDriver,
                                                     graphicsDriverVersion = "",
                                                     graphicsDriverConfig = newCfg.toString(),
+                                                    box64Version = "0.3.7",
+                                                    dxwrapperConfig = currentConfig.toString(),
+                                                    envVars = envSet.toString(),
                                                 )
                                             }
                                         },
@@ -1311,7 +1354,7 @@ fun ContainerConfigDialog(
                                 SettingsListDropdown(
                                     colors = settingsTileColors(),
                                     title = { Text(text = "Box64 Version") },
-                                    value = getVersionsForBox64().indexOfFirst { StringUtils.parseIdentifier(it) == config.box64Version },
+                                    value = getVersionsForBox64().indexOfFirst { StringUtils.parseIdentifier(it) == config.box64Version }.coerceAtLeast(0),
                                     items = getVersionsForBox64(),
                                     onItemSelected = {
                                         config = config.copy(

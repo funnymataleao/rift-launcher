@@ -6,7 +6,7 @@ import com.winlator.container.Container;
 
 public abstract class DefaultVersion {
     public static final String BOX86 = "0.3.2";
-    public static final String BOX64 = "0.3.7";
+    public static final String BOX64 = "0.3.6";
     public static final String FEXCORE = "2507";
     public static final String WRAPPER = "System";
     public static final String TURNIP = "25.2.0";
