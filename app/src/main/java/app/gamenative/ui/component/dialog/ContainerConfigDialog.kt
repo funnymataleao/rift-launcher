@@ -384,6 +384,14 @@ fun ContainerConfigDialog(
             return box64Versions
         }
 
+        fun getStartupSelectionOptions(): List<String> {
+            if (config.containerVariant.equals(Container.GLIBC)) {
+                return startupSelectionEntries
+            } else {
+                return startupSelectionEntries.subList(0, 2)
+            }
+        }
+
         var graphicsDriverVersionIndex by rememberSaveable {
             // Find the version in the list that matches the configured version
             val version = config.graphicsDriverVersion
@@ -1682,8 +1690,8 @@ fun ContainerConfigDialog(
                                 SettingsListDropdown(
                                     colors = settingsTileColors(),
                                     title = { Text(text = "Startup Selection") },
-                                    value = config.startupSelection.toInt(),
-                                    items = startupSelectionEntries,
+                                    value = config.startupSelection.toInt().takeIf { it in getStartupSelectionOptions().indices } ?: 1,
+                                    items = getStartupSelectionOptions(),
                                     onItemSelected = {
                                         config = config.copy(
                                             startupSelection = it.toByte(),

@@ -108,7 +108,6 @@ import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.util.Locale
-import java.util.concurrent.atomic.AtomicLong
 import kotlin.io.path.name
 import com.winlator.PrefManager as WinlatorPrefManager
 
@@ -1072,7 +1071,16 @@ private fun setupXEnvironment(
     }
 
     if (container != null) {
-        if (container.startupSelection == Container.STARTUP_SELECTION_AGGRESSIVE) xServer.winHandler.killProcess("services.exe")
+        if (container.startupSelection == Container.STARTUP_SELECTION_AGGRESSIVE) {
+            if (container.containerVariant.equals(Container.BIONIC)){
+                Timber.d("Incorrect startup selection detected. Reverting to essential startup selection")
+                container.startupSelection = Container.STARTUP_SELECTION_ESSENTIAL
+                container.putExtra("startupSelection", java.lang.String.valueOf(Container.STARTUP_SELECTION_ESSENTIAL))
+                container.saveData()
+            } else {
+                xServer.winHandler.killProcess("services.exe");
+            }
+        }
 
         val wow64Mode = container.isWoW64Mode
         guestProgramLauncherComponent.setContainer(container);
@@ -1566,7 +1574,7 @@ private fun applyGeneralPatches(
             TarCompressorUtils.Type.ZSTD,
             downloaded,
             rootDir,
-            onExtractFileListener
+            onExtractFileListener,
         );
 //
 //        TarCompressorUtils.extract(
