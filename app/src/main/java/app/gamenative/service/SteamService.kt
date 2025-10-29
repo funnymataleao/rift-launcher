@@ -747,6 +747,16 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
+        fun isSteamInstallable(context: Context): Boolean {
+            val imageFs = ImageFs.find(context)
+            return File(imageFs.filesDir, "steam.tzst").exists()
+        }
+
+        fun isFileInstallable(context: Context, filename: String): Boolean {
+            val imageFs = ImageFs.find(context)
+            return File(imageFs.filesDir, filename).exists()
+        }
+
         suspend fun fetchFile(
             url: String,
             dest: File,
@@ -814,6 +824,28 @@ class SteamService : Service(), IChallengeUrlChanged {
                 fetchFile("https://downloads.gamenative.app/imagefs_gamenative.txz",
                     File(instance!!.filesDir, "imagefs_gamenative.txz"), onDownloadProgress)
             }
+        }
+
+        fun downloadImageFsPatches(
+            onDownloadProgress: (Float) -> Unit,
+            parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+            context: Context,
+        ) = parentScope.async {
+            Timber.i("imagefs will be downloaded")
+            val dest = File(instance!!.filesDir, "imagefs_patches_gamenative.tzst")
+            Timber.d("Downloading imagefs_patches_gamenative.tzst to " + dest.toString());
+            fetchFile("https://downloads.gamenative.app/imagefs_patches_gamenative.tzst", dest, onDownloadProgress)
+        }
+
+        fun downloadSteam(
+            onDownloadProgress: (Float) -> Unit,
+            parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+            context: Context,
+        ) = parentScope.async {
+            Timber.i("imagefs will be downloaded")
+            val dest = File(instance!!.filesDir, "steam.tzst")
+            Timber.d("Downloading steam.tzst to " + dest.toString());
+            fetchFile("https://downloads.gamenative.app/steam.tzst", dest, onDownloadProgress)
         }
 
         fun downloadApp(

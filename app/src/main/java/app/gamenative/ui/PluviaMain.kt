@@ -895,11 +895,27 @@ fun preLaunchApp(
         // set up Ubuntu file system
         SplitCompat.install(context)
         if (!SteamService.isImageFsInstallable(context, container.containerVariant)) {
-            setLoadingMessage("Downloading first-time files...")
+            setLoadingMessage("Downloading first-time files${if(container.containerVariant.equals(Container.GLIBC)) " (1/2)" else ""}")
             SteamService.downloadImageFs(
                 onDownloadProgress = { setLoadingProgress(it / 1.0f) },
                 this,
                 variant = container.containerVariant,
+                context = context,
+            ).await()
+        }
+        if (container.containerVariant.equals(Container.GLIBC) && !SteamService.isFileInstallable(context, "imagefs_patches_gamenative.tzst")) {
+            setLoadingMessage("Downloading first-time files (2/2)")
+            SteamService.downloadImageFsPatches(
+                onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                this,
+                context = context,
+            ).await()
+        }
+        if (container.isLaunchRealSteam && !SteamService.isFileInstallable(context, "steam.tzst")) {
+            setLoadingMessage("Downloading Steam...")
+            SteamService.downloadSteam(
+                onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                this,
                 context = context,
             ).await()
         }
