@@ -45,6 +45,14 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
+
+                <!--
+                 Allows app window to be resized on Oculus Quest VR headsets
+                -->
+                <meta-data
+                android:name="com.oculus.vrshell.supports_free_resizing"
+                android:value="true" />
+
                 <data
                     android:host="pluvia"
                     android:scheme="home" />
