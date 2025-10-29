@@ -45,6 +45,7 @@ public class ContainerManager {
             Container.DEFAULT_GRAPHICS_DRIVER = "turnip";
             DefaultVersion.DXVK = "2.6.1-gplasync";
             DefaultVersion.VKD3D = "2.14.1";
+            DefaultVersion.WRAPPER = "turnip25.3.0_R3_Auto";
             DefaultVersion.STEAM_TYPE = STEAM_TYPE_NORMAL;
         } else {
             DefaultVersion.VARIANT = Container.BIONIC;
