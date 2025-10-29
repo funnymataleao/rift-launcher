@@ -119,6 +119,8 @@ public class Container {
     private JSONObject controllerEmulationBindings;
     private boolean gstreamerWorkaround = false;
 
+    private boolean forceDlc = false;
+
     private String containerVariant = DEFAULT_VARIANT;
 
     public String getGraphicsDriverVersion() {
@@ -620,6 +622,9 @@ public class Container {
                 data.put("controllerEmulationBindings", controllerEmulationBindings);
             }
 
+            // Force DLC setting
+            data.put("forceDlc", forceDlc);
+
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
         }
@@ -779,6 +784,9 @@ public class Container {
                 case "controllerEmulationBindings":
                     this.controllerEmulationBindings = data.getJSONObject(key);
                     break;
+                case "forceDlc":
+                    this.forceDlc = data.getBoolean(key);
+                    break;
             }
         }
     }
@@ -878,6 +886,14 @@ public class Container {
 
     public void setEmulateKeyboardMouse(boolean emulate) {
         this.emulateKeyboardMouse = emulate;
+    }
+
+    public boolean isForceDlc() {
+        return forceDlc;
+    }
+
+    public void setForceDlc(boolean forceDlc) {
+        this.forceDlc = forceDlc;
     }
 
     public JSONObject getControllerEmulationBindings() {

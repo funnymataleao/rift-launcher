@@ -72,6 +72,7 @@ object ContainerUtils {
             desktopTheme = WineThemeManager.DEFAULT_DESKTOP_THEME,
             language = PrefManager.containerLanguage,
             containerVariant = PrefManager.containerVariant,
+            forceDlc = PrefManager.forceDlc,
             wineVersion = PrefManager.wineVersion,
 			emulator = PrefManager.emulator,
 			fexcoreVersion = PrefManager.fexcoreVersion,
@@ -138,6 +139,7 @@ object ContainerUtils {
 		PrefManager.xinputEnabled = containerData.enableXInput
 		PrefManager.dinputEnabled = containerData.enableDInput
 		PrefManager.dinputMapperType = containerData.dinputMapperType.toInt()
+        PrefManager.forceDlc = containerData.forceDlc
     }
 
     fun toContainerData(container: Container): ContainerData {
@@ -216,6 +218,7 @@ object ContainerUtils {
             fexcoreVersion = container.fexCoreVersion,
             language = container.language,
             sdlControllerAPI = container.isSdlControllerAPI,
+            forceDlc = container.isForceDlc,
             enableXInput = enableX,
             enableDInput = enableD,
             dinputMapperType = mapperType,
@@ -250,6 +253,7 @@ object ContainerUtils {
         } catch (e: Exception) {
             container.getExtra("language", "english")
         }
+        val previousForceDlc: Boolean = container.isForceDlc
         val userRegFile = File(container.rootDir, ".wine/user.reg")
         WineRegistryEditor(userRegFile).use { registryEditor ->
             registryEditor.setStringValue("Software\\Wine\\Direct3D", "renderer", containerData.renderer)
@@ -306,6 +310,7 @@ object ContainerUtils {
         container.setDisableMouseInput(containerData.disableMouseInput)
         container.setTouchscreenMode(containerData.touchscreenMode)
         container.setEmulateKeyboardMouse(containerData.emulateKeyboardMouse)
+        container.setForceDlc(containerData.forceDlc)
         try {
             val bindingsStr = containerData.controllerEmulationBindings
             if (bindingsStr.isNotEmpty()) {
@@ -326,6 +331,18 @@ object ContainerUtils {
             val appDirPath = SteamService.getAppDirPath(steamAppId)
             MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
             Timber.i("Language changed from '$previousLanguage' to '${containerData.language}'. Cleared STEAM_DLL_REPLACED marker for container ${container.id}.")
+        }
+        if (previousLanguage.lowercase() != containerData.language.lowercase()) {
+            val steamAppId = extractGameIdFromContainerId(container.id)
+            val appDirPath = SteamService.getAppDirPath(steamAppId)
+            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
+            Timber.i("Language changed from '$previousLanguage' to '${containerData.language}'. Cleared STEAM_DLL_REPLACED marker for container ${container.id}.")
+        }
+        if (previousForceDlc != containerData.forceDlc) {
+            val steamAppId = extractGameIdFromContainerId(container.id)
+            val appDirPath = SteamService.getAppDirPath(steamAppId)
+            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
+            Timber.i("forceDlc changed from '$previousForceDlc' to '${containerData.forceDlc}'. Cleared STEAM_DLL_REPLACED marker for container ${container.id}.")
         }
 
         // Apply controller settings to container

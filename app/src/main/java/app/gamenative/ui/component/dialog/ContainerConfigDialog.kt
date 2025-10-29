@@ -917,6 +917,16 @@ fun ContainerConfigDialog(
                                         config = config.copy(showFPS = it)
                                     },
                                 )
+                                
+                                SettingsSwitch(
+                                    colors = settingsTileColorsAlt(),
+                                    title = { Text(text = "Force DLC") },
+                                    subtitle = { Text(text = "Only enable if DLCs are not detected or saves with DLC are not working") },
+                                    state = config.forceDlc,
+                                    onCheckedChange = {
+                                        config = config.copy(forceDlc = it)
+                                    },
+                                )
                                 SettingsSwitch(
                                     colors = settingsTileColorsAlt(),
                                     title = { Text(text = "Launch Steam Client (Beta)") },
