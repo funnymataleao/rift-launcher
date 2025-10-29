@@ -108,6 +108,7 @@ import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.io.path.name
 import com.winlator.PrefManager as WinlatorPrefManager
 
@@ -1316,7 +1317,7 @@ private fun unpackExecutableFile(
     var output = StringBuilder()
     if (needsUnpacking || containerVariantChanged){
         try {
-            val monoCmd = "wine msiexec /i Z:\\opt\\mono-gecko-offline\\wine-mono-9.0.0-x86.msi"
+            val monoCmd = "wine msiexec /i Z:\\opt\\mono-gecko-offline\\wine-mono-9.0.0-x86.msi && wineserver -k"
             Timber.i("Install mono command $monoCmd")
             val monoOutput = guestProgramLauncherComponent.execShellCommand(monoCmd)
             output.append(monoOutput)
@@ -1409,9 +1410,9 @@ private fun unpackExecutableFile(
 
         output = StringBuilder()
         try {
-            val wsOutput = guestProgramLauncherComponent.execShellCommand("wineserver -w")
+            val wsOutput = guestProgramLauncherComponent.execShellCommand("wineserver -k")
             output.append(wsOutput)
-            Timber.i("Result of wineserver -w command " + output)
+            Timber.i("Result of wineserver -k command " + output)
         } catch (e: Exception) {
             Timber.e("Error running wineserver: $e")
         }
@@ -1530,6 +1531,10 @@ private fun setupWineSystemFiles(
         containerDataChanged = true
     }
 
+    if (container.isLaunchRealSteam){
+        extractSteamFiles(context, container, onExtractFileListener)
+    }
+
     val desktopTheme = container.desktopTheme
     if ((desktopTheme + "," + screenInfo) != container.getExtra("desktopTheme")) {
         WineThemeManager.apply(context, WineThemeManager.ThemeInfo(desktopTheme), screenInfo)
@@ -1563,14 +1568,22 @@ private fun applyGeneralPatches(
     val contentsManager = ContentsManager(context)
     if (container.containerVariant.equals(Container.GLIBC)) {
         FileUtils.delete(File(rootDir, "/opt/apps"))
+        val downloaded = File(imageFs.getFilesDir(), "imagefs_patches_gamenative.tzst")
         Timber.i("Extracting imagefs_patches_gamenative.tzst")
         TarCompressorUtils.extract(
             TarCompressorUtils.Type.ZSTD,
-            context.assets,
-            "imagefs_patches_gamenative.tzst",
+            downloaded,
             rootDir,
-            onExtractFileListener,
-        )
+            onExtractFileListener
+        );
+//
+//        TarCompressorUtils.extract(
+//            TarCompressorUtils.Type.ZSTD,
+//            context.assets,
+//            "imagefs_patches_gamenative.tzst",
+//            rootDir,
+//            onExtractFileListener,
+//        )
     } else {
         Timber.i("Extracting container_pattern_common.tzst")
         TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "container_pattern_common.tzst", rootDir);
@@ -2087,6 +2100,23 @@ private fun extractGraphicsDriverFiles(
 //            envVars.put("VKBASALT_CONFIG", vkbasaltConfig)
 //        }
     }
+}
+
+private fun extractSteamFiles(
+    context: Context,
+    container: Container,
+    onExtractFileListener: OnExtractFileListener?,
+) {
+    val imageFs = ImageFs.find(context)
+    if (File(ImageFs.find(context).rootDir.absolutePath, ImageFs.WINEPREFIX + "/drive_c/Program Files (x86)/Steam/steam.exe").exists()) return
+    val downloaded = File(imageFs.getFilesDir(), "steam.tzst")
+    Timber.i("Extracting steam.tzst")
+    TarCompressorUtils.extract(
+        TarCompressorUtils.Type.ZSTD,
+        downloaded,
+        imageFs.getRootDir(),
+        onExtractFileListener,
+    );
 }
 
 private fun readZipManifestNameFromAssets(context: Context, assetName: String): String? {
