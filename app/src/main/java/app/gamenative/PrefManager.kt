@@ -247,6 +247,13 @@ object PrefManager {
         set(value) {
             setPref(LAUNCH_REAL_STEAM, value)
         }
+        
+    private val FORCE_DLC = booleanPreferencesKey("force_dlc")
+    var forceDlc: Boolean
+        get() = getPref(FORCE_DLC, false)
+        set(value) {
+            setPref(FORCE_DLC, value)
+        }
 
     private val CPU_LIST = stringPreferencesKey("cpu_list")
     var cpuList: String

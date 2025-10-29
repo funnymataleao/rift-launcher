@@ -659,8 +659,8 @@ object SteamUtils {
         val configsIni = settingsDir.resolve("configs.user.ini")
         val accountName   = PrefManager.username
         val accountSteamId = SteamService.userSteamId?.convertToUInt64()?.toString() ?: "0"
+        val container = ContainerUtils.getOrCreateContainer(context, appId)
         val language = runCatching {
-            val container = ContainerUtils.getOrCreateContainer(context, appId)
             (container.getExtra("language", null)
                 ?: container.javaClass.getMethod("getLanguage").invoke(container) as? String)
                 ?: "english"
@@ -679,9 +679,10 @@ object SteamUtils {
         val appIni = settingsDir.resolve("configs.app.ini")
         val dlcIds = SteamService.getDlcDepotsOf(steamAppId)
 
+        val forceDlc = container.isForceDlc()
         val appIniContent = buildString {
             appendLine("[app::dlcs]")
-            appendLine("unlock_all=1")
+            appendLine("unlock_all=${if (forceDlc) 1 else 0}")
             dlcIds?.forEach { appendLine("$it=dlc$it") }
         }
 
