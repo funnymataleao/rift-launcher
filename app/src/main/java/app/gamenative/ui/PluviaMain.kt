@@ -232,10 +232,12 @@ fun PluviaMain(
                                     msgDialogState = MessageDialogState(
                                         visible = true,
                                         type = DialogType.SUPPORT,
-                                        message = "Thank you for using GameNative, please consider supporting " +
-                                            "open-source PC gaming on Android by donating whatever amount is comfortable to you",
-                                        confirmBtnText = "Donate",
+                                        title = "Thank you for using GameNative!",
+                                        message = "Support open-source PC gaming on Android by sharing the app with your friends" +
+                                                " or becoming a member on Ko-fi.",
+                                        confirmBtnText = "Join on Ko-fi",
                                         dismissBtnText = "Close",
+                                        actionBtnText = "Share",
                                     )
                                 }
                             }
@@ -403,6 +405,7 @@ fun PluviaMain(
     val onDismissRequest: (() -> Unit)?
     val onDismissClick: (() -> Unit)?
     val onConfirmClick: (() -> Unit)?
+    var onActionClick: (() -> Unit)? = null
     when (msgDialogState.type) {
         DialogType.DISCORD -> {
             onConfirmClick = {
@@ -427,6 +430,14 @@ fun PluviaMain(
             }
             onDismissClick = {
                 msgDialogState = MessageDialogState(visible = false)
+            }
+            onActionClick = {
+                val shareIntent = Intent().apply {
+                    action = Intent.ACTION_SEND
+                    putExtra(Intent.EXTRA_TEXT, "Check out GameNative - play your PC Steam games on Android, with full support for cloud saves!\nhttps://gamenative.app\nJoin the community: https://discord.gg/2hKv4VfZfE")
+                    type = "text/plain"
+                }
+                context.startActivity(Intent.createChooser(shareIntent, "Share GameNative"))
             }
         }
 
@@ -659,6 +670,8 @@ fun PluviaMain(
             confirmBtnText = msgDialogState.confirmBtnText,
             onDismissClick = onDismissClick,
             dismissBtnText = msgDialogState.dismissBtnText,
+            onActionClick = onActionClick,
+            actionBtnText = msgDialogState.actionBtnText,
             icon = msgDialogState.type.icon,
             title = msgDialogState.title,
             message = msgDialogState.message,
