@@ -411,7 +411,7 @@ fun ContainerConfigDialog(
 
         fun currentDxvkContext(): Pair<Boolean, List<String>> {
             val driverType    = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
-            val isVortekLike  = driverType in listOf("vortek", "adreno", "sd-8-elite")
+            val isVortekLike  = config.containerVariant.equals(Container.GLIBC) && driverType in listOf("vortek", "adreno", "sd-8-elite")
 
             val isVKD3D       = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "vkd3d"
             val constrained   = if (!inspectionMode && isVortekLike && GPUHelper.vkGetApiVersion() < GPUHelper.vkMakeVersion(1, 3, 0))
@@ -425,7 +425,7 @@ fun ContainerConfigDialog(
         // VKD3D version control (forced depending on driver)
         fun vkd3dForcedVersion(): String {
             val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
-            val isVortekLike = driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite"
+            val isVortekLike = config.containerVariant.equals(Container.GLIBC) && driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite"
             return if (isVortekLike) "2.6" else "2.14.1"
         }
         // Keep dxwrapperConfig in sync when VKD3D selected
@@ -917,7 +917,7 @@ fun ContainerConfigDialog(
                                         config = config.copy(showFPS = it)
                                     },
                                 )
-                                
+
                                 SettingsSwitch(
                                     colors = settingsTileColorsAlt(),
                                     title = { Text(text = "Force DLC") },
@@ -1092,7 +1092,7 @@ fun ContainerConfigDialog(
                                     // Vortek/Adreno specific settings
                                     run {
                                         val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
-                                        val isVortekLike = driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite"
+                                        val isVortekLike = config.containerVariant.equals(Container.GLIBC) && driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite"
                                         if (isVortekLike) {
                                             // Vulkan Max Version
                                             val vkVersions = listOf("1.0", "1.1", "1.2", "1.3")
@@ -1181,7 +1181,7 @@ fun ContainerConfigDialog(
                                 // DXVK Version Dropdown (conditionally visible and constrained)
                                 run {
                                     val driverType = StringUtils.parseIdentifier(graphicsDrivers[graphicsDriverIndex])
-                                    val isVortekLike = driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite"
+                                    val isVortekLike = config.containerVariant.equals(Container.GLIBC) && driverType == "vortek" || driverType == "adreno" || driverType == "sd-8-elite"
                                     val isVKD3D = StringUtils.parseIdentifier(dxWrappers[dxWrapperIndex]) == "vkd3d"
                                     val items =
                                         if (!inspectionMode && isVortekLike && GPUHelper.vkGetApiVersion() < GPUHelper.vkMakeVersion(
