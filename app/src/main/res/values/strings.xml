@@ -249,5 +249,24 @@
     <!-- Dialogs -->
     <string name="allowed_orientations">Allowed Orientations</string>
     <string name="select_wine_debug_channels">Select Wine Debug Channels</string>
-    <string name="cpu_number">CPU%d</string>
+    <string name="cpu_label">CPU%d</string>
+    <string name="describe_what_happened">Describe what happened</string>
+    <string name="get_support_on_discord">Get support on Discord</string>
+
+    <!-- Driver Manager -->
+    <string name="driver_manager">Driver Manager</string>
+    <string name="select_a_driver">Select a driver</string>
+    <string name="import_zip_from_device">Import ZIP from device</string>
+
+    <!-- Contents Manager -->
+    <string name="contents_manager">Contents Manager</string>
+    <string name="import_wcp_from_device">Import .wcp from device</string>
+    <string name="working">Working...</string>
+    <string name="selected_content">Selected content</string>
+    <string name="installed_contents">Installed contents</string>
+    <string name="select_type">Select type</string>
+    <string name="untrusted_files_detected">Untrusted Files Detected</string>
+    <string name="install_anyway">Install Anyway</string>
+    <string name="remove_content">Remove content?</string>
+    <string name="remove_content_confirmation">Are you sure you want to remove %1$s (%2$s)?</string>
 </resources>
