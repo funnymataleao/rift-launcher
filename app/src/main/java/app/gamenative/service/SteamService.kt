@@ -1025,7 +1025,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                         depotDownloader.addListener(listener)
 
                         // Create AppItem with only mandatory appId
-                        val appItem = AppItem(appId)
+                        val appItem = AppItem(appId,
+                            installDirectory = "/data/data/app.gamenative/Steam",
+                            depot = entitledDepotIds)
 
                         // Add item to downloader
                         depotDownloader.add(appItem)
