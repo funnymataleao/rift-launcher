@@ -236,6 +236,7 @@
     <string name="mouse_warp_override">Mouse Warp Override</string>
 
     <!-- Container Configuration: Management -->
+    <string name="environment_variables">Environment Variables</string>
     <string name="no_environment_variables">No environment variables</string>
     <string name="no_drives">No drives</string>
     <string name="startup_selection">Startup Selection</string>

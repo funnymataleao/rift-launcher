@@ -479,8 +479,8 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     driverToDelete?.let { id ->
                         AlertDialog(
                             onDismissRequest = { driverToDelete = null },
-                            title = { Text(text = "Confirm Delete") },
-                            text = { Text(text = "Are you sure you want to remove driver '$id'? This cannot be undone.") },
+                            title = { Text(text = stringResource(R.string.confirm_delete)) },
+                            text = { Text(text = stringResource(R.string.remove_driver_confirmation, id)) },
                             confirmButton = {
                                 TextButton(onClick = {
                                     try {
@@ -502,7 +502,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             },
                             dismissButton = {
                                 TextButton(onClick = { driverToDelete = null }) {
-                                    Text("Cancel")
+                                    Text(stringResource(R.string.cancel))
                                 }
                             },
                         )
