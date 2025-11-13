@@ -872,6 +872,6 @@ object SteamUtils {
     }
 
     fun getSteam3AccountId(): Long? {
-        return SteamService.userSteamId?.getAccountID()?.toLong()
+        return SteamService.userSteamId?.accountID?.toLong()
     }
 }
