@@ -1750,6 +1750,8 @@ class SteamService : Service(), IChallengeUrlChanged {
             getDownloadableDepots(appId).keys.any { depotId ->
                 val remoteManifest = remoteSteamApp.depots[depotId]?.manifests?.get(branch)
                 val localManifest  =  localSteamApp .depots[depotId]?.manifests?.get(branch)
+                // If remote manifest is null, skip this depot (hack for Castle Crashers)
+                if (remoteManifest == null) return@any false
                 remoteManifest?.gid != localManifest?.gid
             }
         }
