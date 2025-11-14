@@ -715,7 +715,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     if (mi.size > largestDepotSize) largestDepotSize = mi.size
 
                     // Check cache first
-                    val man = DepotManifest.loadFromFile("${defaultAppInstallPath}/$installDir/.DepotDownloader/${depot.depotId}_${mi.gid}.manifest")
+                    val man = DepotManifest.loadFromFile("${getAppDirPath(appId)}/.DepotDownloader/${depot.depotId}_${mi.gid}.manifest")
 
                     Timber.d("Using manifest for depot ${depot.depotId}  size=${mi.size}")
 
@@ -973,6 +973,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }.awaitAll()
                     .filter { it.second }
                     .map { it.first }
+                    .sorted()
             }
 
             Timber.i("entitledDepotIds is empty? " + entitledDepotIds.isEmpty())
@@ -1018,8 +1019,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                         // Create AppItem with only mandatory appId
                         val appItem = AppItem(appId,
-                            installDirectory = defaultAppInstallPath,
-                            installToGameNameDirectory = true,
+                            installDirectory = getAppDirPath(appId),
                             depot = entitledDepotIds)
 
                         // Add item to downloader
