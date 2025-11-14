@@ -188,6 +188,11 @@ dependencies {
     val localBuild = false // Change to 'true' needed when building JavaSteam manually
     if (localBuild) {
         implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-tf:1.8.0-SNAPSHOT"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-dota2:1.8.0-SNAPSHOT"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-depotdownloader:1.8.0-SNAPSHOT"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-deadlock:1.8.0-SNAPSHOT"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-cs:1.8.0-SNAPSHOT"))
         implementation(libs.bundles.steamkit.dev)
     } else {
         implementation(libs.steamkit) {

@@ -694,7 +694,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             // Create a temporary DepotDownloader instance for fetching manifests
             val depotDownloader = runBlocking {
                 try {
-                    DepotDownloader(steamClient, instance!!.licenses, false)
+                    DepotDownloader(steamClient, instance!!.licenses, false, androidEmulation = true, maxDownloads = PrefManager.downloadSpeed)
                 } catch (e: Exception) {
                     Timber.w(e, "Failed to create DepotDownloader for manifest fetching")
                     null
