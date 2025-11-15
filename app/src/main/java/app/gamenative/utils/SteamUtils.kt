@@ -238,7 +238,7 @@ object SteamUtils {
             imageFs.getRootDir(),
         );
         putBackSteamDlls(appDirPath)
-        restoreOriginalExecutable(context, steamAppId)
+        restoreUnpackedExecutable(context, steamAppId)
         ensureSteamSettings(context, File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient.dll").toPath(), appId)
 
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
