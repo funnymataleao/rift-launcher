@@ -8,6 +8,8 @@ import app.gamenative.data.DepotInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
+import app.gamenative.service.SteamService.Companion.getAppDirName
+import app.gamenative.service.SteamService.Companion.getAppInfoOf
 import com.winlator.container.ContainerManager
 import com.winlator.core.TarCompressorUtils
 import com.winlator.core.WineRegistryEditor
@@ -203,10 +205,9 @@ object SteamUtils {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         val container = ContainerUtils.getContainer(context, appId)
-        
+
         // Create ColdClientLoader.ini file
-        val appInfo = SteamService.getAppInfoOf(steamAppId)!!
-        val gameName = appInfo.name
+        val gameName = getAppDirName(getAppInfoOf(steamAppId))
         val executablePath = container.executablePath.replace("/", "\\")
         val exePath = "steamapps\\common\\$gameName\\$executablePath"
         val exeCommandLine = container.execArgs
@@ -224,7 +225,7 @@ object SteamUtils {
             SteamClientDll=steamclient.dll
             SteamClient64Dll=steamclient64.dll
         """.trimIndent())
-        
+
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_REPLACED) && File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.dll").exists()) {
             return
         }
@@ -743,6 +744,17 @@ object SteamUtils {
 
         if (Files.notExists(appIni)) Files.createFile(appIni)
         appIni.toFile().writeText(appIniContent)
+
+        val mainIni = settingsDir.resolve("configs.main.ini")
+
+        val mainIniContent = buildString {
+            appendLine("[main::connectivity]")
+            appendLine("disable_lan_only=1")
+        }
+
+        if (Files.notExists(mainIni)) Files.createFile(mainIni)
+        mainIni.toFile().writeText(mainIniContent)
+
 
         // Write supported languages list
         val supportedLanguagesFile = settingsDir.resolve("supported_languages.txt")
