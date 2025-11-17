@@ -262,6 +262,13 @@ object PrefManager {
             setPref(FORCE_DLC, value)
         }
 
+    private val USE_LEGACY_DRM = booleanPreferencesKey("use_legacy_drm")
+    var useLegacyDRM: Boolean
+        get() = getPref(USE_LEGACY_DRM, false)
+        set(value) {
+            setPref(USE_LEGACY_DRM, value)
+        }
+
     private val CPU_LIST = stringPreferencesKey("cpu_list")
     var cpuList: String
         get() = getPref(CPU_LIST, Container.getFallbackCPUList())
@@ -607,6 +614,14 @@ object PrefManager {
             setPref(OPEN_WEB_LINKS_EXTERNALLY, value)
         }
 
+    // Whether to hide the Android status bar when not in a game (in game list, settings, etc.)
+    private val HIDE_STATUS_BAR_WHEN_NOT_IN_GAME = booleanPreferencesKey("hide_status_bar_when_not_in_game")
+    var hideStatusBarWhenNotInGame: Boolean
+        get() = getPref(HIDE_STATUS_BAR_WHEN_NOT_IN_GAME, false)
+        set(value) {
+            setPref(HIDE_STATUS_BAR_WHEN_NOT_IN_GAME, value)
+        }
+
     private val ITEMS_PER_PAGE = intPreferencesKey("items_per_page")
     var itemsPerPage: Int
         get() = getPref(ITEMS_PER_PAGE, 50)
@@ -620,6 +635,14 @@ object PrefManager {
         get() = getPref(DOWNLOAD_ON_WIFI_ONLY, true)
         set(value) {
             setPref(DOWNLOAD_ON_WIFI_ONLY, value)
+        }
+
+    // Maximum number of concurrent downloads (8=slow, 16=medium, 24=fast, 32=blazing)
+    private val DOWNLOAD_SPEED = intPreferencesKey("download_speed")
+    var downloadSpeed: Int
+        get() = getPref(DOWNLOAD_SPEED, 24)
+        set(value) {
+            setPref(DOWNLOAD_SPEED, value)
         }
 
     private val USE_EXTERNAL_STORAGE = booleanPreferencesKey("use_external_storage")

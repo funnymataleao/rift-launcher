@@ -75,6 +75,12 @@ android {
             abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
         }
 
+        // Localization support - specify which languages to include
+        resourceConfigurations += listOf(
+            "en",    // English (default)
+            // TODO: Add more languages here using the ISO 639-1 locale code
+        )
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
@@ -187,12 +193,22 @@ dependencies {
     // JavaSteaml
     val localBuild = false // Change to 'true' needed when building JavaSteam manually
     if (localBuild) {
-        implementation(files("../../JavaSteam/build/libs/javasteam-1.6.1-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-tf:1.8.0-SNAPSHOT"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-dota2:1.8.0-SNAPSHOT"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-depotdownloader:1.8.0-SNAPSHOT"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-deadlock:1.8.0-SNAPSHOT"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-cs:1.8.0-SNAPSHOT"))
         implementation(libs.bundles.steamkit.dev)
     } else {
         implementation(libs.steamkit) {
             isChanging = version?.contains("SNAPSHOT") ?: false
         }
+        implementation("in.dragonbra:javasteam-tf:1.8.0-SNAPSHOT")
+        implementation("in.dragonbra:javasteam-dota2:1.8.0-SNAPSHOT")
+        implementation("in.dragonbra:javasteam-depotdownloader:1.8.0-SNAPSHOT")
+        implementation("in.dragonbra:javasteam-deadlock:1.8.0-SNAPSHOT")
+        implementation("in.dragonbra:javasteam-cs:1.8.0-SNAPSHOT")
     }
     implementation(libs.spongycastle)
 
