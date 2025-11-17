@@ -478,6 +478,7 @@ fun AppScreen(
                 SteamService.deleteApp(gameId)
                 // Also delete the associated container so it will be recreated on next launch
                 ContainerUtils.deleteContainer(context, appId)
+                PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId))
                 msgDialogState = MessageDialogState(false)
 
                 isInstalled = SteamService.isAppInstalled(gameId)
