@@ -224,6 +224,9 @@ object SteamUtils {
             # path to the steamclient dlls, both must be set, absolute paths or relative to the loader directory
             SteamClientDll=steamclient.dll
             SteamClient64Dll=steamclient64.dll
+
+            [Injection]
+            IgnoreLoaderArchDifference=1
         """.trimIndent())
 
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_REPLACED) && File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.dll").exists()) {
