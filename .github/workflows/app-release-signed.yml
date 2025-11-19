@@ -66,3 +66,22 @@ jobs:
       with:
         name: app-release-signed
         path: ${{ github.workspace }}/universal.apk
+
+    - name: Collect commit messages
+      id: changelog
+      run: |
+        # Get all commits in this push
+        range="${{ github.event.before }}..${{ github.sha }}"
+        [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ] && range=${{ github.sha }}
+        echo 'body<<EOF' >> $GITHUB_OUTPUT
+        git log --pretty=format:"• %s (%h)" $range >> $GITHUB_OUTPUT
+        echo 'EOF' >> $GITHUB_OUTPUT
+
+    - name: Post to Discord
+      env:
+        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      run: |
+        run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        json=$(jq -n --arg txt "**New Android build**\nDownload: $run_url\n\nChanges:\n${{ steps.changelog.outputs.body }}" '{content:$txt}')
+        curl -H 'Content-Type: application/json' -d "$json" "$DISCORD_WEBHOOK_URL"
+
