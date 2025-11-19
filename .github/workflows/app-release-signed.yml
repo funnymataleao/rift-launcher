@@ -67,22 +67,25 @@ jobs:
         name: app-release-signed
         path: ${{ github.workspace }}/universal.apk
 
-    - name: Collect commit messages
+    - name: Build changelog text
       id: changelog
       run: |
-        {
-          echo 'body<<EOF'
-          for msg in ${{ join( github.event.commits.*.message, '¶' ) }}; do
-            echo "• ${msg//¶/ }"
-          done
-          echo 'EOF'
-        } >>"$GITHUB_OUTPUT"
+        text=$(jq -r '.commits[] | "• " + (.message | split("\n")[0]) + " (" + .id[0:7] + ")"' "$GITHUB_EVENT_PATH")
+        echo 'log<<EOF' >>"$GITHUB_OUTPUT"
+        echo "$text" >>"$GITHUB_OUTPUT"
+        echo 'EOF' >>"$GITHUB_OUTPUT"
 
     - name: Post to Discord
       env:
         DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
       run: |
-        run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        json=$(jq -n --arg txt "**New Android build**\nDownload: $run_url\n\nChanges:\n${{ steps.changelog.outputs.body }}" '{content:$txt}')
-        curl -H 'Content-Type: application/json' -d "$json" "$DISCORD_WEBHOOK_URL"
+        run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts"
+        payload=$(cat <<EOF
+          {
+            "content": "**New Android build**\nDownload: $run_url\n\nChanges:\n${{ steps.changelog.outputs.log }}"
+          }
+          EOF
+          )
+        curl -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
+
 
