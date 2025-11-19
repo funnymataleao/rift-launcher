@@ -60,6 +60,7 @@ jobs:
         unzip app-release-signed.apks
 
     - name: Upload Artifact
+      id: upload_app
       uses: actions/upload-artifact@v4
       with:
         name: app-release-signed
@@ -77,13 +78,6 @@ jobs:
       env:
         DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
       run: |
-        run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts"
-        payload=$(cat <<EOF
-          {
-            "content": "**New Android build**\nDownload: $run_url\n\nChanges:\n${{ steps.changelog.outputs.log }}"
-          }
-          EOF
-          )
-        curl -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
-
-
+        artifact_url='${{ steps.upload_app.outputs.artifact-url }}'
+        payload='{"content":"**New Android build**\nDownload: '"$artifact_url"'\n\nChanges:\n'"${{ steps.changelog.outputs.log }}"'"}'
+        curl -H 'Content-Type: application/json' -d "$payload" "$DISCORD_WEBHOOK_URL"
