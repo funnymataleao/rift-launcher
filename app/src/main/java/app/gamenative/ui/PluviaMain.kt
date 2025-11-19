@@ -43,6 +43,7 @@ import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.GameSource
+import app.gamenative.data.PostSyncInfo
 import app.gamenative.enums.AppTheme
 import app.gamenative.enums.LoginResult
 import app.gamenative.enums.PathType
@@ -114,9 +115,9 @@ fun PluviaMain(
     var isConnecting by rememberSaveable { mutableStateOf(false) }
 
     var gameBackAction by remember { mutableStateOf<() -> Unit?>({}) }
-    
+
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
-    
+
     // Check for updates on app start
     LaunchedEffect(Unit) {
         val checkedUpdateInfo = UpdateChecker.checkForUpdate(context)
@@ -180,9 +181,10 @@ fun PluviaMain(
                                 MainActivity.consumePendingLaunchRequest()?.let { launchRequest ->
                                     Timber.i("[IntentLaunch]: Processing pending launch request for app ${launchRequest.appId} (user is now logged in)")
 
-                                    // Check if the game is installed
+                                    // Check if the game is installed (Steam only)
+                                    val isCustomGame = launchRequest.appId.startsWith("${GameSource.CUSTOM_GAME.name}_")
                                     val gameId = ContainerUtils.extractGameIdFromContainerId(launchRequest.appId)
-                                    if (!SteamService.isAppInstalled(gameId)) {
+                                    if (!isCustomGame && !SteamService.isAppInstalled(gameId)) {
                                         val appName = SteamService.getAppInfoOf(gameId)?.name ?: "App ${launchRequest.appId}"
                                         Timber.w("[IntentLaunch]: Game not installed: $appName (${launchRequest.appId})")
 
@@ -682,7 +684,7 @@ fun PluviaMain(
                         viewModel.setLoadingDialogVisible(true)
                         viewModel.setLoadingDialogMessage("Downloading update...")
                         viewModel.setLoadingDialogProgress(0f)
-                        
+
                         val success = UpdateInstaller.downloadAndInstall(
                             context = context,
                             downloadUrl = updateInfo.downloadUrl,
@@ -691,7 +693,7 @@ fun PluviaMain(
                                 viewModel.setLoadingDialogProgress(progress)
                             }
                         )
-                        
+
                         viewModel.setLoadingDialogVisible(false)
                         if (!success) {
                             msgDialogState = MessageDialogState(
@@ -842,8 +844,7 @@ fun PluviaMain(
             ) { backStackEntry ->
                 val isOffline = backStackEntry.arguments?.getBoolean("offline") ?: false
                 HomeScreen(
-                    onClickPlay = { gameId, asContainer ->
-                        val appId = "${GameSource.STEAM.name}_$gameId"
+                    onClickPlay = { appId, asContainer ->
                         viewModel.setLaunchedAppId(appId)
                         viewModel.setBootToContainer(asContainer)
                         viewModel.setOffline(isOffline)
@@ -1042,7 +1043,18 @@ fun preLaunchApp(
             }
         } catch (_: Exception) { /* ignore persona read errors */ }
 
-        // sync save files and check no pending remote operations are running
+        // Check if this is an Custom Games
+        val isCustomGame = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.CUSTOM_GAME
+
+        // For Custom Games, bypass Steam Cloud operations entirely and proceed to launch
+        if (isCustomGame) {
+            Timber.i("[preLaunchApp] Custom Game detected for $appId — skipping Steam Cloud sync and launching container")
+            setLoadingDialogVisible(false)
+            onSuccess(context, appId)
+            return@launch
+        }
+
+        // For Steam games, sync save files and check no pending remote operations are running
         val prefixToPath: (String) -> String = { prefix ->
             PathType.from(prefix).toAbsPath(context, gameId, SteamService.userSteamId!!.accountID)
         }

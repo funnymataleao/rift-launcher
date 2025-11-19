@@ -164,7 +164,7 @@ fun SettingsGroupInterface(
         var wifiOnlyDownload by rememberSaveable { mutableStateOf(PrefManager.downloadOnWifiOnly) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
-            title = { Text(text = "Download only over Wi-Fi") },
+            title = { Text(text = "Download only over Wi-Fi/LAN") },
             subtitle = { Text(text = "Prevent downloads on cellular data") },
             state = wifiOnlyDownload,
             onCheckedChange = {

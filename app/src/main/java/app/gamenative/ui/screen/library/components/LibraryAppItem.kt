@@ -62,6 +62,9 @@ import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
+import app.gamenative.utils.CustomGameScanner
+import java.io.File
+import android.net.Uri
 
 @Composable
 internal fun AppItem(
@@ -71,6 +74,7 @@ internal fun AppItem(
     paneType: PaneType = PaneType.LIST,
     onFocus: () -> Unit = {},
 ) {
+    val context = LocalContext.current
     var hideText by remember { mutableStateOf(true) }
     var alpha by remember { mutableFloatStateOf(1f) }
 
@@ -141,17 +145,81 @@ internal fun AppItem(
                     .clip(RoundedCornerShape(12.dp)),
             ) {
                 if (paneType == PaneType.LIST) {
+                    val iconUrl = remember(appInfo.appId) {
+                        if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
+                            val path = CustomGameScanner.findIconFileForCustomGame(context, appInfo.appId)
+                            if (!path.isNullOrEmpty()) {
+                                if (path.startsWith("file://")) path else "file://$path"
+                            } else {
+                                appInfo.clientIconUrl
+                            }
+                        } else appInfo.clientIconUrl
+                    }
                     ListItemImage(
                         modifier = Modifier.size(56.dp),
                         imageModifier = Modifier.clip(RoundedCornerShape(10.dp)),
-                        image = { appInfo.clientIconUrl }
+                        image = { iconUrl }
                     )
                 } else {
                     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) { 2/3f } else { 460/215f }
-                    val imageUrl = if (paneType == PaneType.GRID_CAPSULE) {
-                        "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
-                    } else {
-                        "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+
+                    // Helper function to find SteamGridDB images for Custom Games
+                    fun findSteamGridDBImage(imageType: String): String? {
+                        if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
+                            val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
+                            gameFolderPath?.let { path ->
+                                val folder = java.io.File(path)
+                                val imageFile = folder.listFiles()?.firstOrNull { file ->
+                                    file.name.startsWith("steamgriddb_$imageType") &&
+                                    (file.name.endsWith(".png", ignoreCase = true) ||
+                                     file.name.endsWith(".jpg", ignoreCase = true) ||
+                                     file.name.endsWith(".webp", ignoreCase = true))
+                                }
+                                return imageFile?.let { android.net.Uri.fromFile(it).toString() }
+                            }
+                        }
+                        return null
+                    }
+
+                    val imageUrl = remember(appInfo.appId, paneType) {
+                        if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
+                            // For Custom Games, use SteamGridDB images
+                            when (paneType) {
+                                PaneType.GRID_CAPSULE -> {
+                                    // Vertical grid for capsule
+                                    findSteamGridDBImage("grid_capsule")
+                                        ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
+                                }
+                                PaneType.GRID_HERO -> {
+                                    // Horizontal grid for hero view
+                                    findSteamGridDBImage("grid_hero")
+                                        ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                                }
+                                else -> {
+                                    // For list view, use heroes endpoint (not grid_hero)
+                                    val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
+                                    val heroUrl = gameFolderPath?.let { path ->
+                                        val folder = java.io.File(path)
+                                        val heroFile = folder.listFiles()?.firstOrNull { file ->
+                                            file.name.startsWith("steamgriddb_hero") &&
+                                            !file.name.contains("grid") &&
+                                            (file.name.endsWith(".png", ignoreCase = true) ||
+                                             file.name.endsWith(".jpg", ignoreCase = true) ||
+                                             file.name.endsWith(".webp", ignoreCase = true))
+                                        }
+                                        heroFile?.let { android.net.Uri.fromFile(it).toString() }
+                                    }
+                                    heroUrl ?: "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                                }
+                            }
+                        } else {
+                            // For Steam games, use standard Steam URLs
+                            if (paneType == PaneType.GRID_CAPSULE) {
+                                "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/library_600x900.jpg"
+                            } else {
+                                "https://shared.steamstatic.com/store_item_assets/steam/apps/" + appInfo.gameId + "/header.jpg"
+                            }
+                        }
                     }
 
                     ListItemImage(
@@ -173,8 +241,12 @@ internal fun AppItem(
                             appInfo = appInfo,
                         )
                     } else {
-                        val isInstalled = remember(appInfo.appId) {
-                            SteamService.isAppInstalled(appInfo.gameId)
+                        val isInstalled = remember(appInfo.appId, appInfo.gameSource) {
+                            when (appInfo.gameSource) {
+                                GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
+                                GameSource.CUSTOM_GAME -> true // Custom Games are always considered installed
+                                else -> false
+                            }
                         }
 
                         // Calculate padding for text to prevent overlap with icons
@@ -268,21 +340,20 @@ internal fun GameInfoBlock(
 ) {
     // For text displayed in list view, or as override if image loading fails
 
-    // Determine download and install state
-    val downloadInfo = remember(appInfo.appId) { SteamService.getAppDownloadInfo(appInfo.gameId) }
+    // Determine download and install state for Steam games only
+    val isSteam = appInfo.gameSource == GameSource.STEAM
+    val downloadInfo = remember(appInfo.appId) { if (isSteam) SteamService.getAppDownloadInfo(appInfo.gameId) else null }
     val downloadProgress = remember(downloadInfo) { downloadInfo?.getProgress() ?: 0f }
     val isDownloading = downloadInfo != null && downloadProgress < 1f
-    val isInstalled = remember(appInfo.appId) {
-        SteamService.isAppInstalled(appInfo.gameId)
-    }
+    val isInstalledSteam = remember(appInfo.appId) { if (isSteam) SteamService.isAppInstalled(appInfo.gameId) else false }
 
     var appSizeOnDisk by remember { mutableStateOf("") }
 
     var hideText by remember { mutableStateOf(true) }
     var alpha = remember(Int) {1f}
 
-    LaunchedEffect(Unit) {
-        if (isInstalled) {
+    LaunchedEffect(isSteam, isInstalledSteam) {
+        if (isSteam && isInstalledSteam) {
             appSizeOnDisk = "..."
             DownloadService.getSizeOnDiskDisplay(appInfo.gameId) {  appSizeOnDisk = it }
         }
@@ -303,16 +374,23 @@ internal fun GameInfoBlock(
             modifier = Modifier.padding(top = 4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            // Status indicator: Installing / Installed / Not installed
-            val statusText = when {
-                isDownloading -> "Installing"
-                isInstalled -> "Installed"
-                else -> "Not installed"
+            // Status indicator
+            val (statusText, statusColor) = if (isSteam) {
+                val text = when {
+                    isDownloading -> "Installing"
+                    isInstalledSteam -> "Installed"
+                    else -> "Not installed"
+                }
+                val color = when {
+                    isDownloading || isInstalledSteam -> MaterialTheme.colorScheme.tertiary
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                }
+                text to color
+            } else {
+                // Custom Games are considered ready (no Steam install tracking)
+                "Ready" to MaterialTheme.colorScheme.tertiary
             }
-            val statusColor = when {
-                isDownloading || isInstalled -> MaterialTheme.colorScheme.tertiary
-                else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-            }
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -339,8 +417,8 @@ internal fun GameInfoBlock(
                 }
             }
 
-            // Game size on its own line for installed games
-            if (isInstalled) {
+            // Game size on its own line for installed Steam games only
+            if (isSteam && isInstalledSteam) {
                 Text(
                     text = "$appSizeOnDisk",
                     style = MaterialTheme.typography.bodyMedium,
