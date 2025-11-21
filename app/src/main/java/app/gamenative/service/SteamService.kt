@@ -1678,25 +1678,6 @@ class SteamService : Service(), IChallengeUrlChanged {
             instance?._unifiedFriends!!.getOwnedGames(friendID)
         }
 
-        suspend fun syncPlaytimeData() = withContext(Dispatchers.IO) {
-            try {
-                val steamId = userSteamId?.convertToUInt64() ?: return@withContext
-                val ownedGames = getOwnedGames(steamId)
-
-                ownedGames.forEach { game ->
-                    val existingApp = instance?.appDao?.findApp(game.appId)
-                    existingApp?.let { app ->
-                        // Only update if playtime has changed
-                        if (app.playtimeForever != game.playtimeForever) {
-                            instance?.appDao?.update(app.copy(playtimeForever = game.playtimeForever))
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to sync playtime data")
-            }
-        }
-
         suspend fun getRecentMessages(friendID: Long) = withContext(Dispatchers.IO) {
             instance?._unifiedFriends!!.getRecentMessages(friendID)
         }
@@ -2232,8 +2213,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                     val oneHour = 60 * 60 * 1000L
 
                     if (now - lastSync > oneHour) {
-                        // 8 Seconds is a good amount of time to wait before grabbing.
-                        delay(8000)
                         syncPlaytimeData()
                         PrefManager.lastPlaytimeSync = System.currentTimeMillis()
                     }
