@@ -106,12 +106,13 @@ object CustomGameScanner {
         if (!folder.exists() || !folder.isDirectory) return null
 
         // 1) First priority: Check for SteamGridDB logo files
-        val steamGridLogo = folder.listFiles()?.firstOrNull { file ->
-            file.name.startsWith("steamgriddb_logo") &&
+        // Optimized: Use FileFilter to only get matching files instead of listing all files
+        val steamGridLogo = folder.listFiles { file ->
+            file.isFile && file.name.startsWith("steamgriddb_logo", ignoreCase = true) &&
             (file.name.endsWith(".png", ignoreCase = true) ||
              file.name.endsWith(".jpg", ignoreCase = true) ||
              file.name.endsWith(".webp", ignoreCase = true))
-        }
+        }?.firstOrNull()
         if (steamGridLogo != null) {
             Timber.tag("CustomGameScanner").d("Found SteamGridDB logo: ${steamGridLogo.absolutePath}")
             return steamGridLogo.absolutePath
@@ -147,12 +148,13 @@ object CustomGameScanner {
         if (!folder.exists() || !folder.isDirectory) return null
 
         // 1) First priority: Check for SteamGridDB logo files
-        val steamGridLogo = folder.listFiles()?.firstOrNull { file ->
-            file.name.startsWith("steamgriddb_logo") &&
+        // Optimized: Use FileFilter to only get matching files instead of listing all files
+        val steamGridLogo = folder.listFiles { file ->
+            file.isFile && file.name.startsWith("steamgriddb_logo", ignoreCase = true) &&
             (file.name.endsWith(".png", ignoreCase = true) ||
              file.name.endsWith(".jpg", ignoreCase = true) ||
              file.name.endsWith(".webp", ignoreCase = true))
-        }
+        }?.firstOrNull()
         if (steamGridLogo != null) {
             Timber.tag("CustomGameScanner").d("Found SteamGridDB logo: ${steamGridLogo.absolutePath}")
             return steamGridLogo.absolutePath
@@ -294,18 +296,24 @@ object CustomGameScanner {
         val candidates = mutableListOf<String>()
 
         // Root-level .exe files
-        folder.listFiles()?.forEach { f ->
-            if (f.isValidExe()) candidates.add(f.name)
+        // Optimized: Use FileFilter to only get .exe files instead of listing all files
+        folder.listFiles { f ->
+            f.isFile && f.name.endsWith(".exe", ignoreCase = true) &&
+            !f.name.startsWith("unins", ignoreCase = true)
+        }?.forEach { f ->
+            candidates.add(f.name)
         }
 
         // If none or more than one at root, also check one level down and collect all
         val subDirs = folder.listFiles { f -> f.isDirectory } ?: emptyArray()
         for (sd in subDirs) {
-            sd.listFiles()?.forEach { f ->
-                if (f.isValidExe()) {
-                    val rel = sd.name + "/" + f.name
-                    candidates.add(rel)
-                }
+            // Optimized: Use FileFilter to only get .exe files
+            sd.listFiles { f ->
+                f.isFile && f.name.endsWith(".exe", ignoreCase = true) &&
+                !f.name.startsWith("unins", ignoreCase = true)
+            }?.forEach { f ->
+                val rel = sd.name + "/" + f.name
+                candidates.add(rel)
             }
         }
 
@@ -332,18 +340,24 @@ object CustomGameScanner {
         val candidates = mutableListOf<String>()
 
         // Root-level .exe files
-        folder.listFiles()?.forEach { f ->
-            if (f.isValidExe()) candidates.add(f.name)
+        // Optimized: Use FileFilter to only get .exe files instead of listing all files
+        folder.listFiles { f ->
+            f.isFile && f.name.endsWith(".exe", ignoreCase = true) &&
+            !f.name.startsWith("unins", ignoreCase = true)
+        }?.forEach { f ->
+            candidates.add(f.name)
         }
 
         // Check one level down
         val subDirs = folder.listFiles { f -> f.isDirectory } ?: emptyArray()
         for (sd in subDirs) {
-            sd.listFiles()?.forEach { f ->
-                if (f.isValidExe()) {
-                    val rel = sd.name + "/" + f.name
-                    candidates.add(rel)
-                }
+            // Optimized: Use FileFilter to only get .exe files
+            sd.listFiles { f ->
+                f.isFile && f.name.endsWith(".exe", ignoreCase = true) &&
+                !f.name.startsWith("unins", ignoreCase = true)
+            }?.forEach { f ->
+                val rel = sd.name + "/" + f.name
+                candidates.add(rel)
             }
         }
 
@@ -513,16 +527,16 @@ object CustomGameScanner {
                     Timber.tag("CustomGameScanner").d("Found 0 subdirectories in $root (folder is empty or contains only files)")
                     continue
                 }
-                Timber.tag("CustomGameScanner").d("Found ${children.size} subdirectories in $root: ${children.map { it.name }}")
+                Timber.tag("CustomGameScanner").d("Found ${children.size} subdirectories in $root")
 
                 for (folder in children) {
+                    // Early exit: filter by query before expensive file operations
                     if (q.isNotEmpty() && !folder.name.contains(q, ignoreCase = true)) continue
 
+                    // Optimized: looksLikeGameFolder already uses FileFilter for efficiency
                     val looksLikeGame = looksLikeGameFolder(folder)
-                    Timber.tag("CustomGameScanner").d("Checking folder: ${folder.name} (looksLikeGame: $looksLikeGame)")
 
                     if (!looksLikeGame) {
-                        Timber.tag("CustomGameScanner").d("Folder ${folder.name} does not look like a game folder (no .exe found)")
                         continue
                     }
 
@@ -569,12 +583,13 @@ object CustomGameScanner {
                 try {
                     // Check if images actually exist in the folder, not just the metadata flag
                     // This ensures we fetch images on first discovery even if metadata is inconsistent
-                    val hasImages = folder.listFiles()?.any { file ->
-                        file.name.startsWith("steamgriddb_") &&
+                    // Optimized: Use FileFilter to only get matching files instead of listing all files
+                    val hasImages = folder.listFiles { file ->
+                        file.isFile && file.name.startsWith("steamgriddb_", ignoreCase = true) &&
                         (file.name.endsWith(".png", ignoreCase = true) ||
                          file.name.endsWith(".jpg", ignoreCase = true) ||
                          file.name.endsWith(".webp", ignoreCase = true))
-                    } == true
+                    }?.isNotEmpty() == true
                     
                     val metadataSaysFetched = app.gamenative.utils.GameMetadataManager.isSteamGridDBFetched(folder)
                     
@@ -598,9 +613,10 @@ object CustomGameScanner {
 
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             try {
-                val hasExtractedIcon = folder.listFiles()?.any { file ->
-                    file.name.endsWith(".extracted.ico", ignoreCase = true)
-                } == true
+                // Optimized: Use FileFilter to only get matching files instead of listing all files
+                val hasExtractedIcon = folder.listFiles { file ->
+                    file.isFile && file.name.endsWith(".extracted.ico", ignoreCase = true)
+                }?.isNotEmpty() == true
 
                 if (!hasExtractedIcon) {
                     val uniqueExeRel = findUniqueExeRelativeToFolder(folder)
@@ -655,19 +671,24 @@ object CustomGameScanner {
             return false
         }
 
-        // Check for .exe in dir or one level below
-        val rootFiles = dir.listFiles() ?: return false
-        val inRoot = rootFiles.any { it.isFile && it.name.endsWith(".exe", ignoreCase = true) }
-        if (inRoot) {
+        // Optimized: Use FileFilter to only get .exe files instead of listing all files
+        // Check for .exe in root directory first
+        val rootExeFiles = dir.listFiles { file ->
+            file.isFile && file.name.endsWith(".exe", ignoreCase = true)
+        }
+        if (rootExeFiles != null && rootExeFiles.isNotEmpty()) {
             Timber.tag("CustomGameScanner").d("looksLikeGameFolder: ${dir.name} has .exe in root")
             return true
         }
 
-        val subDirs = rootFiles.filter { it.isDirectory }
+        // If no .exe in root, check one level below in subdirectories
+        val subDirs = dir.listFiles { it.isDirectory } ?: return false
         for (sd in subDirs) {
-            val subFiles = sd.listFiles() ?: continue
-            val hasExe = subFiles.any { it.isFile && it.name.endsWith(".exe", ignoreCase = true) }
-            if (hasExe) {
+            // Use FileFilter to only get .exe files, reducing memory usage
+            val subExeFiles = sd.listFiles { file ->
+                file.isFile && file.name.endsWith(".exe", ignoreCase = true)
+            }
+            if (subExeFiles != null && subExeFiles.isNotEmpty()) {
                 Timber.tag("CustomGameScanner").d("looksLikeGameFolder: ${dir.name} has .exe in subdirectory ${sd.name}")
                 return true
             }
