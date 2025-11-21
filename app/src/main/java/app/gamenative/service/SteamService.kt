@@ -2205,19 +2205,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                 picsChangesCheckerJob = continuousPICSChangesChecker()
                 picsGetProductInfoJob = continuousPICSGetProductInfo()
 
-                // Sync playtime data periodically (only if it's been more than 1 hour since last sync)
-                // Explicitly runs on IO dispatcher to guarantee no UI blocking
-                scope.launch(Dispatchers.IO) {
-                    val lastSync = PrefManager.lastPlaytimeSync
-                    val now = System.currentTimeMillis()
-                    val oneHour = 60 * 60 * 1000L
-
-                    if (now - lastSync > oneHour) {
-                        syncPlaytimeData()
-                        PrefManager.lastPlaytimeSync = System.currentTimeMillis()
-                    }
-                }
-
                 if (false) {
                     // No social features are implemented at present
                     // continuously check for game names that friends are playing.
