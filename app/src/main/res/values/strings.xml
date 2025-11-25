@@ -22,6 +22,8 @@
     <string name="steam_imagefs_install_message">The Ubuntu image needs to be installed before being able to edit the configuration. This operation might take a few minutes. Would you like to continue?</string>
     <string name="steam_reset_container_title">Reset Container</string>
     <string name="steam_reset_container_message">This will reset your container to the default configuration.</string>
+    <string name="base_app_reset_container_title">Reset Container?</string>
+    <string name="base_app_reset_container_confirm">Reset</string>
     <string name="steam_verify_files_title">Verify Files</string>
     <string name="steam_verify_files_message">Please ensure your saves are uploaded to the cloud or backed up before verifying, as they may be overwritten otherwise.</string>
     <string name="steam_update_title">Update</string>
@@ -29,6 +31,7 @@
     <string name="steam_cloud_sync_success">Cloud sync completed successfully</string>
     <string name="steam_cloud_sync_up_to_date">Save files are already up to date</string>
     <string name="steam_cloud_sync_failed">Cloud sync failed: %s</string>
+    <string name="steam_not_logged_in">You must be logged into Steam to use this feature</string>
     <string name="steam_storage_permission_required">Storage permission required</string>
     <string name="steam_container_reset_success">Container reset to defaults</string>
     <string name="steam_imagefs_installed">ImageFS installed. Please try editing container again.</string>
