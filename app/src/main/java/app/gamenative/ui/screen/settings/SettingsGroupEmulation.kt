@@ -8,6 +8,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import app.gamenative.ui.component.dialog.Box64PresetsDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
+import app.gamenative.ui.component.dialog.FEXCorePresetsDialog
 import app.gamenative.ui.component.dialog.OrientationDialog
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.utils.ContainerUtils
@@ -42,6 +43,13 @@ fun SettingsGroupEmulation() {
             visible = showBox64PresetsDialog,
             onDismissRequest = { showBox64PresetsDialog = false },
         )
+        var showFexcorePresetsDialog by rememberSaveable { mutableStateOf(false) }
+        if (showFexcorePresetsDialog) {
+            FEXCorePresetsDialog(
+                visible = showFexcorePresetsDialog,
+                onDismissRequest = { showFexcorePresetsDialog = false },
+            )
+        }
 
         var showDriverManager by rememberSaveable { mutableStateOf(false) }
         if (showDriverManager) {
@@ -71,6 +79,12 @@ fun SettingsGroupEmulation() {
             title = { Text(text = "Box64 Presets") },
             subtitle = { Text("View, modify, and create Box64 presets") },
             onClick = { showBox64PresetsDialog = true },
+        )
+        SettingsMenuLink(
+            colors = settingsTileColors(),
+            title = { Text(text = stringResource(R.string.fexcore_presets)) },
+            subtitle = { Text(text = stringResource(R.string.fexcore_presets_description)) },
+            onClick = { showFexcorePresetsDialog = true },
         )
         SettingsMenuLink(
             colors = settingsTileColors(),
