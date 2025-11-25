@@ -561,6 +561,14 @@ fun XServerScreen(
                                 null
                             }
 
+                            val sharpnessEffect: String = container.getExtra("sharpnessEffect", "None")
+                            if (sharpnessEffect != "None") {
+                                val sharpnessLevel = container.getExtra("sharpnessLevel", "100").toDouble()
+                                val sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toDouble()
+                                vkbasaltConfig =
+                                    "effects=" + sharpnessEffect.lowercase(Locale.getDefault()) + ";" + "casSharpness=" + sharpnessLevel / 100 + ";" + "dlsSharpness=" + sharpnessLevel / 100 + ";" + "dlsDenoise=" + sharpnessDenoise / 100 + ";" + "enableOnLaunch=True"
+                            }
+
                             Timber.i("Doing things once")
                             val envVars = EnvVars()
 
@@ -680,14 +688,6 @@ fun XServerScreen(
 
             if (container.isDisableMouseInput){
                 PluviaApp.touchpadView?.setTouchscreenMouseDisabled(true);
-            }
-
-            val sharpnessEffect: String = container.getExtra("sharpnessEffect", "None")
-            if (sharpnessEffect != "None") {
-                val sharpnessLevel = container.getExtra("sharpnessLevel", "100").toDouble()
-                val sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toDouble()
-                vkbasaltConfig =
-                    "effects=" + sharpnessEffect.lowercase(Locale.getDefault()) + ";" + "casSharpness=" + sharpnessLevel / 100 + ";" + "dlsSharpness=" + sharpnessLevel / 100 + ";" + "dlsDenoise=" + sharpnessDenoise / 100 + ";" + "enableOnLaunch=True"
             }
 
             frameLayout

@@ -24,7 +24,7 @@ static void *vulkan_handle = NULL;
 
 
 static char *get_native_library_dir(JNIEnv *env, jobject context) {
-    char *native_libdir;
+    char *native_libdir = NULL;
 
     if (context != NULL) {
         jclass class_ = (*env)->FindClass(env,"com/winlator/core/AppUtils");
@@ -33,16 +33,21 @@ static char *get_native_library_dir(JNIEnv *env, jobject context) {
         jstring nativeLibDir = (jstring)(*env)->CallStaticObjectMethod(env, class_,
                                                                        getNativeLibraryDir,
                                                                        context);
-        if (nativeLibDir)
-            native_libdir = (char *)(*env)->GetStringUTFChars(env, nativeLibDir, NULL);
+        if (nativeLibDir) {
+            const char *native_libdir_chars = (*env)->GetStringUTFChars(env, nativeLibDir, NULL);
+            if (native_libdir_chars) {
+                native_libdir = strdup(native_libdir_chars);
+                (*env)->ReleaseStringUTFChars(env, nativeLibDir, native_libdir_chars);
+            }
+        }
     }
 
     return native_libdir;
 }
 
 static char *get_driver_path(JNIEnv *env, jobject context, const char *driver_name) {
-    char *driver_path;
-    char *absolute_path;
+    char *driver_path = NULL;
+    const char *absolute_path_chars = NULL;
 
     jclass contextWrapperClass = (*env)->FindClass(env, "android/content/ContextWrapper");
     jmethodID  getFilesDir = (*env)->GetMethodID(env, contextWrapperClass, "getFilesDir", "()Ljava/io/File;");
@@ -53,16 +58,19 @@ static char *get_driver_path(JNIEnv *env, jobject context, const char *driver_na
                                                              getAbsolutePath);
 
     if (absolutePath) {
-        absolute_path = (char *)(*env)->GetStringUTFChars(env,absolutePath, NULL);
-        asprintf(&driver_path, "%s/contents/adrenotools/%s/", absolute_path, driver_name);
-        (*env)->ReleaseStringUTFChars(env,absolutePath, absolute_path);
+        absolute_path_chars = (*env)->GetStringUTFChars(env,absolutePath, NULL);
+        if (absolute_path_chars) {
+            if (asprintf(&driver_path, "%s/contents/adrenotools/%s/", absolute_path_chars, driver_name) == -1)
+                driver_path = NULL;
+            (*env)->ReleaseStringUTFChars(env,absolutePath, absolute_path_chars);
+        }
     }
 
     return driver_path;
 }
 
 static char *get_library_name(JNIEnv *env, jobject context, const char *driver_name) {
-    char *library_name;
+    char *library_name = NULL;
 
     jclass adrenotoolsManager = (*env)->FindClass(env, "com/winlator/contents/AdrenotoolsManager");
     jmethodID constructor = (*env)->GetMethodID(env, adrenotoolsManager, "<init>", "(Landroid/content/Context;)V");
@@ -71,8 +79,13 @@ static char *get_library_name(JNIEnv *env, jobject context, const char *driver_n
     jstring driverName = (*env)->NewStringUTF(env, driver_name);
     jstring libraryName = (jstring)(*env)->CallObjectMethod(env, adrenotoolsManagerObj,getLibraryName, driverName);
 
-    if (libraryName)
-        library_name = (char *)(*env)->GetStringUTFChars(env, libraryName, NULL);
+    if (libraryName) {
+        const char *library_name_chars = (*env)->GetStringUTFChars(env, libraryName, NULL);
+        if (library_name_chars) {
+            library_name = strdup(library_name_chars);
+            (*env)->ReleaseStringUTFChars(env, libraryName, library_name_chars);
+        }
+    }
 
     return library_name;
 }
@@ -82,37 +95,48 @@ static void init_original_vulkan() {
 }
 
 static void init_vulkan(JNIEnv  *env, jobject context, const char *driver_name) {
-    char *tmpdir;
-    char *library_name;
-    char *native_library_dir;
+    char *tmpdir = NULL;
+    char *library_name = NULL;
+    char *native_library_dir = NULL;
 
-    const char *driver_path = get_driver_path(env, context, driver_name);
+    char *driver_path = get_driver_path(env, context, driver_name);
 
     if (driver_path && (access(driver_path, F_OK) == 0)) {
         library_name = get_library_name(env, context, driver_name);
         native_library_dir = get_native_library_dir(env, context);
-        asprintf(&tmpdir, "%s%s", driver_path, "temp");
-        mkdir(tmpdir, S_IRWXU | S_IRWXG);
+        char *tmpdir_buffer = NULL;
+        if (asprintf(&tmpdir_buffer, "%s%s", driver_path, "temp") != -1) {
+            tmpdir = tmpdir_buffer;
+            mkdir(tmpdir, S_IRWXU | S_IRWXG);
+        }
     }
 
     vulkan_handle = adrenotools_open_libvulkan(RTLD_LOCAL | RTLD_NOW, ADRENOTOOLS_DRIVER_CUSTOM, tmpdir, native_library_dir, driver_path, library_name, NULL, NULL);
+
+    free(tmpdir);
+    free(library_name);
+    free(native_library_dir);
+    free(driver_path);
 }
 
 static VkResult create_instance(jstring driverName, JNIEnv *env, jobject context) {
     VkResult result;
     VkInstanceCreateInfo create_info = {};
-    char *driver_name = NULL;
+    const char *driver_name = NULL;
+    VkResult status = VK_SUCCESS;
 
     if (driverName != NULL)
-        driver_name = (char *)(*env)->GetStringUTFChars(env, driverName, NULL);
+        driver_name = (*env)->GetStringUTFChars(env, driverName, NULL);
 
     if (driver_name && strcmp(driver_name, "System"))
         init_vulkan(env, context, driver_name);
     else
         init_original_vulkan();
 
-    if (!vulkan_handle)
-        return VK_ERROR_INITIALIZATION_FAILED;
+    if (!vulkan_handle) {
+        status = VK_ERROR_INITIALIZATION_FAILED;
+        goto cleanup;
+    }
 
     PFN_vkGetInstanceProcAddr gip = (PFN_vkGetInstanceProcAddr)dlsym(vulkan_handle, "vkGetInstanceProcAddr");
     PFN_vkCreateInstance createInstance = (PFN_vkCreateInstance)dlsym(vulkan_handle, "vkCreateInstance");
@@ -134,18 +158,28 @@ static VkResult create_instance(jstring driverName, JNIEnv *env, jobject context
 
     result = createInstance(&create_info, NULL, &instance);
 
-    if (result != VK_SUCCESS)
-        return result;
+    if (result != VK_SUCCESS) {
+        status = result;
+        goto cleanup;
+    }
 
     getPhysicalDeviceProperties = (PFN_vkGetPhysicalDeviceProperties)gip(instance, "vkGetPhysicalDeviceProperties");
     destroyInstance = (PFN_vkDestroyInstance)gip(instance, "vkDestroyInstance");
     enumerateDeviceExtensionProperties = (PFN_vkEnumerateDeviceExtensionProperties)gip(instance, "vkEnumerateDeviceExtensionProperties");
     enumeratePhysicalDevices = (PFN_vkEnumeratePhysicalDevices)gip(instance, "vkEnumeratePhysicalDevices");
 
-    if (!getPhysicalDeviceProperties || !destroyInstance || !enumerateDeviceExtensionProperties || !enumeratePhysicalDevices)
-        return VK_ERROR_INITIALIZATION_FAILED;
+    if (!getPhysicalDeviceProperties || !destroyInstance || !enumerateDeviceExtensionProperties || !enumeratePhysicalDevices) {
+        status = VK_ERROR_INITIALIZATION_FAILED;
+        goto cleanup;
+    }
 
-    return VK_SUCCESS;
+    status = VK_SUCCESS;
+
+cleanup:
+    if (driver_name)
+        (*env)->ReleaseStringUTFChars(env, driverName, driver_name);
+
+    return status;
 }
 
 static VkResult enumerate_physical_devices() {
@@ -166,10 +200,13 @@ static VkResult enumerate_physical_devices() {
 
     result = enumeratePhysicalDevices(instance, &deviceCount, pdevices);
 
-    if (result != VK_SUCCESS)
+    if (result != VK_SUCCESS) {
+        free(pdevices);
         return result;
+    }
 
     physicalDevice = pdevices[0];
+    free(pdevices);
 
     if (physicalDevice == VK_NULL_HANDLE)
         return VK_ERROR_INITIALIZATION_FAILED;
@@ -180,103 +217,174 @@ static VkResult enumerate_physical_devices() {
 JNIEXPORT jstring JNICALL
 Java_com_winlator_core_GPUInformation_getVulkanVersion(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
     VkPhysicalDeviceProperties props = {};
-    char *driverVersion;
+    char *driverVersion = NULL;
+    jstring versionString = NULL;
+    const char *unknown = "Unknown";
 
     if  (create_instance(driverName, env, context) != VK_SUCCESS) {
         printf("Failed to create instance");
-        return (*env)->NewStringUTF(env, "Unknown");
+        versionString = (*env)->NewStringUTF(env, unknown);
+        goto cleanup;
     }
 
     if (enumerate_physical_devices() != VK_SUCCESS) {
         printf("Failed to query physical devices");
-        return (*env)->NewStringUTF(env, "Unknown");
+        versionString = (*env)->NewStringUTF(env, unknown);
+        goto cleanup;
     }
 
     getPhysicalDeviceProperties(physicalDevice, &props);
     uint32_t api_version_major = VK_VERSION_MAJOR(props.apiVersion);
     uint32_t api_version_minor = VK_VERSION_MINOR(props.apiVersion);
     uint32_t api_version_patch = VK_VERSION_PATCH(props.apiVersion);
-    asprintf(&driverVersion, "%d.%d.%d", api_version_major, api_version_minor, api_version_patch);
+    if (asprintf(&driverVersion, "%d.%d.%d", api_version_major, api_version_minor, api_version_patch) == -1) {
+        printf("Failed to build version string");
+        versionString = (*env)->NewStringUTF(env, unknown);
+        goto cleanup;
+    }
 
-    destroyInstance(instance, NULL);
+    versionString = (*env)->NewStringUTF(env, driverVersion);
 
-    if (vulkan_handle)
+cleanup:
+    if (destroyInstance && instance != VK_NULL_HANDLE) {
+        destroyInstance(instance, NULL);
+        instance = VK_NULL_HANDLE;
+    }
+    physicalDevice = VK_NULL_HANDLE;
+
+    if (vulkan_handle) {
         dlclose(vulkan_handle);
+        vulkan_handle = NULL;
+    }
 
-    return (*env)->NewStringUTF(env, driverVersion);
+    if (driverVersion)
+        free(driverVersion);
+
+    if (!versionString)
+        versionString = (*env)->NewStringUTF(env, unknown);
+
+    return versionString;
 }
 
 JNIEXPORT jstring JNICALL
 Java_com_winlator_core_GPUInformation_getRenderer(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
     VkPhysicalDeviceProperties props = {};
-    char *renderer;
+    char *renderer = NULL;
+    jstring rendererString = NULL;
+    const char *unknown = "Unknown";
 
 
     if  (create_instance(driverName, env, context) != VK_SUCCESS) {
         printf("Failed to create instance");
-        return (*env)->NewStringUTF(env, "Unknown");
+        rendererString = (*env)->NewStringUTF(env, unknown);
+        goto cleanup;
     }
 
     if (enumerate_physical_devices() != VK_SUCCESS) {
         printf("Failed to query physical devices");
-        return (*env)->NewStringUTF(env, "Unknown");
+        rendererString = (*env)->NewStringUTF(env, unknown);
+        goto cleanup;
     }
 
     getPhysicalDeviceProperties(physicalDevice, &props);
-    asprintf(&renderer, "%s", props.deviceName);
+    renderer = strdup(props.deviceName);
+    if (!renderer) {
+        printf("Failed to copy renderer name");
+        rendererString = (*env)->NewStringUTF(env, unknown);
+        goto cleanup;
+    }
 
-    destroyInstance(instance, NULL);
+    rendererString = (*env)->NewStringUTF(env, renderer);
 
-    if (vulkan_handle)
+cleanup:
+    if (destroyInstance && instance != VK_NULL_HANDLE) {
+        destroyInstance(instance, NULL);
+        instance = VK_NULL_HANDLE;
+    }
+    physicalDevice = VK_NULL_HANDLE;
+
+    if (vulkan_handle) {
         dlclose(vulkan_handle);
+        vulkan_handle = NULL;
+    }
 
-    return (*env)->NewStringUTF(env, renderer);
+    if (renderer)
+        free(renderer);
+
+    if (!rendererString)
+        rendererString = (*env)->NewStringUTF(env, unknown);
+
+    return rendererString;
 }
 
 JNIEXPORT jobjectArray JNICALL
 Java_com_winlator_core_GPUInformation_enumerateExtensions(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
-    jobjectArray extensions;
+    jobjectArray extensions = NULL;
     VkResult result;
     uint32_t extensionCount;
+    VkExtensionProperties *extensionProperties = NULL;
+    jclass stringClass = (*env)->FindClass(env, "java/lang/String");
+
+    if (!stringClass)
+        return NULL;
 
     if  (create_instance(driverName, env, context) != VK_SUCCESS) {
         printf("Failed to create instance");
-        return (*env)->NewObjectArray(env, 0, (*env)->FindClass(env, "java/lang/String"), NULL);
+        goto cleanup;
     }
 
     if (enumerate_physical_devices() != VK_SUCCESS) {
         printf("Failed to query physical devices");
-        return (*env)->NewObjectArray(env, 0, (*env)->FindClass(env, "java/lang/String"), NULL);
+        goto cleanup;
     }
 
     result = enumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount, NULL);
 
     if (result != VK_SUCCESS || extensionCount < 1) {
         printf("Failed to query extension count");
-        return (*env)->NewObjectArray(env, 0, (*env)->FindClass(env, "java/lang/String"), NULL);
+        goto cleanup;
     }
 
-    VkExtensionProperties *extensionProperties = malloc(sizeof(VkExtensionProperties) * extensionCount);
-    enumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount,
-                                       extensionProperties);
+    extensionProperties = malloc(sizeof(VkExtensionProperties) * extensionCount);
+    if (!extensionProperties) {
+        printf("Failed to allocate extension properties buffer");
+        goto cleanup;
+    }
+
+    result = enumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount,
+                                                extensionProperties);
 
     if (result != VK_SUCCESS) {
         printf("Failed to query extensions");
-        return (*env)->NewObjectArray(env, 0, (*env)->FindClass(env, "java/lang/String"), NULL);
+        goto cleanup;
     }
 
     extensions = (jobjectArray) (*env)->NewObjectArray(env, extensionCount,
-                                                       (*env)->FindClass(env, "java/lang/String"),
+                                                       stringClass,
                                                        NULL);
     for (int i = 0; i < extensionCount; i++) {
         (*env)->SetObjectArrayElement(env, extensions, i,
                                       (*env)->NewStringUTF(env, extensionProperties[i].extensionName));
     }
 
-    destroyInstance(instance, NULL);
+cleanup:
+    if (extensionProperties)
+        free(extensionProperties);
 
-    if (vulkan_handle)
+    if (destroyInstance && instance != VK_NULL_HANDLE) {
+        destroyInstance(instance, NULL);
+        instance = VK_NULL_HANDLE;
+    }
+
+    if (vulkan_handle) {
         dlclose(vulkan_handle);
+        vulkan_handle = NULL;
+    }
+
+    physicalDevice = VK_NULL_HANDLE;
+
+    if (!extensions)
+        extensions = (*env)->NewObjectArray(env, 0, stringClass, NULL);
 
     return extensions;
 }
