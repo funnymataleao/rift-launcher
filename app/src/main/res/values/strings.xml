@@ -180,9 +180,6 @@
         <b>2</b> : All 1 plus a Memory Barrier on every write to memory using MOV<br />
         <b>3</b> : All 2 plus Memory Barrier when reading from memory and on some SSE/SSE2 opcodes
     ]]>    </string>
-    <string name="box86_64_env_var_help__dynarec_forward">Defines the max allowed forward value when building Block</string>
-    <string name="box86_64_env_var_help__dynarec_callret">Optimization of CALL/RET opcodes</string>
-    <string name="box86_64_env_var_help__dynarec_wait">Defines whether or not Dynarec will wait for the FillBlock to be ready</string>
     <string name="box86_64_env_var_help__dynarec_weakbarrier"><![CDATA[
         Tweak memory barriers to reduce performance impact of strong memory emulation<br /><br />
         <b>0</b> : Use regular safe barriers<br />
