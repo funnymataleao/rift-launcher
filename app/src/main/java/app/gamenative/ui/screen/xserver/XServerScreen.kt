@@ -2329,11 +2329,10 @@ private fun extractGraphicsDriverFiles(
             adrenotoolsManager.setDriverById(envVars, imageFs, adrenoToolsDriverId)
         }
 
-        var vulkanVersion = graphicsDriverConfig.get("vulkanVersion")
-        val detectedVkVersion = GPUInformation.getVulkanVersion(adrenoToolsDriverId, context)
-        val vulkanVersionPatch = detectedVkVersion.split(".").getOrNull(2) ?: "0"
+        var vulkanVersion = graphicsDriverConfig.get("vulkanVersion") ?: "1.0"
+        val vulkanVersionPatch = GPUHelper.vkVersionPatch()
 
-        vulkanVersion = vulkanVersion + "." + vulkanVersionPatch
+        vulkanVersion = "$vulkanVersion.$vulkanVersionPatch"
         envVars.put("WRAPPER_VK_VERSION", vulkanVersion)
 
         val blacklistedExtensions: String? = graphicsDriverConfig.get("blacklistedExtensions")
