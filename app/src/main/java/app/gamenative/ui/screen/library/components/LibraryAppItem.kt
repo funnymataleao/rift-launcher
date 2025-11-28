@@ -34,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -73,6 +74,7 @@ internal fun AppItem(
     onClick: () -> Unit,
     paneType: PaneType = PaneType.LIST,
     onFocus: () -> Unit = {},
+    isRefreshing: Boolean = false,
     imageRefreshCounter: Long = 0L,
 ) {
     val context = LocalContext.current
@@ -83,7 +85,7 @@ internal fun AppItem(
         hideText = true
         alpha = 1f
     }
-    
+
     // Reset alpha and hideText when image URL changes (e.g., when new images are fetched)
     LaunchedEffect(imageRefreshCounter) {
         if (paneType != PaneType.LIST) {
@@ -230,7 +232,7 @@ internal fun AppItem(
                             }
                         }
                     }
-                    
+
                     // Reset alpha and hideText when image URL changes (e.g., when new images are fetched)
                     LaunchedEffect(imageUrl) {
                         if (paneType != PaneType.LIST) {
@@ -241,7 +243,9 @@ internal fun AppItem(
 
                     ListItemImage(
                         modifier = Modifier.aspectRatio(aspectRatio),
-                        imageModifier = Modifier.clip(RoundedCornerShape(3.dp)).alpha(alpha),
+                        imageModifier = Modifier
+                            .clip(RoundedCornerShape(3.dp))
+                            .alpha(alpha),
                         image = { imageUrl },
                         onFailure = {
                             hideText = false
@@ -256,13 +260,25 @@ internal fun AppItem(
                                 .align(Alignment.BottomStart)
                                 .padding(8.dp),
                             appInfo = appInfo,
+                            isRefreshing = isRefreshing,
                         )
                     } else {
-                        val isInstalled = remember(appInfo.appId, appInfo.gameSource) {
+                        var isInstalled by remember(appInfo.appId, appInfo.gameSource) {
                             when (appInfo.gameSource) {
-                                GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
-                                GameSource.CUSTOM_GAME -> true // Custom Games are always considered installed
-                                else -> false
+                                GameSource.STEAM -> mutableStateOf(SteamService.isAppInstalled(appInfo.gameId))
+                                GameSource.CUSTOM_GAME -> mutableStateOf(true) // Custom Games are always considered installed
+                                else -> mutableStateOf(false)
+                            }
+                        }
+                        // Update installation status when refresh completes
+                        LaunchedEffect(isRefreshing) {
+                            if (!isRefreshing) {
+                                // Refresh just completed, check installation status
+                                isInstalled = when (appInfo.gameSource) {
+                                    GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
+                                    GameSource.CUSTOM_GAME -> true
+                                    else -> false
+                                }
                             }
                         }
 
@@ -327,6 +343,7 @@ internal fun AppItem(
                 GameInfoBlock(
                     modifier = Modifier.weight(1f),
                     appInfo = appInfo,
+                    isRefreshing = isRefreshing,
                 )
 
                 // Play/Open button
@@ -354,15 +371,50 @@ internal fun AppItem(
 internal fun GameInfoBlock(
     modifier: Modifier,
     appInfo: LibraryItem,
+    isRefreshing: Boolean = false,
 ) {
     // For text displayed in list view, or as override if image loading fails
 
     // Determine download and install state for Steam games only
     val isSteam = appInfo.gameSource == GameSource.STEAM
     val downloadInfo = remember(appInfo.appId) { if (isSteam) SteamService.getAppDownloadInfo(appInfo.gameId) else null }
-    val downloadProgress = remember(downloadInfo) { downloadInfo?.getProgress() ?: 0f }
+    var downloadProgress by remember(downloadInfo) { mutableFloatStateOf(downloadInfo?.getProgress() ?: 0f) }
     val isDownloading = downloadInfo != null && downloadProgress < 1f
-    val isInstalledSteam = remember(appInfo.appId) { if (isSteam) SteamService.isAppInstalled(appInfo.gameId) else false }
+    var isInstalledSteam by remember(appInfo.appId) { mutableStateOf(if (isSteam) SteamService.isAppInstalled(appInfo.gameId) else false) }
+
+    // Update installation status when refresh completes
+    LaunchedEffect(isRefreshing) {
+        if (!isRefreshing) {
+            if (isSteam) {
+                // Refresh just completed, check installation status
+                isInstalledSteam = SteamService.isAppInstalled(appInfo.gameId)
+            }
+        }
+    }
+
+    // Function to refresh progress from downloadInfo - can be called from remember and LaunchedEffect
+    val refreshProgress: () -> Unit = {
+        downloadProgress = downloadInfo?.getProgress() ?: 0f
+    }
+
+    // Refresh progress when list reloads (for downloading games) or when downloadInfo changes
+    LaunchedEffect(appInfo.appId, downloadInfo, isRefreshing) {
+        if (downloadInfo != null) {
+            refreshProgress()
+        }
+    }
+
+    // Listen to real-time progress updates via listener
+    DisposableEffect(downloadInfo) {
+        val onDownloadProgress: (Float) -> Unit = { progress ->
+            downloadProgress = progress
+        }
+        downloadInfo?.addProgressListener(onDownloadProgress)
+
+        onDispose {
+            downloadInfo?.removeProgressListener(onDownloadProgress)
+        }
+    }
 
     var appSizeOnDisk by remember { mutableStateOf("") }
 
