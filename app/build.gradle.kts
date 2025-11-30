@@ -196,11 +196,11 @@ android {
 
 dependencies {
     implementation(libs.material)
-    // JavaSteaml
+    // JavaSteam
     val localBuild = false // Change to 'true' needed when building JavaSteam manually
     if (localBuild) {
         implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0-SNAPSHOT.jar"))
-        implementation(files("../../JavaSteam/build/libs/javasteam-depotdownloader:1.8.0-SNAPSHOT"))
+        implementation(files("../../JavaSteam/libs/javasteam-depotdownloader-1.8.0-SNAPSHOT.jar"))
         implementation(libs.bundles.steamkit.dev)
     } else {
         implementation(libs.steamkit) {
@@ -261,6 +261,7 @@ dependencies {
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.kotlin)
     testImplementation(libs.androidx.ui.test.junit4)
+    testImplementation(libs.zstd.jni)
 
     // Add PostHog Android SDK dependency
     implementation("com.posthog:posthog-android:3.+")
