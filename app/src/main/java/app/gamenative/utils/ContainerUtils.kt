@@ -876,12 +876,30 @@ object ContainerUtils {
      */
     fun generateOrUpdateEmulationProfile(context: Context, container: Container): ControlsProfile {
         val inputControlsManager = InputControlsManager(context)
-        val profiles = inputControlsManager.getProfiles(false)
+        var profiles = inputControlsManager.getProfiles(false)
+
+        // If profiles are empty, try to force reload from assets
+        if (profiles.isEmpty()) {
+            val profilesDir = InputControlsManager.getProfilesDir(context)
+            try {
+                // Force copy from assets if directory is empty
+                if (FileUtils.isEmpty(profilesDir)) {
+                    FileUtils.copy(context, "inputcontrols/profiles", profilesDir)
+                }
+                // Reload profiles
+                profiles = inputControlsManager.getProfiles(false)
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to reload profiles from assets")
+            }
+        }
 
         // Choose a base profile to clone from (Virtual Gamepad preferred)
         val baseProfile = profiles.firstOrNull { it.id == 3 || it.name.contains("Virtual Gamepad", true) }
             ?: profiles.getOrNull(2)
-            ?: profiles.first()
+            ?: profiles.firstOrNull()
+            ?: throw IllegalStateException(
+                "No control profiles available. Please ensure inputcontrols/profiles assets are present."
+            )
         val baseFile = ControlsProfile.getProfileFile(context, baseProfile.id)
 
         val profileJSONObject = org.json.JSONObject(FileUtils.readString(baseFile))
