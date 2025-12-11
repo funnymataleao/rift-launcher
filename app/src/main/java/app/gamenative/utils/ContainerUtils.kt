@@ -862,6 +862,308 @@ object ContainerUtils {
     }
 
     /**
+     * Creates a default Virtual Gamepad profile programmatically when asset profiles are not available.
+     * This profile matches the structure of the Virtual Gamepad profile from assets.
+     */
+    private fun createDefaultVirtualGamepadProfile(context: Context, inputControlsManager: InputControlsManager): ControlsProfile {
+        Timber.w("Creating default Virtual Gamepad profile - asset profiles not available")
+        
+        // Create profile with id 3 to match the Virtual Gamepad profile
+        val profile = ControlsProfile(context, 3)
+        profile.setName("Virtual Gamepad")
+        profile.setCursorSpeed(1.0f)
+        
+        // Create the JSON structure matching the asset profile
+        val profileJSON = JSONObject().apply {
+            put("id", 3)
+            put("name", "Virtual Gamepad")
+            put("cursorSpeed", 1)
+            
+            val elementsArray = JSONArray().apply {
+                // D_PAD element
+                put(JSONObject().apply {
+                    put("type", "D_PAD")
+                    put("shape", "CIRCLE")
+                    put("bindings", JSONArray().apply {
+                        put("GAMEPAD_DPAD_UP")
+                        put("GAMEPAD_DPAD_RIGHT")
+                        put("GAMEPAD_DPAD_DOWN")
+                        put("GAMEPAD_DPAD_LEFT")
+                    })
+                    put("scale", 0.85)
+                    put("x", 0.10784313827753067)
+                    put("y", 0.4)
+                    put("toggleSwitch", false)
+                    put("text", "")
+                    put("iconId", 0)
+                })
+                
+                // BUTTON X
+                put(JSONObject().apply {
+                    put("type", "BUTTON")
+                    put("shape", "CIRCLE")
+                    put("bindings", JSONArray().apply {
+                        put("GAMEPAD_BUTTON_X")
+                        put("NONE")
+                        put("NONE")
+                        put("NONE")
+                    })
+                    put("scale", 1.0)
+                    put("x", 0.8133170008659363)
+                    put("y", 0.4)
+                    put("toggleSwitch", false)
+                    put("text", "")
+                    put("iconId", 0)
+                })
+                
+                // BUTTON Y
+                put(JSONObject().apply {
+                    put("type", "BUTTON")
+                    put("shape", "CIRCLE")
+                    put("bindings", JSONArray().apply {
+                        put("GAMEPAD_BUTTON_Y")
+                        put("NONE")
+                        put("NONE")
+                        put("NONE")
+                    })
+                    put("scale", 1.0)
+                    put("x", 0.8721405267715454)
+                    put("y", 0.2666666746)
+                    put("toggleSwitch", false)
+                    put("text", "")
+                    put("iconId", 0)
+                })
+                
+                // BUTTON A
+                put(JSONObject().apply {
+                    put("type", "BUTTON")
+                    put("shape", "CIRCLE")
+                    put("bindings", JSONArray().apply {
+                        put("GAMEPAD_BUTTON_A")
+                        put("NONE")
+                        put("NONE")
+                        put("NONE")
+                    })
+                    put("scale", 1.0)
+                    put("x", 0.8721405267715454)
+                    put("y", 0.5333333254)
+                    put("toggleSwitch", false)
+                    put("text", "")
+                    put("iconId", 0)
+                })
+                
+                // BUTTON B
+                put(JSONObject().apply {
+                    put("type", "BUTTON")
+                    put("shape", "CIRCLE")
+                    put("bindings", JSONArray().apply {
+                        put("GAMEPAD_BUTTON_B")
+                        put("NONE")
+                        put("NONE")
+                        put("NONE")
+                    })
+                    put("scale", 1.0)
+                    put("x", 0.9309640526771545)
+                    put("y", 0.4)
+                    put("toggleSwitch", false)
+                    put("text", "")
+                    put("iconId", 0)
+                })
+                
+                // BUTTON R2
+                put(JSONObject().apply {
+                    put("type", "BUTTON")
+                    put("shape", "RECT")
+                    put("bindings", JSONArray().apply {
+                        put("GAMEPAD_BUTTON_R2")
+                        put("NONE")
+                        put("NONE")
+                        put("NONE")
+                    })
+                    put("scale", 2.0)
+                    put("x", 0.93)
+                    put("y", 0.07)
+                    put("toggleSwitch", false)
+                    put("text", "")
+                    put("iconId", 0)
+                })
+                
+                // BUTTON R1
+                put(JSONObject().apply {
+                    put("type", "BUTTON")
+                    put("shape", "RECT")
+                    put("bindings", JSONArray().apply {
+                        put("GAMEPAD_BUTTON_R1")
+                        put("NONE")
+                        put("NONE")
+                        put("NONE")
+                    })
+                    put("scale", 1.0)
+                    put("x", 0.97)
+                    put("y", 0.2222222388)
+                    put("toggleSwitch", false)
+                    put("text", "")
+                    put("iconId", 0)
+                })
+                
+                // BUTTON L1
+                put(JSONObject().apply {
+                    put("type", "BUTTON")
+                    put("shape", "RECT")
+                    put("bindings", JSONArray().apply {
+                        put("GAMEPAD_BUTTON_L1")
+                        put("NONE")
+                        put("NONE")
+                        put("NONE")
+                    })
+                    put("scale", 1.0)
+                    put("x", 0.03)
+                    put("y", 0.2222222388)
+                    put("toggleSwitch", false)
+                    put("text", "")
+                    put("iconId", 0)
+                })
+                
+                // BUTTON L2
+                put(JSONObject().apply {
+                    put("type", "BUTTON")
+                    put("shape", "RECT")
+                    put("bindings", JSONArray().apply {
+                        put("GAMEPAD_BUTTON_L2")
+                        put("NONE")
+                        put("NONE")
+                        put("NONE")
+                    })
+                    put("scale", 2.0)
+                    put("x", 0.07)
+                    put("y", 0.07)
+                    put("toggleSwitch", false)
+                    put("text", "")
+                    put("iconId", 0)
+                })
+                
+                // BUTTON START
+                put(JSONObject().apply {
+                    put("type", "BUTTON")
+                    put("shape", "ROUND_RECT")
+                    put("bindings", JSONArray().apply {
+                        put("GAMEPAD_BUTTON_START")
+                        put("NONE")
+                        put("NONE")
+                        put("NONE")
+                    })
+                    put("scale", 0.85)
+                    put("x", 0.538807213306427)
+                    put("y", 0.9111111164093018)
+                    put("toggleSwitch", false)
+                    put("text", "")
+                    put("iconId", 15)
+                })
+                
+                // BUTTON SELECT
+                put(JSONObject().apply {
+                    put("type", "BUTTON")
+                    put("shape", "ROUND_RECT")
+                    put("bindings", JSONArray().apply {
+                        put("GAMEPAD_BUTTON_SELECT")
+                        put("NONE")
+                        put("NONE")
+                        put("NONE")
+                    })
+                    put("scale", 0.85)
+                    put("x", 0.46078431606292725)
+                    put("y", 0.9111111164093018)
+                    put("toggleSwitch", false)
+                    put("text", "")
+                    put("iconId", 16)
+                })
+                
+                // LEFT STICK
+                put(JSONObject().apply {
+                    put("type", "STICK")
+                    put("shape", "CIRCLE")
+                    put("bindings", JSONArray().apply {
+                        put("GAMEPAD_LEFT_THUMB_UP")
+                        put("GAMEPAD_LEFT_THUMB_RIGHT")
+                        put("GAMEPAD_LEFT_THUMB_DOWN")
+                        put("GAMEPAD_LEFT_THUMB_LEFT")
+                    })
+                    put("scale", 1.0)
+                    put("x", 0.21568627655506134)
+                    put("y", 0.7333333492279053)
+                    put("toggleSwitch", false)
+                    put("text", "")
+                    put("iconId", 0)
+                })
+                
+                // RIGHT STICK
+                put(JSONObject().apply {
+                    put("type", "STICK")
+                    put("shape", "CIRCLE")
+                    put("bindings", JSONArray().apply {
+                        put("GAMEPAD_RIGHT_THUMB_UP")
+                        put("GAMEPAD_RIGHT_THUMB_RIGHT")
+                        put("GAMEPAD_RIGHT_THUMB_DOWN")
+                        put("GAMEPAD_RIGHT_THUMB_LEFT")
+                    })
+                    put("scale", 1.0)
+                    put("x", 0.7843137383460999)
+                    put("y", 0.7333333492279053)
+                    put("toggleSwitch", false)
+                    put("text", "")
+                    put("iconId", 0)
+                })
+                
+                // BUTTON L3
+                put(JSONObject().apply {
+                    put("type", "BUTTON")
+                    put("shape", "CIRCLE")
+                    put("bindings", JSONArray().apply {
+                        put("GAMEPAD_BUTTON_L3")
+                        put("NONE")
+                        put("NONE")
+                        put("NONE")
+                    })
+                    put("scale", 0.85)
+                    put("x", 0.05)
+                    put("y", 0.7333333492279053)
+                    put("toggleSwitch", false)
+                    put("text", "")
+                    put("iconId", 0)
+                })
+                
+                // BUTTON R3
+                put(JSONObject().apply {
+                    put("type", "BUTTON")
+                    put("shape", "CIRCLE")
+                    put("bindings", JSONArray().apply {
+                        put("GAMEPAD_BUTTON_R3")
+                        put("NONE")
+                        put("NONE")
+                        put("NONE")
+                    })
+                    put("scale", 0.85)
+                    put("x", 0.95)
+                    put("y", 0.7333333492279053)
+                    put("toggleSwitch", false)
+                    put("text", "")
+                    put("iconId", 0)
+                })
+            }
+            put("elements", elementsArray)
+        }
+        
+        // Write the profile file
+        val profileFile = ControlsProfile.getProfileFile(context, 3)
+        FileUtils.writeString(profileFile, profileJSON.toString())
+        
+        // Reload profiles to include the new one
+        inputControlsManager.loadProfiles(false)
+        
+        return profile
+    }
+
+    /**
      * Create or update a per-container ControlsProfile that remaps on-screen controls and
      * adds controller bindings for physical gamepads according to container.controllerEmulationBindings.
      * The profile name is the container id as a string, so it can be looked up easily at runtime.
@@ -883,6 +1185,12 @@ object ContainerUtils {
             } catch (e: Exception) {
                 Timber.w(e, "Failed to reload profiles from assets")
             }
+        }
+
+        // If profiles are still empty, create a default Virtual Gamepad profile
+        if (profiles.isEmpty()) {
+            val defaultProfile = createDefaultVirtualGamepadProfile(context, inputControlsManager)
+            profiles = inputControlsManager.getProfiles(false)
         }
 
         // Choose a base profile to clone from (Virtual Gamepad preferred)
