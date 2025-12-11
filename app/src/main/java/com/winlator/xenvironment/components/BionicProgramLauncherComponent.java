@@ -313,6 +313,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (this.envVars != null) {
             envVars.putAll(this.envVars);
         }
+        Log.d("BionicProgramLauncherComponent", "env vars are " + envVars.toString());
 
         String emulator = container.getEmulator();
 

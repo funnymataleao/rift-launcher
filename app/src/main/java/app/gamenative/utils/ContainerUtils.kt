@@ -439,17 +439,6 @@ object ContainerUtils {
         Timber.d("Container set: preferredInputApi=%s, dinputMapperType=0x%02x", api, containerData.dinputMapperType)
 
         if (saveToDisk) {
-            // If bionic arm64ec, persist FEXCore settings directly
-            if (containerData.containerVariant.equals(Container.BIONIC, true)
-                && containerData.wineVersion.contains("arm64ec", true)) {
-                FEXCoreManager.writeToConfigFile(
-                    context,
-                    container.id,
-                    containerData.fexcoreTSOMode,
-                    containerData.fexcoreMultiBlock,
-                    containerData.fexcoreX87Mode,
-                )
-            }
             // Mark that config has been changed, so we can show feedback dialog after next game run
             container.putExtra("config_changed", "true")
             container.saveData()
@@ -785,6 +774,9 @@ object ContainerUtils {
         } else {
             createNewContainer(context, appId, appId, containerManager)
         }
+
+        // Delete any existing FEXCore config files (we use environment variables only)
+        FEXCoreManager.deleteConfigFiles(context, container.id)
 
         // Ensure Custom Games have the A: drive mapped to the game folder
         val gameSource = extractGameSourceFromContainerId(appId)

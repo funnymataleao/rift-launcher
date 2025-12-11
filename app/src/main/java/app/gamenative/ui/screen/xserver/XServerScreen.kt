@@ -1207,10 +1207,6 @@ private fun setupXEnvironment(
     }
     environment.addComponent(guestProgramLauncherComponent)
 
-
-    // Generate fexcore per app settings
-    FEXCoreManager.createAppConfigFiles(context)
-
     // Log container settings before starting
     if (container != null) {
         Timber.i("---- Launching Container ----")
