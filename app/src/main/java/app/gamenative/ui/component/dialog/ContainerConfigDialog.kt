@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -41,6 +42,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -98,6 +100,8 @@ import com.winlator.core.WineInfo
 import com.winlator.core.WineInfo.MAIN_WINE_VERSION
 import com.winlator.fexcore.FEXCoreManager
 import com.winlator.fexcore.FEXCorePresetManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -1993,11 +1997,16 @@ private fun ExecutablePathDropdown(
 ) {
     var expanded by remember { mutableStateOf(false) }
     var executables by remember { mutableStateOf<List<String>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
     val context = LocalContext.current
 
     // Load executables from A: drive when component is first created
     LaunchedEffect(containerData.drives) {
-        executables = scanExecutablesInADrive(containerData.drives)
+        isLoading = true
+        executables = withContext(Dispatchers.IO) {
+            scanExecutablesInADrive(containerData.drives)
+        }
+        isLoading = false
     }
 
     ExposedDropdownMenuBox(
@@ -2012,7 +2021,11 @@ private fun ExecutablePathDropdown(
             label = { Text(stringResource(R.string.container_config_executable_path)) },
             placeholder = { Text(stringResource(R.string.container_config_executable_path_placeholder)) },
             trailingIcon = {
-                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                } else {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -2020,7 +2033,7 @@ private fun ExecutablePathDropdown(
             singleLine = true
         )
 
-        if (executables.isNotEmpty()) {
+        if (!isLoading && executables.isNotEmpty()) {
             ExposedDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
@@ -2075,14 +2088,22 @@ private fun scanExecutablesInADrive(drives: String): List<String> {
 
         timber.log.Timber.d("Scanning for executables in A: drive: $aDrivePath")
 
-        // Recursively scan for .exe files using walkTopDown
-        aDir.walkTopDown().forEach { file ->
-            if (file.isFile && file.name.lowercase().endsWith(".exe")) {
-                // Convert to relative Windows path format
-                val relativePath = aDir.toURI().relativize(file.toURI()).path
-                executables.add(relativePath)
+        // Recursively scan for .exe files using listFiles with depth limit
+        fun scanRecursive(dir: java.io.File, baseDir: java.io.File, depth: Int = 0, maxDepth: Int = 10) {
+            if (depth > maxDepth) return
+            
+            dir.listFiles()?.forEach { file ->
+                if (file.isDirectory) {
+                    scanRecursive(file, baseDir, depth + 1, maxDepth)
+                } else if (file.isFile && file.name.lowercase().endsWith(".exe")) {
+                    // Convert to relative Windows path format
+                    val relativePath = baseDir.toURI().relativize(file.toURI()).path
+                    executables.add(relativePath)
+                }
             }
         }
+        
+        scanRecursive(aDir, aDir)
 
         // Sort alphabetically and prioritize common game executables
         executables.sortWith { a, b ->
