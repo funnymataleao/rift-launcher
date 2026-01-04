@@ -151,6 +151,7 @@ fun XServerScreen(
     lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current,
     appId: String,
     bootToContainer: Boolean,
+    testGraphics: Boolean = false,
     registerBackAction: ( ( ) -> Unit ) -> Unit,
     navigateBack: () -> Unit,
     onExit: () -> Unit,
@@ -716,6 +717,7 @@ fun XServerScreen(
                                 context,
                                 appId,
                                 bootToContainer,
+                                testGraphics,
                                 xServerState,
                                 envVars,
                                 container,
@@ -1388,6 +1390,7 @@ private fun setupXEnvironment(
     context: Context,
     appId: String,
     bootToContainer: Boolean,
+    testGraphics: Boolean,
     xServerState: MutableState<XServerState>,
     // xServerViewModel: XServerViewModel,
     envVars: EnvVars,
@@ -1505,7 +1508,7 @@ private fun setupXEnvironment(
         guestProgramLauncherComponent.setContainer(container);
         guestProgramLauncherComponent.setWineInfo(xServerState.value.wineInfo);
         val guestExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
-            getWineStartCommand(appId, container, bootToContainer, appLaunchInfo, envVars, guestProgramLauncherComponent) +
+            getWineStartCommand(appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent) +
             (if (container.execArgs.isNotEmpty()) " " + container.execArgs else "")
         guestProgramLauncherComponent.isWoW64Mode = wow64Mode
         guestProgramLauncherComponent.guestExecutable = guestExecutable
@@ -1656,6 +1659,7 @@ private fun getWineStartCommand(
     appId: String,
     container: Container,
     bootToContainer: Boolean,
+    testGraphics: Boolean,
     appLaunchInfo: LaunchInfo?,
     envVars: EnvVars,
     guestProgramLauncherComponent: GuestProgramLauncherComponent,
@@ -1680,7 +1684,9 @@ private fun getWineStartCommand(
         }
     }
 
-    val args = if (bootToContainer) {
+    val args = if (testGraphics) {
+        "\"Z:/opt/apps/TestD3D.exe\""
+    } else if (bootToContainer) {
         "\"wfm.exe\""
     } else if (isCustomGame) {
         // For Custom Games, we can launch even without appLaunchInfo
