@@ -143,6 +143,10 @@ import kotlin.io.path.name
 import kotlin.text.lowercase
 import com.winlator.PrefManager as WinlatorPrefManager
 
+// Always re-extract drivers and DXVK on every launch to handle cases of container corruption
+// where games randomly stop working. Set to false once corruption issues are resolved.
+private const val ALWAYS_REEXTRACT = true
+
 // TODO logs in composables are 'unstable' which can cause recomposition (performance issues)
 
 @Composable
@@ -1802,6 +1806,20 @@ private fun getSteamlessTarget(
     }
     return "$drive:\\${executablePath}"
 }
+
+/**
+ * Filters executables to exclude _CommonRedist folder and files ending in original.exe or unpacked.exe
+ */
+private fun filterExecutablesForSteamless(executables: List<String>): List<String> {
+    return executables.filter { exePath ->
+        val lowerPath = exePath.lowercase()
+        // Exclude _CommonRedist folder
+        !lowerPath.contains("_commonredist") &&
+        // Exclude files ending in original.exe or unpacked.exe
+        !lowerPath.endsWith("original.exe") &&
+        !lowerPath.endsWith("unpacked.exe")
+    }
+}
 private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRating: FrameRating?, appInfo: SteamApp?, container: Container, onExit: () -> Unit, navigateBack: () -> Unit) {
     Timber.i("Exit called")
     PostHog.capture(
@@ -1990,7 +2008,6 @@ private fun unpackExecutableFile(
     }
     try {
         val rootDir: File = imageFs.getRootDir()
-        val executableFile = getSteamlessTarget(appId, container, appLaunchInfo)
 
         try {
             PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM..."))
@@ -2045,37 +2062,77 @@ private fun unpackExecutableFile(
         }
 
         output = StringBuilder()
-        try {
-            PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM..."))
-            val slCmd = "wine z:\\Steamless\\Steamless.CLI.exe $executableFile"
-            Timber.i("Running shell command $slCmd")
-            val slOutput = guestProgramLauncherComponent.execShellCommand(slCmd)
-            output.append(slOutput)
-            Timber.i("Result of Steamless command " + output)
-        } catch (e: Exception) {
-            Timber.e("Error running Steamless: $e")
-        }
 
-        val exe = File(imageFs.wineprefix + "/dosdevices/" + executableFile.replace("A:", "a:").replace('\\', '/'))
-        val unpackedExe = File(
-            imageFs.wineprefix + "/dosdevices/" + executableFile.replace("A:", "a:")
-                .replace('\\', '/') + ".unpacked.exe",
-        )
-        val originalExe = File(
-            imageFs.wineprefix + "/dosdevices/" + executableFile.replace("A:", "a:")
-                .replace('\\', '/') + ".original.exe",
-        )
-        Timber.i("Moving " + unpackedExe + " to " + exe)
-        try {
-            if (exe.exists() && unpackedExe.exists()) {
-                Files.copy(exe.toPath(), originalExe.toPath())
-                Files.copy(unpackedExe.toPath(), exe.toPath(), REPLACE_EXISTING)
-            } else {
-                val errorMsg = "Either original exe or unpacked exe does not exist. Original: ${exe.exists()}, Unpacked: ${unpackedExe.exists()}"
-                Timber.w(errorMsg)
+        // Scan all executables from A: drive and filter them
+        val allExecutables = ContainerUtils.scanExecutablesInADrive(container.drives)
+        Timber.i("Found ${allExecutables.size} executables in A: drive")
+
+        val filteredExecutables = filterExecutablesForSteamless(allExecutables)
+        Timber.i("Filtered to ${filteredExecutables.size} executables for Steamless processing")
+
+        if (filteredExecutables.isEmpty()) {
+            Timber.w("No executables to process with Steamless")
+        } else {
+            PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM..."))
+
+            // Process each executable individually to handle errors per file
+            filteredExecutables.forEachIndexed { index, exePath ->
+                var batchFile: File? = null
+                try {
+                    val normalizedPath = exePath.replace('/', '\\')
+                    val windowsPath = "A:\\$normalizedPath"
+
+                    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM... (${index + 1}/${filteredExecutables.size})"))
+
+                    // Create a batch file that Wine can execute, to handle paths with spaces in them
+                    batchFile = File(imageFs.getRootDir(), "tmp/steamless_wrapper_${index}.bat")
+                    batchFile.parentFile?.mkdirs()
+                    batchFile.writeText("@echo off\r\nz:\\Steamless\\Steamless.CLI.exe \"$windowsPath\"\r\n")
+
+                    val slCmd = "wine z:\\tmp\\steamless_wrapper_${index}.bat"
+                    val slOutput = guestProgramLauncherComponent.execShellCommand(slCmd)
+                    output.append(slOutput)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error running Steamless on $exePath, continuing with next file")
+                    output.append("Error processing $exePath: ${e.message}\n")
+                } finally {
+                    // Clean up batch file
+                    batchFile?.delete()
+                }
             }
-        } catch (e: IOException) {
-            Timber.e("Could not move files: $e")
+
+            Timber.i("Finished processing ${filteredExecutables.size} executables. Result: $output")
+
+            // Process file moving for all filtered executables
+            for (exePath in filteredExecutables) {
+                try {
+                    // Paths from scanExecutablesInADrive use forward slashes (Unix format from URI)
+                    // Use as-is for File operations (forward slashes work on Unix/Android)
+                    val unixPath = exePath.replace('\\', '/')
+                    val exe = File(imageFs.wineprefix + "/dosdevices/a:/" + unixPath)
+                    val unpackedExe = File(
+                        imageFs.wineprefix + "/dosdevices/a:/" + unixPath + ".unpacked.exe",
+                    )
+                    val originalExe = File(
+                        imageFs.wineprefix + "/dosdevices/a:/" + unixPath + ".original.exe",
+                    )
+
+                    // For logging, show Windows format
+                    val windowsPath = "A:\\${exePath.replace('/', '\\')}"
+
+                    Timber.i("Moving files for $windowsPath")
+                    if (exe.exists() && unpackedExe.exists()) {
+                        Files.copy(exe.toPath(), originalExe.toPath(), REPLACE_EXISTING)
+                        Files.copy(unpackedExe.toPath(), exe.toPath(), REPLACE_EXISTING)
+                        Timber.i("Successfully moved files for $windowsPath")
+                    } else {
+                        val errorMsg = "Either original exe or unpacked exe does not exist for $windowsPath. Original: ${exe.exists()}, Unpacked: ${unpackedExe.exists()}"
+                        Timber.w(errorMsg)
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error moving files for $exePath, continuing with next executable")
+                }
+            }
         }
 
         output = StringBuilder()
@@ -2170,7 +2227,7 @@ private fun setupWineSystemFiles(
         )
     }
 
-    val needReextract = xServerState.value.dxwrapper != container.getExtra("dxwrapper") || container.wineVersion != wineVersion
+    val needReextract = ALWAYS_REEXTRACT || xServerState.value.dxwrapper != container.getExtra("dxwrapper") || container.wineVersion != wineVersion
 
     Timber.i("needReextract is " + needReextract)
     Timber.i("xServerState.value.dxwrapper is " + xServerState.value.dxwrapper)
@@ -2552,7 +2609,7 @@ private fun extractGraphicsDriverFiles(
         val configDir = imageFs.configDir
         val sentinel = File(configDir, ".current_graphics_driver")   // lives in shared tree
         val onDiskId = sentinel.takeIf { it.exists() }?.readText() ?: ""
-        val changed = cacheId != container.getExtra("graphicsDriver") || cacheId != onDiskId
+        val changed = ALWAYS_REEXTRACT || cacheId != container.getExtra("graphicsDriver") || cacheId != onDiskId
         Timber.i("Changed is " + changed + " will re-extract drivers accordingly.")
         val rootDir = imageFs.rootDir
         envVars.put("vblank_mode", "0")
@@ -2731,7 +2788,7 @@ private fun extractGraphicsDriverFiles(
 
 
         // 3. Check if we need to extract a new wrapper file.
-        if (firstTimeBoot || mainWrapperSelection != lastInstalledMainWrapper) {
+        if (ALWAYS_REEXTRACT || firstTimeBoot || mainWrapperSelection != lastInstalledMainWrapper) {
             // We only extract if the selection is actually a wrapper file.
             if (mainWrapperSelection.lowercase(Locale.getDefault()).startsWith("wrapper")) {
                 val assetPath = "graphics_driver/" + mainWrapperSelection.lowercase(Locale.getDefault()) + ".tzst"
