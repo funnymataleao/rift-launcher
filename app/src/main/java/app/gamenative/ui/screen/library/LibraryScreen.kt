@@ -206,21 +206,19 @@ private fun LibraryScreenContent(
 
     // Apply top padding differently for list vs game detail pages.
     // On the game page we want to hide the top padding when the status bar is hidden.
-    val safePaddingModifier = if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT) {
-        if (selectedLibraryItem != null) {
-            // Detail (game) page: use actual status bar height when status bar is visible,
-            // or 0.dp when status bar is hidden
-            val topPadding = if (PrefManager.hideStatusBarWhenNotInGame) {
-                0.dp
-            } else {
-                WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-            }
-            Modifier.padding(top = topPadding)
+    val safePaddingModifier = if (selectedLibraryItem != null) {
+        // Detail (game) page: use actual status bar height when status bar is visible,
+        // or 0.dp when status bar is hidden
+        val topPadding = if (PrefManager.hideStatusBarWhenNotInGame) {
+            0.dp
         } else {
-            // List page keeps safe cutout padding (for notches)
-            Modifier.displayCutoutPadding()
+            WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         }
-    } else Modifier
+        Modifier.padding(top = topPadding)
+    } else {
+        // List page keeps safe cutout padding (for notches)
+        Modifier.displayCutoutPadding()
+    }
 
     Box(
         Modifier.background(MaterialTheme.colorScheme.background)
@@ -254,8 +252,8 @@ private fun LibraryScreenContent(
                     selectedLibraryItem = null
                 },
                 onClickPlay = {
-                    selectedLibraryItem?.let { libraryItem -> 
-                        onClickPlay(libraryItem.appId, it) 
+                    selectedLibraryItem?.let { libraryItem ->
+                        onClickPlay(libraryItem.appId, it)
                     }
                 },
                 onTestGraphics = {
