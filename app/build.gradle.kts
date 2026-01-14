@@ -58,7 +58,7 @@ android {
         targetSdk = 28
 
         versionCode = 8
-        versionName = "0.6.2"
+        versionName = "0.7.0"
 
         buildConfigField("boolean", "GOLD", "false")
         fun secret(name: String) =
