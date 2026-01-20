@@ -90,6 +90,8 @@
     <string name="custom_games_folders_found">%d foldere găsite</string>
     <string name="custom_games_scan_description">Folderele din aceste căi sunt scanate pentru fișiere .exe și listate ca jocuri personalizate. Acest lucru poate încetini pornirea aplicației.</string>
     <string name="custom_game_folder_picker_error">Nu s-a putut rezolva calea folderului</string>
+    <string name="container_config_drive_letter_missing">Lipsește litera unității</string>
+    <string name="container_config_invalid_drive_path">Calea unității este invalidă</string>
     <string name="custom_game_exe_selection_title">Selectarea executabilului necesară</string>
     <string name="custom_game_exe_selection_message">Acest joc are mai multe executabile. Deschide Setările Jocului Personalizat pentru a alege pe care să-l lansezi.</string>
     <string name="custom_game_settings">Setări joc personalizat</string>
@@ -543,6 +545,9 @@
 	<string name="environment_variables">Variabile de mediu</string>
 	<string name="no_environment_variables">Nu există variabile de mediu</string>
 	<string name="no_drives">Nu există unități</string>
+	<string name="add_drive">Adaugă unitate</string>
+	<string name="drive_letter">Literă de unitate</string>
+	<string name="no_available_drive_letters">Nu există litere de unitate disponibile</string>
 	<string name="startup_selection">Selecție la pornire</string>
 	<string name="processor_affinity_32bit">Afilieri procesor (aplicații 32-bit)</string>
 	<string name="executable_path">Cale executabil</string>

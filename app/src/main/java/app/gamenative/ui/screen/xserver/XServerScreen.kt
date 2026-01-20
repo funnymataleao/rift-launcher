@@ -1924,7 +1924,7 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRatin
 
     winHandler?.stop()
     environment?.stopEnvironmentComponents()
-    SteamService.isGameRunning = false
+    SteamService.keepAlive = false
     // AppUtils.restartApplication(this)
     // PluviaApp.xServerState = null
     // PluviaApp.xServer = null
