@@ -357,6 +357,14 @@
     <string name="disable_mouse_input">Deaktivér musinput</string>
     <string name="touchscreen_mode">Touchskærmstilstand</string>
     <string name="touchscreen_mode_description">Direkte touch-til-cursor-bevægelse (TIL) vs touchpad-stil relativ bevægelse (FRA)</string>
+    <string name="external_display_input">Ekstern skærm-input</string>
+    <string name="external_display_input_subtitle">Vælg hvordan en tilsluttet præsentationsskærm skal opføre sig</string>
+    <string name="external_display_mode_off">Brug ikke ekstern skærm</string>
+    <string name="external_display_mode_touchpad">Brug som touchpad-overflade</string>
+    <string name="external_display_mode_keyboard">Brug som fuldt tastatur</string>
+    <string name="external_display_mode_hybrid">Hybrid (touchpad + tastaturknap)</string>
+    <string name="external_display_swap">Vis spil på ekstern skærm</string>
+    <string name="external_display_swap_subtitle">Byt skærme, så spillet gengives på den eksterne skærm og denne enhed bliver controlleroverfladen</string>
     <string name="start_with_controls_hidden">Start med on-screen-kontroller skjult</string>
     <string name="start_with_controls_hidden_description">On-screen-kontroller vil være skjult når spillet starter. Skift via navigationsmenuen.</string>
     <string name="emulate_keyboard_mouse">Emulér tastatur og mus</string>

@@ -530,6 +530,14 @@
     <string name="touchscreen_mode_description">Пряме переміщення курсора (УВІМК) або відносне переміщення, як на тачпаді (ВИМК)</string>
     <string name="start_with_controls_hidden">Запускати з прихованими елементами керування</string>
     <string name="start_with_controls_hidden_description">Екранні елементи будуть приховані під час запуску гри. Перемикайте через меню навігації.</string>
+    <string name="external_display_input">Ввід зовнішнього дисплея</string>
+    <string name="external_display_input_subtitle">Виберіть, як має працювати підключений презентаційний дисплей</string>
+    <string name="external_display_mode_off">Не використовувати зовнішній дисплей</string>
+    <string name="external_display_mode_touchpad">Використовувати як поверхню тачпада</string>
+    <string name="external_display_mode_keyboard">Використовувати як повну клавіатуру</string>
+    <string name="external_display_mode_hybrid">Гібрид (тачпад + кнопка клавіатури)</string>
+    <string name="external_display_swap">Показувати гру на зовнішньому дисплеї</string>
+    <string name="external_display_swap_subtitle">Поміняти екрани місцями, щоб гра відображалася на зовнішньому дисплеї, а цей пристрій став поверхнею керування</string>
     <string name="emulate_keyboard_mouse">Емуляція клавіатури та миші</string>
     <string name="emulate_keyboard_mouse_description">Лівий стік = WASD, Правий стік = Миша. L2 = ЛКМ, R2 = ПКМ.</string>
 

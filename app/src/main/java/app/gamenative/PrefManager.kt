@@ -437,6 +437,17 @@ object PrefManager {
             setPref(DINPUT_MAPPER_TYPE, value)
         }
 
+    // External display input mode (off|touchpad|keyboard|hybrid)
+    private val EXTERNAL_DISPLAY_INPUT_MODE = stringPreferencesKey("external_display_input_mode")
+    var externalDisplayInputMode: String
+        get() = getPref(EXTERNAL_DISPLAY_INPUT_MODE, Container.DEFAULT_EXTERNAL_DISPLAY_MODE)
+        set(value) { setPref(EXTERNAL_DISPLAY_INPUT_MODE, value) }
+
+    private val EXTERNAL_DISPLAY_SWAP = booleanPreferencesKey("external_display_swap")
+    var externalDisplaySwap: Boolean
+        get() = getPref(EXTERNAL_DISPLAY_SWAP, false)
+        set(value) { setPref(EXTERNAL_DISPLAY_SWAP, value) }
+
     // Disable Mouse Input (prevents external mouse events)
     private val DISABLE_MOUSE_INPUT = booleanPreferencesKey("disable_mouse_input")
     var disableMouseInput: Boolean

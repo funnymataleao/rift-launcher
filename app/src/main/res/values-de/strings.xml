@@ -496,6 +496,14 @@
     <string name="disable_mouse_input">Mauseingabe deaktivieren</string>
     <string name="touchscreen_mode">Touchscreen-Modus</string>
     <string name="touchscreen_mode_description">Direkte Zeigerbewegung (AN) vs. Touchpad-ähnliche relative Bewegung (AUS)</string>
+    <string name="external_display_input">Externe Bildschirm-Eingabe</string>
+    <string name="external_display_input_subtitle">Wähle, wie ein angeschlossener Präsentationsbildschirm sich verhalten soll</string>
+    <string name="external_display_mode_off">Externen Bildschirm nicht verwenden</string>
+    <string name="external_display_mode_touchpad">Als Touchpad-Oberfläche verwenden</string>
+    <string name="external_display_mode_keyboard">Als vollständige Tastatur verwenden</string>
+    <string name="external_display_mode_hybrid">Hybrid (Touchpad + Tastaturtaste)</string>
+    <string name="external_display_swap">Spiel auf externem Bildschirm anzeigen</string>
+    <string name="external_display_swap_subtitle">Bildschirme tauschen, damit das Spiel auf dem externen Bildschirm gerendert wird und dieses Gerät zur Controller-Oberfläche wird</string>
     <string name="start_with_controls_hidden">Mit versteckten On-Screen-Controls starten</string>
     <string name="start_with_controls_hidden_description">On-Screen-Controls sind beim Spielstart ausgeblendet. Über das Menü ein-/ausblendbar.</string>
     <string name="emulate_keyboard_mouse">Tastatur und Maus emulieren</string>
