@@ -644,7 +644,7 @@
     ],
     "proton": [
       {
-        "id": "proton-10.0-arm64ec",
+        "id": "proton-10.0-arm64ec-2",
         "name": "Proton 10.0 ARM64ec",
         "url": "https://downloads.gamenative.app/proton-10.0-arm64ec.wcp",
         "variant": "bionic"
