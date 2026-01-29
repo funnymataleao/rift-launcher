@@ -67,7 +67,9 @@ import app.gamenative.externaldisplay.ExternalDisplayInputController
 import app.gamenative.externaldisplay.ExternalDisplaySwapController
 import app.gamenative.externaldisplay.SwapInputOverlayView
 import app.gamenative.service.SteamService
+import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
+import android.widget.Toast
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.theme.settingsTileColors
@@ -142,6 +144,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONException
@@ -1967,9 +1970,11 @@ private fun getWineStartCommand(
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     val isCustomGame = gameSource == GameSource.CUSTOM_GAME
     val isGOGGame = gameSource == GameSource.GOG
+    val isEpicGame = gameSource == GameSource.EPIC
+    val isSteamGame = gameSource == GameSource.STEAM
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
 
-    if (!isCustomGame && !isGOGGame) {
+    if (isSteamGame) {
         // Steam-specific setup
         if (container.executablePath.isEmpty()){
             container.executablePath = SteamService.getInstalledExe(gameId)
@@ -2013,6 +2018,37 @@ private fun getWineStartCommand(
 
         Timber.tag("XServerScreen").i("GOG launch command: $gogCommand")
         return "winhandler.exe $gogCommand"
+    } else if (isEpicGame) {
+        // For Epic games, get the launch command
+        Timber.tag("XServerScreen").i("Launching Epic game: $gameId")
+        val game = runBlocking {
+            EpicService.getInstance()?.epicManager?.getGameById(gameId.toInt())
+        }
+
+        if (game == null || !game.isInstalled || game.installPath.isEmpty()) {
+            Timber.tag("XServerScreen").e("Cannot launch: Epic game not installed")
+            return "\"explorer.exe\""
+        }
+
+        // Get the executable path
+        val exePath = runBlocking {
+            EpicService.getInstance()?.epicManager?.getInstalledExe(game.id) ?: ""
+        }
+
+        if (exePath.isEmpty()) {
+            Timber.tag("XServerScreen").e("Cannot launch: executable not found for Epic game")
+            return "\"explorer.exe\""
+        }
+
+        // Convert to relative path from install directory
+        val relativePath = exePath.removePrefix(game.installPath).removePrefix("/")
+
+        // Use A: drive (or the mapped drive letter) instead of Z:
+        // The container setup in ContainerUtils maps the game install path to A: drive
+        val epicCommand = "A:\\$relativePath".replace("/", "\\")
+
+        Timber.tag("XServerScreen").i("Epic launch command: $epicCommand")
+        return "winhandler.exe $epicCommand"
     } else if (isCustomGame) {
         // For Custom Games, we can launch even without appLaunchInfo
         // Use the executable path from container config. If missing, try to auto-detect

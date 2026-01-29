@@ -45,6 +45,23 @@
     <string name="gog_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
     <string name="gog_install_game_title">Download Game</string>
     <string name="gog_install_confirmation_message">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tAvailable Space: %2$s</string>
+    <string name="epic_uninstall_game_title">Uninstall Game</string>
+    <string name="epic_uninstall_game_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
+    <string name="epic_install_game_title">Download Game</string>
+    <string name="epic_install_game_message">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tSize on Disk: %2$s\n\tAvailable Space: %3$s</string>
+    <string name="epic_game_not_found">Game not found</string>
+    <string name="epic_starting_download">Starting download: %1$s</string>
+    <string name="epic_starting_download_with_dlcs">Starting download: %1$s + DLCs</string>
+    <string name="epic_download_failed">Failed to start download: %1$s</string>
+    <string name="epic_download_error">Download error: %1$s</string>
+    <string name="epic_cancel_download_message">Are you sure you want to cancel the download of the app?</string>
+    <string name="epic_delete_download_message">Delete all downloaded data for this game?</string>
+    <string name="epic_cloud_sync_starting">Starting cloud save sync…</string>
+    <string name="epic_cloud_sync_success">Cloud saves synced successfully</string>
+    <string name="epic_cloud_sync_failed">Cloud save sync failed</string>
+    <string name="epic_cloud_sync_error">Cloud save sync error: %1$s</string>
+    <string name="epic_uninstall_failed">Uninstall failed: %1$s</string>
+    <string name="epic_uninstall_error">Uninstall error: %1$s</string>
     <string name="steam_never">Never</string>
     <string name="steam_continue">Continue</string>
     <string name="header_img_desc">App header image</string>
@@ -992,6 +1009,35 @@
     <string name="gog_logout_success">Logged out from GOG successfully</string>
     <string name="gog_logout_failed">Failed to logout: %s</string>
     <string name="gog_logout_in_progress">Logging out from GOG…</string>
+
+    <!-- Epic Games Integration -->
+    <string name="epic_integration_title">Epic Games Integration</string>
+    <string name="epic_settings_login_title">Sign in to Epic Games</string>
+    <string name="epic_settings_login_subtitle">Connect your Epic Games account</string>
+    <string name="epic_login_success_title">Login Successful</string>
+    <string name="epic_login_success_message">You are now signed in to Epic Games.</string>
+    <string name="epic_logout_success">Logged out from Epic successfully</string>
+
+    <!-- Epic Login Dialog -->
+    <string name="epic_login_title">Sign in to Epic Games</string>
+    <string name="epic_login_auto_auth_info">Tap \'Open Epic Login\' and sign in. Once logged in, please copy the authorizationCode in the result screen and paste below</string>
+    <string name="epic_login_auth_example">Example: authorization code: "example"</string>
+    <string name="epic_login_open_button">Open Epic Login</string>
+    <string name="epic_login_auth_code_label">Authorization Code</string>
+    <string name="epic_login_auth_code_placeholder">Paste code or URL here</string>
+    <string name="epic_login_button">Login</string>
+    <string name="epic_login_cancel">Cancel</string>
+    <string name="epic_login_browser_error">Could not open browser</string>
+
+    <!-- Epic Games Logout -->
+    <string name="epic_settings_logout_title">Logout from Epic Games</string>
+    <string name="epic_settings_logout_subtitle">Sign out from your Epic Games account</string>
+    <string name="epic_logout_confirm_title">Logout from Epic Games?</string>
+    <string name="epic_logout_confirm_message">This will remove all Epic Games from your library and disconnect your account.</string>
+    <string name="epic_logout_confirm">Logout</string>
+    <string name="epic_logout_in_progress">Logging out from Epic Games…</string>
+    <string name="epic_logout_failed">Failure to logout of Epic Games, please try again</string>
+
     <string name="manifest_downloading_item">Downloading %1$s...</string>
     <string name="manifest_download_failed">Download failed: %1$s</string>
     <string name="manifest_install_failed">Failed to install %1$s</string>
