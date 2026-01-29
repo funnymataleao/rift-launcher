@@ -653,10 +653,13 @@
     <string name="best_config_compatibility_unknown">Ingen kendt konfiguration</string>
 
     <!-- Best Config Toast Messages -->
-    <string name="best_config_applied_successfully">Bedste konfiguration anvendt med succes</string>
+    <string name="best_config_applied_successfully">Konfiguration anvendt med succes</string>
     <string name="best_config_known_config_invalid">Kendt konfiguration ugyldig</string>
     <string name="best_config_no_config_available">Ingen bedste konfiguration tilgængelig for dette spil</string>
     <string name="best_config_apply_failed">Kunne ikke anvende konfiguration: %s</string>
+    <string name="best_config_missing_content">%s mangler</string>
+    <string name="import_config">Importér konfiguration</string>
+    <string name="export_config">Eksportér konfiguration</string>
 
     <string name="library_app_type">App-type</string>
     <string name="library_app_status">App-status</string>
@@ -852,4 +855,11 @@
     <string name="gog_logout_success">Logget ud fra GOG</string>
     <string name="gog_logout_failed">Kunne ikke logge ud: %s</string>
     <string name="gog_logout_in_progress">Logger ud fra GOG…</string>
+    <string name="manifest_downloading_item">Henter %1$s...</string>
+    <string name="manifest_download_failed">Download mislykkedes: %1$s</string>
+    <string name="manifest_install_failed">Kunne ikke installere %1$s</string>
+    <string name="manifest_install_success">%1$s installeret</string>
+    <string name="manifest_content_untrusted">Indholdet er ikke betroet og blev ikke installeret.</string>
+    <string name="manifest_type_mismatch">Downloadet indhold matcher ikke den forventede type.</string>
+    <string name="manifest_glibc_not_supported">GLIBC-builds understøttes ikke.</string>
 </resources>

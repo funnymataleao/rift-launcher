@@ -824,10 +824,13 @@
     <string name="best_config_compatibility_unknown">Немає відомої конфігурації</string>
 
     <!-- Best Config Toast Messages -->
-    <string name="best_config_applied_successfully">Найкращу конфігурацію успішно застосовано</string>
+    <string name="best_config_applied_successfully">Конфігурацію успішно застосовано</string>
     <string name="best_config_known_config_invalid">Відома конфігурація недійсна</string>
     <string name="best_config_no_config_available">Немає доступної найкращої конфігурації для цієї гри</string>
     <string name="best_config_apply_failed">Не вдалося застосувати конфігурацію: %s</string>
+    <string name="best_config_missing_content">%s відсутній</string>
+    <string name="import_config">Імпортувати конфігурацію</string>
+    <string name="export_config">Експортувати конфігурацію</string>
     <string name="library_app_type">Тип застосунку</string>
     <string name="library_app_status">Статус застосунку</string>
     <string name="library_layout">Бібліотека</string>
@@ -989,5 +992,12 @@
     <string name="gog_logout_success">Успішно вийшли з GOG</string>
     <string name="gog_logout_failed">Не вдалося вийти: %s</string>
     <string name="gog_logout_in_progress">Вихід з GOG…</string>
+    <string name="manifest_downloading_item">Завантаження %1$s...</string>
+    <string name="manifest_download_failed">Помилка завантаження: %1$s</string>
+    <string name="manifest_install_failed">Не вдалося інсталювати %1$s</string>
+    <string name="manifest_install_success">%1$s інстальовано</string>
+    <string name="manifest_content_untrusted">Вміст не є надійним, тому його не інстальовано.</string>
+    <string name="manifest_type_mismatch">Завантажений вміст не відповідає очікуваному типу.</string>
+    <string name="manifest_glibc_not_supported">Збірки GLIBC не підтримуються.</string>
 </resources>
 

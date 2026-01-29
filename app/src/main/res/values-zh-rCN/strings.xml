@@ -811,10 +811,13 @@
     <string name="best_config_compatibility_unknown">没有已知配置</string>
 
     <!-- 最佳配置提示消息 -->
-    <string name="best_config_applied_successfully">最佳配置已成功应用</string>
+    <string name="best_config_applied_successfully">配置已成功应用</string>
     <string name="best_config_known_config_invalid">已知配置无效</string>
     <string name="best_config_no_config_available">此游戏没有可用的最佳配置</string>
     <string name="best_config_apply_failed">应用配置失败：%s</string>
+    <string name="best_config_missing_content">%s 缺失</string>
+    <string name="import_config">导入配置</string>
+    <string name="export_config">导出配置</string>
 
     <string name="library_app_type">应用程序类型</string>
     <string name="library_app_status">应用程序状态</string>
@@ -978,4 +981,11 @@
     <string name="gog_logout_success">成功从 GOG 注销</string>
     <string name="gog_logout_failed">注销失败: %s</string>
     <string name="gog_logout_in_progress">正在从 GOG 注销…</string>
+    <string name="manifest_downloading_item">正在下载 %1$s…</string>
+    <string name="manifest_download_failed">下载失败：%1$s</string>
+    <string name="manifest_install_failed">安装 %1$s 失败</string>
+    <string name="manifest_install_success">%1$s 已安装</string>
+    <string name="manifest_content_untrusted">内容不可信，未安装。</string>
+    <string name="manifest_type_mismatch">下载的内容与预期类型不匹配。</string>
+    <string name="manifest_glibc_not_supported">不支持 GLIBC 构建。</string>
 </resources>

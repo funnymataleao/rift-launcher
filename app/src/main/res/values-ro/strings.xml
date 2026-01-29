@@ -824,10 +824,13 @@
 	<string name="best_config_compatibility_unknown">Nicio configurație cunoscută</string>
 
 	<!-- Best Config Toast Messages -->
-	<string name="best_config_applied_successfully">Cea mai bună configurație a fost aplicată cu succes</string>
+	<string name="best_config_applied_successfully">Configurația a fost aplicată cu succes</string>
 	<string name="best_config_known_config_invalid">Config cunoscut invalid</string>
 	<string name="best_config_no_config_available">Nu există o configurație optimă pentru acest joc</string>
 	<string name="best_config_apply_failed">Aplicarea configurației a eșuat: %s</string>
+	<string name="best_config_missing_content">%s lipsește</string>
+	<string name="import_config">Importă configurarea</string>
+	<string name="export_config">Exportă configurarea</string>
 	<string name="library_app_type">Tip aplicație</string>
 	<string name="library_app_status">Stare aplicație</string>
 	<string name="library_layout">Aspect</string>
@@ -990,4 +993,11 @@
 	<string name="gog_logout_success">Deconectare reușită de la GOG</string>
 	<string name="gog_logout_failed">Deconectare eșuată: %s</string>
 	<string name="gog_logout_in_progress">Se deconectează de la GOG…</string>
+    <string name="manifest_downloading_item">Se descarcă %1$s…</string>
+    <string name="manifest_download_failed">Descărcarea a eșuat: %1$s</string>
+    <string name="manifest_install_failed">Instalarea %1$s a eșuat</string>
+    <string name="manifest_install_success">%1$s instalat cu succes</string>
+    <string name="manifest_content_untrusted">Conținutul nu este de încredere și nu a fost instalat.</string>
+    <string name="manifest_type_mismatch">Conținutul descărcat nu corespunde tipului așteptat.</string>
+    <string name="manifest_glibc_not_supported">Build-urile GLIBC nu sunt acceptate.</string>
 </resources>

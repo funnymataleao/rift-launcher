@@ -824,10 +824,13 @@
     <string name="best_config_compatibility_unknown">No known config</string>
 
     <!-- Best Config Toast Messages -->
-    <string name="best_config_applied_successfully">Best config applied successfully</string>
+    <string name="best_config_applied_successfully">Config applied successfully</string>
     <string name="best_config_known_config_invalid">Known config invalid</string>
     <string name="best_config_no_config_available">No best config available for this game</string>
     <string name="best_config_apply_failed">Failed to apply config: %s</string>
+    <string name="best_config_missing_content">%s missing</string>
+    <string name="import_config">Import config</string>
+    <string name="export_config">Export config</string>
     <string name="library_app_type">App Type</string>
     <string name="library_app_status">App Status</string>
     <string name="library_layout">Layout</string>
@@ -989,4 +992,11 @@
     <string name="gog_logout_success">Logged out from GOG successfully</string>
     <string name="gog_logout_failed">Failed to logout: %s</string>
     <string name="gog_logout_in_progress">Logging out from GOG…</string>
+    <string name="manifest_downloading_item">Downloading %1$s...</string>
+    <string name="manifest_download_failed">Download failed: %1$s</string>
+    <string name="manifest_install_failed">Failed to install %1$s</string>
+    <string name="manifest_install_success">%1$s installed</string>
+    <string name="manifest_content_untrusted">Content is not trusted and was not installed.</string>
+    <string name="manifest_type_mismatch">Downloaded content does not match expected type.</string>
+    <string name="manifest_glibc_not_supported">GLIBC builds are not supported.</string>
 </resources>

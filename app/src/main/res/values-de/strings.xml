@@ -760,10 +760,13 @@
     <string name="best_config_fallback_match">Bekannte Konfiguration könnte funktionieren</string>
     <string name="best_config_compatibility_unknown">Keine bekannte Konfiguration</string>
     <!-- Best Config Toast Messages -->
-    <string name="best_config_applied_successfully">Beste Konfiguration erfolgreich übernommen</string>
+    <string name="best_config_applied_successfully">Konfiguration erfolgreich übernommen</string>
     <string name="best_config_known_config_invalid">Bekannte Konfiguration ungültig</string>
     <string name="best_config_no_config_available">Keine optimale Konfiguration verfügbar</string>
     <string name="best_config_apply_failed">Konfiguration konnte nicht übernommen werden: %s</string>
+    <string name="best_config_missing_content">%s fehlt</string>
+    <string name="import_config">Konfiguration importieren</string>
+    <string name="export_config">Konfiguration exportieren</string>
     <string name="library_app_type">App-Typ</string>
     <string name="library_app_status">App-Status</string>
     <string name="library_layout">Layout</string>
@@ -923,4 +926,11 @@
     <string name="gog_uninstall_confirmation_message">Möchtest du %1$s wirklich deinstallieren? Diese Aktion kann nicht rückgängig gemacht werden.</string>
     <string name="gog_install_game_title">Spiel herunterladen</string>
     <string name="gog_install_confirmation_message">Die App benötigt folgenden Speicherplatz. Möchtest du fortfahren?\n\n\tDownloadgröße: %1$s\n\tVerfügbarer Speicher: %2$s</string>
+    <string name="manifest_downloading_item">%1$s wird heruntergeladen…</string>
+    <string name="manifest_download_failed">Download fehlgeschlagen: %1$s</string>
+    <string name="manifest_install_failed">%1$s konnte nicht installiert werden</string>
+    <string name="manifest_install_success">%1$s installiert</string>
+    <string name="manifest_content_untrusted">Inhalt ist nicht vertrauenswürdig und wurde nicht installiert.</string>
+    <string name="manifest_type_mismatch">Heruntergeladener Inhalt entspricht nicht dem erwarteten Typ.</string>
+    <string name="manifest_glibc_not_supported">GLIBC-Builds werden nicht unterstützt.</string>
 </resources>

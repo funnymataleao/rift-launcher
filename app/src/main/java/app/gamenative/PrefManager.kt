@@ -112,6 +112,21 @@ object PrefManager {
         }
     }
 
+    /* Manifest Cache */
+    private val COMPONENT_MANIFEST_JSON = stringPreferencesKey("component_manifest_json")
+    var componentManifestJson: String
+        get() = getPref(COMPONENT_MANIFEST_JSON, "")
+        set(value) {
+            setPref(COMPONENT_MANIFEST_JSON, value)
+        }
+
+    private val COMPONENT_MANIFEST_FETCHED_AT = longPreferencesKey("component_manifest_fetched_at")
+    var componentManifestFetchedAt: Long
+        get() = getPref(COMPONENT_MANIFEST_FETCHED_AT, 0L)
+        set(value) {
+            setPref(COMPONENT_MANIFEST_FETCHED_AT, value)
+        }
+
     /* PICS */
     private val LAST_PICS_CHANGE_NUMBER = intPreferencesKey("last_pics_change_number")
     var lastPICSChangeNumber: Int
