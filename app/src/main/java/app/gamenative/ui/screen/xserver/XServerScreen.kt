@@ -2987,7 +2987,7 @@ private fun extractWinComponentFiles(
             val identifier = wincomponent[0]
             val useNative = wincomponent[1].equals("1")
 
-            if (!container.wineVersion.contains("proton-9.0-arm64ec") && identifier.contains("opengl") && useNative) continue
+            if (!container.wineVersion.contains("arm64ec") && identifier.contains("opengl") && useNative) continue
 
             if (useNative) {
                 TarCompressorUtils.extract(
@@ -3077,6 +3077,11 @@ private fun extractGraphicsDriverFiles(
         }
         if (dxwrapper.contains("dxvk")) {
             DXVKHelper.setEnvVars(context, dxwrapperConfig, envVars)
+            val version = dxwrapperConfig.get("version")
+            if (version == "1.11.1-sarek") {
+                Timber.tag("GraphicsDriverExtraction").d("Disabling Wrapper PATCH_OPCONSTCOMP SPIR-V pass")
+                envVars.put("WRAPPER_NO_PATCH_OPCONSTCOMP", "1")
+            }
         } else if (dxwrapper.contains("vkd3d")) {
             DXVKHelper.setVKD3DEnvVars(context, dxwrapperConfig, envVars)
         }
@@ -3215,20 +3220,11 @@ private fun extractGraphicsDriverFiles(
         envVars.put("GALLIUM_DRIVER", "zink")
         envVars.put("LIBGL_KOPPER_DISABLE", "true")
 
-
-        //        if (firstTimeBoot) {
-//            Log.d("XServerDisplayActivity", "First time container boot, re-extracting wrapper");
-//            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper" + ".tzst", rootDir);
-//            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/extra_libs" + ".tzst", rootDir);
-//        }
-
         // 1. Get the main WRAPPER selection (e.g., "Wrapper-v2") from the class field.
         val mainWrapperSelection: String = graphicsDriver
 
-
         // 2. Get the WRAPPER that was last saved to the container's settings.
         val lastInstalledMainWrapper = container.getExtra("lastInstalledMainWrapper")
-
 
         // 3. Check if we need to extract a new wrapper file.
         if (ALWAYS_REEXTRACT || firstTimeBoot || mainWrapperSelection != lastInstalledMainWrapper) {
@@ -3242,12 +3238,22 @@ private fun extractGraphicsDriverFiles(
                     container.putExtra("lastInstalledMainWrapper", mainWrapperSelection)
                     container.saveData()
                 }
-            }
-
-            // 4. Extract common libraries, but only when the container is first created.
-            if (firstTimeBoot) {
                 Log.d("XServerDisplayActivity", "First time container boot, extracting extra_libs.tzst")
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "graphics_driver/extra_libs.tzst", rootDir)
+                TarCompressorUtils.extract(
+                    TarCompressorUtils.Type.ZSTD,
+                    context.getAssets(),
+                    "graphics_driver/extra_libs.tzst",
+                    rootDir,
+                )
+                val renderer = GPUInformation.getRenderer(null, null)
+                if (container.wineVersion.contains("arm64ec") && renderer?.contains("Mali") != true) {
+                    TarCompressorUtils.extract(
+                        TarCompressorUtils.Type.ZSTD,
+                        context.assets,
+                        "graphics_driver/zink_dlls" + ".tzst",
+                        File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows"),
+                    )
+                }
             }
         }
 
@@ -3264,6 +3270,13 @@ private fun extractGraphicsDriverFiles(
 
         val blacklistedExtensions: String? = graphicsDriverConfig.get("blacklistedExtensions")
         envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions)
+
+        val gpuName = graphicsDriverConfig.get("gpuName")
+        if (gpuName != "Device") {
+            envVars.put("WRAPPER_DEVICE_NAME", gpuName)
+            envVars.put("WRAPPER_DEVICE_ID", GPUInformation.getDeviceIdFromGPUName(context, gpuName))
+            envVars.put("WRAPPER_VENDOR_ID", GPUInformation.getVendorIdFromGPUName(context, gpuName))
+        }
 
         val maxDeviceMemory: String? = graphicsDriverConfig.get("maxDeviceMemory", "0")
         if (maxDeviceMemory != null && maxDeviceMemory.toInt() > 0)
@@ -3285,9 +3298,22 @@ private fun extractGraphicsDriverFiles(
         envVars.put("WRAPPER_DISABLE_PRESENT_WAIT", disablePresentWait)
 
         val bcnEmulation = graphicsDriverConfig.get("bcnEmulation")
+        val bcnEmulationType = graphicsDriverConfig.get("bcnEmulationType")
         when (bcnEmulation) {
-            "auto" -> envVars.put("WRAPPER_EMULATE_BCN", "3")
-            "full" -> envVars.put("WRAPPER_EMULATE_BCN", "2")
+            "auto" -> {
+                if (bcnEmulationType.equals("compute") && GPUInformation.getVendorID(null, null) != 0x5143) {
+                    envVars.put("ENABLE_BCN_COMPUTE", "1");
+                    envVars.put("BCN_COMPUTE_AUTO", "1");
+                }
+                envVars.put("WRAPPER_EMULATE_BCN", "3");
+            }
+            "full" -> {
+                if (bcnEmulationType.equals("compute") && GPUInformation.getVendorID(null, null) != 0x5143) {
+                    envVars.put("ENABLE_BCN_COMPUTE", "1");
+                    envVars.put("BCN_COMPUTE_AUTO", "0");
+                }
+                envVars.put("WRAPPER_EMULATE_BCN", "2");
+            }
             "none" -> envVars.put("WRAPPER_EMULATE_BCN", "0")
             else -> envVars.put("WRAPPER_EMULATE_BCN", "1")
         }
