@@ -132,7 +132,7 @@ public class AdrenotoolsManager {
 
         File dst = new File(adrenotoolsContentDir, adrenotoolsDriverId);
         if (dst.exists())
-            return true;
+            dst.delete();
 
         dst.mkdirs();
         Log.d("AdrenotoolsManager", "Extracting " + src + " to " + dst.getAbsolutePath());
