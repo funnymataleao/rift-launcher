@@ -2056,6 +2056,10 @@ private fun getWineStartCommand(
         // The container setup in ContainerUtils maps the game install path to A: drive
         val epicCommand = "A:\\$relativePath".replace("/", "\\")
 
+        // Set working directory to the folder containing the executable
+        val executableDir = game.installPath + "/" + relativePath.substringBeforeLast("/", "")
+        guestProgramLauncherComponent.workingDir = File(executableDir)
+
         Timber.tag("XServerScreen").i("Epic launch command: \"$epicCommand\"")
 
         return "winhandler.exe \"$epicCommand\""
