@@ -325,6 +325,7 @@ fun XServerScreen(
     var showPhysicalControllerDialog by remember { mutableStateOf(false) }
     var isOverlayPaused by remember { mutableStateOf(false) }
     var keyboardRequestedFromOverlay by remember { mutableStateOf(false) }
+    var keepPausedForEditor by remember { mutableStateOf(false) }
 
     fun startExitWatchForUnmappedGameWindow(window: Window) {
         val winHandler = xServerView?.getxServer()?.winHandler ?: return
@@ -487,6 +488,7 @@ fun XServerScreen(
 
                         NavigationDialog.ACTION_EDIT_CONTROLS -> {
                             PostHog.capture(event = "edit_controls_in_game")
+                            keepPausedForEditor = true
 
                             // Get or create profile for this container
                             val manager = PluviaApp.inputControlsManager ?: InputControlsManager(context)
@@ -561,6 +563,7 @@ fun XServerScreen(
 
                         NavigationDialog.ACTION_EDIT_PHYSICAL_CONTROLLER -> {
                             PostHog.capture(event = "edit_physical_controller_from_menu")
+                            keepPausedForEditor = true
                             showPhysicalControllerDialog = true
                         }
 
@@ -592,7 +595,7 @@ fun XServerScreen(
                 imeInputReceiver?.hideKeyboard()
             }
             keyboardRequestedFromOverlay = false
-            if (PluviaApp.isOverlayPaused) {
+            if (PluviaApp.isOverlayPaused && !keepPausedForEditor) {
                 PluviaApp.xEnvironment?.onResume()
                 isOverlayPaused = false
                 PluviaApp.isOverlayPaused = false
@@ -1231,6 +1234,12 @@ fun XServerScreen(
                     PluviaApp.inputControlsView?.post {
                         PluviaApp.inputControlsView?.invalidate()
                     }
+                    keepPausedForEditor = false
+                    if (PluviaApp.isOverlayPaused) {
+                        PluviaApp.xEnvironment?.onResume()
+                        isOverlayPaused = false
+                        PluviaApp.isOverlayPaused = false
+                    }
                 },
                 onClose = {
                     // Restore element positions from snapshot (cancel behavior)
@@ -1250,6 +1259,12 @@ fun XServerScreen(
                         PluviaApp.inputControlsView?.profile?.loadElements(PluviaApp.inputControlsView)
                         PluviaApp.inputControlsView?.profile?.save()
                         PluviaApp.inputControlsView?.invalidate()
+                    }
+                    keepPausedForEditor = false
+                    if (PluviaApp.isOverlayPaused) {
+                        PluviaApp.xEnvironment?.onResume()
+                        isOverlayPaused = false
+                        PluviaApp.isOverlayPaused = false
                     }
                 },
                 onDuplicate = { id ->
@@ -1369,7 +1384,15 @@ fun XServerScreen(
 
         if (profile != null) {
             androidx.compose.ui.window.Dialog(
-                onDismissRequest = { showPhysicalControllerDialog = false }
+                onDismissRequest = {
+                    showPhysicalControllerDialog = false
+                    keepPausedForEditor = false
+                    if (PluviaApp.isOverlayPaused) {
+                        PluviaApp.xEnvironment?.onResume()
+                        isOverlayPaused = false
+                        PluviaApp.isOverlayPaused = false
+                    }
+                }
             ) {
                 androidx.compose.foundation.layout.Box(
                     modifier = Modifier
@@ -1378,7 +1401,15 @@ fun XServerScreen(
                 ) {
                     app.gamenative.ui.component.dialog.PhysicalControllerConfigSection(
                         profile = profile,
-                        onDismiss = { showPhysicalControllerDialog = false },
+                        onDismiss = {
+                            showPhysicalControllerDialog = false
+                            keepPausedForEditor = false
+                            if (PluviaApp.isOverlayPaused) {
+                                PluviaApp.xEnvironment?.onResume()
+                                isOverlayPaused = false
+                                PluviaApp.isOverlayPaused = false
+                            }
+                        },
                         onSave = {
                             // Ensure controllersLoaded is true before saving
                             // (addController sets the flag even if controller already exists)
@@ -1398,6 +1429,12 @@ fun XServerScreen(
                             }
                             physicalControllerHandler?.setProfile(profile)
                             showPhysicalControllerDialog = false
+                            keepPausedForEditor = false
+                            if (PluviaApp.isOverlayPaused) {
+                                PluviaApp.xEnvironment?.onResume()
+                                isOverlayPaused = false
+                                PluviaApp.isOverlayPaused = false
+                            }
                         }
                     )
                 }
