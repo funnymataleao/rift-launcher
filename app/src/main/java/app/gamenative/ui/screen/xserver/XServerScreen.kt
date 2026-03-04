@@ -2586,6 +2586,7 @@ private fun exit(winHandler: WinHandler?, environment: XEnvironment?, frameRatin
         container.saveData()
     }
 
+    PluviaApp.touchpadView?.releasePointerCapture()
     winHandler?.stop()
     environment?.stopEnvironmentComponents()
     SteamService.keepAlive = false
