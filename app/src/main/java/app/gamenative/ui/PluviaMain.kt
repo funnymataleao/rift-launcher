@@ -966,7 +966,7 @@ fun PluviaMain(
                     val appId = feedbackState.appId
                     Timber.d("GameFeedback: Got appId=$appId")
 
-                    // Submit feedback to Supabase
+                    // Submit feedback via worker API
                     Timber.d("GameFeedback: Starting coroutine for submission")
                     viewModel.viewModelScope.launch {
                         Timber.d("GameFeedback: Inside coroutine scope")
@@ -974,7 +974,6 @@ fun PluviaMain(
                             Timber.d("GameFeedback: Calling submitGameFeedback with rating=${feedbackState.rating}")
                             val result = GameFeedbackUtils.submitGameFeedback(
                                 context = context,
-                                supabase = PluviaApp.supabase,
                                 appId = appId,
                                 rating = feedbackState.rating,
                                 tags = feedbackState.selectedTags.toList(),
