@@ -82,7 +82,7 @@ import app.gamenative.ui.data.XServerState
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ExecutableSelectionUtils
-import app.gamenative.utils.PreLaunchSteps
+import app.gamenative.utils.PreInstallSteps
 import app.gamenative.utils.SteamTokenLogin
 import app.gamenative.utils.SteamUtils
 import com.posthog.PostHog
@@ -2041,7 +2041,15 @@ private fun setupXEnvironment(
         )
     }
 
+    var preInstallCommands: List<PreInstallSteps.PreInstallCommand> = emptyList()
+    var gameExecutable = ""
+
     if (container != null) {
+        try {
+            GameFixesRegistry.applyFor(context, appId)
+        } catch (e: Exception) {
+            Timber.tag("GameFixes").w(e, "Game fixes failed before launch")
+        }
         if (container.startupSelection == Container.STARTUP_SELECTION_AGGRESSIVE) {
             if (container.containerVariant.equals(Container.BIONIC)){
                 Timber.d("Incorrect startup selection detected. Reverting to essential startup selection")
@@ -2056,11 +2064,19 @@ private fun setupXEnvironment(
         val wow64Mode = container.isWoW64Mode
         guestProgramLauncherComponent.setContainer(container);
         guestProgramLauncherComponent.setWineInfo(xServerState.value.wineInfo);
-        val guestExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
+        gameExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
             getWineStartCommand(context, appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent, gameSource) +
             (if (container.execArgs.isNotEmpty()) " " + container.execArgs else "")
+        preInstallCommands = PreInstallSteps.getPreInstallCommands(
+            container,
+            appId,
+            gameSource,
+            xServer.screenInfo.toString(),
+            containerVariantChanged,
+        )
+        guestProgramLauncherComponent.guestExecutable =
+            preInstallCommands.firstOrNull()?.executable ?: gameExecutable
         guestProgramLauncherComponent.isWoW64Mode = wow64Mode
-        guestProgramLauncherComponent.guestExecutable = guestExecutable
         // Set steam type for selecting appropriate box64rc
         guestProgramLauncherComponent.setSteamType(container.getSteamType())
 
@@ -2088,12 +2104,6 @@ private fun setupXEnvironment(
             guestProgramLauncherComponent.setFEXCorePreset(container.fexCorePreset)
         }
         guestProgramLauncherComponent.setPreUnpack {
-            try {
-                GameFixesRegistry.applyFor(context, appId)
-            } catch (e: Exception) {
-                Timber.tag("GameFixes").w(e, "Game fixes failed in preUnpack")
-            }
-            PreLaunchSteps().run(context, appId, container, guestProgramLauncherComponent, gameSource)
             unpackExecutableFile(
                 context = context,
                 needsUnpacking = container.isNeedsUnpacking,
@@ -2104,6 +2114,11 @@ private fun setupXEnvironment(
                 containerVariantChanged = containerVariantChanged,
                 onError = onGameLaunchError
             )
+            if (preInstallCommands.isNotEmpty()) {
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
+            } else {
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
+            }
         }
 
         val enableGstreamer = container.isGstreamerWorkaround()
@@ -2169,14 +2184,48 @@ private fun setupXEnvironment(
     }
 
     guestProgramLauncherComponent.envVars = envVars
-    guestProgramLauncherComponent.setTerminationCallback { status ->
+
+    val gameTerminationCallback = Callback<Int> { status ->
         if (status != 0) {
             Timber.e("Guest program terminated with status: $status")
             onGameLaunchError?.invoke("Game terminated with error status: $status")
-            navigateBack()
         }
         PluviaApp.events.emit(AndroidEvent.GuestProgramTerminated)
     }
+
+    fun chainPreInstallSteps(remaining: List<PreInstallSteps.PreInstallCommand>) {
+        if (remaining.isEmpty()) {
+            guestProgramLauncherComponent.setGuestExecutable(gameExecutable)
+            guestProgramLauncherComponent.setTerminationCallback(gameTerminationCallback)
+            return
+        }
+        guestProgramLauncherComponent.setGuestExecutable(remaining.first().executable)
+        guestProgramLauncherComponent.setTerminationCallback { _ ->
+            val current = remaining.first()
+            PreInstallSteps.markStepDone(container, current.marker)
+            guestProgramLauncherComponent.setPreUnpack(null)
+            try {
+                guestProgramLauncherComponent.execShellCommand("wineserver -k")
+            } catch (e: Exception) {
+                Timber.w(e, "wineserver -k between pre-install steps (non-fatal)")
+            }
+            val nextRemaining = remaining.drop(1)
+            if (nextRemaining.isEmpty()) {
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
+            } else {
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
+            }
+            chainPreInstallSteps(nextRemaining)
+            guestProgramLauncherComponent.start()
+        }
+    }
+
+    if (preInstallCommands.isNotEmpty()) {
+        chainPreInstallSteps(preInstallCommands)
+    } else {
+        guestProgramLauncherComponent.setTerminationCallback(gameTerminationCallback)
+    }
+
     environment.addComponent(guestProgramLauncherComponent)
 
     environment.addComponent(WineRequestComponent())
@@ -2762,28 +2811,6 @@ private fun getRedistDirectory(
     return RedistContext(commonRedistDir, driveLetter, guestProgramLauncherComponent)
 }
 
-private fun installVcRedist(context: RedistContext) {
-        val vcredistDir = File(context.commonRedistDir, "vcredist")
-        if (vcredistDir.exists() && vcredistDir.isDirectory()) {
-            vcredistDir.walkTopDown()
-                .filter { it.isFile && it.name.equals("VC_redist.x64.exe", ignoreCase = true) }
-                .forEach { exeFile ->
-                    try {
-                        val relativePath = exeFile.relativeTo(context.commonRedistDir).path.replace('/', '\\')
-                        val drive = context.driveLetter
-                        val winePath = "$drive:\\_CommonRedist\\$relativePath"
-                        PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing Visual C++ Redistributables..."))
-                        Timber.i("Installing vcredist: $winePath")
-                        val cmd = "wine $winePath /quiet /norestart && wineserver -k"
-                        val output = context.guestProgramLauncherComponent.execShellCommand(cmd)
-                        Timber.i("vcredist installation output: $output")
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to install vcredist ${exeFile.name}")
-                    }
-                }
-        }
-}
-
 /**
  * Installs OpenAL redistributables (oalinst.exe) (https://www.openal.org/)
  * Helps with 3D audio implementations between 2001-2010
@@ -2894,7 +2921,6 @@ private fun installRedistributables(
             return
         }
 
-        installVcRedist(redistContext)
         installOpenAL(redistContext)
         installPhysX(redistContext)
         installXNAFramework(redistContext)
