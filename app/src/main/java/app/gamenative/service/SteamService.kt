@@ -528,6 +528,15 @@ class SteamService : Service(), IChallengeUrlChanged {
             return downloadJobs[appId]
         }
 
+        fun getActiveDownloads(): Map<Int, DownloadInfo> = HashMap(downloadJobs)
+
+        suspend fun getPartialDownloads(): List<Int> {
+            return instance?.downloadingAppInfoDao?.getAll()
+                ?.map { it.appId }
+                ?.filter { appId -> !downloadJobs.containsKey(appId) }
+                ?: emptyList()
+        }
+
         fun isAppInstalled(appId: Int): Boolean {
             return MarkerUtils.hasMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
         }

@@ -105,6 +105,7 @@ fun HomeLibraryScreen(
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
+    onDownloadsClick: () -> Unit,
     isOffline: Boolean = false,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -125,6 +126,7 @@ fun HomeLibraryScreen(
         onNavigateRoute = onNavigateRoute,
         onLogout = onLogout,
         onGoOnline = onGoOnline,
+        onDownloadsClick = onDownloadsClick,
         onSourceToggle = viewModel::onSourceToggle,
         onAddCustomGameFolder = viewModel::addCustomGameFolder,
         onSortOptionChanged = viewModel::onSortOptionChanged,
@@ -153,6 +155,7 @@ private fun LibraryScreenContent(
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
+    onDownloadsClick: () -> Unit,
     onSourceToggle: (GameSource) -> Unit,
     onAddCustomGameFolder: (String) -> Unit,
     onSortOptionChanged: (SortOption) -> Unit,
@@ -816,6 +819,7 @@ private fun LibraryScreenContent(
                         onSearchClick = { onIsSearching(true) },
                         onAddGameClick = onAddCustomGameClick,
                         onMenuClick = { isSystemMenuOpen = true },
+                        onDownloadsClick = onDownloadsClick,
                         onNavigateDownToGrid = {
                             if (state.appInfoList.isNotEmpty()) {
                                 gridFocusTargetListIndex = listState.firstVisibleItemIndex
@@ -1081,6 +1085,7 @@ private fun Preview_LibraryScreenContent() {
             onNavigateRoute = {},
             onLogout = {},
             onGoOnline = {},
+            onDownloadsClick = {},
             onSourceToggle = {},
             onAddCustomGameFolder = {},
             onSortOptionChanged = {},

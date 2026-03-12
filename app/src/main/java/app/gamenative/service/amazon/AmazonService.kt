@@ -357,6 +357,9 @@ class AmazonService : Service() {
         fun getDownloadInfo(productId: String): DownloadInfo? =
             getInstance()?.activeDownloads?.get(productId)
 
+        fun getActiveDownloads(): Map<String, DownloadInfo> =
+            getInstance()?.activeDownloads?.let { HashMap(it) } ?: emptyMap()
+
         /** Returns the active [DownloadInfo] for [appId], or null if not downloading. */
         fun getDownloadInfoByAppId(appId: Int): DownloadInfo? {
             val productId = getProductIdByAppId(appId) ?: return null

@@ -179,6 +179,9 @@ class EpicService : Service() {
             return getInstance()?.activeDownloads?.get(appId)
         }
 
+        fun getActiveDownloads(): Map<Int, DownloadInfo> =
+            getInstance()?.activeDownloads?.let { HashMap(it) } ?: emptyMap()
+
         suspend fun deleteGame(context: Context, appId: Int): Result<Unit> {
             val instance = getInstance()
             if (instance == null) {
