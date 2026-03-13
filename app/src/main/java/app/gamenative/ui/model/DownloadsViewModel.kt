@@ -2,8 +2,10 @@ package app.gamenative.ui.model
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.Context
 import app.gamenative.PluviaApp
 import app.gamenative.data.GameSource
+import app.gamenative.data.LibraryItem
 import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.db.dao.EpicGameDao
 import app.gamenative.db.dao.GOGGameDao
@@ -17,6 +19,7 @@ import app.gamenative.ui.data.CancelConfirmation
 import app.gamenative.ui.data.DownloadItemState
 import app.gamenative.ui.data.DownloadsState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +33,7 @@ import timber.log.Timber
 
 @HiltViewModel
 class DownloadsViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val steamAppDao: SteamAppDao,
     private val epicGameDao: EpicGameDao,
     private val gogGameDao: GOGGameDao,
@@ -151,6 +155,30 @@ class DownloadsViewModel @Inject constructor(
                 )
             }
 
+            for (appId in EpicService.getPartialDownloads()) {
+                if (items.containsKey(appId.toString())) continue
+                val key = "${GameSource.EPIC}_$appId"
+                val name = gameNameCache.getOrPut(key) {
+                    epicGameDao.getById(appId)?.title ?: "Epic Game $appId"
+                }
+                val icon = gameIconCache.getOrPut(key) {
+                    epicGameDao.getById(appId)?.artCover ?: ""
+                }
+                items[appId.toString()] = DownloadItemState(
+                    appId = appId.toString(),
+                    gameSource = GameSource.EPIC,
+                    gameName = name,
+                    iconUrl = icon,
+                    progress = null,
+                    bytesDownloaded = null,
+                    bytesTotal = null,
+                    etaMs = null,
+                    statusMessage = null,
+                    isActive = null,
+                    isPartial = true
+                )
+            }
+
             // GOG downloads
             for ((gameId, info) in GOGService.getActiveDownloads()) {
                 val key = "${GameSource.GOG}_$gameId"
@@ -177,6 +205,31 @@ class DownloadsViewModel @Inject constructor(
                 )
             }
 
+            for (gameId in GOGService.getPartialDownloads()) {
+                if (items.containsKey(gameId)) continue
+                val key = "${GameSource.GOG}_$gameId"
+                val name = gameNameCache.getOrPut(key) {
+                    gogGameDao.getById(gameId)?.title ?: "GOG Game $gameId"
+                }
+                val icon = gameIconCache.getOrPut(key) {
+                    val game = gogGameDao.getById(gameId)
+                    game?.imageUrl?.ifEmpty { game.iconUrl } ?: ""
+                }
+                items[gameId] = DownloadItemState(
+                    appId = gameId,
+                    gameSource = GameSource.GOG,
+                    gameName = name,
+                    iconUrl = icon,
+                    progress = null,
+                    bytesDownloaded = null,
+                    bytesTotal = null,
+                    etaMs = null,
+                    statusMessage = null,
+                    isActive = null,
+                    isPartial = true
+                )
+            }
+
             // Amazon downloads
             for ((productId, info) in AmazonService.getActiveDownloads()) {
                 val key = "${GameSource.AMAZON}_$productId"
@@ -199,6 +252,30 @@ class DownloadsViewModel @Inject constructor(
                     statusMessage = info.getStatusMessageFlow().value,
                     isActive = info.isActive(),
                     isPartial = false
+                )
+            }
+
+            for (productId in AmazonService.getPartialDownloads(appContext)) {
+                if (items.containsKey(productId)) continue
+                val key = "${GameSource.AMAZON}_$productId"
+                val name = gameNameCache.getOrPut(key) {
+                    amazonGameDao.getByProductId(productId)?.title ?: "Amazon Game"
+                }
+                val icon = gameIconCache.getOrPut(key) {
+                    amazonGameDao.getByProductId(productId)?.artUrl ?: ""
+                }
+                items[productId] = DownloadItemState(
+                    appId = productId,
+                    gameSource = GameSource.AMAZON,
+                    gameName = name,
+                    iconUrl = icon,
+                    progress = null,
+                    bytesDownloaded = null,
+                    bytesTotal = null,
+                    etaMs = null,
+                    statusMessage = null,
+                    isActive = null,
+                    isPartial = true
                 )
             }
 
@@ -259,15 +336,32 @@ class DownloadsViewModel @Inject constructor(
             GameSource.EPIC -> {
                 val id = confirmation.appId.toIntOrNull() ?: return
                 EpicService.cancelDownload(id)
-                viewModelScope.launch(Dispatchers.IO) { pollDownloads() }
+                viewModelScope.launch(Dispatchers.IO) {
+                    EpicService.deleteGame(appContext, id)
+                    pollDownloads()
+                }
             }
             GameSource.GOG -> {
                 GOGService.cancelDownload(confirmation.appId)
-                viewModelScope.launch(Dispatchers.IO) { pollDownloads() }
+                viewModelScope.launch(Dispatchers.IO) {
+                    val game = gogGameDao.getById(confirmation.appId)
+                    if (game != null) {
+                        val libraryItem = LibraryItem(
+                            appId = confirmation.appId,
+                            name = game.title,
+                            gameSource = GameSource.GOG,
+                        )
+                        GOGService.deleteGame(appContext, libraryItem)
+                    }
+                    pollDownloads()
+                }
             }
             GameSource.AMAZON -> {
                 AmazonService.cancelDownload(confirmation.appId)
-                viewModelScope.launch(Dispatchers.IO) { pollDownloads() }
+                viewModelScope.launch(Dispatchers.IO) {
+                    AmazonService.deleteGame(appContext, confirmation.appId)
+                    pollDownloads()
+                }
             }
             else -> { /* no-op */ }
         }
