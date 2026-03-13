@@ -112,6 +112,15 @@ class GOGManager @Inject constructor(
         }
     }
 
+    suspend fun getPartialDownloads(): List<GOGGame> {
+        return withContext(Dispatchers.IO) {
+            gogGameDao.getNonInstalledGames().filter { game ->
+                val installPath = GOGConstants.getGameInstallPath(game.title)
+                File(installPath).exists() && !MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            }
+        }
+    }
+
     suspend fun insertGame(game: GOGGame) {
         withContext(Dispatchers.IO) {
             gogGameDao.insert(game)

@@ -197,6 +197,13 @@ class GOGService : Service() {
         fun getActiveDownloads(): Map<String, DownloadInfo> =
             getInstance()?.activeDownloads?.let { HashMap(it) } ?: emptyMap()
 
+        suspend fun getPartialDownloads(): List<String> {
+            val instance = getInstance() ?: return emptyList()
+            return instance.gogManager.getPartialDownloads()
+                .map { it.id }
+                .filter { gameId -> !instance.activeDownloads.containsKey(gameId) }
+        }
+
         fun cleanupDownload(gameId: String) {
             getInstance()?.activeDownloads?.remove(gameId)
         }
