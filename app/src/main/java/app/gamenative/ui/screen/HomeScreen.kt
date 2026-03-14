@@ -49,7 +49,9 @@ fun HomeScreen(
             onDownloadsClick = { viewModel.onDestination(HomeDestination.Downloads) },
             isOffline = isOffline,
         )
-        HomeDestination.Downloads -> HomeDownloadsScreen()
+        HomeDestination.Downloads -> HomeDownloadsScreen(
+            onBack = { viewModel.onDestination(HomeDestination.Library) },
+        )
         HomeDestination.Friends -> {
             // TODO: Friends screen
             HomeLibraryScreen(
@@ -58,7 +60,6 @@ fun HomeScreen(
                 onNavigateRoute = onNavigateRoute,
                 onLogout = onLogout,
                 onGoOnline = onGoOnline,
-                onDownloadsClick = { viewModel.onDestination(HomeDestination.Downloads) },
                 isOffline = isOffline,
             )
         }

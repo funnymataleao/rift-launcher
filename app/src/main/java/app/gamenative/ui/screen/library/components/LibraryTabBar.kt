@@ -77,7 +77,6 @@ fun LibraryTabBar(
     onSearchClick: () -> Unit,
     onAddGameClick: () -> Unit,
     onMenuClick: () -> Unit,
-    onDownloadsClick: () -> Unit,
     onNavigateDownToGrid: () -> Unit,
     onPreviousTab: () -> Unit = {},
     onNextTab: () -> Unit = {},
@@ -94,7 +93,6 @@ fun LibraryTabBar(
             onSearchClick = onSearchClick,
             onAddGameClick = onAddGameClick,
             onMenuClick = onMenuClick,
-            onDownloadsClick = onDownloadsClick,
             onNavigateDownToGrid = onNavigateDownToGrid,
             onPreviousTab = onPreviousTab,
             onNextTab = onNextTab,
@@ -109,7 +107,6 @@ fun LibraryTabBar(
             onSearchClick = onSearchClick,
             onAddGameClick = onAddGameClick,
             onMenuClick = onMenuClick,
-            onDownloadsClick = onDownloadsClick,
             onNavigateDownToGrid = onNavigateDownToGrid,
             onPreviousTab = onPreviousTab,
             onNextTab = onNextTab,
@@ -131,7 +128,6 @@ private fun CompactLibraryTabBar(
     onSearchClick: () -> Unit,
     onAddGameClick: () -> Unit,
     onMenuClick: () -> Unit,
-    onDownloadsClick: () -> Unit,
     onNavigateDownToGrid: () -> Unit,
     onPreviousTab: () -> Unit,
     onNextTab: () -> Unit,
@@ -282,11 +278,6 @@ private fun CompactLibraryTabBar(
                 onClick = onSearchClick,
             )
             CompactIconButton(
-                icon = Icons.Default.Download,
-                contentDescription = stringResource(R.string.destination_downloads),
-                onClick = onDownloadsClick,
-            )
-            CompactIconButton(
                 icon = Icons.Default.Add,
                 contentDescription = stringResource(R.string.action_add_game),
                 onClick = onAddGameClick,
@@ -375,7 +366,6 @@ private fun ExpandedLibraryTabBar(
     onSearchClick: () -> Unit,
     onAddGameClick: () -> Unit,
     onMenuClick: () -> Unit,
-    onDownloadsClick: () -> Unit,
     onNavigateDownToGrid: () -> Unit,
     onPreviousTab: () -> Unit,
     onNextTab: () -> Unit,
@@ -521,12 +511,6 @@ private fun ExpandedLibraryTabBar(
                 icon = Icons.Default.Search,
                 contentDescription = stringResource(R.string.search),
                 onClick = onSearchClick,
-            )
-
-            IconActionButton(
-                icon = Icons.Default.Download,
-                contentDescription = stringResource(R.string.destination_downloads),
-                onClick = onDownloadsClick,
             )
 
             IconActionButton(
@@ -731,7 +715,6 @@ private fun Preview_LibraryTabBar() {
                 onSearchClick = {},
                 onAddGameClick = {},
                 onMenuClick = {},
-                onDownloadsClick = {},
                 onNavigateDownToGrid = {},
             )
         }
@@ -761,7 +744,6 @@ private fun Preview_LibraryTabBar_Steam() {
                 onSearchClick = {},
                 onAddGameClick = {},
                 onMenuClick = {},
-                onDownloadsClick = {},
                 onNavigateDownToGrid = {},
             )
         }
