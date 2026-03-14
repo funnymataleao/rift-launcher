@@ -31,7 +31,7 @@ interface EpicGameDao {
     @Delete
     suspend fun delete(game: EpicGame)
 
-    @Query("UPDATE epic_games SET is_installed = 0, install_path='',install_size = 0 WHERE id = :appId")
+    @Query("UPDATE epic_games SET is_installed = 0, partial_install = 0, install_path='',install_size = 0 WHERE id = :appId")
     suspend fun uninstall(appId: Int)
 
     @Query("DELETE FROM epic_games WHERE id = :appId")
@@ -56,7 +56,7 @@ interface EpicGameDao {
     @Query("SELECT * FROM epic_games WHERE is_installed = :isInstalled ORDER BY title ASC")
     fun getByInstallStatus(isInstalled: Boolean): Flow<List<EpicGame>>
 
-    @Query("SELECT * FROM epic_games WHERE is_installed = 0 AND install_size != 0")
+    @Query("SELECT * FROM epic_games WHERE partial_install = 1")
     suspend fun getPartialDownloads(): List<EpicGame>
 
     @Query("SELECT * FROM epic_games WHERE base_game_app_name = (SELECT catalog_id FROM epic_games WHERE id = :appId)")
@@ -95,6 +95,7 @@ interface EpicGameDao {
                 newGame.copy(
                     id = existingGame.id,
                     isInstalled = existingGame.isInstalled,
+                    partialInstall = existingGame.partialInstall,
                     installPath = existingGame.installPath,
                     installSize = existingGame.installSize,
                     lastPlayed = existingGame.lastPlayed,

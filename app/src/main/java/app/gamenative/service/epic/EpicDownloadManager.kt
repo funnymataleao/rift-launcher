@@ -83,6 +83,9 @@ class EpicDownloadManager @Inject constructor(
             File(installPath).mkdirs()
             MarkerUtils.addMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
 
+            // Mark as partial install in DB so Downloads screen can detect it
+            epicManager.updateGame(game.copy(partialInstall = true))
+
             // Emit download started event so UI can attach progress listeners
             val gameId = game.id
             app.gamenative.PluviaApp.events.emitJava(
@@ -345,6 +348,7 @@ class EpicDownloadManager @Inject constructor(
             try {
                 val updatedGame = game.copy(
                     isInstalled = true,
+                    partialInstall = false,
                     installPath = installPath,
                     installSize = totalInstalledSize,
                 )

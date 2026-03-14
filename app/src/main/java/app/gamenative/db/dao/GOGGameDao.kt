@@ -46,6 +46,9 @@ interface GOGGameDao {
     @Query("SELECT * FROM gog_games WHERE is_installed = 0 AND exclude = 0")
     suspend fun getNonInstalledGames(): List<GOGGame>
 
+    @Query("SELECT * FROM gog_games WHERE partial_install = 1")
+    suspend fun getPartialDownloads(): List<GOGGame>
+
     @Query("SELECT * FROM gog_games WHERE exclude = 0 AND title LIKE '%' || :searchQuery || '%' ORDER BY title ASC")
     fun searchByTitle(searchQuery: String): Flow<List<GOGGame>>
 
@@ -70,6 +73,7 @@ interface GOGGameDao {
                 // Preserve installation status, path, and size from existing game
                 val gameToInsert = newGame.copy(
                     isInstalled = existingGame.isInstalled,
+                    partialInstall = existingGame.partialInstall,
                     installPath = existingGame.installPath,
                     installSize = existingGame.installSize,
                     lastPlayed = existingGame.lastPlayed,

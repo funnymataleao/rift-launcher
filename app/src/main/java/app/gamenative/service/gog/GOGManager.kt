@@ -113,12 +113,7 @@ class GOGManager @Inject constructor(
     }
 
     suspend fun getPartialDownloads(): List<GOGGame> {
-        return withContext(Dispatchers.IO) {
-            gogGameDao.getNonInstalledGames().filter { game ->
-                val installPath = GOGConstants.getGameInstallPath(game.title)
-                File(installPath).exists() && !MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
-            }
-        }
+        return withContext(Dispatchers.IO) { gogGameDao.getPartialDownloads() }
     }
 
     suspend fun insertGame(game: GOGGame) {
@@ -501,13 +496,11 @@ class GOGManager @Inject constructor(
                 MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
                 MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
 
-                if (wasInstalled) {
-                    val game = getGameFromDbById(gameId)
-                    if (game != null) {
-                        val updatedGame = game.copy(isInstalled = false, installPath = "")
-                        gogGameDao.update(updatedGame)
-                        Timber.d("Updated database: game marked as not installed")
-                    }
+                val game = getGameFromDbById(gameId)
+                if (game != null && (wasInstalled || game.partialInstall)) {
+                    val updatedGame = game.copy(isInstalled = false, partialInstall = false, installPath = "")
+                    gogGameDao.update(updatedGame)
+                    Timber.d("Updated database: game marked as not installed")
                 }
 
                 withContext(Dispatchers.Main) {

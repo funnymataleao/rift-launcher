@@ -43,6 +43,9 @@ data class AmazonGame(
     @ColumnInfo("is_installed")
     val isInstalled: Boolean = false,
 
+    @ColumnInfo(name = "partial_install", defaultValue = "0")
+    val partialInstall: Boolean = false,
+
     @ColumnInfo("install_path")
     val installPath: String = "",
 
