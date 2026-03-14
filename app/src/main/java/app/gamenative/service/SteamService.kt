@@ -928,8 +928,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                     )?.executable ?: ""
             }
 
+            val installedBranch = getInstalledApp(appId)?.branch ?: "public"
             for (depot in depots) {
-                val mi = depot.manifests["public"] ?: continue
+                val mi = depot.manifests[installedBranch] ?: continue
                 if (mi.size > largestDepotSize) largestDepotSize = mi.size
 
                 // Check cache first
@@ -1024,14 +1025,17 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun downloadApp(appId: Int): DownloadInfo? {
             val currentDownloadInfo = downloadJobs[appId]
             if (currentDownloadInfo != null) {
-                return downloadApp(appId, currentDownloadInfo.downloadingAppIds, isUpdateOrVerify = false)
+                val branch = getDownloadingAppInfoOf(appId)?.branch
+                    ?: getInstalledApp(appId)?.branch
+                    ?: "public"
+                return downloadApp(appId, currentDownloadInfo.downloadingAppIds, branch = branch, isUpdateOrVerify = false)
             } else {
-                // If downloading app info exists
                 val downloadingAppInfo = getDownloadingAppInfoOf(appId)
                 if (downloadingAppInfo != null) {
-                    return downloadApp(appId, downloadingAppInfo.dlcAppIds.orEmpty(), isUpdateOrVerify = false)
+                    return downloadApp(appId, downloadingAppInfo.dlcAppIds.orEmpty(), branch = downloadingAppInfo.branch, isUpdateOrVerify = false)
                 } else {
-                    // Otherwise it is verifying files
+                    val installedApp = getInstalledApp(appId)
+                    val branch = installedApp?.branch ?: "public"
                     val dlcAppIds = getInstalledDlcDepotsOf(appId).orEmpty().toMutableList()
 
                     getDownloadableDlcAppsOf(appId)?.forEach { dlcApp ->
@@ -1041,12 +1045,12 @@ class SteamService : Service(), IChallengeUrlChanged {
                         }
                     }
 
-                    return downloadApp(appId, dlcAppIds, isUpdateOrVerify = true)
+                    return downloadApp(appId, dlcAppIds, branch = branch, isUpdateOrVerify = true)
                 }
             }
         }
 
-        fun downloadApp(appId: Int, dlcAppIds: List<Int>, isUpdateOrVerify: Boolean): DownloadInfo? {
+        fun downloadApp(appId: Int, dlcAppIds: List<Int>, branch: String = "public", isUpdateOrVerify: Boolean): DownloadInfo? {
             if (!checkWifiOrNotify()) return null
             return getAppInfoOf(appId)?.let { appInfo ->
                 val container = ContainerManager(instance!!.applicationContext).getContainerById("STEAM_${appId}")
@@ -1056,14 +1060,14 @@ class SteamService : Service(), IChallengeUrlChanged {
                     PrefManager.containerLanguage
                 }
 
-                Timber.tag("SteamService").d("downloadApp: downloading app $appId with language $containerLanguage")
+                Timber.tag("SteamService").d("downloadApp: downloading app $appId with language $containerLanguage, branch $branch")
 
                 val depots = getDownloadableDepots(appId = appId, preferredLanguage = containerLanguage)
                 downloadApp(
                     appId = appId,
                     downloadableDepots = depots,
                     userSelectedDlcAppIds = dlcAppIds,
-                    branch = "public",
+                    branch = branch,
                     containerLanguage = containerLanguage,
                     isUpdateOrVerify = isUpdateOrVerify)
             }
@@ -1469,7 +1473,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                 instance?.downloadingAppInfoDao?.insert(
                     DownloadingAppInfo(
                         appId,
-                        dlcAppIds = userSelectedDlcAppIds
+                        dlcAppIds = userSelectedDlcAppIds,
+                        branch = branch,
                     ),
                 )
             }
@@ -1733,14 +1738,14 @@ class SteamService : Service(), IChallengeUrlChanged {
                         // Complete app download
                         if (mainAppDepots.isNotEmpty()) {
                             val mainAppDepotIds = mainAppDepots.keys.sorted()
-                            completeAppDownload(di, appId, mainAppDepotIds, mainAppDlcIds, appDirPath)
+                            completeAppDownload(di, appId, mainAppDepotIds, mainAppDlcIds, appDirPath, branch)
                         }
 
                         // Complete dlc app download
                         calculatedDlcAppIds.forEach { dlcAppId ->
                             val dlcDepots = selectedDepots.filter { it.value.dlcAppId == dlcAppId }
                             val dlcDepotIds = dlcDepots.keys.sorted()
-                            completeAppDownload(di, dlcAppId, dlcDepotIds, emptyList(), appDirPath)
+                            completeAppDownload(di, dlcAppId, dlcDepotIds, emptyList(), appDirPath, branch)
                         }
 
                         // Remove the job here
@@ -1781,6 +1786,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             entitledDepotIds: List<Int>,
             selectedDlcAppIds: List<Int>,
             appDirPath: String,
+            branch: String = "public",
         ) {
             Timber.i("Item $downloadingAppId download completed, saving database")
 
@@ -1798,6 +1804,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         isDownloaded = true,
                         downloadedDepots = updatedDownloadedDepots.sorted(),
                         dlcDepots = updatedDlcDepots.sorted(),
+                        branch = branch,
                     ),
                 )
             } else {
@@ -1807,6 +1814,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         isDownloaded = true,
                         downloadedDepots = entitledDepotIds.sorted(),
                         dlcDepots = selectedDlcAppIds.sorted(),
+                        branch = branch,
                     ),
                 )
             }

@@ -17,10 +17,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,7 +34,9 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -76,7 +83,7 @@ data class InstallSizeInfo(
 fun GameManagerDialog(
     visible: Boolean,
     onGetDisplayInfo: @Composable (Context) -> GameDisplayInfo,
-    onInstall: (List<Int>) -> Unit,
+    onInstall: (List<Int>, String) -> Unit,
     onDismissRequest: () -> Unit
 ) {
     val context = LocalContext.current
@@ -89,6 +96,19 @@ fun GameManagerDialog(
 
     val displayInfo = onGetDisplayInfo(context)
     val gameId = displayInfo.gameId
+
+    val availableBranches = remember(gameId) {
+        val appInfo = SteamService.getAppInfoOf(gameId)
+        appInfo?.branches
+            ?.filter { (_, info) -> !info.pwdRequired }
+            ?.keys
+            ?.sorted()
+            .orEmpty()
+    }
+    var selectedBranch by remember(gameId) {
+        val installed = SteamService.getInstalledApp(gameId)
+        mutableStateOf(installed?.branch ?: "public")
+    }
 
     val installedApp = remember(gameId) {
         SteamService.getInstalledApp(gameId)
@@ -162,16 +182,15 @@ fun GameManagerDialog(
 
     fun getSizeInfo(dlcAppId: Int): Pair<String, String> {
         if (dlcAppId == INVALID_APP_ID || dlcAppId == gameId) {
-            // Base game case
             val depotsForBaseGame = downloadableDepots.filter { (_, depot) ->
                 depot.dlcAppId == INVALID_APP_ID
             }
 
             val installBytes = depotsForBaseGame.values.sumOf {
-                it.manifests["public"]?.size ?: 0
+                it.manifests[selectedBranch]?.size ?: 0
             }
             val downloadBytes = depotsForBaseGame.values.sumOf {
-                it.manifests["public"]?.download ?: 0
+                it.manifests[selectedBranch]?.download ?: 0
             }
 
             return Pair(
@@ -180,16 +199,15 @@ fun GameManagerDialog(
             )
         }
 
-        // DLC case
         val depotsForDlc = downloadableDepots.filter { (_, depot) ->
             depot.dlcAppId == dlcAppId
         }
 
         val installBytes = depotsForDlc.values.sumOf {
-            it.manifests["public"]?.size ?: 0
+            it.manifests[selectedBranch]?.size ?: 0
         }
         val downloadBytes = depotsForDlc.values.sumOf {
-            it.manifests["public"]?.download ?: 0
+            it.manifests[selectedBranch]?.download ?: 0
         }
 
         return Pair(
@@ -201,12 +219,11 @@ fun GameManagerDialog(
     fun getInstallSizeInfo(): InstallSizeInfo {
         val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
 
-        // For Base Game
         val baseGameInstallBytes = if (installedApp == null) {
             downloadableDepots
                 .filter { (_, depot) ->
                     depot.dlcAppId == INVALID_APP_ID
-                }.values.sumOf { it.manifests["public"]?.size ?: 0 }
+                }.values.sumOf { it.manifests[selectedBranch]?.size ?: 0 }
         } else {
             0L
         }
@@ -215,23 +232,22 @@ fun GameManagerDialog(
             downloadableDepots
                 .filter { (_, depot) ->
                     depot.dlcAppId == INVALID_APP_ID
-                }.values.sumOf { it.manifests["public"]?.download ?: 0 }
+                }.values.sumOf { it.manifests[selectedBranch]?.download ?: 0 }
         } else {
             0L
         }
 
-        // For Selected DLCs
         val selectedInstallBytes = downloadableDepots
             .filter { (_, depot) ->
                 selectedAppIds[depot.dlcAppId] == true && enabledAppIds[depot.dlcAppId] == true
             }
-            .values.sumOf { it.manifests["public"]?.size ?: 0 }
+            .values.sumOf { it.manifests[selectedBranch]?.size ?: 0 }
 
         val selectedDownloadBytes = downloadableDepots
             .filter { (_, depot) ->
                 selectedAppIds[depot.dlcAppId] == true && enabledAppIds[depot.dlcAppId] == true
             }
-            .values.sumOf { it.manifests["public"]?.download ?: 0 }
+            .values.sumOf { it.manifests[selectedBranch]?.download ?: 0 }
 
         return InstallSizeInfo(
             downloadSize = StorageUtils.formatBinarySize(baseGameDownloadBytes + selectedDownloadBytes),
@@ -254,7 +270,7 @@ fun GameManagerDialog(
         }
     }
 
-    val installSizeInfo by remember(downloadableDepots.keys.toSet(), selectedAppIds.toMap(), enabledAppIds.toMap()) {
+    val installSizeInfo by remember(downloadableDepots.keys.toSet(), selectedAppIds.toMap(), enabledAppIds.toMap(), selectedBranch) {
         derivedStateOf { getInstallSizeInfo() }
     }
 
@@ -393,6 +409,57 @@ fun GameManagerDialog(
                             }
                         }
 
+                        // Branch selector
+                        if (availableBranches.size > 1) {
+                            var branchExpanded by remember { mutableStateOf(false) }
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.branch),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    modifier = Modifier.padding(bottom = 4.dp),
+                                )
+                                ExposedDropdownMenuBox(
+                                    expanded = branchExpanded,
+                                    onExpandedChange = { branchExpanded = it },
+                                ) {
+                                    OutlinedTextField(
+                                        value = selectedBranch,
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        singleLine = true,
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = branchExpanded) },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = branchExpanded,
+                                        onDismissRequest = { branchExpanded = false },
+                                    ) {
+                                        availableBranches.forEach { branch ->
+                                            DropdownMenuItem(
+                                                text = { Text(branch) },
+                                                onClick = {
+                                                    selectedBranch = branch
+                                                    branchExpanded = false
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                                thickness = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                            )
+                        }
+
                         Column(
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -480,9 +547,12 @@ fun GameManagerDialog(
                                 Button(
                                     enabled = installButtonEnabled(),
                                     onClick = {
-                                        onInstall(selectedAppIds
-                                            .filter { selectedId -> selectedId.key in enabledAppIds.filter { enabledId -> enabledId.value } }
-                                            .filter { selectedId -> selectedId.value }.keys.toList())
+                                        onInstall(
+                                            selectedAppIds
+                                                .filter { selectedId -> selectedId.key in enabledAppIds.filter { enabledId -> enabledId.value } }
+                                                .filter { selectedId -> selectedId.value }.keys.toList(),
+                                            selectedBranch,
+                                        )
                                     }
                                 ) {
                                     Text(stringResource(R.string.install))
@@ -521,7 +591,7 @@ fun Preview_GameManagerDialog() {
             onGetDisplayInfo = {
                 return@GameManagerDialog displayInfo
             },
-            onInstall = {},
+            onInstall = { _, _ -> },
             onDismissRequest = {}
         )
     }

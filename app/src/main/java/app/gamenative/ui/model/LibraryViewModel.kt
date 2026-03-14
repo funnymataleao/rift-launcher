@@ -415,9 +415,9 @@ class LibraryViewModel @Inject constructor(
             data class LibraryEntry(val item: LibraryItem, val isInstalled: Boolean)
             val steamEntries: List<LibraryEntry> = filteredSteamApps.map { item ->
                 val isInstalled = downloadDirectorySet.contains(SteamService.getAppDirName(item))
-                // Calculate total size from all depot manifests (use "public" branch as default)
+                val installedBranch = SteamService.getInstalledApp(item.id)?.branch ?: "public"
                 val totalSizeBytes = item.depots.values.sumOf { depot ->
-                    depot.manifests["public"]?.size ?: depot.manifests.values.firstOrNull()?.size ?: 0L
+                    depot.manifests[installedBranch]?.size ?: depot.manifests.values.firstOrNull()?.size ?: 0L
                 }
                 LibraryEntry(
                     item = LibraryItem(
