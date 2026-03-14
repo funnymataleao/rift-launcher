@@ -12,9 +12,13 @@ import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
+import app.gamenative.service.amazon.AmazonConstants
 import app.gamenative.service.amazon.AmazonService
+import app.gamenative.service.epic.EpicConstants
 import app.gamenative.service.epic.EpicService
+import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
+import app.gamenative.utils.ContainerUtils
 import app.gamenative.ui.data.CancelConfirmation
 import app.gamenative.ui.data.DownloadItemState
 import app.gamenative.ui.data.DownloadsState
@@ -302,6 +306,38 @@ class DownloadsViewModel @Inject constructor(
                 AmazonService.cancelDownload(appId)
             }
             else -> { /* no-op */ }
+        }
+    }
+
+    fun onResumeDownload(appId: String, gameSource: GameSource) {
+        viewModelScope.launch(Dispatchers.IO) {
+            when (gameSource) {
+                GameSource.STEAM -> {
+                    val id = appId.toIntOrNull() ?: return@launch
+                    SteamService.downloadApp(id)
+                }
+                GameSource.GOG -> {
+                    val game = gogGameDao.getById(appId) ?: return@launch
+                    val installPath = GOGConstants.getGameInstallPath(game.title)
+                    val container = ContainerUtils.getOrCreateContainer(appContext, "${GameSource.GOG.name}_$appId")
+                    val language = ContainerUtils.toContainerData(container).language
+                    GOGService.downloadGame(appContext, appId, installPath, language)
+                }
+                GameSource.EPIC -> {
+                    val id = appId.toIntOrNull() ?: return@launch
+                    val game = epicGameDao.getById(id) ?: return@launch
+                    val installPath = EpicConstants.getGameInstallPath(appContext, game.appName)
+                    val container = ContainerUtils.getOrCreateContainer(appContext, "${GameSource.EPIC.name}_$appId")
+                    val language = ContainerUtils.toContainerData(container).language
+                    EpicService.downloadGame(appContext, id, emptyList(), installPath, language)
+                }
+                GameSource.AMAZON -> {
+                    val game = amazonGameDao.getByProductId(appId) ?: return@launch
+                    val installPath = AmazonConstants.getGameInstallPath(appContext, game.title)
+                    AmazonService.downloadGame(appContext, appId, installPath)
+                }
+                else -> { /* no-op */ }
+            }
         }
     }
 

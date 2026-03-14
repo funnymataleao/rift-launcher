@@ -24,6 +24,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
@@ -100,6 +101,7 @@ fun HomeDownloadsScreen(
                     ) { item ->
                         DownloadItemCard(
                             item = item,
+                            onPlay = { viewModel.onResumeDownload(item.appId, item.gameSource) },
                             onPause = { viewModel.onPauseDownload(item.appId, item.gameSource) },
                             onCancel = { viewModel.onCancelDownload(item.appId, item.gameSource) },
                         )
@@ -229,6 +231,7 @@ private fun EmptyDownloadsContent() {
 @Composable
 private fun DownloadItemCard(
     item: DownloadItemState,
+    onPlay: () -> Unit,
     onPause: () -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -336,17 +339,31 @@ private fun DownloadItemCard(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Pause button
-            IconButton(
-                onClick = onPause,
-                modifier = Modifier.size(36.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Pause,
-                    contentDescription = stringResource(R.string.pause_download),
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    modifier = Modifier.size(20.dp),
-                )
+            // Play (resume) button for partial downloads, pause button for active downloads
+            if (item.isPartial) {
+                IconButton(
+                    onClick = onPlay,
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.PlayArrow,
+                        contentDescription = stringResource(R.string.resume_download),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            } else {
+                IconButton(
+                    onClick = onPause,
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Pause,
+                        contentDescription = stringResource(R.string.pause_download),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
 
             // Cancel button
