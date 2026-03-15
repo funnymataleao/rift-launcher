@@ -7,22 +7,22 @@ import android.net.Uri
 import android.os.Environment
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import app.gamenative.PluviaApp
 
@@ -805,12 +805,6 @@ class SteamAppScreen : BaseAppScreen() {
                 }
             ),
             AppMenuOption(
-                AppOptionMenuType.ChangeBranch,
-                onClick = {
-                    showBranchDialog(gameId)
-                }
-            ),
-            AppMenuOption(
                 AppOptionMenuType.VerifyFiles,
                 onClick = {
                     // Show confirmation dialog before verifying
@@ -846,8 +840,12 @@ class SteamAppScreen : BaseAppScreen() {
                     )
                 },
             ),
-            // Uninstall option removed from menu - now handled by delete button next to play button
-            // The button uses onDeleteDownloadClick which shows the uninstall dialog
+            AppMenuOption(
+                AppOptionMenuType.ChangeBranch,
+                onClick = {
+                    showBranchDialog(gameId)
+                }
+            ),
             AppMenuOption(
                 AppOptionMenuType.ForceCloudSync,
                 onClick = {
@@ -1356,7 +1354,7 @@ class SteamAppScreen : BaseAppScreen() {
                 onGetDisplayInfo = { context ->
                     return@GameManagerDialog getGameDisplayInfo(context, libraryItem)
                 },
-                onInstall = { dlcAppIds, branch ->
+                onInstall = { dlcAppIds ->
                     hideGameManagerDialog(gameId)
 
                     val installedApp = SteamService.getInstalledApp(gameId)
@@ -1371,7 +1369,7 @@ class SteamAppScreen : BaseAppScreen() {
                         properties = mapOf("game_name" to (appInfo?.name ?: ""))
                     )
                     CoroutineScope(Dispatchers.IO).launch {
-                        SteamService.downloadApp(gameId, dlcAppIds, branch = branch, isUpdateOrVerify = false)
+                        SteamService.downloadApp(gameId, dlcAppIds, isUpdateOrVerify = false)
                     }
                 },
                 onDismissRequest = {
@@ -1402,27 +1400,40 @@ class SteamAppScreen : BaseAppScreen() {
             }
             var selectedBranch by remember(gameId) { mutableStateOf(currentBranch) }
 
+            @OptIn(ExperimentalMaterial3Api::class)
             AlertDialog(
                 onDismissRequest = { hideBranchDialog(gameId) },
                 title = { Text(stringResource(R.string.change_branch)) },
                 text = {
+                    var branchExpanded by remember { mutableStateOf(false) }
                     Column {
-                        availableBranches.forEach { branch ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
+                        ExposedDropdownMenuBox(
+                            expanded = branchExpanded,
+                            onExpandedChange = { branchExpanded = it },
+                        ) {
+                            OutlinedTextField(
+                                value = selectedBranch,
+                                onValueChange = {},
+                                readOnly = true,
+                                singleLine = true,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = branchExpanded) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { selectedBranch = branch }
-                                    .padding(vertical = 4.dp),
+                                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                            )
+                            ExposedDropdownMenu(
+                                expanded = branchExpanded,
+                                onDismissRequest = { branchExpanded = false },
                             ) {
-                                RadioButton(
-                                    selected = selectedBranch == branch,
-                                    onClick = { selectedBranch = branch },
-                                )
-                                Text(
-                                    text = branch,
-                                    modifier = Modifier.padding(start = 8.dp),
-                                )
+                                availableBranches.forEach { branch ->
+                                    DropdownMenuItem(
+                                        text = { Text(branch) },
+                                        onClick = {
+                                            selectedBranch = branch
+                                            branchExpanded = false
+                                        },
+                                    )
+                                }
                             }
                         }
                     }
