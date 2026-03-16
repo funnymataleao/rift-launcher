@@ -1510,6 +1510,7 @@ class SteamAppScreen : BaseAppScreen() {
                             MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
                             MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
                             CoroutineScope(Dispatchers.IO).launch {
+                                val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
                                 val dlcAppIds = SteamService.getInstalledApp(gameId)
                                     ?.dlcDepots.orEmpty()
                                 SteamService.downloadApp(
@@ -1518,6 +1519,8 @@ class SteamAppScreen : BaseAppScreen() {
                                     branch = selectedBranch,
                                     isUpdateOrVerify = true,
                                 )
+                                container.isNeedsUnpacking = true
+                                container.saveData()
                             }
                         }
                     ) {
