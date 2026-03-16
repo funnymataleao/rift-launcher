@@ -953,7 +953,9 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             val installedBranch = getInstalledApp(appId)?.branch ?: "public"
             for (depot in depots) {
-                val mi = depot.manifests[installedBranch] ?: continue
+                val mi = depot.manifests[installedBranch]
+                    ?: depot.encryptedManifests[installedBranch]
+                    ?: continue
                 if (mi.size > largestDepotSize) largestDepotSize = mi.size
 
                 // Check cache first
