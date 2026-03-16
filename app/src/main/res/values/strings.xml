@@ -84,6 +84,10 @@
     <string name="branch">Branch</string>
     <string name="change_branch">Change Branch</string>
     <string name="change_branch_message">Changing the branch will re-download the game using the selected branch. Continue?</string>
+    <string name="beta_password_hint">Enter access code…</string>
+    <string name="beta_password_check">Check Code</string>
+    <string name="beta_password_success">Beta unlocked!</string>
+    <string name="beta_password_invalid">Invalid access code</string>
     <string name="run_app">Play</string>
     <string name="download_prompt_title">Install App</string>
     <string name="calculating_space_requirements">Calculating space requirements...</string>

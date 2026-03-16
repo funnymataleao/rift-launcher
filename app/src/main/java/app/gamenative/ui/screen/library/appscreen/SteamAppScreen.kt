@@ -8,7 +8,10 @@ import android.os.Environment
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -21,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
@@ -1388,17 +1392,30 @@ class SteamAppScreen : BaseAppScreen() {
         }
 
         if (showBranchDialogState) {
-            val availableBranches = remember(gameId) {
+            val publicBranches = remember(gameId) {
                 appInfo?.branches
                     ?.filter { (_, info) -> !info.pwdRequired }
                     ?.keys
                     ?.sorted()
                     .orEmpty()
             }
+            var unlockedBranchNames by remember(gameId) { mutableStateOf<List<String>>(emptyList()) }
+            LaunchedEffect(gameId) {
+                unlockedBranchNames = SteamService.getUnlockedBranches(gameId).map { it.branchName }
+            }
+            val availableBranches = remember(publicBranches, unlockedBranchNames) {
+                (publicBranches + unlockedBranchNames).distinct().sorted()
+            }
             val currentBranch = remember(gameId) {
                 SteamService.getInstalledApp(gameId)?.branch ?: "public"
             }
             var selectedBranch by remember(gameId) { mutableStateOf(currentBranch) }
+
+            var betaPassword by remember { mutableStateOf("") }
+            var betaPasswordError by remember { mutableStateOf(false) }
+            var betaPasswordSuccess by remember { mutableStateOf(false) }
+            var betaPasswordChecking by remember { mutableStateOf(false) }
+            val coroutineScope = rememberCoroutineScope()
 
             @OptIn(ExperimentalMaterial3Api::class)
             AlertDialog(
@@ -1435,6 +1452,50 @@ class SteamAppScreen : BaseAppScreen() {
                                     )
                                 }
                             }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        OutlinedTextField(
+                            value = betaPassword,
+                            onValueChange = {
+                                betaPassword = it
+                                betaPasswordError = false
+                                betaPasswordSuccess = false
+                            },
+                            label = { Text(stringResource(R.string.beta_password_hint)) },
+                            singleLine = true,
+                            isError = betaPasswordError,
+                            supportingText = when {
+                                betaPasswordError -> ({ Text(stringResource(R.string.beta_password_invalid)) })
+                                betaPasswordSuccess -> ({ Text(stringResource(R.string.beta_password_success)) })
+                                else -> null
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            enabled = betaPassword.isNotBlank() && !betaPasswordChecking,
+                            onClick = {
+                                betaPasswordChecking = true
+                                betaPasswordError = false
+                                betaPasswordSuccess = false
+                                coroutineScope.launch {
+                                    val result = SteamService.checkBetaPassword(gameId, betaPassword)
+                                    if (result.isNotEmpty()) {
+                                        betaPasswordSuccess = true
+                                        unlockedBranchNames = SteamService.getUnlockedBranches(gameId)
+                                            .map { it.branchName }
+                                    } else {
+                                        betaPasswordError = true
+                                    }
+                                    betaPasswordChecking = false
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(stringResource(R.string.beta_password_check))
                         }
                     }
                 },
