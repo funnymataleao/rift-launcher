@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import timber.log.Timber
 
 @HiltViewModel
@@ -50,6 +51,9 @@ class DownloadsViewModel @Inject constructor(
     // Cache game metadata to avoid repeated DB lookups
     private val gameNameCache = ConcurrentHashMap<String, String>()
     private val gameIconCache = ConcurrentHashMap<String, String>()
+
+    // Mutex to prevent concurrent pollDownloads() execution
+    private val pollMutex = Mutex()
 
     private val onDownloadStatusChanged: (AndroidEvent.DownloadStatusChanged) -> Unit = {
         viewModelScope.launch(Dispatchers.IO) { pollDownloads() }
@@ -73,59 +77,60 @@ class DownloadsViewModel @Inject constructor(
 
     private suspend fun getSteamMetadata(appId: Int): Pair<String, String> {
         val key = "${GameSource.STEAM}_$appId"
-        val name = gameNameCache.getOrPut(key) {
-            steamAppDao.findApp(appId)?.name ?: "Steam App $appId"
-        }
-        val icon = gameIconCache.getOrPut(key) {
-            val app = steamAppDao.findApp(appId)
-            if (app != null && app.clientIconHash.isNotEmpty()) {
-                "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/${app.id}/${app.clientIconHash}.ico"
-            } else {
-                ""
-            }
-        }
+        val cachedName = gameNameCache[key]
+        val cachedIcon = gameIconCache[key]
+        if (cachedName != null && cachedIcon != null) return Pair(cachedName, cachedIcon)
+
+        val app = steamAppDao.findApp(appId)
+        val name = cachedName ?: (app?.name ?: "Steam App $appId").also { gameNameCache[key] = it }
+        val icon = cachedIcon ?: (if (app != null && app.clientIconHash.isNotEmpty())
+            "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/${app.id}/${app.clientIconHash}.ico"
+        else "").also { gameIconCache[key] = it }
 
         return Pair(name, icon)
     }
 
     private suspend fun getEpicMetadata(appId: Int): Pair<String, String> {
         val key = "${GameSource.EPIC}_$appId"
-        val name = gameNameCache.getOrPut(key) {
-            epicGameDao.getById(appId)?.title ?: "Epic Game $appId"
-        }
-        val icon = gameIconCache.getOrPut(key) {
-            epicGameDao.getById(appId)?.artCover ?: ""
-        }
+        val cachedName = gameNameCache[key]
+        val cachedIcon = gameIconCache[key]
+        if (cachedName != null && cachedIcon != null) return Pair(cachedName, cachedIcon)
+
+        val game = epicGameDao.getById(appId)
+        val name = cachedName ?: (game?.title ?: "Epic Game $appId").also { gameNameCache[key] = it }
+        val icon = cachedIcon ?: (game?.artCover ?: "").also { gameIconCache[key] = it }
 
         return Pair(name, icon)
     }
 
     private suspend fun getGOGMetadata(gameId: String): Pair<String, String> {
         val key = "${GameSource.GOG}_$gameId"
-        val name = gameNameCache.getOrPut(key) {
-            gogGameDao.getById(gameId)?.title ?: "GOG Game $gameId"
-        }
-        val icon = gameIconCache.getOrPut(key) {
-            val game = gogGameDao.getById(gameId)
-            game?.imageUrl?.ifEmpty { game.iconUrl } ?: ""
-        }
+        val cachedName = gameNameCache[key]
+        val cachedIcon = gameIconCache[key]
+        if (cachedName != null && cachedIcon != null) return Pair(cachedName, cachedIcon)
+
+        val game = gogGameDao.getById(gameId)
+        val name = cachedName ?: (game?.title ?: "GOG Game $gameId").also { gameNameCache[key] = it }
+        val icon = cachedIcon ?: (game?.imageUrl?.ifEmpty { game.iconUrl } ?: "").also { gameIconCache[key] = it }
 
         return Pair(name, icon)
     }
 
     private suspend fun getAmazonMetadata(productId: String): Pair<String, String> {
         val key = "${GameSource.AMAZON}_$productId"
-        val name = gameNameCache.getOrPut(key) {
-            amazonGameDao.getByProductId(productId)?.title ?: "Amazon Game"
-        }
-        val icon = gameIconCache.getOrPut(key) {
-            amazonGameDao.getByProductId(productId)?.artUrl ?: ""
-        }
+        val cachedName = gameNameCache[key]
+        val cachedIcon = gameIconCache[key]
+        if (cachedName != null && cachedIcon != null) return Pair(cachedName, cachedIcon)
+
+        val game = amazonGameDao.getByProductId(productId)
+        val name = cachedName ?: (game?.title ?: "Amazon Game").also { gameNameCache[key] = it }
+        val icon = cachedIcon ?: (game?.artUrl ?: "").also { gameIconCache[key] = it }
 
         return Pair(name, icon)
     }
 
     private suspend fun pollDownloads() {
+        if (!pollMutex.tryLock()) return
         try {
             val items = mutableMapOf<String, DownloadItemState>()
 
@@ -280,6 +285,8 @@ class DownloadsViewModel @Inject constructor(
             _state.update { it.copy(downloads = items) }
         } catch (e: Exception) {
             Timber.tag("DownloadsViewModel").e(e, "Error polling downloads")
+        } finally {
+            pollMutex.unlock()
         }
     }
 

@@ -46,7 +46,7 @@ interface GOGGameDao {
     @Query("SELECT * FROM gog_games WHERE is_installed = 0 AND exclude = 0")
     suspend fun getNonInstalledGames(): List<GOGGame>
 
-    @Query("SELECT * FROM gog_games WHERE partial_install = 1")
+    @Query("SELECT * FROM gog_games WHERE partial_install = 1 AND exclude = 0")
     suspend fun getPartialDownloads(): List<GOGGame>
 
     @Query("SELECT * FROM gog_games WHERE exclude = 0 AND title LIKE '%' || :searchQuery || '%' ORDER BY title ASC")
