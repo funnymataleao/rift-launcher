@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.downloads
 
+import android.content.res.Configuration
 import android.text.format.Formatter
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -62,6 +63,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -493,26 +495,39 @@ private fun DownloadItemCard(
         ),
         shape = RoundedCornerShape(16.dp),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            CoilImage(
-                imageModel = { item.iconUrl.ifEmpty { null } },
-                imageOptions = ImageOptions(
-                    contentScale = ContentScale.Crop,
-                    contentDescription = item.gameName,
-                ),
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(RoundedCornerShape(10.dp)),
-            )
+        val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
 
-            Spacer(modifier = Modifier.width(12.dp))
+        val actionButtons: @Composable () -> Unit = {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (item.isPartial) {
+                    DownloadActionButton(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = stringResource(R.string.resume_download),
+                        accentColor = PluviaTheme.colors.accentSuccess,
+                        onClick = onResume,
+                    )
+                } else {
+                    DownloadActionButton(
+                        imageVector = Icons.Default.Pause,
+                        contentDescription = stringResource(R.string.pause_download),
+                        accentColor = PluviaTheme.colors.accentWarning,
+                        onClick = onPause,
+                    )
+                }
 
-            Column(modifier = Modifier.weight(1f)) {
+                DownloadActionButton(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.delete),
+                    accentColor = PluviaTheme.colors.accentDanger,
+                    onClick = onCancel,
+                )
+            }
+        }
+
+        val infoContent: @Composable (Modifier) -> Unit = { modifier ->
+            Column(modifier = modifier) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -590,34 +605,68 @@ private fun DownloadItemCard(
                     }
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+        if (isPortrait) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
             ) {
-                if (item.isPartial) {
-                    DownloadActionButton(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = stringResource(R.string.resume_download),
-                        accentColor = PluviaTheme.colors.accentSuccess,
-                        onClick = onResume,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CoilImage(
+                        imageModel = { item.iconUrl.ifEmpty { null } },
+                        imageOptions = ImageOptions(
+                            contentScale = ContentScale.Crop,
+                            contentDescription = item.gameName,
+                        ),
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(RoundedCornerShape(10.dp)),
                     )
-                } else {
-                    DownloadActionButton(
-                        imageVector = Icons.Default.Pause,
-                        contentDescription = stringResource(R.string.pause_download),
-                        accentColor = PluviaTheme.colors.accentWarning,
-                        onClick = onPause,
-                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    infoContent(Modifier.weight(1f))
                 }
 
-                DownloadActionButton(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = stringResource(R.string.delete),
-                    accentColor = PluviaTheme.colors.accentDanger,
-                    onClick = onCancel,
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    actionButtons()
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CoilImage(
+                    imageModel = { item.iconUrl.ifEmpty { null } },
+                    imageOptions = ImageOptions(
+                        contentScale = ContentScale.Crop,
+                        contentDescription = item.gameName,
+                    ),
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(10.dp)),
                 )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                infoContent(Modifier.weight(1f))
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                actionButtons()
             }
         }
     }
