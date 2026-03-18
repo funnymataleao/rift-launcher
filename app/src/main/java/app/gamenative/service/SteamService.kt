@@ -250,6 +250,7 @@ class SteamService : Service(), IChallengeUrlChanged {
     )
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var reconnectJob: Job? = null
 
     private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = {
         Companion.stop()
@@ -2979,9 +2980,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                 it.withConnectionTimeout(60000L)
                 it.withHttpClient(
                     OkHttpClient.Builder()
-                        .connectTimeout(10, TimeUnit.SECONDS) // Time to establish connection
-                        .readTimeout(60, TimeUnit.SECONDS) // Max inactivity between reads
-                        .writeTimeout(30, TimeUnit.SECONDS) // Time for writes
+                        .connectTimeout(10, TimeUnit.SECONDS)
+                        .readTimeout(60, TimeUnit.SECONDS)
+                        .writeTimeout(30, TimeUnit.SECONDS)
+                        .pingInterval(15, TimeUnit.SECONDS) // keep WebSocket alive during idle
                         .build(),
                 )
             }
@@ -3135,6 +3137,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         _unifiedFriends?.close()
         _unifiedFriends = null
 
+        reconnectJob?.cancel()
         isStopping = false
         retryAttempt = 0
 
@@ -3160,6 +3163,7 @@ class SteamService : Service(), IChallengeUrlChanged {
     private fun onConnected(callback: ConnectedCallback) {
         Timber.i("Connected to Steam")
 
+        reconnectJob?.cancel()
         retryAttempt = 0
         isConnected = true
 
@@ -3186,14 +3190,17 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         if (!isStopping && retryAttempt < MAX_RETRY_ATTEMPTS) {
             retryAttempt++
+            val backoffMs = (1000L * minOf(1 shl (retryAttempt - 1), 60)).coerceAtMost(60_000L)
 
-            Timber.w("Attempting to reconnect (retry $retryAttempt)")
+            Timber.w("Attempting to reconnect (retry $retryAttempt) after ${backoffMs}ms")
 
-            // isLoggingOut = false
             val event = SteamEvent.RemotelyDisconnected
             PluviaApp.events.emit(event)
 
-            connectToSteam()
+            reconnectJob = scope.launch {
+                delay(backoffMs)
+                if (isRunning && !isStopping) connectToSteam()
+            }
         } else {
             val event = SteamEvent.Disconnected
             PluviaApp.events.emit(event)
