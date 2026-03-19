@@ -11,6 +11,7 @@ import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
+import app.gamenative.enums.OSArch
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
 import app.gamenative.events.AndroidEvent
@@ -429,10 +430,24 @@ class LibraryViewModel @Inject constructor(
             data class LibraryEntry(val item: LibraryItem, val isInstalled: Boolean)
             val steamEntries: List<LibraryEntry> = filteredSteamApps.map { item ->
                 val isInstalled = downloadDirectorySet.contains(SteamService.getAppDirName(item))
-                // Calculate total size from all depot manifests (use "public" branch as default)
-                val totalSizeBytes = item.depots.values.sumOf { depot ->
-                    depot.manifests["public"]?.size ?: depot.manifests.values.firstOrNull()?.size ?: 0L
+                // mirror SteamService depot filtering: license, OS, arch, deck, base-game only
+                val licensedDepots = SteamService.getLicensedDepotIds(item.id)
+                val eligible = item.depots.values.filter { d ->
+                    d.isWindowsCompatible &&
+                        d.dlcAppId == SteamService.INVALID_APP_ID &&
+                        (licensedDepots == null || d.depotId in licensedDepots) &&
+                        d.manifests.isNotEmpty()
                 }
+                val has64Bit = eligible.any { it.osArch == OSArch.Arch64 }
+                val hasNonDeckWin = eligible.any { !it.steamDeck && it.isWindowsCompatible }
+                val totalSizeBytes = eligible
+                    .filter { d ->
+                        (d.osArch == OSArch.Arch64 || d.osArch == OSArch.Unknown || (!has64Bit && d.osArch == OSArch.Arch32)) &&
+                            !(d.steamDeck && hasNonDeckWin)
+                    }
+                    .sumOf { depot ->
+                        depot.manifests["public"]?.size ?: depot.manifests.values.firstOrNull()?.size ?: 0L
+                    }
                 LibraryEntry(
                     item = LibraryItem(
                         index = 0, // temporary, will be re-indexed after combining and paginating

@@ -20,6 +20,7 @@ class SdCardDetectionTest {
     // -- filterForDownloadableDepots: 0-byte manifest filtering --
 
     private fun depot(
+        depotId: Int = 1,
         manifests: Map<String, ManifestInfo> = emptyMap(),
         encryptedManifests: Map<String, ManifestInfo> = emptyMap(),
         sharedInstall: Boolean = false,
@@ -27,8 +28,9 @@ class SdCardDetectionTest {
         osArch: OSArch = OSArch.Arch64,
         dlcAppId: Int = SteamService.INVALID_APP_ID,
         language: String = "",
+        steamDeck: Boolean = false,
     ) = DepotInfo(
-        depotId = 1,
+        depotId = depotId,
         dlcAppId = dlcAppId,
         depotFromApp = 0,
         sharedInstall = sharedInstall,
@@ -37,6 +39,7 @@ class SdCardDetectionTest {
         manifests = manifests,
         encryptedManifests = encryptedManifests,
         language = language,
+        steamDeck = steamDeck,
     )
 
     private fun manifest(size: Long = 1000L, download: Long = 800L) = ManifestInfo(
@@ -49,19 +52,19 @@ class SdCardDetectionTest {
     @Test
     fun `valid depot with normal manifest passes filter`() {
         val d = depot(manifests = mapOf("public" to manifest()))
-        assertTrue(SteamService.filterForDownloadableDepots(d, true, "english", null))
+        assertTrue(SteamService.filterForDownloadableDepots(d, true, false, "english", null))
     }
 
     @Test
     fun `depot with 0-byte manifest is rejected`() {
         val d = depot(manifests = mapOf("public" to manifest(size = 0L, download = 0L)))
-        assertFalse(SteamService.filterForDownloadableDepots(d, true, "english", null))
+        assertFalse(SteamService.filterForDownloadableDepots(d, true, false, "english", null))
     }
 
     @Test
-    fun `depot with nonzero size but 0-byte download is accepted`() {
+    fun `depot with nonzero size but 0-byte download passes (old game without download metadata)`() {
         val d = depot(manifests = mapOf("public" to manifest(size = 1000L, download = 0L)))
-        assertTrue(SteamService.filterForDownloadableDepots(d, true, "english", null))
+        assertTrue(SteamService.filterForDownloadableDepots(d, true, false, "english", null))
     }
 
     @Test
@@ -70,7 +73,7 @@ class SdCardDetectionTest {
             "public" to manifest(size = 1000L, download = 800L),
             "beta" to manifest(size = 0L, download = 0L),
         ))
-        assertTrue(SteamService.filterForDownloadableDepots(d, true, "english", null))
+        assertTrue(SteamService.filterForDownloadableDepots(d, true, false, "english", null))
     }
 
     @Test
@@ -79,7 +82,7 @@ class SdCardDetectionTest {
             manifests = emptyMap(),
             encryptedManifests = mapOf("public" to manifest()),
         )
-        assertFalse(SteamService.filterForDownloadableDepots(d, true, "english", null))
+        assertFalse(SteamService.filterForDownloadableDepots(d, true, false, "english", null))
     }
 
     @Test
@@ -88,19 +91,59 @@ class SdCardDetectionTest {
             manifests = mapOf("public" to manifest()),
             encryptedManifests = mapOf("beta" to manifest()),
         )
-        assertTrue(SteamService.filterForDownloadableDepots(d, true, "english", null))
+        assertTrue(SteamService.filterForDownloadableDepots(d, true, false, "english", null))
     }
 
     @Test
     fun `depot with empty manifests and no shared install is rejected`() {
         val d = depot(manifests = emptyMap(), sharedInstall = false)
-        assertFalse(SteamService.filterForDownloadableDepots(d, true, "english", null))
+        assertFalse(SteamService.filterForDownloadableDepots(d, true, false, "english", null))
     }
 
     @Test
     fun `depot with empty manifests but shared install passes`() {
         val d = depot(manifests = emptyMap(), sharedInstall = true)
-        assertTrue(SteamService.filterForDownloadableDepots(d, true, "english", null))
+        assertTrue(SteamService.filterForDownloadableDepots(d, true, false, "english", null))
+    }
+
+    // -- licensedDepotIds filtering --
+
+    @Test
+    fun `depot in licensed set passes`() {
+        val d = depot(depotId = 100, manifests = mapOf("public" to manifest()))
+        assertTrue(SteamService.filterForDownloadableDepots(d, true, false, "english", null, setOf(100, 200)))
+    }
+
+    @Test
+    fun `depot not in licensed set is rejected`() {
+        val d = depot(depotId = 100, manifests = mapOf("public" to manifest()))
+        assertFalse(SteamService.filterForDownloadableDepots(d, true, false, "english", null, setOf(200, 300)))
+    }
+
+    @Test
+    fun `null licensedDepotIds skips license check`() {
+        val d = depot(depotId = 100, manifests = mapOf("public" to manifest()))
+        assertTrue(SteamService.filterForDownloadableDepots(d, true, false, "english", null, null))
+    }
+
+    // -- Steam Deck depot filtering --
+
+    @Test
+    fun `deck depot rejected when non-deck windows depot exists`() {
+        val d = depot(manifests = mapOf("public" to manifest()), steamDeck = true)
+        assertFalse(SteamService.filterForDownloadableDepots(d, true, true, "english", null))
+    }
+
+    @Test
+    fun `deck depot passes when no non-deck windows depot exists`() {
+        val d = depot(manifests = mapOf("public" to manifest()), steamDeck = true)
+        assertTrue(SteamService.filterForDownloadableDepots(d, true, false, "english", null))
+    }
+
+    @Test
+    fun `non-deck depot passes regardless of hasNonDeckWindows`() {
+        val d = depot(manifests = mapOf("public" to manifest()), steamDeck = false)
+        assertTrue(SteamService.filterForDownloadableDepots(d, true, true, "english", null))
     }
 
     // -- getAppDirPath: prefer completed installs over partial --

@@ -533,6 +533,16 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
+        /**
+         * Depot IDs the user's license actually grants for [appId].
+         * Returns null when unknown (license not cached yet) so callers
+         * can fall back to the old behaviour instead of blocking everything.
+         */
+        fun getLicensedDepotIds(appId: Int): Set<Int>? {
+            val ids = getPkgInfoOf(appId)?.depotIds ?: return null
+            return ids.takeIf { it.isNotEmpty() }?.toSet()
+        }
+
         fun getAppInfoOf(appId: Int): SteamApp? {
             return runBlocking(Dispatchers.IO) { instance?.appDao?.findApp(appId) }
         }
@@ -664,7 +674,14 @@ class SteamService : Service(), IChallengeUrlChanged {
         /**
          * Common Filter for downloadable depots
          */
-        fun filterForDownloadableDepots(depot: DepotInfo, has64Bit: Boolean, preferredLanguage: String, ownedDlc: Map<Int, DepotInfo>?): Boolean {
+        fun filterForDownloadableDepots(
+            depot: DepotInfo,
+            has64Bit: Boolean,
+            hasNonDeckWindows: Boolean,
+            preferredLanguage: String,
+            ownedDlc: Map<Int, DepotInfo>?,
+            licensedDepotIds: Set<Int>? = null,
+        ): Boolean {
             if (depot.manifests.isEmpty() && depot.encryptedManifests.isNotEmpty())
                 return false
             // 1. Has something to download (0-byte manifests = stale PICS data from interrupted fetch)
@@ -673,9 +690,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             if (depot.manifests.isNotEmpty() && depot.manifests.values.all { it.size == 0L && it.download == 0L })
                 return false
             // 2. Supported OS
-            if (!(depot.osList.contains(OS.windows) ||
-                        (!depot.osList.contains(OS.linux) && !depot.osList.contains(OS.macos)))
-            )
+            if (!depot.isWindowsCompatible)
                 return false
             // 3. 64-bit or indeterminate
             // Arch selection: allow 64-bit and Unknown always.
@@ -692,20 +707,51 @@ class SteamService : Service(), IChallengeUrlChanged {
             // 5. Language filter - if depot has language, it must match preferred language
             if (depot.language.isNotEmpty() && depot.language != preferredLanguage)
                 return false
+            // 6. Package grants this depot — prevents grabbing region depots the user has no license for
+            if (licensedDepotIds != null && depot.depotId !in licensedDepotIds)
+                return false
+            // 7. Prefer non-Steam-Deck depot when both exist (we're on Android, not Deck)
+            if (depot.steamDeck && hasNonDeckWindows)
+                return false
 
             return true
+        }
+
+        /**
+         * Depots eligible for preference-flag computation: passes manifest, OS, DLC,
+         * language and license checks but NOT arch or Steam Deck preference (those
+         * depend on the flags we're computing). Avoids unlicensed depots influencing
+         * whether we pick 64-bit vs 32-bit or regular vs Deck builds.
+         */
+        private fun eligibleDepots(
+            depots: Map<Int, DepotInfo>,
+            preferredLanguage: String,
+            ownedDlc: Map<Int, DepotInfo>?,
+            licensedDepotIds: Set<Int>?,
+        ): Collection<DepotInfo> = depots.values.filter { depot ->
+            if (depot.manifests.isEmpty() && depot.encryptedManifests.isNotEmpty()) return@filter false
+            if (depot.manifests.isEmpty() && !depot.sharedInstall) return@filter false
+            if (depot.manifests.isNotEmpty() && depot.manifests.values.all { it.size == 0L && it.download == 0L }) return@filter false
+            if (!depot.isWindowsCompatible) return@filter false
+            if (depot.dlcAppId != INVALID_APP_ID && ownedDlc != null && !ownedDlc.containsKey(depot.depotId)) return@filter false
+            if (depot.language.isNotEmpty() && depot.language != preferredLanguage) return@filter false
+            if (licensedDepotIds != null && depot.depotId !in licensedDepotIds) return@filter false
+            true
         }
 
         fun getMainAppDepots(appId: Int, containerLanguage: String): Map<Int, DepotInfo> {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
+            val licensedDepots = getLicensedDepotIds(appId)
 
-            // If the game ships any 64-bit depot, prefer those and ignore x86 ones
-            val has64Bit = appInfo.depots.values.any { it.osArch == OSArch.Arch64 }
+            // derive preference flags from eligible depots only, not all raw depots
+            val eligible = eligibleDepots(appInfo.depots, containerLanguage, ownedDlc, licensedDepots)
+            val has64Bit = eligible.any { it.osArch == OSArch.Arch64 }
+            val hasNonDeckWin = eligible.any { !it.steamDeck && it.isWindowsCompatible }
 
             return appInfo.depots.asSequence()
                 .filter { (depotId, depot) ->
-                    return@filter filterForDownloadableDepots(depot, has64Bit, containerLanguage, ownedDlc)
+                    return@filter filterForDownloadableDepots(depot, has64Bit, hasNonDeckWin, containerLanguage, ownedDlc, licensedDepots)
                 }
                 .associate { it.toPair() }
         }
@@ -726,24 +772,30 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun getDownloadableDepots(appId: Int, preferredLanguage: String): Map<Int, DepotInfo> {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
+            val licensedDepots = getLicensedDepotIds(appId)
 
-            // If the game ships any 64-bit depot, prefer those and ignore x86 ones
-            val has64Bit = appInfo.depots.values.any { it.osArch == OSArch.Arch64 }
+            // derive preference flags from eligible depots only, not all raw depots
+            val eligible = eligibleDepots(appInfo.depots, preferredLanguage, ownedDlc, licensedDepots)
+            val has64Bit = eligible.any { it.osArch == OSArch.Arch64 }
+            val hasNonDeckWin = eligible.any { !it.steamDeck && it.isWindowsCompatible }
 
             val map = appInfo.depots
                 .asSequence()
                 .filter { (depotId, depot) ->
-                    return@filter filterForDownloadableDepots(depot, has64Bit, preferredLanguage, ownedDlc)
+                    return@filter filterForDownloadableDepots(depot, has64Bit, hasNonDeckWin, preferredLanguage, ownedDlc, licensedDepots)
                 }
                 .associate { it.toPair() }
                 .toMutableMap()
 
             val indirectDlcApps = getDownloadableDlcAppsOf(appId).orEmpty()
             indirectDlcApps.forEach { dlcApp ->
+                val dlcLicensedDepots = getLicensedDepotIds(dlcApp.id)
+                val dlcEligible = eligibleDepots(dlcApp.depots, preferredLanguage, null, dlcLicensedDepots)
+                val dlcHasNonDeckWin = dlcEligible.any { !it.steamDeck && it.isWindowsCompatible }
                 dlcApp.depots
                     .asSequence()
                     .filter { (depotId, depot) ->
-                        return@filter filterForDownloadableDepots(depot, has64Bit, preferredLanguage, null)
+                        return@filter filterForDownloadableDepots(depot, has64Bit, dlcHasNonDeckWin, preferredLanguage, null, dlcLicensedDepots)
                     }
                     .associate { it.toPair() }
                     .forEach { (depotId, depot) ->
@@ -759,6 +811,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                             language = depot.language,
                             manifests = depot.manifests,
                             encryptedManifests = depot.encryptedManifests,
+                            steamDeck = depot.steamDeck,
                         )
                     }
             }
