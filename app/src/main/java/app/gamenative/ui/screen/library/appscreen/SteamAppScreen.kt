@@ -1427,6 +1427,11 @@ class SteamAppScreen : BaseAppScreen() {
                 text = {
                     var branchExpanded by remember { mutableStateOf(false) }
                     Column {
+                        Text(
+                            text = stringResource(R.string.change_branch_message),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
                         ExposedDropdownMenuBox(
                             expanded = branchExpanded,
                             onExpandedChange = { branchExpanded = it },

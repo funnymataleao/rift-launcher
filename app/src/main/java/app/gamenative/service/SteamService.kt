@@ -704,13 +704,14 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun getMainAppDepots(appId: Int, containerLanguage: String): Map<Int, DepotInfo> {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
+            val hasUnlockedBranch = runBlocking { getUnlockedBranches(appId).isNotEmpty() }
 
             // If the game ships any 64-bit depot, prefer those and ignore x86 ones
             val has64Bit = appInfo.depots.values.any { it.osArch == OSArch.Arch64 }
 
             return appInfo.depots.asSequence()
                 .filter { (depotId, depot) ->
-                    return@filter filterForDownloadableDepots(depot, has64Bit, containerLanguage, ownedDlc)
+                    return@filter filterForDownloadableDepots(depot, has64Bit, containerLanguage, ownedDlc, hasUnlockedBranch)
                 }
                 .associate { it.toPair() }
         }
@@ -731,6 +732,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun getDownloadableDepots(appId: Int, preferredLanguage: String): Map<Int, DepotInfo> {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
+            val hasUnlockedBranch = runBlocking { getUnlockedBranches(appId).isNotEmpty() }
 
             // If the game ships any 64-bit depot, prefer those and ignore x86 ones
             val has64Bit = appInfo.depots.values.any { it.osArch == OSArch.Arch64 }
@@ -738,7 +740,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val map = appInfo.depots
                 .asSequence()
                 .filter { (depotId, depot) ->
-                    return@filter filterForDownloadableDepots(depot, has64Bit, preferredLanguage, ownedDlc)
+                    return@filter filterForDownloadableDepots(depot, has64Bit, preferredLanguage, ownedDlc, hasUnlockedBranch)
                 }
                 .associate { it.toPair() }
                 .toMutableMap()
@@ -748,7 +750,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 dlcApp.depots
                     .asSequence()
                     .filter { (depotId, depot) ->
-                        return@filter filterForDownloadableDepots(depot, has64Bit, preferredLanguage, null)
+                        return@filter filterForDownloadableDepots(depot, has64Bit, preferredLanguage, null, hasUnlockedBranch)
                     }
                     .associate { it.toPair() }
                     .forEach { (depotId, depot) ->
@@ -954,6 +956,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val installedBranch = getInstalledApp(appId)?.branch ?: "public"
             for (depot in depots) {
                 val mi = depot.manifests[installedBranch]
+                    ?: depot.manifests["public"]
                     ?: depot.encryptedManifests[installedBranch]
                     ?: continue
                 if (mi.size > largestDepotSize) largestDepotSize = mi.size

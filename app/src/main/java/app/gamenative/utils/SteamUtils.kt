@@ -561,7 +561,7 @@ object SteamUtils {
             }
 
             val installedBranch = SteamService.getInstalledApp(steamAppId)?.branch ?: "public"
-            val buildId = appInfo.branches[installedBranch]?.buildId ?: 0L
+            val buildId = (appInfo.branches[installedBranch] ?: appInfo.branches["public"])?.buildId ?: 0L
             val downloadableDepots = SteamService.getDownloadableDepots(steamAppId)
 
             val regularDepots = mutableMapOf<Int, DepotInfo>()
@@ -610,6 +610,8 @@ object SteamUtils {
                     appendLine("\t{")
                     regularDepots.forEach { (depotId, depotInfo) ->
                         val manifest = depotInfo.manifests[installedBranch]
+                            ?: depotInfo.manifests["public"]
+                            ?: depotInfo.manifests.values.firstOrNull()
                         appendLine("\t\t\"$depotId\"")
                         appendLine("\t\t{")
                         appendLine("\t\t\t\"manifest\"\t\t\"${manifest?.gid ?: "0"}\"")

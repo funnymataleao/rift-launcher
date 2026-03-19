@@ -421,7 +421,7 @@ class LibraryViewModel @Inject constructor(
                     "public"
                 }
                 val totalSizeBytes = item.depots.values.sumOf { depot ->
-                    depot.manifests[installedBranch]?.size ?: depot.manifests.values.firstOrNull()?.size ?: 0L
+                    (depot.manifests[installedBranch] ?: depot.manifests["public"] ?: depot.manifests.values.firstOrNull())?.size ?: 0L
                 }
                 LibraryEntry(
                     item = LibraryItem(
