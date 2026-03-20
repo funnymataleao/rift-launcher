@@ -19,6 +19,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.hardware.input.InputManager
 import android.view.InputDevice
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -1048,8 +1049,9 @@ fun XServerScreen(
                     !keepPausedForEditor
             // logD("onKeyEvent(${it.event.device.sources})\n\tisGamepad: $isGamepad\n\tisKeyboard: $isKeyboard\n\t${it.event}")
 
-            if (waitingForManualResume && isGamepad) {
+            if (waitingForManualResume) {
                 when (it.event.keyCode) {
+                    KeyEvent.KEYCODE_ENTER,
                     KeyEvent.KEYCODE_BUTTON_A,
                     KeyEvent.KEYCODE_BUTTON_START -> {
                         if (it.event.action == KeyEvent.ACTION_DOWN && it.event.repeatCount == 0) {
@@ -1060,8 +1062,16 @@ fun XServerScreen(
                     else -> false
                 }
             } else if ((showElementEditor || keepPausedForEditor || showQuickMenu || isEditMode) && (isGamepad || isKeyboard)) {
-                // Let Compose focus system handle keyboard and gamepad navigation/selection while menu is visible.
-                false
+                val escPressed = isKeyboard && !keepPausedForEditor && it.event.keyCode == KeyEvent.KEYCODE_ESCAPE &&
+                        it.event.action == KeyEvent.ACTION_DOWN &&
+                        it.event.repeatCount == 0
+                if (escPressed) {
+                    (context as? ComponentActivity)?.onBackPressedDispatcher?.onBackPressed()
+                    true
+                } else {
+                    // Let Compose focus system handle keyboard and gamepad navigation/selection while menu is visible.
+                    false
+                }
             } else {
                 var handled = false
                 if (isGamepad) {
@@ -1071,7 +1081,17 @@ fun XServerScreen(
                     if (!handled) handled = xServerView!!.getxServer().winHandler.onKeyEvent(it.event)
                 }
                 if (!handled && isKeyboard) {
-                    handled = keyboard?.onKeyEvent(it.event) == true
+                    val isShiftEscPressed = it.event.keyCode == KeyEvent.KEYCODE_ESCAPE &&
+                            it.event.isShiftPressed &&
+                            it.event.action == KeyEvent.ACTION_DOWN &&
+                            it.event.repeatCount == 0
+                    if (isShiftEscPressed &&
+                        !showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode) {
+                        gameBack()
+                        handled = true
+                    } else {
+                        handled = keyboard?.onKeyEvent(it.event) == true
+                    }
                 }
                 handled
             }
