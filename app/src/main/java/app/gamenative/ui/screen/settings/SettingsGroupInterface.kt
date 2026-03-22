@@ -205,6 +205,25 @@ fun SettingsGroupInterface(
     }
 
     SettingsGroup(modifier = Modifier.background(Color.Transparent)) {
+        // Achievement notification position
+        val achPositionKeys = remember { ACHIEVEMENT_NOTIFICATION_POSITION.keys.toList() }
+        val achPositionLabels = remember { ACHIEVEMENT_NOTIFICATION_POSITION.values.toList() }
+        var achPositionIndex by rememberSaveable {
+            mutableStateOf(
+                achPositionKeys.indexOf(PrefManager.achievementNotificationPosition).takeIf { it >= 0 } ?: achPositionKeys.indexOf("bottom_right")
+            )
+        }
+        SettingsListDropdown(
+            title = { Text(text = stringResource(R.string.settings_achievement_notification_position)) },
+            items = achPositionLabels,
+            value = achPositionIndex,
+            onItemSelected = { idx ->
+                achPositionIndex = idx
+                PrefManager.achievementNotificationPosition = achPositionKeys[idx]
+            },
+            colors = settingsTileColorsAlt(),
+        )
+
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.settings_interface_external_links_title)) },
@@ -273,25 +292,6 @@ fun SettingsGroupInterface(
                 )
             }
         }
-
-        // Achievement notification position
-        val achPositionKeys = remember { ACHIEVEMENT_NOTIFICATION_POSITION.keys.toList() }
-        val achPositionLabels = remember { ACHIEVEMENT_NOTIFICATION_POSITION.values.toList() }
-        var achPositionIndex by rememberSaveable {
-            mutableStateOf(
-                achPositionKeys.indexOf(PrefManager.achievementNotificationPosition).takeIf { it >= 0 } ?: achPositionKeys.indexOf("bottom_right")
-            )
-        }
-        SettingsListDropdown(
-            title = { Text(text = stringResource(R.string.settings_achievement_notification_position)) },
-            items = achPositionLabels,
-            value = achPositionIndex,
-            onItemSelected = { idx ->
-                achPositionIndex = idx
-                PrefManager.achievementNotificationPosition = achPositionKeys[idx]
-            },
-            colors = settingsTileColorsAlt(),
-        )
     }
 
     // Platform integrations now live in the System Menu. The detailed
