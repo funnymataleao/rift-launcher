@@ -23,15 +23,33 @@ class AchievementWatcher(
     private val observers = mutableListOf<FileObserver>()
     private val notifiedNames = mutableSetOf<String>()
     private val uploadedNames = mutableSetOf<String>()
-    private var sessionStartTime: Long = 0L
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var uploadJob: Job? = null
 
     fun start() {
-        sessionStartTime = System.currentTimeMillis() / 1000
-
+        // Snapshot all currently earned achievements so we don't notify for
+        // pre-existing unlocks when the game writes its initial achievements.json.
         for (dir in watchDirs) {
             dir.mkdirs()
+            val achFile = File(dir, "achievements.json")
+            if (achFile.exists()) {
+                try {
+                    val json = JSONObject(achFile.readText(Charsets.UTF_8))
+                    for (name in json.keys()) {
+                        val entry = json.optJSONObject(name) ?: continue
+                        if (entry.optBoolean("earned", false)) {
+                            notifiedNames.add(name)
+                            uploadedNames.add(name)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.w(e, "Failed to snapshot existing achievements.json in ${dir.absolutePath}")
+                }
+            }
+        }
+        Timber.d("AchievementWatcher seeded ${notifiedNames.size} pre-existing achievements")
+
+        for (dir in watchDirs) {
             val observer = object : FileObserver(dir, CLOSE_WRITE or MOVED_TO) {
                 override fun onEvent(event: Int, path: String?) {
                     if (path == "achievements.json") {
@@ -62,15 +80,12 @@ class AchievementWatcher(
                 if (!entry.optBoolean("earned", false)) continue
                 if (name in notifiedNames) continue
 
-                val earnedTime = entry.optLong("earned_time", 0L)
-                if (earnedTime >= sessionStartTime - 30) {
-                    notifiedNames.add(name)
-                    hasNewUnlocks = true
-                    val displayName = displayNameMap[name] ?: name
-                    val iconUrl = iconUrlMap[name]
-                    AchievementNotificationManager.show(displayName, iconUrl)
-                    Timber.i("Achievement unlocked: $name ($displayName)")
-                }
+                notifiedNames.add(name)
+                hasNewUnlocks = true
+                val displayName = displayNameMap[name] ?: name
+                val iconUrl = iconUrlMap[name]
+                AchievementNotificationManager.show(displayName, iconUrl)
+                Timber.i("Achievement unlocked: $name ($displayName)")
             }
         } catch (e: Exception) {
             Timber.w(e, "Failed to parse achievements.json for watcher")
