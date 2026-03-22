@@ -207,7 +207,8 @@ fun SettingsGroupInterface(
     SettingsGroup(modifier = Modifier.background(Color.Transparent)) {
         // Achievement notification position
         val achPositionKeys = remember { ACHIEVEMENT_NOTIFICATION_POSITION.keys.toList() }
-        val achPositionLabels = remember { ACHIEVEMENT_NOTIFICATION_POSITION.values.toList() }
+        val achPositionLabelResIds = remember { ACHIEVEMENT_NOTIFICATION_POSITION.values.toList() }
+        val achPositionLabels = achPositionLabelResIds.map { stringResource(it) }
         var achPositionIndex by rememberSaveable {
             mutableStateOf(
                 achPositionKeys.indexOf(PrefManager.achievementNotificationPosition).takeIf { it >= 0 } ?: achPositionKeys.indexOf("bottom_right")

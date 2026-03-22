@@ -573,6 +573,10 @@
 	<string name="steam_offline_mode_description">Pornește jocurile Steam în mod offline</string>
 	<string name="achievement_unlocked">Realizare deblocată</string>
 	<string name="settings_achievement_notification_position">Poziția notificării realizării</string>
+	<string name="achievement_position_top_left">Stânga sus</string>
+	<string name="achievement_position_top_right">Dreapta sus</string>
+	<string name="achievement_position_bottom_left">Stânga jos</string>
+	<string name="achievement_position_bottom_right">Dreapta jos</string>
 	<string name="launch_steam_client_description">Reduce performanța și încetinește lansarea\nPermite joc online și rezolvă probleme DRM și controller\nNu toate jocurile funcționează</string>
 	<string name="allow_steam_updates">Permite actualizările Steam</string>
 	<string name="allow_steam_updates_description">Actualizează Steam la ultima versiune. Reduce semnificativ performanța.</string>

@@ -43,11 +43,11 @@ import kotlinx.coroutines.delay
 import app.gamenative.PrefManager
 
 
-internal val ACHIEVEMENT_NOTIFICATION_POSITION: Map<String, String> = mapOf(
-    "top_left" to "Top Left",
-    "top_right" to "Top Right",
-    "bottom_left" to "Bottom Left",
-    "bottom_right" to "Bottom Right",
+internal val ACHIEVEMENT_NOTIFICATION_POSITION: Map<String, Int> = mapOf(
+    "top_left" to R.string.achievement_position_top_left,
+    "top_right" to R.string.achievement_position_top_right,
+    "bottom_left" to R.string.achievement_position_bottom_left,
+    "bottom_right" to R.string.achievement_position_bottom_right,
 )
 
 @Composable
