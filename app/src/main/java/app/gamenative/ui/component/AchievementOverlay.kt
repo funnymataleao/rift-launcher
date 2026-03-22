@@ -40,6 +40,7 @@ import app.gamenative.ui.util.AchievementNotificationManager
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import kotlinx.coroutines.delay
+import app.gamenative.PrefManager
 
 
 internal val ACHIEVEMENT_NOTIFICATION_POSITION: Map<String, String> = mapOf(
