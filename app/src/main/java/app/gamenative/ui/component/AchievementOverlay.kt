@@ -41,6 +41,14 @@ import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import kotlinx.coroutines.delay
 
+
+internal val ACHIEVEMENT_NOTIFICATION_POSITION: Map<String, String> = mapOf(
+    "top_left" to "Top Left",
+    "top_right" to "Top Right",
+    "bottom_left" to "Bottom Left",
+    "bottom_right" to "Bottom Right",
+)
+
 @Composable
 fun BoxScope.AchievementOverlay() {
     var current by remember { mutableStateOf<AchievementNotification?>(null) }
@@ -57,13 +65,23 @@ fun BoxScope.AchievementOverlay() {
         }
     }
 
+    val isLeftAligned = PrefManager.achievementNotificationPosition in setOf("top_left", "bottom_left")
+
     AnimatedVisibility(
         visible = visible,
         modifier = Modifier
-            .align(Alignment.BottomEnd)
+            .align(
+                when (PrefManager.achievementNotificationPosition) {
+                    "top_left" -> Alignment.TopStart
+                    "top_right" -> Alignment.TopEnd
+                    "bottom_left" -> Alignment.BottomStart
+                    "bottom_right" -> Alignment.BottomEnd
+                    else -> Alignment.BottomEnd
+                }
+            )
             .padding(16.dp),
-        enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
-        exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
+        enter = slideInHorizontally(initialOffsetX = { if (isLeftAligned) -it else it }) + fadeIn(), // Slide in from left if left aligned, otherwise from right
+        exit = slideOutHorizontally(targetOffsetX = { if (isLeftAligned) -it else it }) + fadeOut(),
     ) {
         current?.let { notification ->
             AchievementNotificationContent(notification)
