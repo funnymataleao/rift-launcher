@@ -464,20 +464,22 @@ class DownloadsViewModel @Inject constructor(
         pausedDownloads.add(key)
         recentFailureMessages.remove(key)
 
-        when (item.gameSource) {
-            GameSource.STEAM -> {
-                val id = item.appId.toIntOrNull() ?: return
-                SteamService.getAppDownloadInfo(id)?.cancel()
-            }
+        viewModelScope.launch(Dispatchers.IO) {
+            when (item.gameSource) {
+                GameSource.STEAM -> {
+                    val id = item.appId.toIntOrNull() ?: return@launch
+                    SteamService.getAppDownloadInfo(id)?.cancel()
+                }
 
-            GameSource.EPIC -> {
-                val id = item.appId.toIntOrNull() ?: return
-                EpicService.cancelDownload(id)
-            }
+                GameSource.EPIC -> {
+                    val id = item.appId.toIntOrNull() ?: return@launch
+                    EpicService.cancelDownload(id)
+                }
 
-            GameSource.GOG -> GOGService.cancelDownload(item.appId)
-            GameSource.AMAZON -> AmazonService.cancelDownload(item.appId)
-            GameSource.CUSTOM_GAME -> Unit
+                GameSource.GOG -> GOGService.cancelDownload(item.appId)
+                GameSource.AMAZON -> AmazonService.cancelDownload(item.appId)
+                GameSource.CUSTOM_GAME -> Unit
+            }
         }
     }
 
@@ -585,29 +587,25 @@ class DownloadsViewModel @Inject constructor(
         pausedDownloads.remove(key)
         recentFailureMessages.remove(key)
 
-        when (gameSource) {
-            GameSource.STEAM -> {
-                val id = appId.toIntOrNull() ?: return
-                SteamService.getAppDownloadInfo(id)?.cancel()
-                viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(Dispatchers.IO) {
+            when (gameSource) {
+                GameSource.STEAM -> {
+                    val id = appId.toIntOrNull() ?: return@launch
+                    SteamService.getAppDownloadInfo(id)?.cancel()
                     SteamService.deleteApp(id)
                     PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(id))
                     pollDownloads()
                 }
-            }
 
-            GameSource.EPIC -> {
-                val id = appId.toIntOrNull() ?: return
-                EpicService.cancelDownload(id)
-                viewModelScope.launch(Dispatchers.IO) {
+                GameSource.EPIC -> {
+                    val id = appId.toIntOrNull() ?: return@launch
+                    EpicService.cancelDownload(id)
                     EpicService.deleteGame(appContext, id)
                     pollDownloads()
                 }
-            }
 
-            GameSource.GOG -> {
-                GOGService.cancelDownload(appId)
-                viewModelScope.launch(Dispatchers.IO) {
+                GameSource.GOG -> {
+                    GOGService.cancelDownload(appId)
                     val game = gogGameDao.getById(appId)
                     if (game != null) {
                         GOGService.deleteGame(
@@ -621,17 +619,15 @@ class DownloadsViewModel @Inject constructor(
                     }
                     pollDownloads()
                 }
-            }
 
-            GameSource.AMAZON -> {
-                AmazonService.cancelDownload(appId)
-                viewModelScope.launch(Dispatchers.IO) {
+                GameSource.AMAZON -> {
+                    AmazonService.cancelDownload(appId)
                     AmazonService.deleteGame(appContext, appId)
                     pollDownloads()
                 }
-            }
 
-            GameSource.CUSTOM_GAME -> Unit
+                GameSource.CUSTOM_GAME -> Unit
+            }
         }
     }
 }
