@@ -1413,10 +1413,10 @@ class SteamAppScreen : BaseAppScreen() {
             }
             var selectedBranch by remember(gameId) { mutableStateOf(currentBranch) }
 
-            var betaPassword by remember { mutableStateOf("") }
-            var betaPasswordError by remember { mutableStateOf(false) }
-            var betaPasswordSuccess by remember { mutableStateOf(false) }
-            var betaPasswordChecking by remember { mutableStateOf(false) }
+            var privateBranchPassword by remember { mutableStateOf("") }
+            var privateBranchPasswordError by remember { mutableStateOf(false) }
+            var privateBranchPasswordSuccess by remember { mutableStateOf(false) }
+            var privateBranchPasswordChecking by remember { mutableStateOf(false) }
             val coroutineScope = rememberCoroutineScope()
 
             @OptIn(ExperimentalMaterial3Api::class)
@@ -1464,18 +1464,18 @@ class SteamAppScreen : BaseAppScreen() {
                         Spacer(modifier = Modifier.height(16.dp))
 
                         OutlinedTextField(
-                            value = betaPassword,
+                            value = privateBranchPassword,
                             onValueChange = {
-                                betaPassword = it
-                                betaPasswordError = false
-                                betaPasswordSuccess = false
+                                privateBranchPassword = it
+                                privateBranchPasswordError = false
+                                privateBranchPasswordSuccess = false
                             },
-                            label = { Text(stringResource(R.string.beta_password_hint)) },
+                            label = { Text(stringResource(R.string.private_branch_password_hint)) },
                             singleLine = true,
-                            isError = betaPasswordError,
+                            isError = privateBranchPasswordError,
                             supportingText = when {
-                                betaPasswordError -> ({ Text(stringResource(R.string.beta_password_invalid)) })
-                                betaPasswordSuccess -> ({ Text(stringResource(R.string.beta_password_success)) })
+                                privateBranchPasswordError -> ({ Text(stringResource(R.string.private_branch_password_invalid)) })
+                                privateBranchPasswordSuccess -> ({ Text(stringResource(R.string.private_branch_password_success)) })
                                 else -> null
                             },
                             modifier = Modifier.fillMaxWidth(),
@@ -1483,26 +1483,26 @@ class SteamAppScreen : BaseAppScreen() {
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Button(
-                            enabled = betaPassword.isNotBlank() && !betaPasswordChecking,
+                            enabled = privateBranchPassword.isNotBlank() && !privateBranchPasswordChecking,
                             onClick = {
-                                betaPasswordChecking = true
-                                betaPasswordError = false
-                                betaPasswordSuccess = false
+                                privateBranchPasswordChecking = true
+                                privateBranchPasswordError = false
+                                privateBranchPasswordSuccess = false
                                 coroutineScope.launch {
-                                    val result = SteamService.checkBetaPassword(gameId, betaPassword)
+                                    val result = SteamService.checkPrivateBranchPassword(gameId, privateBranchPassword)
                                     if (result.isNotEmpty()) {
-                                        betaPasswordSuccess = true
+                                        privateBranchPasswordSuccess = true
                                         steamUnlockedBranchNames = SteamService.getSteamUnlockedBranches(gameId)
                                             .map { it.branchName }
                                     } else {
-                                        betaPasswordError = true
+                                        privateBranchPasswordError = true
                                     }
-                                    betaPasswordChecking = false
+                                    privateBranchPasswordChecking = false
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text(stringResource(R.string.beta_password_check))
+                            Text(stringResource(R.string.private_branch_password_check))
                         }
                     }
                 },

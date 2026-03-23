@@ -2634,7 +2634,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
-        suspend fun checkBetaPassword(appId: Int, password: String): Map<String, ByteArray> =
+        suspend fun checkPrivateBranchPassword(appId: Int, password: String): Map<String, ByteArray> =
             withContext(Dispatchers.IO) {
                 val steamApps = instance?._steamApps ?: return@withContext emptyMap()
                 try {
@@ -2649,7 +2649,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         emptyMap()
                     }
                 } catch (e: Exception) {
-                    Timber.e(e, "checkBetaPassword failed for app $appId")
+                    Timber.e(e, "checkPrivateBranchPassword failed for app $appId")
                     emptyMap()
                 }
             }
