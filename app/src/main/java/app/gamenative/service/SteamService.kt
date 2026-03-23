@@ -154,9 +154,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import timber.log.Timber
 import app.gamenative.data.DownloadingAppInfo
-import app.gamenative.data.UnlockedBranch
+import app.gamenative.data.SteamUnlockedBranch
 import app.gamenative.db.dao.DownloadingAppInfoDao
-import app.gamenative.db.dao.UnlockedBranchDao
+import app.gamenative.db.dao.SteamUnlockedBranchDao
 import kotlinx.coroutines.flow.update
 import java.util.concurrent.CopyOnWriteArrayList
 import okhttp3.OkHttpClient
@@ -216,7 +216,7 @@ class SteamService : Service(), IChallengeUrlChanged {
     lateinit var downloadingAppInfoDao: DownloadingAppInfoDao
 
     @Inject
-    lateinit var unlockedBranchDao: UnlockedBranchDao
+    lateinit var steamUnlockedBranchDao: SteamUnlockedBranchDao
 
     private lateinit var notificationHelper: NotificationHelper
 
@@ -668,12 +668,12 @@ class SteamService : Service(), IChallengeUrlChanged {
         /**
          * Common Filter for downloadable depots
          */
-        fun filterForDownloadableDepots(depot: DepotInfo, has64Bit: Boolean, preferredLanguage: String, ownedDlc: Map<Int, DepotInfo>?, hasUnlockedBranch: Boolean = false): Boolean {
-            if (depot.manifests.isEmpty() && depot.encryptedManifests.isNotEmpty() && !hasUnlockedBranch)
+        fun filterForDownloadableDepots(depot: DepotInfo, has64Bit: Boolean, preferredLanguage: String, ownedDlc: Map<Int, DepotInfo>?, hasSteamUnlockedBranch: Boolean = false): Boolean {
+            if (depot.manifests.isEmpty() && depot.encryptedManifests.isNotEmpty() && !hasSteamUnlockedBranch)
                 return false
             // 1. Has something to download (0-byte manifests = stale PICS data from interrupted fetch)
             val hasContent = depot.manifests.isNotEmpty() ||
-                (hasUnlockedBranch && depot.encryptedManifests.isNotEmpty()) ||
+                (hasSteamUnlockedBranch && depot.encryptedManifests.isNotEmpty()) ||
                 depot.sharedInstall
             if (!hasContent)
                 return false
@@ -706,14 +706,14 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun getMainAppDepots(appId: Int, containerLanguage: String): Map<Int, DepotInfo> {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
-            val hasUnlockedBranch = runBlocking { getUnlockedBranches(appId).isNotEmpty() }
+            val hasSteamUnlockedBranch = runBlocking { getSteamUnlockedBranches(appId).isNotEmpty() }
 
             // If the game ships any 64-bit depot, prefer those and ignore x86 ones
             val has64Bit = appInfo.depots.values.any { it.osArch == OSArch.Arch64 }
 
             return appInfo.depots.asSequence()
                 .filter { (depotId, depot) ->
-                    return@filter filterForDownloadableDepots(depot, has64Bit, containerLanguage, ownedDlc, hasUnlockedBranch)
+                    return@filter filterForDownloadableDepots(depot, has64Bit, containerLanguage, ownedDlc, hasSteamUnlockedBranch)
                 }
                 .associate { it.toPair() }
         }
@@ -734,7 +734,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun getDownloadableDepots(appId: Int, preferredLanguage: String): Map<Int, DepotInfo> {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
-            val hasUnlockedBranch = runBlocking { getUnlockedBranches(appId).isNotEmpty() }
+            val hasSteamUnlockedBranch = runBlocking { getSteamUnlockedBranches(appId).isNotEmpty() }
 
             // If the game ships any 64-bit depot, prefer those and ignore x86 ones
             val has64Bit = appInfo.depots.values.any { it.osArch == OSArch.Arch64 }
@@ -742,7 +742,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val map = appInfo.depots
                 .asSequence()
                 .filter { (depotId, depot) ->
-                    return@filter filterForDownloadableDepots(depot, has64Bit, preferredLanguage, ownedDlc, hasUnlockedBranch)
+                    return@filter filterForDownloadableDepots(depot, has64Bit, preferredLanguage, ownedDlc, hasSteamUnlockedBranch)
                 }
                 .associate { it.toPair() }
                 .toMutableMap()
@@ -752,7 +752,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 dlcApp.depots
                     .asSequence()
                     .filter { (depotId, depot) ->
-                        return@filter filterForDownloadableDepots(depot, has64Bit, preferredLanguage, null, hasUnlockedBranch)
+                        return@filter filterForDownloadableDepots(depot, has64Bit, preferredLanguage, null, hasSteamUnlockedBranch)
                     }
                     .associate { it.toPair() }
                     .forEach { (depotId, depot) ->
@@ -1609,8 +1609,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                         val listener = AppDownloadListener(di, depotIdToIndex)
                         depotDownloader.addListener(listener)
 
-                        val branchPassword = instance?.unlockedBranchDao
-                            ?.getUnlockedBranches(appId)
+                        val branchPassword = instance?.steamUnlockedBranchDao
+                            ?.getSteamUnlockedBranches(appId)
                             ?.firstOrNull { it.branchName == branch }
                             ?.password
 
@@ -2566,7 +2566,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         licenseDao.deleteAll()
                         encryptedAppTicketDao.deleteAll()
                         downloadingAppInfoDao.deleteAll()
-                        unlockedBranchDao.deleteAll()
+                        steamUnlockedBranchDao.deleteAll()
                     }
                 }
             }
@@ -2640,9 +2640,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                 try {
                     val callback = steamApps.checkAppBetaPassword(appId, password).await()
                     if (callback.result == EResult.OK) {
-                        val dao = instance?.unlockedBranchDao ?: return@withContext callback.betaPasswords
-                        for ((branchName, _) in callback.betaPasswords) {
-                            dao.insert(UnlockedBranch(appId, branchName, password))
+                        val dao = instance?.steamUnlockedBranchDao ?: return@withContext callback.betaPasswords
+                    for ((branchName, _) in callback.betaPasswords) {
+                            dao.insert(SteamUnlockedBranch(appId, branchName, password))
                         }
                         callback.betaPasswords
                     } else {
@@ -2654,9 +2654,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
             }
 
-        suspend fun getUnlockedBranches(appId: Int): List<UnlockedBranch> =
+        suspend fun getSteamUnlockedBranches(appId: Int): List<SteamUnlockedBranch> =
             withContext(Dispatchers.IO) {
-                instance?.unlockedBranchDao?.getUnlockedBranches(appId) ?: emptyList()
+                instance?.steamUnlockedBranchDao?.getSteamUnlockedBranches(appId) ?: emptyList()
             }
 
         suspend fun checkDlcOwnershipViaPICSBatch(dlcAppIds: Set<Int>): Set<Int> {

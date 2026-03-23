@@ -1401,12 +1401,12 @@ class SteamAppScreen : BaseAppScreen() {
                     ?.sorted()
                     .orEmpty()
             }
-            var unlockedBranchNames by remember(gameId) { mutableStateOf<List<String>>(emptyList()) }
+            var steamUnlockedBranchNames by remember(gameId) { mutableStateOf<List<String>>(emptyList()) }
             LaunchedEffect(gameId) {
-                unlockedBranchNames = SteamService.getUnlockedBranches(gameId).map { it.branchName }
+                steamUnlockedBranchNames = SteamService.getSteamUnlockedBranches(gameId).map { it.branchName }
             }
-            val availableBranches = remember(publicBranches, unlockedBranchNames) {
-                (publicBranches + unlockedBranchNames).distinct().sorted()
+            val availableBranches = remember(publicBranches, steamUnlockedBranchNames) {
+                (publicBranches + steamUnlockedBranchNames).distinct().sorted()
             }
             val currentBranch = remember(gameId) {
                 SteamService.getInstalledApp(gameId)?.branch ?: "public"
@@ -1492,7 +1492,7 @@ class SteamAppScreen : BaseAppScreen() {
                                     val result = SteamService.checkBetaPassword(gameId, betaPassword)
                                     if (result.isNotEmpty()) {
                                         betaPasswordSuccess = true
-                                        unlockedBranchNames = SteamService.getUnlockedBranches(gameId)
+                                        steamUnlockedBranchNames = SteamService.getSteamUnlockedBranches(gameId)
                                             .map { it.branchName }
                                     } else {
                                         betaPasswordError = true

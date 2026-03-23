@@ -1179,7 +1179,7 @@
         }
       },
       {
-        "tableName": "unlocked_branch",
+        "tableName": "steam_unlocked_branch",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`appId` INTEGER NOT NULL, `branchName` TEXT NOT NULL, `password` TEXT NOT NULL, PRIMARY KEY(`appId`, `branchName`))",
         "fields": [
           {
