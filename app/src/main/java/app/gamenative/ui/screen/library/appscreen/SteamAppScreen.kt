@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.library.appscreen
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Environment
@@ -433,7 +434,7 @@ class SteamAppScreen : BaseAppScreen() {
         // Get playtime text
         var playtimeText by remember { mutableStateOf("0 hrs") }
         LaunchedEffect(gameId) {
-            val steamID = SteamService.userSteamId?.accountID?.toLong()
+            val steamID = SteamService.userSteamId?.convertToUInt64()
             if (steamID != null) {
                 val games = SteamService.getOwnedGames(steamID)
                 val game = games.firstOrNull { it.appId == gameId }
@@ -777,15 +778,27 @@ class SteamAppScreen : BaseAppScreen() {
         val appId = libraryItem.appId
         val appInfo = SteamService.getAppInfoOf(gameId) ?: return emptyList()
         val isDownloadInProgress = SteamService.getDownloadingAppInfoOf(gameId) != null
-
-        if (!isInstalled || isDownloadInProgress) {
-            return emptyList()
-        }
-
         val scope = rememberCoroutineScope()
 
-        // Steam-specific options (only when installed)
-        return listOf(
+        val options = mutableListOf<AppMenuOption>(
+            AppMenuOption(
+                AppOptionMenuType.BrowseOnlineSaves,
+                onClick = {
+                    val browserIntent = Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse("https://store.steampowered.com/account/remotestorageapp/?appid=$gameId"),
+                    )
+                    context.startActivity(browserIntent)
+                },
+            ),
+        )
+
+        if (!isInstalled || isDownloadInProgress) {
+            return options
+        }
+
+        // Steam-specific options that only make sense once the game is installed.
+        options += listOf(
             AppMenuOption(
                 AppOptionMenuType.ResetDrm,
                 onClick = {
@@ -931,6 +944,8 @@ class SteamAppScreen : BaseAppScreen() {
                 }
             ),
         )
+
+        return options
     }
 
     override fun loadContainerData(context: Context, libraryItem: LibraryItem): ContainerData {
@@ -1085,7 +1100,7 @@ class SteamAppScreen : BaseAppScreen() {
                     val branch = SteamService.getInstalledApp(gameId)?.branch ?: "public"
                     val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
                     val downloadBytes = depots.values.sumOf {
-                        it.manifests[branch]?.download ?: 0
+                        SteamUtils.getDownloadBytes(it.manifests[branch]) master
                     }
                     val installBytes = depots.values.sumOf { it.manifests[branch]?.size ?: 0 }
                     InstallSizeInfo(
