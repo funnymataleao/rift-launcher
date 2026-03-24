@@ -12,6 +12,7 @@ import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.service.SteamService.Companion.FileChanges
 import app.gamenative.service.SteamService.Companion.getAppDirPath
+import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.SteamUtils
 import `in`.dragonbra.javasteam.enums.EResult
@@ -643,6 +644,7 @@ object SteamAutoCloud {
         }
 
         var syncResult = SyncResult.Success
+        var conflictUfsVersion: Int? = null
         var remoteTimestamp = 0L
         var localTimestamp = 0L
         var uploadsRequired = false
@@ -813,8 +815,10 @@ object SteamAutoCloud {
                     // If cache is absent but local files exist and a prior sync was recorded,
                     // the cache was cleared on upgrade due to a UFS path fix — treat as conflict
                     // so the user can choose which save to keep rather than silently overwriting.
-                    if (cacheIsAbsentOrEmpty && allLocalUserFiles.isNotEmpty() && localAppChangeNumber >= 0) {
+                    val isUpgradeConflict = cacheIsAbsentOrEmpty && allLocalUserFiles.isNotEmpty() && localAppChangeNumber >= 0
+                    if (isUpgradeConflict) {
                         hasLocalChanges = true
+                        conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
                     }
 
                     if (!hasLocalChanges) {
@@ -888,6 +892,7 @@ object SteamAutoCloud {
 
         postSyncInfo = PostSyncInfo(
             syncResult = syncResult,
+            conflictUfsVersion = conflictUfsVersion,
             remoteTimestamp = remoteTimestamp,
             localTimestamp = localTimestamp,
             uploadsRequired = uploadsRequired,
