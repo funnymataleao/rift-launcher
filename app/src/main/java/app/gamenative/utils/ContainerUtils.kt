@@ -751,18 +751,8 @@ object ContainerUtils {
 
         // Check for cached best config (store-backed games only, only if no custom config provided)
         var bestConfigMap: Map<String, Any?>? = null
-        val supportsKnownConfigAutoApply = when (gameSource) {
-            GameSource.STEAM,
-            GameSource.GOG,
-            GameSource.EPIC,
-            GameSource.AMAZON,
-            -> true
 
-            GameSource.CUSTOM_GAME,
-            -> false
-        }
-
-        if (supportsKnownConfigAutoApply && customConfig == null && PrefManager.autoApplyKnownConfig) {
+        if (supportsKnownConfigAutoApply(gameSource) && customConfig == null && PrefManager.autoApplyKnownConfig) {
             try {
                 val gameName = resolveGameName(appId)
                 if (gameName != "Unknown" && gameName.isNotBlank()) {
@@ -1121,6 +1111,17 @@ object ContainerUtils {
         if (!hasContainer(context, appId)) return false
         val container = getContainer(context, appId)
         return container.isLocalSavesOnly
+    }
+
+    fun supportsKnownConfigAutoApply(gameSource: GameSource): Boolean = when (gameSource) {
+        GameSource.STEAM,
+        GameSource.GOG,
+        GameSource.EPIC,
+        GameSource.AMAZON,
+        -> true
+
+        GameSource.CUSTOM_GAME,
+        -> false
     }
 
     /**
