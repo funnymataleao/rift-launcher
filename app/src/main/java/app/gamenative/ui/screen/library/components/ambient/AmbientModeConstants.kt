@@ -13,4 +13,6 @@ internal object AmbientModeConstants {
     const val BAR_BASE_ALPHA = 0.25f
     const val BAR_TRACK_ALPHA = 0.15f
     const val SHIMMER_WIDTH_FRACTION = 0.15f
+    const val TEXT_MAX_ALPHA = 0.5f
+    const val TEXT_BOTTOM_OFFSET_DP = 60f
 }

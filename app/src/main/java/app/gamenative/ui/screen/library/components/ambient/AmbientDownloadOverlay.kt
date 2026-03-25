@@ -18,6 +18,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.util.lerp
@@ -50,12 +51,12 @@ import kotlinx.coroutines.delay
  */
 @Composable
 internal fun AmbientDownloadOverlay(
+    gameName: String,
     downloadProgress: Float,
     originBounds: Rect? = null,
 ) {
     val activity = LocalActivity.current as? ComponentActivity ?: return
     val brightnessManager = remember { BrightnessManager(activity, AmbientModeConstants.MIN_BRIGHTNESS) }
-    val brandGradient = BrandGradient
 
     var interactionCounter by remember { mutableIntStateOf(0) }
     var isIdle by remember { mutableStateOf(false) }
@@ -144,9 +145,8 @@ internal fun AmbientDownloadOverlay(
                 .pointerInput(Unit) {
                     awaitPointerEventScope {
                         while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            awaitPointerEvent(PointerEventPass.Initial)
                             if (isIdle) {
-                                event.changes.forEach { it.consume() }
                                 interactionCounter++
                                 isIdle = false
                             }
@@ -155,6 +155,38 @@ internal fun AmbientDownloadOverlay(
                 }
                 .background(Color.Black.copy(alpha = ambientAlpha)),
         ) {
+            // Text fades in after the morph completes
+            val textAlpha = ((ambientAlpha - 0.7f) / 0.3f).coerceIn(0f, 1f) * AmbientModeConstants.TEXT_MAX_ALPHA
+
+            if (textAlpha > 0f) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .graphicsLayer {
+                            translationY = driftOffset - DRIFT_AMPLITUDE_PX -
+                                AmbientModeConstants.TEXT_BOTTOM_OFFSET_DP.dp.toPx()
+                        }
+                        .alpha(textAlpha),
+                ) {
+                    Text(
+                        text = gameName,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Medium,
+                            letterSpacing = 0.5.sp,
+                        ),
+                        color = Color.White,
+                        maxLines = 1,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "${(downloadProgress * 100).toInt()}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White,
+                    )
+                }
+            }
+
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val progress = downloadProgress.coerceIn(0f, 1f)
                 val t = if (originBounds != null) ambientAlpha else 1f
@@ -198,7 +230,7 @@ internal fun AmbientDownloadOverlay(
                     if (shimmerEndX > barX && shimmerStartX < barX + filledWidth) {
                         val shimmerColor = gradientColorAtPosition(
                             fraction = (shimmerCenter / barWidth).coerceIn(0f, 1f),
-                            gradient = brandGradient,
+                            gradient = BrandGradient,
                         )
 
                         drawRect(

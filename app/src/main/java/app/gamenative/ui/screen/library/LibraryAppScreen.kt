@@ -69,6 +69,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
@@ -162,7 +163,7 @@ private fun PrimaryActionButton(
     isDownloading: Boolean = false,
     downloadProgress: Float = 0f,
     focusRequester: FocusRequester = remember { FocusRequester() },
-    onProgressBarPositioned: ((androidx.compose.ui.geometry.Rect) -> Unit)? = null,
+    onProgressBarPositioned: ((Rect) -> Unit)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -245,11 +246,16 @@ private fun PrimaryActionButton(
                     color = Color.White,
                     trackColor = Color.White.copy(alpha = 0.3f),
                 )
-                Text(
-                    text = "${(downloadProgress * 100).toInt()}%",
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White,
-                )
+                Box(modifier = Modifier.width(36.dp), contentAlignment = Alignment.CenterEnd) {
+                    Text(
+                        text = "${(downloadProgress * 100).toInt()}%",
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontFeatureSettings = "tnum",
+                        ),
+                        color = Color.White,
+                    )
+                }
             }
         } else {
             Row(
@@ -499,7 +505,7 @@ internal fun AppScreenContent(
     var optionsMenuVisible by remember { mutableStateOf(false) }
 
     // Track the original progress bar bounds for ambient mode morph animation
-    var progressBarBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+    var progressBarBounds by remember { mutableStateOf<Rect?>(null) }
 
     // Focus requesters for gamepad navigation
     val playButtonFocusRequester = remember { FocusRequester() }
@@ -1069,6 +1075,7 @@ internal fun AppScreenContent(
         // Ambient mode during downloads
         if (isDownloading) {
             AmbientDownloadOverlay(
+                gameName = displayInfo.name,
                 downloadProgress = downloadProgress,
                 originBounds = progressBarBounds,
             )
