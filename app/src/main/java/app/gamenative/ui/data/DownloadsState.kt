@@ -23,7 +23,6 @@ data class DownloadItemState(
     val statusMessage: String?,
     val isActive: Boolean?,
     val isPartial: Boolean,
-    val downloadSpeedBytesPerSec: Long?,
     val status: DownloadItemStatus,
     val updatedAtMs: Long = System.currentTimeMillis(),
 ) {

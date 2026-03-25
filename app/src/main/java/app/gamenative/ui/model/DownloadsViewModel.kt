@@ -261,7 +261,6 @@ class DownloadsViewModel @Inject constructor(
             statusMessage = statusMessage,
             isActive = info.isActive(),
             isPartial = false,
-            downloadSpeedBytesPerSec = info.getCurrentDownloadSpeed(),
             status = status,
         )
     }
@@ -297,7 +296,6 @@ class DownloadsViewModel @Inject constructor(
             statusMessage = statusMessage,
             isActive = false,
             isPartial = true,
-            downloadSpeedBytesPerSec = null,
             status = status,
         )
     }
@@ -433,7 +431,6 @@ class DownloadsViewModel @Inject constructor(
                     statusMessage = finishedMessage,
                     isActive = false,
                     isPartial = false,
-                    downloadSpeedBytesPerSec = null,
                     status = finishedStatus,
                     updatedAtMs = System.currentTimeMillis(),
                 )

@@ -650,9 +650,6 @@ private fun DownloadItemCard(
     val context = LocalContext.current
     val statusText = statusLabel(item.status)
     val detailText = item.statusMessage?.takeIf { !it.equals(statusText, ignoreCase = true) }
-    val speedText = item.downloadSpeedBytesPerSec
-        ?.takeIf { it > 0L }
-        ?.let { speed -> "${Formatter.formatFileSize(context, speed)}/s" }
     val etaText = item.etaMs?.let(::formatEta)
     val progressColor = when (item.status) {
         DownloadItemStatus.COMPLETED -> PluviaTheme.colors.accentSuccess
@@ -759,7 +756,7 @@ private fun DownloadItemCard(
                     )
                 }
 
-                if (item.bytesDownloaded != null || speedText != null || etaText != null) {
+                if (item.bytesDownloaded != null || etaText != null) {
                     Spacer(modifier = Modifier.height(10.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -783,10 +780,9 @@ private fun DownloadItemCard(
                             Spacer(modifier = Modifier.weight(1f))
                         }
 
-                        val secondaryDetails = listOfNotNull(speedText, etaText).joinToString(" • ")
-                        if (secondaryDetails.isNotBlank()) {
+                        if (!etaText.isNullOrBlank()) {
                             Text(
-                                text = secondaryDetails,
+                                text = etaText,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                                 maxLines = 1,
