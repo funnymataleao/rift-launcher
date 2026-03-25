@@ -1077,6 +1077,7 @@ internal fun AppScreenContent(
             AmbientDownloadOverlay(
                 gameName = displayInfo.name,
                 downloadProgress = downloadProgress,
+                iconUrl = displayInfo.iconUrl,
                 originBounds = progressBarBounds,
             )
         }

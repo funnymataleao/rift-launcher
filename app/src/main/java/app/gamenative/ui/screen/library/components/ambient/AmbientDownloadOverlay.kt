@@ -26,6 +26,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,6 +45,7 @@ import app.gamenative.ui.screen.library.components.ambient.AmbientModeConstants.
 import app.gamenative.ui.screen.library.components.ambient.AmbientModeConstants.SHIMMER_WIDTH_FRACTION
 import app.gamenative.ui.theme.BrandGradient
 import app.gamenative.utils.BrightnessManager
+import app.gamenative.utils.ShakeDetector
 import kotlinx.coroutines.delay
 
 /**
@@ -53,13 +55,16 @@ import kotlinx.coroutines.delay
 internal fun AmbientDownloadOverlay(
     gameName: String,
     downloadProgress: Float,
+    iconUrl: String? = null,
     originBounds: Rect? = null,
 ) {
     val activity = LocalActivity.current as? ComponentActivity ?: return
+    val context = LocalContext.current
     val brightnessManager = remember { BrightnessManager(activity, AmbientModeConstants.MIN_BRIGHTNESS) }
 
     var interactionCounter by remember { mutableIntStateOf(0) }
     var isIdle by remember { mutableStateOf(false) }
+    var isDvdMode by remember { mutableStateOf(false) }
 
     LaunchedEffect(interactionCounter) {
         delay(IDLE_TIMEOUT_MS)
@@ -71,6 +76,7 @@ internal fun AmbientDownloadOverlay(
             if (isIdle) {
                 interactionCounter++
                 isIdle = false
+                isDvdMode = false
             }
             false
         }
@@ -78,6 +84,7 @@ internal fun AmbientDownloadOverlay(
             if (isIdle) {
                 interactionCounter++
                 isIdle = false
+                isDvdMode = false
             }
             false
         }
@@ -89,6 +96,18 @@ internal fun AmbientDownloadOverlay(
             PluviaApp.events.off(keyListener)
             PluviaApp.events.off(motionListener)
         }
+    }
+
+    // Shake detector — only active during ambient idle
+    DisposableEffect(isIdle) {
+        if (!isIdle) return@DisposableEffect onDispose {}
+
+        val shakeDetector = ShakeDetector(context) {
+            isDvdMode = !isDvdMode
+        }
+        shakeDetector.start()
+
+        onDispose { shakeDetector.stop() }
     }
 
     val targetAlpha = if (isIdle) 1f else 0f
@@ -149,41 +168,49 @@ internal fun AmbientDownloadOverlay(
                             if (isIdle) {
                                 interactionCounter++
                                 isIdle = false
+                                isDvdMode = false
                             }
                         }
                     }
                 }
                 .background(Color.Black.copy(alpha = ambientAlpha)),
         ) {
-            // Text fades in after the morph completes
-            val textAlpha = ((ambientAlpha - 0.7f) / 0.3f).coerceIn(0f, 1f) * AmbientModeConstants.TEXT_MAX_ALPHA
+            if (isDvdMode && ambientAlpha == 1f) {
+                DvdBouncingOverlay(
+                    gameName = gameName,
+                    downloadProgress = downloadProgress,
+                    iconUrl = iconUrl,
+                )
+            } else {
+                val textAlpha = ((ambientAlpha - 0.7f) / 0.3f).coerceIn(0f, 1f) * AmbientModeConstants.TEXT_MAX_ALPHA
 
-            if (textAlpha > 0f) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .graphicsLayer {
-                            translationY = driftOffset - DRIFT_AMPLITUDE_PX -
-                                AmbientModeConstants.TEXT_BOTTOM_OFFSET_DP.dp.toPx()
-                        }
-                        .alpha(textAlpha),
-                ) {
-                    Text(
-                        text = gameName,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = FontWeight.Medium,
-                            letterSpacing = 0.5.sp,
-                        ),
-                        color = Color.White,
-                        maxLines = 1,
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "${(downloadProgress * 100).toInt()}%",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White,
-                    )
+                if (textAlpha > 0f) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .graphicsLayer {
+                                translationY = driftOffset - DRIFT_AMPLITUDE_PX -
+                                    AmbientModeConstants.TEXT_BOTTOM_OFFSET_DP.dp.toPx()
+                            }
+                            .alpha(textAlpha),
+                    ) {
+                        Text(
+                            text = gameName,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Medium,
+                                letterSpacing = 0.5.sp,
+                            ),
+                            color = Color.White,
+                            maxLines = 1,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "${(downloadProgress * 100).toInt()}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White,
+                        )
+                    }
                 }
             }
 
