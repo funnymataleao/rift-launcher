@@ -54,17 +54,6 @@ fun HomeScreen(
             onClickPlay = onClickPlay,
             onTestGraphics = onTestGraphics,
         )
-        HomeDestination.Friends -> {
-            // TODO: Friends screen
-            HomeLibraryScreen(
-                onClickPlay = onClickPlay,
-                onTestGraphics = onTestGraphics,
-                onNavigateRoute = onNavigateRoute,
-                onLogout = onLogout,
-                onGoOnline = onGoOnline,
-                isOffline = isOffline,
-            )
-        }
     }
 }
 

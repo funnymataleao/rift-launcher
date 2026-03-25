@@ -34,7 +34,6 @@
     <string name="confirm_delete">Confirmar Deleção</string>
     <string name="destination_library">Biblioteca</string>
     <string name="destination_downloads">Downloads</string>
-    <string name="destination_friends">Amigos</string>
 
     <!-- Library Tabs -->
     <string name="tab_all">Todos</string>

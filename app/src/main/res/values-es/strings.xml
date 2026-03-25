@@ -96,7 +96,6 @@
     <string name="confirm_delete">Confirmar eliminación</string>
     <string name="destination_library">Biblioteca</string>
     <string name="destination_downloads">Descargas</string>
-    <string name="destination_friends">Amigos</string>
 
     <!-- Library Tabs -->
     <string name="tab_all">Todos</string>

@@ -96,7 +96,6 @@
     <string name="confirm_delete">삭제 확인</string>
     <string name="destination_library">라이브러리</string>
     <string name="destination_downloads">다운로드</string>
-    <string name="destination_friends">친구</string>
 
     <!-- Library Tabs -->
     <string name="tab_all">전체</string>

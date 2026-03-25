@@ -87,7 +87,6 @@
     <string name="confirm_delete">Confirmer la suppression</string>
     <string name="destination_library">Bibliothèque</string>
     <string name="destination_downloads">Téléchargements</string>
-    <string name="destination_friends">Amis</string>
 
     <!-- Library Tabs -->
     <string name="tab_all">Tout</string>

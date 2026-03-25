@@ -42,7 +42,6 @@
     <string name="confirm_delete">Bekræft sletning</string>
     <string name="destination_library">Bibliotek</string>
     <string name="destination_downloads">Downloads</string>
-    <string name="destination_friends">Venner</string>
 
     <!-- Library Tabs -->
     <string name="tab_all">Alle</string>

@@ -86,7 +86,6 @@
     <string name="confirm_delete">確認刪除</string>
     <string name="destination_library">遊戲庫</string>
     <string name="destination_downloads">下載</string>
-    <string name="destination_friends">好友</string>
 
     <!-- Library Tabs -->
     <string name="tab_all">全部</string>

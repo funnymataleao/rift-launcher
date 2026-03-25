@@ -82,7 +82,6 @@
     <string name="confirm_delete">Löschen bestätigen</string>
     <string name="destination_library">Bibliothek</string>
     <string name="destination_downloads">Downloads</string>
-    <string name="destination_friends">Freunde</string>
 
     <!-- Library Tabs -->
     <string name="tab_all">Alle</string>

@@ -87,7 +87,6 @@
     <string name="confirm_delete">Confirmă ștergerea</string>
     <string name="destination_library">Bibliotecă</string>
     <string name="destination_downloads">Descărcări</string>
-    <string name="destination_friends">Prieteni</string>
 
     <!-- Library Tabs -->
     <string name="tab_all">Toate</string>

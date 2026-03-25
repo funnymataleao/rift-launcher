@@ -1258,7 +1258,7 @@ fun PluviaMain(
                         },
                     )
                 }
-                /** Library, Downloads, Friends **/
+                /** Library, Downloads **/
                 composable(
                     route = PluviaScreen.Home.route + "?offline={offline}",
                     deepLinks = listOf(navDeepLink { uriPattern = "pluvia://home" }),

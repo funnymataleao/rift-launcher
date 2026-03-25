@@ -79,7 +79,6 @@
     <string name="confirm_delete">Підтвердити видалення</string>
     <string name="destination_library">Бібліотека</string>
     <string name="destination_downloads">Завантаження</string>
-    <string name="destination_friends">Друзі</string>
 
     <!-- Library Tabs -->
     <string name="tab_all">Усі</string>
