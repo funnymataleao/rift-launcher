@@ -19,6 +19,7 @@ import com.winlator.PrefManager;
 import com.winlator.container.Container;
 import com.winlator.container.ContainerManager;
 // import com.winlator.core.DownloadProgressDialog;
+import com.winlator.contents.ContentProfile;
 import com.winlator.contents.ContentsManager;
 import com.winlator.core.Callback;
 import com.winlator.core.DefaultVersion;
@@ -86,7 +87,13 @@ public abstract class ImageFsInstaller {
         }
     }
 
-    private static Future<Boolean> installFromAssetsFuture(final Context context, AssetManager assetManager, String containerVariant, Callback<Integer> onProgress) {
+    private static Future<Boolean> installFromAssetsFuture(
+            final Context context,
+            AssetManager assetManager,
+            String containerVariant,
+            String wineVersion,
+            Callback<Integer> onProgress
+    ) {
         // AppUtils.keepScreenOn(context);
         ImageFs imageFs = ImageFs.find(context);
         final File rootDir = imageFs.getRootDir();
@@ -99,6 +106,7 @@ public abstract class ImageFsInstaller {
         return Executors.newSingleThreadExecutor().submit(() -> {
             clearRootDir(context, rootDir);
             ensureSharedHomeRoot(context, rootDir);
+            ensureProtonVersionSymlink(context, rootDir, wineVersion);
 
             final byte compressionRatio = 22;
             String imagefsFile = containerVariant.equals(Container.GLIBC) ? "imagefs_gamenative.txz" : "imagefs_bionic.txz";
@@ -204,17 +212,25 @@ public abstract class ImageFsInstaller {
     }
     public static Future<Boolean> installIfNeededFuture(final Context context, AssetManager assetManager, Container container, Callback<Integer> onProgress) {
         ImageFs imageFs = ImageFs.find(context);
+        String wineVersion = container.getWineVersion();
         if (!ImageFSLegacyMigrator.migrateLegacyDirsIfNeeded(context, imageFs.getRootDir())) {
             Log.w("ImageFsInstaller", "Failed to migrate legacy directories before installation.");
             return Executors.newSingleThreadExecutor().submit(() -> false);
         }
         if (!imageFs.isValid() || imageFs.getVersion() < LATEST_VERSION || !imageFs.getVariant().equals(container.getContainerVariant())) {
             Log.d("ImageFsInstaller", "Installing image from assets");
-            return installFromAssetsFuture(context, assetManager, container.getContainerVariant(), onProgress);
+            return installFromAssetsFuture(
+                    context,
+                    assetManager,
+                    container.getContainerVariant(),
+                    wineVersion,
+                    onProgress
+            );
         } else {
             Log.d("ImageFsInstaller", "Image FS already valid and at latest version");
             return Executors.newSingleThreadExecutor().submit(() -> {
                 ensureSharedHomeRoot(context, imageFs.getRootDir());
+                ensureProtonVersionSymlink(context, imageFs.getRootDir(), wineVersion);
                 return true;
             });
         }
@@ -408,5 +424,73 @@ public abstract class ImageFsInstaller {
         }
 
         FileUtils.symlink(sharedHomeRoot.getPath(), homePathInImageFs.getPath());
+    }
+
+    /**
+     * For Bionic: ensures rootDir/opt/<protonVersion> points to imagefs_shared/proton/<protonVersion>.
+     * This keeps only the active Proton version linked in opt, matching pre-branch layout.
+     */
+    public static void ensureProtonVersionSymlink(Context context, File rootDir, String protonVersion) {
+        if (protonVersion == null || protonVersion.isEmpty() || !protonVersion.startsWith("proton-")) return;
+        File optDir = new File(rootDir, "opt");
+        if (!optDir.exists()) {
+            optDir.mkdirs();
+        }
+        removeCurrentProtonSymlink(optDir, protonVersion);
+
+        File targetVersionDir = resolveInstalledProtonDir(context, protonVersion);
+        if (!targetVersionDir.isDirectory()) {
+            Log.w("ImageFsInstaller", "Skipping Proton symlink; shared dir missing for " + protonVersion);
+            return;
+        }
+        File optVersionLink = new File(optDir, protonVersion);
+        try {
+            if (optVersionLink.exists()) {
+                File currentTarget = optVersionLink.getCanonicalFile();
+                File desiredTarget = targetVersionDir.getCanonicalFile();
+                if (currentTarget.equals(desiredTarget)) {
+                    return;
+                }
+                FileUtils.delete(optVersionLink);
+            }
+            FileUtils.symlink(targetVersionDir.getAbsolutePath(), optVersionLink.getAbsolutePath());
+            Log.d("ImageFsInstaller", "Created opt/" + protonVersion + " -> " + targetVersionDir.getAbsolutePath());
+        } catch (Exception e) {
+            Log.e("ImageFsInstaller", "ensureProtonVersionSymlink failed for " + protonVersion, e);
+        }
+    }
+
+    private static File resolveInstalledProtonDir(Context context, String protonVersion) {
+        ContentsManager contentsManager = new ContentsManager(context);
+        contentsManager.syncContents();
+        ContentProfile profile = contentsManager.getProfileByEntryName(protonVersion);
+        if (profile != null && (profile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE
+                || profile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON)) {
+            return ContentsManager.getInstallDir(context, profile);
+        }
+        return new File(ImageFs.getSharedProtonDir(context), protonVersion);
+    }
+
+    /**
+     * Removes the current Proton symlink(s) from opt/ so it can be replaced with the current proton
+     * version symlink.
+     */
+    private static void removeCurrentProtonSymlink(File optDir, String activeProtonVersion) {
+        File[] optEntries = optDir.listFiles();
+        if (optEntries == null) {
+            return;
+        }
+
+        for (File entry : optEntries) {
+            if (!entry.getName().startsWith("proton-")) {
+                continue;
+            }
+            if (entry.getName().equals(activeProtonVersion)) {
+                continue;
+            }
+            if (FileUtils.isSymlink(entry)) {
+                FileUtils.delete(entry);
+            }
+        }
     }
 }
