@@ -2836,6 +2836,7 @@ private fun setupXEnvironment(
         val achAppId = SteamService.cachedAchievementsAppId
         if (gameIdInt != null && achAppId != null) {
             val watchDirs = SteamService.getGseSaveDirs(context, gameIdInt)
+            val configDirectory = SteamService.findSteamSettingsDir(context, gameIdInt)
             val displayNameMap = SteamService.cachedAchievements?.associate { ach ->
                 ach.name to (ach.displayName?.get(container.language)
                     ?: ach.displayName?.get("english")
@@ -2846,8 +2847,13 @@ private fun setupXEnvironment(
                     "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$achAppId/$it"
                 }
             } ?: emptyMap()
-            PluviaApp.achievementWatcher = AchievementWatcher(watchDirs, displayNameMap, iconUrlMap)
-                .also { it.start() }
+            PluviaApp.achievementWatcher = AchievementWatcher(
+                appId = gameIdInt,
+                watchDirs = watchDirs,
+                displayNameMap = displayNameMap,
+                iconUrlMap = iconUrlMap,
+                configDirectory = configDirectory,
+            ).also { it.start() }
         }
     }
 

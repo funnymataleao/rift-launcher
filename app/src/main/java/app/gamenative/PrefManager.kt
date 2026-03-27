@@ -1174,4 +1174,10 @@ object PrefManager {
     var gogAmazonPathMigrated: Boolean
         get() = getPref(GOG_AMAZON_PATH_MIGRATED, false)
         set(value) { setPref(GOG_AMAZON_PATH_MIGRATED, value) }
+
+    private val ACHIEVEMENT_NOTIFICATION_POSITION = stringPreferencesKey("achievement_notification_position")
+    var achievementNotificationPosition: String
+        get() = getPref(ACHIEVEMENT_NOTIFICATION_POSITION, "bottom_right")
+        set(value) { setPref(ACHIEVEMENT_NOTIFICATION_POSITION, value) }
+
 }
