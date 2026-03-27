@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 16,
-    "identityHash": "TODO",
+    "identityHash": "5760aaca8473450ecb27c17418f6c7cc",
     "entities": [
       {
         "tableName": "app_info",
@@ -1193,7 +1193,7 @@
         }
       },
       {
-        "tableName": "unlocked_branch",
+        "tableName": "steam_unlocked_branch",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`appId` INTEGER NOT NULL, `branchName` TEXT NOT NULL, `password` TEXT NOT NULL, PRIMARY KEY(`appId`, `branchName`))",
         "fields": [
           {
@@ -1226,7 +1226,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b377392d05c8ae19ab2ea544aa50e616')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5760aaca8473450ecb27c17418f6c7cc')"
     ]
   }
 }
