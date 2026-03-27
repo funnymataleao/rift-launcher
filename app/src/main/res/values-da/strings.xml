@@ -434,6 +434,11 @@
     <string name="steam_offline_mode">Steam Offline-tilstand</string>
     <string name="steam_offline_mode_description">Start Steam-spil i offline-tilstand</string>
     <string name="achievement_unlocked">Præstation låst op</string>
+    <string name="settings_achievement_notification_position">Placering af præstationsnotifikation</string>
+    <string name="achievement_position_top_left">Øverst til venstre</string>
+    <string name="achievement_position_top_right">Øverst til højre</string>
+    <string name="achievement_position_bottom_left">Nederst til venstre</string>
+    <string name="achievement_position_bottom_right">Nederst til højre</string>
     <string name="launch_steam_client_description">Reducerer ydelse og gør opstart langsommere\nMuliggør online-spil og løser DRM- og controllerproblemer\nIkke alle spil virker</string>
     <string name="allow_steam_updates">Tillad Steam-opdateringer</string>
     <string name="allow_steam_updates_description">Opdaterer Steam til nyeste version. Reducerer ydelsen markant.</string>
@@ -784,8 +789,6 @@
     <!-- TODO: Manual review - PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Gemfilkonflikt</string>
     <string name="main_save_conflict_message">Der er en ny fjern-gemfil og en ny lokal gemfil, hvilken vil du beholde?\n\nLokal gemfil:\n\t%1$s\nFjern-gemfil:\n\t%2$s</string>
-    <string name="main_save_conflict_upgrade_v1_title">Vælg gemmeversion</string>
-    <string name="main_save_conflict_upgrade_v1_message">Vi har rettet håndteringen af cloud-gemstier for dette spil og fundet forskelle mellem lokal gemfil og cloud-gemfil. Vælg hvilken version du vil beholde.\n\nLokal gemfil:\n\t%1$s\nCloud-gemfil:\n\t%2$s</string>
     <string name="main_keep_local">Behold lokal</string>
     <string name="main_keep_remote">Behold fjern</string>
 
@@ -1164,4 +1167,6 @@
     <string name="download_failed_message">En nødvendig fil kunne ikke downloades. Kontrollér din netværksforbindelse, og prøv igen.</string>
     <string name="install_failed_title">Installation mislykkedes</string>
     <string name="install_failed_message">Systemfiler kunne ikke installeres. Prøv igen. Hvis problemet fortsætter, prøv et andet netværk eller brug en VPN.</string>
+    <string name="settings_interface_swap_face_buttons_title">Byt frontknapper</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">Byt A↔B- og X↔Y-knapikoner</string>
 </resources>

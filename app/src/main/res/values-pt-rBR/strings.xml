@@ -434,6 +434,11 @@
     <string name="steam_offline_mode">Modo Offline do Steam</string>
     <string name="steam_offline_mode_description">Iniciar jogos Steam no modo offline</string>
     <string name="achievement_unlocked">Conquista desbloqueada</string>
+    <string name="settings_achievement_notification_position">Posição da notificação de conquista</string>
+    <string name="achievement_position_top_left">Superior esquerdo</string>
+    <string name="achievement_position_top_right">Superior direito</string>
+    <string name="achievement_position_bottom_left">Inferior esquerdo</string>
+    <string name="achievement_position_bottom_right">Inferior direito</string>
     <string name="launch_steam_client_description">Reduz o desempenho e atrasa a inicialização\nPermite jogo online e corrige problemas de DRM e de controle\nNem todos os jogos funcionam</string>
     <string name="allow_steam_updates">Permitir atualizações do Steam</string>
     <string name="allow_steam_updates_description">Atualiza o Steam para a versão mais recente. Reduz significativamente o desempenho.</string>
@@ -784,8 +789,6 @@
     <!-- TODO: Revisão manual - PluviaMain: Conflitos de save -->
     <string name="main_save_conflict_title">Conflito de save</string>
     <string name="main_save_conflict_message">Há um novo save remoto e um novo save local, qual você gostaria de manter?\n\nSave local:\n\t%1$s\nSave remoto:\n\t%2$s</string>
-    <string name="main_save_conflict_upgrade_v1_title">Escolher versão do save</string>
-    <string name="main_save_conflict_upgrade_v1_message">Corrigimos o tratamento dos caminhos de save na nuvem deste jogo e encontramos diferenças entre o save local e o da nuvem. Escolha qual versão manter.\n\nSave local:\n\t%1$s\nSave na nuvem:\n\t%2$s</string>
     <string name="main_keep_local">Manter local</string>
     <string name="main_keep_remote">Manter remoto</string>
 
@@ -1164,4 +1167,6 @@
     <string name="download_failed_message">Um arquivo necessário não pôde ser baixado. Verifique sua conexão de rede e tente novamente.</string>
     <string name="install_failed_title">Falha na Instalação</string>
     <string name="install_failed_message">Os arquivos do sistema não puderam ser instalados. Tente novamente. Se o problema persistir, tente uma rede diferente ou use uma VPN.</string>
+    <string name="settings_interface_swap_face_buttons_title">Trocar botões de ação</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">Troca os ícones dos botões A↔B e X↔Y</string>
 </resources>

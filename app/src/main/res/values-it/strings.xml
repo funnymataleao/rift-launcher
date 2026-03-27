@@ -601,6 +601,11 @@
     <string name="steam_offline_mode">Modalità Offline Steam</string>
     <string name="steam_offline_mode_description">Avvia i giochi Steam in modalità offline</string>
     <string name="achievement_unlocked">Obiettivo sbloccato</string>
+    <string name="settings_achievement_notification_position">Posizione notifica obiettivo</string>
+    <string name="achievement_position_top_left">In alto a sinistra</string>
+    <string name="achievement_position_top_right">In alto a destra</string>
+    <string name="achievement_position_bottom_left">In basso a sinistra</string>
+    <string name="achievement_position_bottom_right">In basso a destra</string>
     <string name="launch_steam_client_description">Riduce le prestazioni e rallenta l\'avvio\nConsente il gioco online e corregge problemi di DRM e controller\nNon tutti i giochi funzionano</string>
     <string name="allow_steam_updates">Consenti aggiornamenti Steam</string>
     <string name="allow_steam_updates_description">Aggiorna Steam all\'ultima versione. Riduce significativamente le prestazioni.</string>
@@ -956,8 +961,6 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Conflitto Salvataggio</string>
     <string name="main_save_conflict_message">C\'è un nuovo salvataggio remoto e un nuovo salvataggio locale, quale vuoi mantenere?\n\nSalvataggio locale:\n\t%1$s\nSalvataggio remoto:\n\t%2$s</string>
-    <string name="main_save_conflict_upgrade_v1_title">Scegli la versione del salvataggio</string>
-    <string name="main_save_conflict_upgrade_v1_message">Abbiamo corretto la gestione dei percorsi dei salvataggi cloud per questo gioco e rilevato differenze tra salvataggio locale e cloud. Scegli quale versione mantenere.\n\nSalvataggio locale:\n\t%1$s\nSalvataggio cloud:\n\t%2$s</string>
     <string name="main_keep_local">Mantieni locale</string>
     <string name="main_keep_remote">Mantieni remoto</string>
 
@@ -1290,4 +1293,6 @@
     <string name="download_failed_message">Non è stato possibile scaricare un file necessario. Controlla la connessione di rete e riprova.</string>
     <string name="install_failed_title">Installazione non riuscita</string>
     <string name="install_failed_message">Non è stato possibile installare i file di sistema. Riprova. Se il problema persiste, prova una rete diversa o usa una VPN.</string>
+    <string name="settings_interface_swap_face_buttons_title">Scambia i pulsanti frontali</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">Scambia le icone dei pulsanti A↔B e X↔Y</string>
 </resources>

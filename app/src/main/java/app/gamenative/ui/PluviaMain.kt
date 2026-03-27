@@ -1592,45 +1592,6 @@ fun preLaunchApp(
                     this,
                     context = context,
                 ).await()
-            } else {
-                if (container.wineVersion.contains("proton-9.0-arm64ec") &&
-                    !SteamService.isFileInstallable(context, "proton-9.0-arm64ec.txz")
-                ) {
-                    setLoadingMessage("Downloading arm64ec Proton")
-                    SteamService.downloadFile(
-                        onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                        this,
-                        context = context,
-                        "proton-9.0-arm64ec.txz",
-                    ).await()
-                } else if (container.wineVersion.contains("proton-9.0-x86_64") &&
-                    !SteamService.isFileInstallable(context, "proton-9.0-x86_64.txz")
-                ) {
-                    setLoadingMessage("Downloading x86_64 Proton")
-                    SteamService.downloadFile(
-                        onDownloadProgress = { setLoadingProgress(it / 1.0f) },
-                        this,
-                        context = context,
-                        "proton-9.0-x86_64.txz",
-                    ).await()
-                }
-                if (container.wineVersion.contains("proton-9.0-x86_64") || container.wineVersion.contains("proton-9.0-arm64ec")) {
-                    val protonVersion = container.wineVersion
-                    val imageFs = ImageFs.find(context)
-                    val outFile = File(imageFs.rootDir, "/opt/$protonVersion")
-                    val binDir = File(outFile, "bin")
-                    if (!binDir.exists() || !binDir.isDirectory) {
-                        Timber.i("Extracting $protonVersion to /opt/")
-                        setLoadingMessage("Extracting $protonVersion")
-                        setLoadingProgress(-1f)
-                        val downloaded = File(imageFs.getFilesDir(), "$protonVersion.txz")
-                        TarCompressorUtils.extract(
-                            TarCompressorUtils.Type.XZ,
-                            downloaded,
-                            outFile,
-                        )
-                    }
-                }
             }
 
             if (!container.isUseLegacyDRM && !container.isLaunchRealSteam &&
@@ -1866,32 +1827,16 @@ fun preLaunchApp(
 
         when (postSyncInfo.syncResult) {
             SyncResult.Conflict -> {
-                val localDate = Date(postSyncInfo.localTimestamp).toString()
-                val remoteDate = Date(postSyncInfo.remoteTimestamp).toString()
-                val (conflictTitle, conflictMessage) = postSyncInfo.conflictUfsVersion
-                    ?.let { v ->
-                        val titleId = context.resources.getIdentifier(
-                            "main_save_conflict_upgrade_v${v}_title", "string", context.packageName,
-                        )
-                        val msgId = context.resources.getIdentifier(
-                            "main_save_conflict_upgrade_v${v}_message", "string", context.packageName,
-                        )
-                        if (titleId != 0 && msgId != 0) {
-                            context.getString(titleId) to context.getString(msgId, localDate, remoteDate)
-                        } else {
-                            null
-                        }
-                    }
-                    ?: run {
-                        context.getString(R.string.main_save_conflict_title) to
-                            context.getString(R.string.main_save_conflict_message, localDate, remoteDate)
-                    }
                 setMessageDialogState(
                     MessageDialogState(
                         visible = true,
                         type = DialogType.SYNC_CONFLICT,
-                        title = conflictTitle,
-                        message = conflictMessage,
+                        title = context.getString(R.string.main_save_conflict_title),
+                        message = context.getString(
+                            R.string.main_save_conflict_message,
+                            Date(postSyncInfo.localTimestamp).toString(),
+                            Date(postSyncInfo.remoteTimestamp).toString(),
+                        ),
                         dismissBtnText = context.getString(R.string.main_keep_local),
                         confirmBtnText = context.getString(R.string.main_keep_remote),
                     ),

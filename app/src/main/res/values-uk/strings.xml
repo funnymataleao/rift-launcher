@@ -593,6 +593,11 @@
     <string name="steam_offline_mode">Режим Офлайн Steam</string>
     <string name="steam_offline_mode_description">Запускати ігри Steam в офлайн режимі</string>
     <string name="achievement_unlocked">Досягнення розблоковано</string>
+    <string name="settings_achievement_notification_position">Позиція сповіщення про досягнення</string>
+    <string name="achievement_position_top_left">Лівий верхній</string>
+    <string name="achievement_position_top_right">Правий верхній</string>
+    <string name="achievement_position_bottom_left">Лівий нижній</string>
+    <string name="achievement_position_bottom_right">Правий нижній</string>
     <string name="launch_steam_client_description">Зменшує продуктивність та сповільнює запуск.\nДозволяє онлайн гру, а також вирішує проблему DRM та контролеру.\nПрацює не з усіма іграми</string>
     <string name="allow_steam_updates">Дозволити оновлення клієнту Steam</string>
     <string name="allow_steam_updates_description">Оновлює клієнт Steam до останньої версії. Значно зменшує продуктивність.</string>
@@ -956,8 +961,6 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Конфлікт збережень</string>
     <string name="main_save_conflict_message">Знайдено нове віддалене та нове локальне збереження. Яке з них залишити?\n\nЛокальне збереження:\n\t%1$s\nВіддалене збереження:\n\t%2$s</string>
-    <string name="main_save_conflict_upgrade_v1_title">Виберіть версію збереження</string>
-    <string name="main_save_conflict_upgrade_v1_message">Ми виправили обробку шляхів хмарних збережень для цієї гри та виявили відмінності між локальним і хмарним збереженням. Виберіть, яку версію залишити.\n\nЛокальне збереження:\n\t%1$s\nХмарне збереження:\n\t%2$s</string>
     <string name="main_keep_local">Залишити локальне</string>
     <string name="main_keep_remote">Залишити віддалене</string>
 
@@ -1290,4 +1293,6 @@
     <string name="download_failed_message">Не вдалося завантажити необхідний файл. Перевірте підключення до мережі та спробуйте ще раз.</string>
     <string name="install_failed_title">Помилка інсталяції</string>
     <string name="install_failed_message">Не вдалося інсталювати системні файли. Спробуйте ще раз. Якщо проблема не зникає, спробуйте іншу мережу або скористайтеся VPN.</string>
+    <string name="settings_interface_swap_face_buttons_title">Поміняти місцями кнопки дій</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">Поміняти місцями значки кнопок A↔B і X↔Y</string>
 </resources>

@@ -597,6 +597,11 @@
     <string name="steam_offline_mode">Mode Hors Ligne Steam</string>
     <string name="steam_offline_mode_description">Lancer les jeux Steam en mode hors ligne</string>
     <string name="achievement_unlocked">Succès débloqué</string>
+    <string name="settings_achievement_notification_position">Position de la notification de succès</string>
+    <string name="achievement_position_top_left">En haut à gauche</string>
+    <string name="achievement_position_top_right">En haut à droite</string>
+    <string name="achievement_position_bottom_left">En bas à gauche</string>
+    <string name="achievement_position_bottom_right">En bas à droite</string>
     <string name="launch_steam_client_description">Réduit les performances et ralentit le lancement\nPermet le jeu en ligne et corrige les problèmes de DRM et de contrôleur\nTous les jeux ne fonctionnent pas</string>
     <string name="allow_steam_updates">Autoriser les mises à jour Steam</string>
     <string name="allow_steam_updates_description">Met à jour Steam vers la dernière version. Réduit considérablement les performances.</string>
@@ -960,8 +965,6 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">Conflit de sauvegarde</string>
     <string name="main_save_conflict_message">Il y a une nouvelle sauvegarde distante et une nouvelle sauvegarde locale, laquelle voulez-vous conserver ?\n\nSauvegarde locale :\n\t%1$s\nSauvegarde distante :\n\t%2$s</string>
-    <string name="main_save_conflict_upgrade_v1_title">Choisir la version de sauvegarde</string>
-    <string name="main_save_conflict_upgrade_v1_message">Nous avons corrigé la gestion des chemins de sauvegarde cloud pour ce jeu et détecté des différences entre la sauvegarde locale et la sauvegarde cloud. Choisissez la version à conserver.\n\nSauvegarde locale :\n\t%1$s\nSauvegarde cloud :\n\t%2$s</string>
     <string name="main_keep_local">Garder locale</string>
     <string name="main_keep_remote">Garder distante</string>
 
@@ -1294,4 +1297,6 @@
     <string name="download_failed_message">Un fichier requis n\'a pas pu être téléchargé. Veuillez vérifier votre connexion réseau et réessayer.</string>
     <string name="install_failed_title">Échec de l\'installation</string>
     <string name="install_failed_message">Les fichiers système n\'ont pas pu être installés. Veuillez réessayer. Si le problème persiste, essayez un autre réseau ou utilisez un VPN.</string>
+    <string name="settings_interface_swap_face_buttons_title">Inverser les boutons d\'action</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">Inverse les icônes des boutons A↔B et X↔Y</string>
 </resources>

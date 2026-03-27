@@ -649,6 +649,11 @@
     <string name="steam_offline_mode">Steam Offline Mode</string>
     <string name="steam_offline_mode_description">Launch Steam games in offline mode</string>
     <string name="achievement_unlocked">Achievement Unlocked</string>
+    <string name="settings_achievement_notification_position">Achievement Notification Position</string>
+    <string name="achievement_position_top_left">Top Left</string>
+    <string name="achievement_position_top_right">Top Right</string>
+    <string name="achievement_position_bottom_left">Bottom Left</string>
+    <string name="achievement_position_bottom_right">Bottom Right</string>
     <string name="allow_steam_updates">Allow Steam updates</string>
     <string name="allow_steam_updates_description">Updates Steam to the latest version. Significantly reduces performance.</string>
     <string name="steam_type">Steam Type</string>
@@ -862,6 +867,8 @@
     <string name="settings_interface_external_links_subtitle">Links open with your main web browser</string>
     <string name="settings_interface_hide_statusbar_title">Hide status bar when not in game</string>
     <string name="settings_interface_hide_statusbar_subtitle">Hide Android status bar in game list, settings, etc. App will restart when changed.</string>
+    <string name="settings_interface_swap_face_buttons_title">Swap face buttons</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">Swap A↔B and X↔Y button icons</string>
     <string name="settings_interface_icon_style">Icon style</string>
     <string name="settings_interface_wifi_only_title">Download only over Wi-Fi/LAN</string>
     <string name="settings_interface_wifi_only_subtitle">Prevent downloads on cellular data</string>
@@ -988,8 +995,6 @@
     <string name="main_save_conflict_message">There is a new remote save and a new local save, which would you like to keep?\n\nLocal save:\n\t%1$s\nRemote save:\n\t%2$s</string>
     <string name="main_keep_local">Keep local</string>
     <string name="main_keep_remote">Keep remote</string>
-    <string name="main_save_conflict_upgrade_v1_title">Choose Save Version</string>
-    <string name="main_save_conflict_upgrade_v1_message">We fixed cloud save path handling for this game and found different local and cloud saves. Pick one version to keep.\n\nLocal:\n\t%1$s\nCloud:\n\t%2$s</string>
 
     <!-- PluviaMain: Sync Errors -->
     <string name="main_sync_in_progress_retry">Sync operation is taking too long. Please try launching the game again in a moment.</string>

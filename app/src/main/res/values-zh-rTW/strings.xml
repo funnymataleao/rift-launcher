@@ -595,6 +595,11 @@
     <string name="steam_offline_mode">Steam 離線模式</string>
     <string name="steam_offline_mode_description">以離線模式啟動 Steam 遊戲</string>
     <string name="achievement_unlocked">成就已解鎖</string>
+    <string name="settings_achievement_notification_position">成就通知位置</string>
+    <string name="achievement_position_top_left">左上</string>
+    <string name="achievement_position_top_right">右上</string>
+    <string name="achievement_position_bottom_left">左下</string>
+    <string name="achievement_position_bottom_right">右下</string>
     <string name="launch_steam_client_description">降低效能並減慢啟動速度\n允許線上遊玩並修復 DRM 和控制器問題\n並非所有遊戲都適用</string>
     <string name="allow_steam_updates">允許 Steam 更新</string>
     <string name="allow_steam_updates_description">將 Steam 更新至最新版本, 會顯著降低效能</string>
@@ -957,8 +962,6 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">存檔衝突</string>
     <string name="main_save_conflict_message">遠端存檔與本地存檔發生衝突，請選擇要保留哪個？\n\n本地存檔：\n\t%1$s\n遠端存檔：\n\t%2$s</string>
-    <string name="main_save_conflict_upgrade_v1_title">選擇存檔版本</string>
-    <string name="main_save_conflict_upgrade_v1_message">我們已修復此遊戲的雲端存檔路徑處理方式，並發現本機存檔與雲端存檔存在差異。請選擇要保留的版本。\n\n本機存檔：\n\t%1$s\n雲端存檔：\n\t%2$s</string>
     <string name="main_keep_local">保留本地存檔</string>
     <string name="main_keep_remote">保留遠端存檔</string>
 
@@ -1291,4 +1294,6 @@
     <string name="download_failed_message">無法下載必要的檔案。請檢查您的網路連線後重試。</string>
     <string name="install_failed_title">安裝失敗</string>
     <string name="install_failed_message">無法安裝系統檔案。請重試。如果問題持續存在，請嘗試使用其他網路或使用 VPN。</string>
+    <string name="settings_interface_swap_face_buttons_title">交換面鍵</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">交換 A↔B 和 X↔Y 按鍵圖示</string>
 </resources>

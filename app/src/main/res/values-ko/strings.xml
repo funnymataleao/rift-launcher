@@ -611,6 +611,11 @@
     <string name="steam_offline_mode">Steam 오프라인 모드</string>
     <string name="steam_offline_mode_description">Steam 게임을 오프라인 모드로 실행</string>
     <string name="achievement_unlocked">업적 달성</string>
+    <string name="settings_achievement_notification_position">업적 알림 위치</string>
+    <string name="achievement_position_top_left">좌측 상단</string>
+    <string name="achievement_position_top_right">우측 상단</string>
+    <string name="achievement_position_bottom_left">좌측 하단</string>
+    <string name="achievement_position_bottom_right">우측 하단</string>
     <string name="launch_steam_client_description">성능이 저하되고 실행 속도가 느려집니다\n온라인 플레이를 허용하고 DRM 및 컨트롤러 문제를 해결합니다\n모든 게임이 작동하는 것은 아닙니다</string>
     <string name="allow_steam_updates">Steam 업데이트 허용</string>
     <string name="allow_steam_updates_description">Steam을 최신 버전으로 업데이트합니다. 성능이 크게 저하될 수 있습니다.</string>
@@ -974,8 +979,6 @@
     <!-- PluviaMain: Save Conflicts -->
     <string name="main_save_conflict_title">저장 충돌</string>
     <string name="main_save_conflict_message">새 원격 저장 파일과 새 로컬 저장 파일이 있습니다. 어느 것을 유지하시겠습니까?\n\n로컬 저장 파일:\n\t%1$s\n원격 저장 파일:\n\t%2$s</string>
-    <string name="main_save_conflict_upgrade_v1_title">저장 버전 선택</string>
-    <string name="main_save_conflict_upgrade_v1_message">이 게임의 클라우드 저장 경로 처리 방식을 수정했으며 로컬 저장과 클라우드 저장이 서로 다르게 감지되었습니다. 유지할 버전을 선택하세요.\n\n로컬 저장:\n\t%1$s\n클라우드 저장:\n\t%2$s</string>
     <string name="main_keep_local">로컬 유지</string>
     <string name="main_keep_remote">원격 유지</string>
 
@@ -1298,4 +1301,6 @@
     <string name="download_failed_message">필수 파일을 다운로드할 수 없습니다. 네트워크 연결을 확인하고 다시 시도해 주세요.</string>
     <string name="install_failed_title">설치 실패</string>
     <string name="install_failed_message">시스템 파일을 설치할 수 없습니다. 다시 시도해 주세요. 문제가 지속되면 다른 네트워크를 사용하거나 VPN을 사용해 보세요.</string>
+    <string name="settings_interface_swap_face_buttons_title">페이스 버튼 바꾸기</string>
+    <string name="settings_interface_swap_face_buttons_subtitle">A↔B 및 X↔Y 버튼 아이콘 바꾸기</string>
 </resources>
