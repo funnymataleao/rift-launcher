@@ -70,7 +70,7 @@
     <string name="branch">Zweig</string>
     <string name="change_branch">Zweig wechseln</string>
     <string name="change_branch_message">Lade alternative Spielversionen von Steam über entwicklerbereitgestellte Zweige herunter. Gib Zugangscodes ein, um private Zweige freizuschalten.</string>
-    <string name="private_branch_password_hint">Zugangscode eingeben…</string>
+    <string name="private_branch_password_hint">Zugangscode eingeben</string>
     <string name="private_branch_password_check">Code prüfen</string>
     <string name="private_branch_password_success">Zweig freigeschaltet!</string>
     <string name="private_branch_password_invalid">Ungültiger Zugangscode</string>

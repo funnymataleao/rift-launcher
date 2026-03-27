@@ -75,7 +75,7 @@
     <string name="branch">Ramură</string>
     <string name="change_branch">Schimbă ramura</string>
     <string name="change_branch_message">Descarcă versiuni alternative ale jocului de pe Steam folosind ramuri oferite de dezvoltatori. Introdu coduri de acces pentru a debloca ramuri private.</string>
-    <string name="private_branch_password_hint">Introdu codul de acces…</string>
+    <string name="private_branch_password_hint">Introdu codul de acces</string>
     <string name="private_branch_password_check">Verifică codul</string>
     <string name="private_branch_password_success">Ramură deblocată!</string>
     <string name="private_branch_password_invalid">Cod de acces invalid</string>

@@ -1140,7 +1140,7 @@ https://gamenative.app
     <string name="branch">Ветка</string>
     <string name="change_branch">Сменить ветку</string>
     <string name="change_branch_message">Загружайте альтернативные версии игры через ветки, предоставляемые разработчиками. Введите коды доступа, чтобы разблокировать приватные ветки.</string>
-    <string name="private_branch_password_hint">Введите код доступа…</string>
+    <string name="private_branch_password_hint">Введите код доступа</string>
     <string name="private_branch_password_check">Проверить код</string>
     <string name="private_branch_password_success">Ветка разблокирована!</string>
     <string name="private_branch_password_invalid">Неверный код доступа</string>

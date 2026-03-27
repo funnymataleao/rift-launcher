@@ -84,7 +84,7 @@
     <string name="branch">Branch</string>
     <string name="change_branch">Change Branch</string>
     <string name="change_branch_message">Download alternate game versions from Steam using developer-provided branches. Enter access codes to unlock private branches.</string>
-    <string name="private_branch_password_hint">Enter access code…</string>
+    <string name="private_branch_password_hint">Enter access code</string>
     <string name="private_branch_password_check">Check Code</string>
     <string name="private_branch_password_success">Branch unlocked!</string>
     <string name="private_branch_password_invalid">Invalid access code</string>

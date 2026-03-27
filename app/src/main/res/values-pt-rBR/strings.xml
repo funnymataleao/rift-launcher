@@ -19,7 +19,7 @@
     <string name="branch">Ramo</string>
     <string name="change_branch">Alterar ramo</string>
     <string name="change_branch_message">Baixe versões alternativas do jogo na Steam usando ramos fornecidos pelos desenvolvedores. Digite códigos de acesso para desbloquear ramos privados.</string>
-    <string name="private_branch_password_hint">Digite o código de acesso…</string>
+    <string name="private_branch_password_hint">Digite o código de acesso</string>
     <string name="private_branch_password_check">Verificar código</string>
     <string name="private_branch_password_success">Ramo desbloqueado!</string>
     <string name="private_branch_password_invalid">Código de acesso inválido</string>

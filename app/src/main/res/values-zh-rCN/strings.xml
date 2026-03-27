@@ -74,7 +74,7 @@
     <string name="branch">分支</string>
     <string name="change_branch">更改分支</string>
     <string name="change_branch_message">通过开发者提供的分支从 Steam 下载游戏的替代版本。输入访问代码以解锁私有分支。</string>
-    <string name="private_branch_password_hint">输入访问代码…</string>
+    <string name="private_branch_password_hint">输入访问代码</string>
     <string name="private_branch_password_check">验证代码</string>
     <string name="private_branch_password_success">分支已解锁！</string>
     <string name="private_branch_password_invalid">访问代码无效</string>

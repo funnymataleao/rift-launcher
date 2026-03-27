@@ -19,7 +19,7 @@
     <string name="branch">Gren</string>
     <string name="change_branch">Skift gren</string>
     <string name="change_branch_message">Download alternative spilversioner fra Steam via udvikler-grene. Indtast adgangskoder for at låse private grene op.</string>
-    <string name="private_branch_password_hint">Indtast adgangskode…</string>
+    <string name="private_branch_password_hint">Indtast adgangskode</string>
     <string name="private_branch_password_check">Tjek kode</string>
     <string name="private_branch_password_success">Gren låst op!</string>
     <string name="private_branch_password_invalid">Ugyldig adgangskode</string>
