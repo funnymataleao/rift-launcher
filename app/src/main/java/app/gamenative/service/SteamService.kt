@@ -690,16 +690,16 @@ class SteamService : Service(), IChallengeUrlChanged {
         /**
          * Common filter for downloadable depots.
          *
-         * [has64Bit] and [hasNonDeckWindows] are exclusion flags, not selection
-         * flags: `true` filters OUT the lesser variant (32-bit / Deck), while
+         * [prefer64Bit] and [preferNonDeckWindows] are preference flags:
+         * `true` filters OUT the lesser variant (32-bit / Deck-only), while
          * `false` is permissive and lets all architectures or Deck states through.
-         * [eligibleDepots] exploits this by passing both as `false` to skip those
-         * checks when computing the flags themselves.
+         * [eligibleDepots] passes both as `false` to skip preference checks
+         * when computing the flags themselves.
          */
         fun filterForDownloadableDepots(
             depot: DepotInfo,
-            has64Bit: Boolean,
-            hasNonDeckWindows: Boolean,
+            prefer64Bit: Boolean,
+            preferNonDeckWindows: Boolean,
             preferredLanguage: String,
             ownedDlc: Map<Int, DepotInfo>?,
             licensedDepotIds: Set<Int>? = null,
@@ -719,7 +719,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             // Allow 32-bit only when no 64-bit depot exists.
             val archOk = when (depot.osArch) {
                 OSArch.Arch64, OSArch.Unknown -> true
-                OSArch.Arch32 -> !has64Bit
+                OSArch.Arch32 -> !prefer64Bit
                 else -> false
             }
             if (!archOk) return false
@@ -734,7 +734,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             if (depot.dlcAppId == INVALID_APP_ID && licensedDepotIds != null && depot.depotId !in licensedDepotIds)
                 return false
             // 7. Prefer non-Steam-Deck depot when both exist (we're on Android, not Deck)
-            if (depot.steamDeck && hasNonDeckWindows)
+            if (depot.steamDeck && preferNonDeckWindows)
                 return false
 
             return true
@@ -742,7 +742,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         /**
          * Depots eligible for preference-flag computation: delegates to
-         * [filterForDownloadableDepots] with has64Bit=false, hasNonDeckWindows=false
+         * [filterForDownloadableDepots] with both preference flags false
          * so arch and Steam Deck checks become no-ops. This gives us the pool from
          * which to derive those flags without circular dependency.
          */
@@ -752,7 +752,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             ownedDlc: Map<Int, DepotInfo>?,
             licensedDepotIds: Set<Int>?,
         ): Collection<DepotInfo> = depots.values.filter { depot ->
-            filterForDownloadableDepots(depot, has64Bit = false, hasNonDeckWindows = false, preferredLanguage, ownedDlc, licensedDepotIds)
+            filterForDownloadableDepots(depot, prefer64Bit = false, preferNonDeckWindows = false, preferredLanguage, ownedDlc, licensedDepotIds)
         }
 
         /**
@@ -799,7 +799,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val licensedDepots = getLicensedDepotIds(appId)
 
             val baseDepots = resolveDownloadableDepots(appInfo.depots, preferredLanguage, ownedDlc, licensedDepots)
-            // parent app's has64Bit applies to DLC arch selection
+            // parent app's arch applies to DLC arch selection
             val has64Bit = eligibleDepots(appInfo.depots, preferredLanguage, ownedDlc, licensedDepots)
                 .any { it.osArch == OSArch.Arch64 }
             val map = baseDepots.toMutableMap()

@@ -60,40 +60,40 @@ interface SteamLicenseDao {
        direct queries at call-sites.
        ---------------------------------------------------------- */
 
+    // batched to stay under SQLite's 999 bind-variable limit
     @Transaction
     suspend fun findLicenses(packageIds: List<Int>): List<SteamLicense> {
         if (packageIds.isEmpty()) return emptyList()
-        val out = mutableListOf<SteamLicense>()
-        for (i in packageIds.indices step SQLITE_MAX_VARS) {
-            val end = min(i + SQLITE_MAX_VARS, packageIds.size)
-            out += _findLicenses(packageIds.subList(i, end))
+        val results = mutableListOf<SteamLicense>()
+        for (chunkStart in packageIds.indices step SQLITE_MAX_VARS) {
+            val chunkEnd = min(chunkStart + SQLITE_MAX_VARS, packageIds.size)
+            results += _findLicenses(packageIds.subList(chunkStart, chunkEnd))
         }
-        return out
+        return results
     }
 
+    // batched NOT IN — intersects chunks so only licenses absent from ALL chunks are returned
     @Transaction
     suspend fun findStaleLicences(packageIds: List<Int>): List<SteamLicense> {
         if (packageIds.isEmpty()) return getAllLicenses()
-
-        val out = mutableListOf<SteamLicense>()
-        // Combine multiple queries if needed
-        for (i in packageIds.indices step SQLITE_MAX_VARS) {
-            val end = min(i + SQLITE_MAX_VARS, packageIds.size)
-            val chunkResult = _findStaleLicences(packageIds.subList(i, end))
-            if (out.isEmpty()) {
-                out += chunkResult // First chunk
+        val results = mutableListOf<SteamLicense>()
+        for (chunkStart in packageIds.indices step SQLITE_MAX_VARS) {
+            val chunkEnd = min(chunkStart + SQLITE_MAX_VARS, packageIds.size)
+            val chunkResult = _findStaleLicences(packageIds.subList(chunkStart, chunkEnd))
+            if (results.isEmpty()) {
+                results += chunkResult
             } else {
-                out.retainAll(chunkResult) // Intersect to only keep entries in both lists
+                results.retainAll(chunkResult)
             }
         }
-        return out.distinct()
+        return results.distinct()
     }
 
     @Transaction
     suspend fun deleteStaleLicenses(packageIds: List<Int>) {
-        for (i in packageIds.indices step SQLITE_MAX_VARS) {
-            val end = min(i + SQLITE_MAX_VARS, packageIds.size)
-            _deleteStaleLicenses(packageIds.subList(i, end))
+        for (chunkStart in packageIds.indices step SQLITE_MAX_VARS) {
+            val chunkEnd = min(chunkStart + SQLITE_MAX_VARS, packageIds.size)
+            _deleteStaleLicenses(packageIds.subList(chunkStart, chunkEnd))
         }
     }
 
