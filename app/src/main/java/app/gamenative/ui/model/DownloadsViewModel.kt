@@ -33,12 +33,13 @@ import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
 import timber.log.Timber
 
 @HiltViewModel
@@ -74,16 +75,16 @@ class DownloadsViewModel @Inject constructor(
 
     private val gameNameCache = ConcurrentHashMap<String, String>()
     private val gameIconCache = ConcurrentHashMap<String, String>()
-    private val refreshMutex = Mutex()
+    private val refreshRequests = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
     private val observedDownloads = ConcurrentHashMap<String, ObservedDownload>()
 
     private val finishedDownloads = ConcurrentHashMap<String, DownloadItemState>()
     private val pausedDownloads = ConcurrentHashMap.newKeySet<String>()
     private val pendingCancelledDownloads = ConcurrentHashMap.newKeySet<String>()
     private val recentFailureMessages = ConcurrentHashMap<String, String>()
-
-    @Volatile
-    private var refreshPending = false
 
     @Volatile
     private var lastTrackedDownloads: Map<String, DownloadItemState> = emptyMap()
@@ -99,6 +100,13 @@ class DownloadsViewModel @Inject constructor(
     init {
         PluviaApp.events.on<AndroidEvent.DownloadStatusChanged, Unit>(onDownloadStatusChanged)
         PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(onLibraryInstallStatusChanged)
+
+        viewModelScope.launch(Dispatchers.IO) {
+            refreshRequests.collect {
+                refreshDownloadsSnapshot()
+            }
+        }
+
         scheduleRefreshDownloads()
     }
 
@@ -112,9 +120,7 @@ class DownloadsViewModel @Inject constructor(
     private fun downloadKey(gameSource: GameSource, appId: String): String = "${gameSource.name}_$appId"
 
     private fun scheduleRefreshDownloads() {
-        viewModelScope.launch(Dispatchers.IO) {
-            refreshDownloadsSnapshot()
-        }
+        refreshRequests.tryEmit(Unit)
     }
 
     private fun clearObservedDownloads() {
@@ -440,20 +446,6 @@ class DownloadsViewModel @Inject constructor(
     }
 
     private suspend fun refreshDownloadsSnapshot() {
-        refreshPending = true
-        if (!refreshMutex.tryLock()) return
-
-        try {
-            while (refreshPending) {
-                refreshPending = false
-                refreshDownloadsSnapshotLocked()
-            }
-        } finally {
-            refreshMutex.unlock()
-        }
-    }
-
-    private suspend fun refreshDownloadsSnapshotLocked() {
         try {
             val liveDownloads = LinkedHashMap<String, DownloadItemState>()
             val activeBindings = LinkedHashMap<String, ActiveDownloadBinding>()
@@ -644,7 +636,7 @@ class DownloadsViewModel @Inject constructor(
                 GameSource.CUSTOM_GAME -> Unit
             }
 
-            refreshDownloadsSnapshot()
+            scheduleRefreshDownloads()
         }
     }
 
@@ -708,14 +700,14 @@ class DownloadsViewModel @Inject constructor(
                     SteamService.getAppDownloadInfo(id)?.cancel()
                     SteamService.deleteApp(id)
                     PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(id))
-                    refreshDownloadsSnapshot()
+                    scheduleRefreshDownloads()
                 }
 
                 GameSource.EPIC -> {
                     val id = appId.toIntOrNull() ?: return@launch
                     EpicService.cancelDownload(id)
                     EpicService.deleteGame(appContext, id)
-                    refreshDownloadsSnapshot()
+                    scheduleRefreshDownloads()
                 }
 
                 GameSource.GOG -> {
@@ -731,13 +723,13 @@ class DownloadsViewModel @Inject constructor(
                             ),
                         )
                     }
-                    refreshDownloadsSnapshot()
+                    scheduleRefreshDownloads()
                 }
 
                 GameSource.AMAZON -> {
                     AmazonService.cancelDownload(appId)
                     AmazonService.deleteGame(appContext, appId)
-                    refreshDownloadsSnapshot()
+                    scheduleRefreshDownloads()
                 }
 
                 GameSource.CUSTOM_GAME -> Unit

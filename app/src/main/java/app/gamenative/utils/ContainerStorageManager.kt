@@ -109,7 +109,6 @@ object ContainerStorageManager {
         val dirs = homeDir.listFiles()
             ?.filter { it.isDirectory && it.name.startsWith(prefix) }
             .orEmpty()
-        val pathSizeCache = mutableMapOf<String, Long>()
         val entryPoint = EntryPointAccessors.fromApplication(
             context.applicationContext,
             StorageManagerDaoEntryPoint::class.java,
@@ -124,14 +123,14 @@ object ContainerStorageManager {
         )
 
         val containerEntries = dirs.map { dir ->
-            buildContainerEntry(context, dir, prefix, pathSizeCache, installedGames)
+            buildContainerEntry(context, dir, prefix, installedGames)
         }
         val coveredInstalledIds = containerEntries
             .mapTo(mutableSetOf()) { normalizeContainerId(it.containerId) }
 
         val installedOnlyEntries = installedGames.values
             .filterNot { coveredInstalledIds.contains(it.appId) }
-            .map { installedGame -> buildInstalledOnlyEntry(context, installedGame, pathSizeCache) }
+            .map { installedGame -> buildInstalledOnlyEntry(installedGame) }
 
         val entries = (containerEntries + installedOnlyEntries)
             .sortedWith(compareByDescending<Entry> { it.combinedSizeBytes ?: 0L }.thenBy { it.displayName.lowercase() })
@@ -534,6 +533,7 @@ object ContainerStorageManager {
                     gameSource = GameSource.STEAM,
                     installPath = installPath,
                     iconUrl = app.clientIconUrl.takeIf { app.clientIconHash.isNotEmpty() }.orEmpty(),
+                    installSizeBytes = estimateSteamInstallSize(app),
                 )
             }
     }
@@ -569,7 +569,6 @@ object ContainerStorageManager {
         context: Context,
         dir: File,
         prefix: String,
-        pathSizeCache: MutableMap<String, Long>,
         installedGames: Map<String, InstalledGame>,
     ): Entry {
         val containerId = dir.name.removePrefix(prefix)
@@ -588,13 +587,7 @@ object ContainerStorageManager {
                 appId = installedGame?.appId ?: normalizedContainerId.takeIf { gameSource != null },
                 iconUrl = installedGame?.iconUrl.orEmpty(),
                 containerSizeBytes = containerSizeBytes,
-                gameInstallSizeBytes = resolveInstallSizeBytes(
-                    context = context,
-                    gameSource = gameSource,
-                    installPath = installedGame?.installPath,
-                    persistedSize = installedGame?.installSizeBytes,
-                    pathSizeCache = pathSizeCache,
-                ),
+                gameInstallSizeBytes = resolveInstallSizeBytes(installedGame?.installSizeBytes),
                 status = Status.UNREADABLE,
                 installPath = installedGame?.installPath,
                 canUninstallGame = installedGame != null && installedGame.gameSource != GameSource.CUSTOM_GAME,
@@ -626,13 +619,7 @@ object ContainerStorageManager {
         }
 
         val gameInstallSizeBytes = if (status == Status.READY) {
-            resolveInstallSizeBytes(
-                context = context,
-                gameSource = gameSource,
-                installPath = installPath,
-                persistedSize = installedGame?.installSizeBytes,
-                pathSizeCache = pathSizeCache,
-            )
+            resolveInstallSizeBytes(installedGame?.installSizeBytes)
         } else {
             null
         }
@@ -653,9 +640,7 @@ object ContainerStorageManager {
     }
 
     private fun buildInstalledOnlyEntry(
-        context: Context,
         installedGame: InstalledGame,
-        pathSizeCache: MutableMap<String, Long>,
     ): Entry {
         return Entry(
             containerId = installedGame.appId,
@@ -664,13 +649,7 @@ object ContainerStorageManager {
             appId = installedGame.appId,
             iconUrl = installedGame.iconUrl,
             containerSizeBytes = 0L,
-            gameInstallSizeBytes = resolveInstallSizeBytes(
-                context = context,
-                gameSource = installedGame.gameSource,
-                installPath = installedGame.installPath,
-                persistedSize = installedGame.installSizeBytes,
-                pathSizeCache = pathSizeCache,
-            ),
+            gameInstallSizeBytes = resolveInstallSizeBytes(installedGame.installSizeBytes),
             status = Status.NO_CONTAINER,
             installPath = installedGame.installPath,
             canUninstallGame = installedGame.gameSource != GameSource.CUSTOM_GAME,
@@ -801,26 +780,14 @@ object ContainerStorageManager {
         known = true,
     )
 
-    private fun resolveInstallSizeBytes(
-        context: Context,
-        gameSource: GameSource?,
-        installPath: String?,
-        persistedSize: Long?,
-        pathSizeCache: MutableMap<String, Long>,
-    ): Long? {
-        if (persistedSize != null && persistedSize > 0L) return persistedSize
-        if (gameSource == null || installPath.isNullOrBlank()) return null
-
-        return when (getStorageLocation(context, gameSource, installPath)) {
-            StorageLocation.INTERNAL -> getPathSize(installPath, pathSizeCache)
-            StorageLocation.EXTERNAL,
-            StorageLocation.UNKNOWN,
-            -> null
-        }
+    private fun resolveInstallSizeBytes(persistedSize: Long?): Long? {
+        return persistedSize?.takeIf { it > 0L }
     }
 
-    private fun getPathSize(path: String, pathSizeCache: MutableMap<String, Long>): Long {
-        return pathSizeCache.getOrPut(path) { getContainerDirectorySize(File(path).toPath()) }
+    private fun estimateSteamInstallSize(app: SteamApp): Long? {
+        return app.depots.values
+            .sumOf { depot -> depot.manifests["public"]?.size ?: depot.manifests.values.firstOrNull()?.size ?: 0L }
+            .takeIf { it > 0L }
     }
 
     private fun readConfig(configFile: File): JSONObject? {
