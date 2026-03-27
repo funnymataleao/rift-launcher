@@ -211,11 +211,33 @@ class GOGService : Service() {
             return app.gamenative.utils.MarkerUtils.hasPartialInstall(installPath)
         }
 
+        private fun getPartialInstallPaths(): Set<String> {
+            val roots = buildList {
+                add(GOGConstants.internalGOGGamesPath)
+                if (app.gamenative.PrefManager.externalStoragePath.isNotBlank()) {
+                    add(GOGConstants.externalGOGGamesPath)
+                }
+            }.distinct()
+
+            return roots.asSequence()
+                .flatMap { root -> app.gamenative.utils.MarkerUtils.findResumablePartialInstalls(root).asSequence() }
+                .toSet()
+        }
+
         suspend fun getPartialDownloads(): List<String> {
             val instance = getInstance() ?: return emptyList()
+            val partialInstallPaths = getPartialInstallPaths()
+            if (partialInstallPaths.isEmpty()) return emptyList()
+
             return instance.gogManager.getNonInstalledGames()
-                .filter { game -> !instance.activeDownloads.containsKey(game.id) && hasPartialDownload(game) }
+                .asSequence()
+                .filter { game -> !instance.activeDownloads.containsKey(game.id) }
+                .filter { game ->
+                    val title = game.title.ifBlank { return@filter false }
+                    partialInstallPaths.contains(GOGConstants.getGameInstallPath(title))
+                }
                 .map { it.id }
+                .toList()
         }
 
         fun cleanupDownload(gameId: String) {
