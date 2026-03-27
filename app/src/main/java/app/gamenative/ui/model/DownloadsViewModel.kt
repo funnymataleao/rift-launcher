@@ -76,6 +76,7 @@ class DownloadsViewModel @Inject constructor(
     private val gameNameCache = ConcurrentHashMap<String, String>()
     private val gameIconCache = ConcurrentHashMap<String, String>()
     private val refreshRequests = MutableSharedFlow<Unit>(
+        replay = 1,
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )

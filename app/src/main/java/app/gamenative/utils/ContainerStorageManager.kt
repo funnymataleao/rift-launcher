@@ -785,7 +785,14 @@ object ContainerStorageManager {
     }
 
     private fun estimateSteamInstallSize(app: SteamApp): Long? {
-        return app.depots.values
+        val preferredLanguage = PrefManager.containerLanguage
+        val downloadableDepots = runCatching {
+            SteamService.getMainAppDepots(app.id, preferredLanguage)
+        }.getOrElse {
+            emptyMap()
+        }
+
+        return downloadableDepots.values
             .sumOf { depot -> depot.manifests["public"]?.size ?: depot.manifests.values.firstOrNull()?.size ?: 0L }
             .takeIf { it > 0L }
     }
