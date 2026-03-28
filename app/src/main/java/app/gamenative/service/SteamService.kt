@@ -358,7 +358,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
 
             val dirPath = getAppDirPath(appId)
-            return File(dirPath).exists() && !MarkerUtils.hasMarker(dirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+            return MarkerUtils.hasPartialInstall(dirPath)
         }
 
         private val syncInProgressApps = ConcurrentHashMap<Int, AtomicBoolean>()
@@ -593,6 +593,15 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         fun getAppDownloadInfo(appId: Int): DownloadInfo? {
             return downloadJobs[appId]
+        }
+
+        fun getActiveDownloads(): Map<Int, DownloadInfo> = HashMap(downloadJobs)
+
+        suspend fun getPartialDownloads(): List<Int> {
+            return instance?.downloadingAppInfoDao?.getAll()
+                ?.map { it.appId }
+                ?.filter { appId -> !downloadJobs.containsKey(appId) }
+                ?: emptyList()
         }
 
         fun isAppInstalled(appId: Int): Boolean {
