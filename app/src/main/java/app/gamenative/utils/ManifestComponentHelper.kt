@@ -180,9 +180,6 @@ object ManifestComponentHelper {
         val isVortekLike = containerVariant.equals("glibc", ignoreCase = true) &&
             driverType in listOf("vortek", "adreno", "sd-8-elite")
 
-        val isVKD3D = StringUtils.parseIdentifier(
-            dxWrappers.getOrNull(dxWrapperIndex).orEmpty(),
-        ) == "vkd3d"
         val constrainedLabels = listOf("1.10.3", "1.10.9-sarek", "1.9.2", "async-1.10.3")
         val constrainedIds = constrainedLabels.map { StringUtils.parseIdentifier(it) }
         val useConstrained =
@@ -202,11 +199,8 @@ object ManifestComponentHelper {
             else if (isBionicVariant) dxvkOptions.muted
             else emptyList()
 
-        return if (isVKD3D) {
-            DxvkContext(isVortekLike, emptyList(), emptyList(), emptyList())
-        } else {
-            DxvkContext(isVortekLike, labels, ids, muted)
-        }
+        // Always return DXVK options regardless of wrapper selection (allows DXVK config even when VKD3D is selected)
+        return DxvkContext(isVortekLike, labels, ids, muted)
     }
 
     fun versionExists(version: String, available: List<String>): Boolean {
