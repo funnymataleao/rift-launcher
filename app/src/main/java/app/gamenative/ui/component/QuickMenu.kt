@@ -225,6 +225,37 @@ private fun matchesPerformanceHudPreset(
         currentConfig.showGpuUsageGraph == presetConfig.showGpuUsageGraph
 }
 
+private fun fpsLimiterSteps(maxFps: Int): List<Int> {
+    val sanitizedMax = maxFps.coerceAtLeast(30)
+    return buildList {
+        for (value in 15..sanitizedMax step 5) {
+            add(value)
+        }
+        if (isEmpty() || last() != sanitizedMax) {
+            add(sanitizedMax)
+        }
+        add(0)
+    }.distinct()
+}
+
+private fun fpsLimiterProgress(currentValue: Int, maxFps: Int): Float {
+    val steps = fpsLimiterSteps(maxFps)
+    val currentIndex = steps.indexOfFirst { it == currentValue }.takeIf { it >= 0 } ?: (steps.lastIndex)
+    return if (steps.lastIndex <= 0) 1f else currentIndex.toFloat() / steps.lastIndex.toFloat()
+}
+
+private fun nextFpsLimiterValue(currentValue: Int, maxFps: Int): Int {
+    val steps = fpsLimiterSteps(maxFps)
+    val currentIndex = steps.indexOfFirst { it == currentValue }.takeIf { it >= 0 } ?: steps.lastIndex
+    return steps[(currentIndex + 1).coerceAtMost(steps.lastIndex)]
+}
+
+private fun previousFpsLimiterValue(currentValue: Int, maxFps: Int): Int {
+    val steps = fpsLimiterSteps(maxFps)
+    val currentIndex = steps.indexOfFirst { it == currentValue }.takeIf { it >= 0 } ?: steps.lastIndex
+    return steps[(currentIndex - 1).coerceAtLeast(0)]
+}
+
 @Composable
 fun QuickMenu(
     isVisible: Boolean,
@@ -238,7 +269,10 @@ fun QuickMenu(
     onToolsVisibilityChanged: (Boolean) -> Unit = {},
     isPerformanceHudEnabled: Boolean = false,
     performanceHudConfig: PerformanceHudConfig = PerformanceHudConfig(),
+    fpsLimiterValue: Int = 0,
+    fpsLimiterMax: Int = 60,
     onPerformanceHudConfigChanged: (PerformanceHudConfig) -> Unit = {},
+    onFpsLimiterChanged: (Int) -> Unit = {},
     hasPhysicalController: Boolean = false,
     isTouchscreenModeActive: Boolean = false,
     onTouchGestureSettingsClick: () -> Unit = {},
@@ -519,10 +553,13 @@ fun QuickMenu(
                                         PerformanceHudQuickMenuTab(
                                             isPerformanceHudEnabled = isPerformanceHudEnabled,
                                             performanceHudConfig = performanceHudConfig,
+                                            fpsLimiterValue = fpsLimiterValue,
+                                            fpsLimiterMax = fpsLimiterMax,
                                             onTogglePerformanceHud = {
                                                 onItemSelected(QuickMenuAction.PERFORMANCE_HUD)
                                             },
                                             onPerformanceHudConfigChanged = onPerformanceHudConfigChanged,
+                                            onFpsLimiterChanged = onFpsLimiterChanged,
                                             scrollState = hudScrollState,
                                             focusRequester = hudItemFocusRequester,
                                             modifier = Modifier.fillMaxSize(),
@@ -673,8 +710,11 @@ private fun ToolsQuickMenuTab(
 private fun PerformanceHudQuickMenuTab(
     isPerformanceHudEnabled: Boolean,
     performanceHudConfig: PerformanceHudConfig,
+    fpsLimiterValue: Int,
+    fpsLimiterMax: Int,
     onTogglePerformanceHud: () -> Unit,
     onPerformanceHudConfigChanged: (PerformanceHudConfig) -> Unit,
+    onFpsLimiterChanged: (Int) -> Unit,
     scrollState: ScrollState,
     focusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
@@ -694,6 +734,33 @@ private fun PerformanceHudQuickMenuTab(
             onToggle = onTogglePerformanceHud,
             accentColor = accentColor,
             focusRequester = focusRequester,
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        QuickMenuSectionHeader(
+            title = stringResource(R.string.performance_hud_fps_limiter),
+            subtitle = stringResource(
+                R.string.performance_hud_fps_limiter_description,
+                fpsLimiterMax,
+            ),
+        )
+
+        QuickMenuAdjustmentRow(
+            title = stringResource(R.string.performance_hud_fps_limiter_target),
+            valueText = if (fpsLimiterValue <= 0) {
+                stringResource(R.string.performance_hud_fps_limiter_off)
+            } else {
+                stringResource(R.string.performance_hud_fps_limiter_value, fpsLimiterValue)
+            },
+            progress = fpsLimiterProgress(fpsLimiterValue, fpsLimiterMax),
+            onDecrease = {
+                onFpsLimiterChanged(previousFpsLimiterValue(fpsLimiterValue, fpsLimiterMax))
+            },
+            onIncrease = {
+                onFpsLimiterChanged(nextFpsLimiterValue(fpsLimiterValue, fpsLimiterMax))
+            },
+            accentColor = accentColor,
         )
 
         Spacer(modifier = Modifier.height(8.dp))
