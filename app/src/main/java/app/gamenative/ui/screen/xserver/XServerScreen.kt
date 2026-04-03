@@ -561,10 +561,7 @@ fun XServerScreen(
             fpsLimiterTarget = clampedTarget
         }
         val appliedLimit = if (fpsLimiterEnabled) clampedTarget else 0
-        xServerView?.setFrameRateLimit(appliedLimit)
-        xServerView?.getxServer()
-            ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
-            ?.setFrameRateLimit(appliedLimit)
+        applyFpsLimiterToEngines(appliedLimit)
     }
 
     fun restorePerformanceHudPosition() {
@@ -1590,7 +1587,9 @@ fun XServerScreen(
                 renderer.isCursorVisible = false
                 renderer.setOnFrameRenderedListener {
                     if (shouldTrackDisplayedFrames.get()) {
-                        frameRating?.update()
+                        (context as? Activity)?.runOnUiThread {
+                            frameRating?.update()
+                        }
                     }
                 }
                 getxServer().renderer = renderer
@@ -2189,6 +2188,9 @@ fun XServerScreen(
                 // Remove the WindowManager listener associated with the released AndroidView.
                 binding.xServerView.renderer.setOnFrameRenderedListener(null)
                 binding.xServerView.getxServer().windowManager.removeOnWindowModificationListener(binding.windowModificationListener)
+                binding.xServerView.getxServer()
+                    .getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
+                    ?.close()
                 if (PluviaApp.xServerView === binding.xServerView) {
                     PluviaApp.xServerView = null
                 }
