@@ -1770,6 +1770,12 @@ fun XServerScreen(
                             if (frameRatingWindowId == -1 && window.isApplicationWindow()) {
                                 refreshFrameRatingTracking("content-update")
                             }
+                            if (window.id == frameRatingWindowId) {
+                                (context as? Activity)?.runOnUiThread {
+                                    frameRating?.update()
+                                }
+                            }
+                            }
                         }
 
                         override fun onModifyWindowProperty(window: Window, property: Property) {
