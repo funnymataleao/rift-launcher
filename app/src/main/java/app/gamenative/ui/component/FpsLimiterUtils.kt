@@ -1,5 +1,16 @@
 package app.gamenative.ui.component
 
+import java.util.Locale
+
+internal fun parsePositiveFpsLimit(value: String): Int? = value.toIntOrNull()?.takeIf { it > 0 }
+
+internal fun parseBooleanExtra(value: String): Boolean? =
+    when (value.trim().lowercase(Locale.US)) {
+        "true" -> true
+        "false" -> false
+        else -> null
+    }
+
 internal fun fpsLimiterSteps(maxFps: Int): List<Int> {
     val sanitizedMax = maxFps.coerceAtLeast(5)
     val flooredMax = (sanitizedMax / 5) * 5

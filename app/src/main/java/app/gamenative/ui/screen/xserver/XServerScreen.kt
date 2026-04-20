@@ -92,6 +92,8 @@ import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
+import app.gamenative.ui.component.parseBooleanExtra
+import app.gamenative.ui.component.parsePositiveFpsLimit
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
 import app.gamenative.ui.data.XServerState
@@ -205,28 +207,11 @@ private const val DEFAULT_FPS_LIMITER_TARGET_HZ = 60
 private const val FPS_LIMITER_ENABLED_EXTRA = "fpsLimiterEnabled"
 private const val FPS_LIMITER_TARGET_EXTRA = "fpsLimiterTarget"
 
-private fun parsePositiveFpsLimit(value: String): Int? = value.toIntOrNull()?.takeIf { it > 0 }
-
-private fun hasLegacyDxvkFrameRate(container: Container): Boolean = EnvVars(container.envVars).has("DXVK_FRAME_RATE")
-
-private fun legacyDxvkFrameRate(container: Container): Int? =
-    parsePositiveFpsLimit(EnvVars(container.envVars).get("DXVK_FRAME_RATE"))
-
-private fun parseBooleanExtra(value: String): Boolean? =
-    when (value.trim().lowercase(Locale.US)) {
-        "true" -> true
-        "false" -> false
-        else -> null
-    }
-
-private fun initialFpsLimiterEnabled(container: Container): Boolean {
-    parseBooleanExtra(container.getExtra(FPS_LIMITER_ENABLED_EXTRA))?.let { return it }
-    return !hasLegacyDxvkFrameRate(container)
-}
+private fun initialFpsLimiterEnabled(container: Container): Boolean =
+    parseBooleanExtra(container.getExtra(FPS_LIMITER_ENABLED_EXTRA)) ?: true
 
 private fun initialFpsLimiterTarget(container: Container): Int =
     parsePositiveFpsLimit(container.getExtra(FPS_LIMITER_TARGET_EXTRA))
-        ?: legacyDxvkFrameRate(container)
         ?: DEFAULT_FPS_LIMITER_TARGET_HZ
 
 private fun detectMaxRefreshRateHz(context: Context, attachedView: View?): Int {
