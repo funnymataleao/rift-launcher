@@ -504,9 +504,6 @@ public class WinHandler {
                 final boolean useVirtualGamepad2 = inputControlsView != null && profile2 != null && profile2.isVirtualGamepad();
                 ExternalController externalController2 = this.currentController;
                 final boolean enabled3 = externalController2 != null || useVirtualGamepad2;
-                if (externalController2 != null && externalController2.getDeviceId() != gamepadId) {
-                    this.currentController = null;
-                }
                 addAction(() -> {
                     sendData.rewind();
                     sendData.put(RequestCodes.GET_GAMEPAD_STATE);
