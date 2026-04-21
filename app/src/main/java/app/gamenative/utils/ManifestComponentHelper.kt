@@ -11,7 +11,7 @@ import kotlinx.coroutines.withContext
 import java.util.Locale
 
 object ManifestComponentHelper {
-    private fun parseSemVerTriplet(value: String): Triple<Int, Int, Int>? {
+    fun parseSemVerTriplet(value: String): Triple<Int, Int, Int>? {
         val match = Regex("(\\d+)\\.(\\d+)(?:\\.(\\d+))?").find(value) ?: return null
         val major = match.groupValues.getOrNull(1)?.toIntOrNull() ?: return null
         val minor = match.groupValues.getOrNull(2)?.toIntOrNull() ?: return null
@@ -19,7 +19,7 @@ object ManifestComponentHelper {
         return Triple(major, minor, patch)
     }
 
-    private fun isAtLeastVersion(value: String, minMajor: Int, minMinor: Int, minPatch: Int): Boolean {
+    fun isAtLeastVersion(value: String, minMajor: Int, minMinor: Int, minPatch: Int): Boolean {
         val (major, minor, patch) = parseSemVerTriplet(value) ?: return false
         return when {
             major != minMajor -> major > minMajor
