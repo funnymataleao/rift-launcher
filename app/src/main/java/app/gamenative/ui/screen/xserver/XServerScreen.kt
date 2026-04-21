@@ -4015,7 +4015,7 @@ private fun extractDXWrapperFiles(
             // Determine graphics driver to choose DXVK version
             val vortekLike = container.graphicsDriver == "vortek" || container.graphicsDriver == "adreno" || container.graphicsDriver == "sd-8-elite"
             val dxvkMinVersion = "2.6.1-gplasync"
-            val dxwrapperConfig = DXVKHelper.parseConfig(container.getExtra("dxwrapperConfig") as String)
+            val dxwrapperConfig = DXVKHelper.parseConfig(container.dxWrapperConfig)
             val dxvkVersion = dxwrapperConfig.get("version", dxvkMinVersion)
             val dxvkVersionForVkd3d = if (vortekLike && GPUHelper.vkGetApiVersionSafe() < GPUHelper.vkMakeVersion(1, 3, 0)) {
                 "1.10.3"
