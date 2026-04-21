@@ -64,6 +64,23 @@ public class ControllerManager {
         // On startup, we load saved settings and scan for connected devices.
         loadAssignments();
         scanForDevices();
+
+        // Single-controller correction: if only one controller is connected and it's
+        // not in slot 0, move it so P1 is always populated for games that mayh only check P1
+        if (detectedDevices.size() == 1) {
+            String id = getDeviceIdentifier(detectedDevices.get(0));
+            if (id != null && !id.equals(slotAssignments.get(0))) {
+                // Remove from whatever slot it was in
+                for (int i = 0; i < WinHandler.MAX_PLAYERS; i++) {
+                    if (id.equals(slotAssignments.get(i))) {
+                        slotAssignments.remove(i);
+                    }
+                }
+                slotAssignments.put(0, id);
+                enabledSlots[0] = true;
+                saveAssignments();
+            }
+        }
     }
 
 
@@ -292,17 +309,34 @@ public class ControllerManager {
     /**
      * Auto-assigns a device to the first available slot.
      * If the device is already assigned, returns its existing slot.
+     * When only one controller is connected, it always gets slot 0 (P1) — this
+     * prevents stale multi-controller assignments from stranding a single controller
+     * in a non-P1 slot where games won't see it.
      * @param deviceId The Android device ID from the input event.
      * @return The slot index (0-3), or -1 if no slot available or device is not a controller.
      */
     public int autoAssignDevice(int deviceId) {
+        InputDevice device = inputManager.getInputDevice(deviceId);
+        if (device == null || !isGameController(device)) return -1;
+
         int existingSlot = getSlotForDevice(deviceId);
+
+        // Single-controller fast path: if this is the only connected controller and
+        // it's not already in slot 0, move it there so P1 is always populated.
+        if (detectedDevices.size() == 1 && existingSlot != 0) {
+            String deviceIdentifier = getDeviceIdentifier(device);
+            if (existingSlot >= 0) {
+                slotAssignments.remove(existingSlot);
+            }
+            slotAssignments.put(0, deviceIdentifier);
+            enabledSlots[0] = true;
+            saveAssignments();
+            return 0;
+        }
+
         if (existingSlot >= 0) {
             return isSlotEnabled(existingSlot) ? existingSlot : -1;
         }
-
-        InputDevice device = inputManager.getInputDevice(deviceId);
-        if (device == null || !isGameController(device)) return -1;
 
         for (int i = 0; i < WinHandler.MAX_PLAYERS; i++) {
             if (slotAssignments.get(i) == null) {

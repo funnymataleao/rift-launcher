@@ -409,10 +409,21 @@ public class WinHandler {
                 final ControlsProfile profile = inputControlsView.getProfile();
                 final boolean useVirtualGamepad = inputControlsView != null && profile != null && profile.isVirtualGamepad();
                 int processId = this.receiveData.getInt();
+
+                Log.d(TAG, "GET_GAMEPAD: isXInput=" + isXInput + " notify=" + notify + " processId=" + processId
+                    + " preferredApi=" + preferredInputApi + " currentController=" + (currentController != null ? currentController.getName() + "(#" + currentController.getDeviceId() + ")" : "null")
+                    + " useVirtualGamepad=" + useVirtualGamepad);
+
                 if (!useVirtualGamepad && ((externalController = this.currentController) == null || !externalController.isConnected())) {
-                    this.currentController = ExternalController.getController(0);
+                    // Use ControllerManager as the single source of truth for slot 0
+                    InputDevice p1Device = controllerManager.getAssignedDeviceForSlot(0);
+                    Log.d(TAG, "GET_GAMEPAD: no current controller, ControllerManager slot0 device=" + (p1Device != null ? p1Device.getName() : "null"));
+                    if (p1Device != null) {
+                        this.currentController = ExternalController.getController(p1Device.getId());
+                    }
                 }
                 boolean enabled2 = this.currentController != null || useVirtualGamepad;
+                Log.d(TAG, "GET_GAMEPAD: final enabled=" + enabled2 + " controller=" + (currentController != null ? currentController.getName() + "(#" + currentController.getDeviceId() + ")" : "null"));
                 if (enabled2) {
                     switch (this.preferredInputApi) {
                         case DINPUT:
@@ -566,6 +577,10 @@ public class WinHandler {
             } catch (UnknownHostException e2) {
             }
         }
+        // Pre-register controllers from saved assignments so games that check at
+        // startup sees a controller before any input arrives
+        initializeAssignedControllers();
+
         this.running = true;
         startSendThread();
         Executors.newSingleThreadExecutor().execute(() -> {
