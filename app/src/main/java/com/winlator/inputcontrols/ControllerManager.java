@@ -16,7 +16,7 @@ import com.winlator.winhandler.WinHandler;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ControllerManager {
+public class ControllerManager implements InputManager.InputDeviceListener {
 
     @SuppressLint("StaticFieldLeak")
     private static ControllerManager instance;
@@ -65,8 +65,13 @@ public class ControllerManager {
         loadAssignments();
         scanForDevices();
 
+        // Keep detectedDevices in sync with hot-plug events. null Handler dispatches
+        // callbacks on the main thread, the same thread that handles input events,
+        // so detectedDevices needs no synchronization.
+        inputManager.registerInputDeviceListener(this, null);
+
         // Single-controller correction: if only one controller is connected and it's
-        // not in slot 0, move it so P1 is always populated for games that mayh only check P1
+        // not in slot 0, move it so P1 is always populated for games that may only check P1
         if (detectedDevices.size() == 1) {
             String id = getDeviceIdentifier(detectedDevices.get(0));
             if (id != null && !id.equals(slotAssignments.get(0))) {
@@ -99,6 +104,33 @@ public class ControllerManager {
                 detectedDevices.add(device);
             }
         }
+    }
+
+    @Override
+    public void onInputDeviceAdded(int deviceId) {
+        InputDevice device = inputManager.getInputDevice(deviceId);
+        if (device == null || device.isVirtual() || !isGameController(device)) return;
+        for (InputDevice existing : detectedDevices) {
+            if (existing.getId() == deviceId) return;
+        }
+        detectedDevices.add(device);
+    }
+
+    @Override
+    public void onInputDeviceRemoved(int deviceId) {
+        // getInputDevice returns null for a removed device, so match by id.
+        for (int i = 0; i < detectedDevices.size(); i++) {
+            if (detectedDevices.get(i).getId() == deviceId) {
+                detectedDevices.remove(i);
+                return;
+            }
+        }
+    }
+
+    @Override
+    public void onInputDeviceChanged(int deviceId) {
+        onInputDeviceRemoved(deviceId);
+        onInputDeviceAdded(deviceId);
     }
 
     /**
@@ -323,7 +355,10 @@ public class ControllerManager {
 
         // Single-controller fast path: if this is the only connected controller and
         // it's not already in slot 0, move it there so P1 is always populated.
-        if (detectedDevices.size() == 1 && existingSlot != 0) {
+        // Also require that detectedDevices actually contains the current device — without
+        // this, a stale cache (e.g. P2 just plugged in but onInputDeviceAdded hasn't fired
+        // yet) would see size==1 from the previous device and incorrectly evict P1 from slot 0.
+        if (detectedDevices.size() == 1 && detectedDevices.get(0).getId() == deviceId && existingSlot != 0) {
             String deviceIdentifier = getDeviceIdentifier(device);
             if (existingSlot >= 0) {
                 slotAssignments.remove(existingSlot);

@@ -119,27 +119,22 @@ public class WinHandler {
 
     public void refreshControllerMappings() {
         Log.d(TAG, "Refreshing controller assignments from settings...");
-        currentController = null;
-        for (int i = 0; i < extraControllers.length; i++) {
-            extraControllers[i] = null;
+        // Route through setControllerForSlot() so any in-progress rumble is cancelled and the
+        // per-slot rumble cache (lastLowFreqs/lastHighFreqs/isRumbling) is reset on swap.
+        // Direct writes would leave stale rumble state that can mask the first transition for
+        // the incoming controller.
+        for (int slot = 0; slot < MAX_PLAYERS; slot++) {
+            setControllerForSlot(slot, null);
         }
         controllerManager.scanForDevices();
-        InputDevice p1Device = controllerManager.getAssignedDeviceForSlot(0);
-        if (p1Device != null) {
-            currentController = ExternalController.getController(p1Device.getId());
-            if (currentController != null) {
-                currentController.setContext(activity);
-                Log.i(TAG, "Initialized Player 1 with: " + p1Device.getName());
-            }
-        }
-        // Initialize Extra Players (2, 3, 4)
-        for (int i = 0; i < extraControllers.length; i++) {
-            // Player 2 is slot 1, which corresponds to extraControllers[0]
-            InputDevice extraDevice = controllerManager.getAssignedDeviceForSlot(i + 1);
-            if (extraDevice != null) {
-                extraControllers[i] = ExternalController.getController(extraDevice.getId());
-                Log.i(TAG, "Initialized Player " + (i + 2) + " with: " + extraDevice.getName());
-            }
+        for (int slot = 0; slot < MAX_PLAYERS; slot++) {
+            InputDevice device = controllerManager.getAssignedDeviceForSlot(slot);
+            if (device == null) continue;
+            ExternalController controller = ExternalController.getController(device.getId());
+            if (controller == null) continue;
+            if (slot == 0) controller.setContext(activity);
+            setControllerForSlot(slot, controller);
+            Log.i(TAG, "Initialized Player " + (slot + 1) + " with: " + device.getName());
         }
     }
 

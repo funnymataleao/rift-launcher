@@ -28,15 +28,20 @@ class PhysicalControllerHandler(
     private val TAG = "gncontrol"
     private val mouseMoveOffset = PointF(0f, 0f)
     private var mouseMoveTimer: Timer? = null
-    // track which axis keycodes are currently "pressed" so we only release on actual transitions.
+    // track which axis keycodes are currently "pressed" per device so we only release on actual
+    // transitions for that device. axis keycodes are device-agnostic (left-stick-left is the same
+    // Int on P1 and P2), so a global set conflates state and can strand a press when one device
+    // releases while another is still holding the same direction.
     // accessed only from main thread (MotionEvent dispatch + Compose lifecycle), no sync needed.
-    private val activeAxisBindings = mutableSetOf<Int>()
+    private val activeAxisBindings = mutableMapOf<Int, MutableSet<Int>>()
 
     private fun releaseActiveAxes() {
         val controller = profile?.getController("*") ?: return
-        for (keyCode in activeAxisBindings) {
-            controller.getControllerBinding(keyCode)?.let {
-                handleInputEvent(it.binding, false, 0f)
+        for ((deviceId, keyCodes) in activeAxisBindings) {
+            for (keyCode in keyCodes) {
+                controller.getControllerBinding(keyCode)?.let {
+                    handleInputEvent(it.binding, false, 0f, deviceId)
+                }
             }
         }
         activeAxisBindings.clear()
@@ -182,6 +187,8 @@ class PhysicalControllerHandler(
         // Reset mouse movement offset at the start - contributions will be added during processing
         mouseMoveOffset.set(0f, 0f)
 
+        val deviceAxes = activeAxisBindings.getOrPut(deviceId) { mutableSetOf() }
+
         val axes = intArrayOf(
             MotionEvent.AXIS_X,
             MotionEvent.AXIS_Y,
@@ -207,22 +214,22 @@ class PhysicalControllerHandler(
                 val activeKey = ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i]))
                 val oppositeKey = if (activeKey == posKeyCode) negKeyCode else posKeyCode
 
-                activeAxisBindings.add(activeKey)
+                deviceAxes.add(activeKey)
                 controller.getControllerBinding(activeKey)?.let {
                     handleInputEvent(it.binding, true, values[i], deviceId)
                 }
-                if (activeAxisBindings.remove(oppositeKey)) {
+                if (deviceAxes.remove(oppositeKey)) {
                     controller.getControllerBinding(oppositeKey)?.let {
                         handleInputEvent(it.binding, false, 0f, deviceId)
                     }
                 }
             } else {
-                if (activeAxisBindings.remove(posKeyCode)) {
+                if (deviceAxes.remove(posKeyCode)) {
                     controller.getControllerBinding(posKeyCode)?.let {
                         handleInputEvent(it.binding, false, 0f, deviceId)
                     }
                 }
-                if (activeAxisBindings.remove(negKeyCode)) {
+                if (deviceAxes.remove(negKeyCode)) {
                     controller.getControllerBinding(negKeyCode)?.let {
                         handleInputEvent(it.binding, false, 0f, deviceId)
                     }
