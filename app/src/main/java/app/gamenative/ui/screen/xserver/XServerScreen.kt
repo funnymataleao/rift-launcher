@@ -42,6 +42,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import app.gamenative.MainActivity
@@ -305,6 +306,7 @@ fun XServerScreen(
     Timber.i("Starting up XServerScreen")
     val context = LocalContext.current
     val view = LocalView.current
+    val scope = rememberCoroutineScope()
     val imm = remember(context) {
         context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
     }
@@ -416,6 +418,7 @@ fun XServerScreen(
     var showElementEditor by remember { mutableStateOf(false) }
     var elementToEdit by remember { mutableStateOf<com.winlator.inputcontrols.ControlElement?>(null) }
     var showPhysicalControllerDialog by remember { mutableStateOf(false) }
+    var showPlayingBlockedDialog by rememberSaveable { mutableStateOf(false) }
     var showTouchGestureDialog by remember { mutableStateOf(false) }
     var isTouchscreenModeActive by remember { mutableStateOf(container.isTouchscreenMode) }
     var currentGestureConfig by remember {
@@ -1318,6 +1321,10 @@ fun XServerScreen(
             Timber.i("onForceCloseApp")
             exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
         }
+        val onPlayingBlocked: (SteamEvent.PlayingBlocked) -> Unit = {
+            Timber.i("onPlayingBlocked")
+            showPlayingBlockedDialog = true
+        }
         val debugCallback = Callback<String> { outputLine ->
             Timber.i(outputLine ?: "")
         }
@@ -1327,6 +1334,7 @@ fun XServerScreen(
         PluviaApp.events.on<AndroidEvent.MotionEvent, Boolean>(onMotionEvent)
         PluviaApp.events.on<AndroidEvent.GuestProgramTerminated, Unit>(onGuestProgramTerminated)
         PluviaApp.events.on<SteamEvent.ForceCloseApp, Unit>(onForceCloseApp)
+        PluviaApp.events.on<SteamEvent.PlayingBlocked, Unit>(onPlayingBlocked)
         ProcessHelper.addDebugCallback(debugCallback)
 
         onDispose {
@@ -1335,6 +1343,7 @@ fun XServerScreen(
             PluviaApp.events.off<AndroidEvent.MotionEvent, Boolean>(onMotionEvent)
             PluviaApp.events.off<AndroidEvent.GuestProgramTerminated, Unit>(onGuestProgramTerminated)
             PluviaApp.events.off<SteamEvent.ForceCloseApp, Unit>(onForceCloseApp)
+            PluviaApp.events.off<SteamEvent.PlayingBlocked, Unit>(onPlayingBlocked)
             ProcessHelper.removeDebugCallback(debugCallback)
         }
     }
@@ -2352,6 +2361,33 @@ fun XServerScreen(
                 container.saveData()
                 PluviaApp.touchpadView?.setGestureConfig(newConfig)
                 showTouchGestureDialog = false
+            },
+        )
+    }
+
+    if (showPlayingBlockedDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = {},
+            title = { Text(text = stringResource(R.string.main_app_running_title)) },
+            text = { Text(text = stringResource(R.string.main_app_running_message, context.getString(R.string.main_app_running_unknown_game))) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPlayingBlockedDialog = false
+                    SteamService.clearPlayingConflict()
+                    scope.launch {
+                        SteamService.kickPlayingSession(onlyGame = true)
+                    }
+                }) {
+                    Text(text = stringResource(R.string.main_play_anyway))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showPlayingBlockedDialog = false
+                    exit(xServerView?.getxServer()?.winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+                }) {
+                    Text(text = stringResource(R.string.cancel))
+                }
             },
         )
     }

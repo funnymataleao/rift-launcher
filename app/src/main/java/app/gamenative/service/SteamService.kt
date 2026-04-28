@@ -283,6 +283,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     private val _isPlayingBlocked = MutableStateFlow(false)
     val isPlayingBlocked = _isPlayingBlocked.asStateFlow()
+    private val _isHandlingConflict = AtomicBoolean(false)
 
     // Cache in-memory the local persona state.
     private val _localPersona = MutableStateFlow(
@@ -417,6 +418,11 @@ class SteamService : Service(), IChallengeUrlChanged {
             get() = instance?.steamClient?.steamID?.isValid == true
         var isWaitingForQRAuth: Boolean = false
             private set
+
+        fun clearPlayingConflict() {
+            instance?._isPlayingBlocked?.value = false
+            instance?._isHandlingConflict?.set(false)
+        }
 
         private val serverListPath: String
             get() = Paths.get(DownloadService.baseCacheDirPath, "server_list.bin").pathString
@@ -3389,8 +3395,10 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         isConnected = false
 
-        val event = SteamEvent.Disconnected(isTerminal = false)
-        PluviaApp.events.emit(event)
+        if (!_isHandlingConflict.get()) {
+            val event = SteamEvent.Disconnected(isTerminal = false)
+            PluviaApp.events.emit(event)
+        }
 
         steamClient!!.disconnect()
     }
@@ -3431,8 +3439,10 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             Timber.w("Attempting to reconnect (retry $retryAttempt) after ${backoffMs}ms")
 
-            val event = SteamEvent.RemotelyDisconnected
-            PluviaApp.events.emit(event)
+            if (!_isHandlingConflict.get()) {
+                val event = SteamEvent.RemotelyDisconnected
+                PluviaApp.events.emit(event)
+            }
 
             reconnectJob = scope.launch {
                 delay(backoffMs)
@@ -3588,10 +3598,18 @@ class SteamService : Service(), IChallengeUrlChanged {
         } else if (callback.result == EResult.LoggedInElsewhere) {
             // received when a client runs an app and wants to forcibly close another
             // client running an app
-            val event = SteamEvent.ForceCloseApp
-            PluviaApp.events.emit(event)
-
-            reconnect()
+            if (PluviaApp.xEnvironment != null) {
+                if (!_isHandlingConflict.getAndSet(true)) {
+                    _isPlayingBlocked.value = true
+                    val event = SteamEvent.PlayingBlocked
+                    PluviaApp.events.emit(event)
+                }
+                reconnect()
+            } else {
+                val event = SteamEvent.ForceCloseApp
+                PluviaApp.events.emit(event)
+                reconnect()
+            }
         } else {
             reconnect()
         }
@@ -3600,6 +3618,10 @@ class SteamService : Service(), IChallengeUrlChanged {
     private fun onPlayingSessionState(callback: PlayingSessionStateCallback) {
         Timber.d("onPlayingSessionState called with isPlayingBlocked = " + callback.isPlayingBlocked)
         _isPlayingBlocked.value = callback.isPlayingBlocked
+        if (callback.isPlayingBlocked && _isHandlingConflict.compareAndSet(false, true)) {
+            val event = SteamEvent.PlayingBlocked
+            PluviaApp.events.emit(event)
+        }
     }
 
     @OptIn(ExperimentalStdlibApi::class)
