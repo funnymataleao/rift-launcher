@@ -1604,7 +1604,7 @@ fun XServerScreen(
                 xServerView = this
                 setFrameRateLimit(if (fpsLimiterEnabled) fpsLimiterTarget else 0)
                 val renderer = this.renderer
-                renderer.isCursorVisible = false
+                renderer.setCursorVisible(false)
                 renderer.setOnFrameRenderedListener {
                     if (shouldTrackDisplayedFrames.get()) {
                         (context as? Activity)?.runOnUiThread {
@@ -1759,7 +1759,6 @@ fun XServerScreen(
                                 (context as? Activity)?.runOnUiThread {
                                     frameRating?.update()
                                 }
-                            }
                             }
                         }
 
