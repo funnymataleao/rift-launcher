@@ -62,6 +62,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gamenative.R
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.ui.util.applyScreenEffectsConfig
+import app.gamenative.ui.util.loadScreenEffectsConfig
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -494,6 +496,12 @@ fun XServerScreen(
         performanceHudConfig = config
         persistPerformanceHudConfig(config)
         performanceHudView?.setConfig(config)
+    }
+
+    LaunchedEffect(xServerView?.renderer) {
+        xServerView?.renderer?.let { renderer ->
+            applyScreenEffectsConfig(renderer, loadScreenEffectsConfig(container))
+        }
     }
 
     fun restorePerformanceHudPosition() {
@@ -2267,6 +2275,7 @@ fun XServerScreen(
             onDismiss = dismissOverlayMenu,
             onItemSelected = onQuickMenuItemSelected,
             renderer = xServerView?.renderer,
+            container = container,
             winHandler = xServerView?.getxServer()?.winHandler,
             wineProcesses = quickMenuWineProcesses,
             isWineProcessesLoading = quickMenuWineProcessesLoading,
