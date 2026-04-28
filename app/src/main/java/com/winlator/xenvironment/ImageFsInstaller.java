@@ -35,6 +35,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -430,8 +431,9 @@ public abstract class ImageFsInstaller {
     public static void ensureProtonVersionSymlink(Context context, File rootDir, String protonVersion) {
         if (protonVersion == null || protonVersion.isEmpty() || !protonVersion.startsWith("proton-")) return;
         File optDir = new File(rootDir, "opt");
-        if (!optDir.exists()) {
-            optDir.mkdirs();
+        if (!optDir.exists() && !optDir.mkdirs()) {
+            Log.e("ImageFsInstaller", "Failed to create opt directory: " + optDir.getAbsolutePath());
+            return;
         }
         removeCurrentProtonSymlink(optDir, protonVersion);
 
@@ -442,19 +444,41 @@ public abstract class ImageFsInstaller {
         }
         File optVersionLink = new File(optDir, protonVersion);
         try {
-            if (optVersionLink.exists()) {
-                File currentTarget = optVersionLink.getCanonicalFile();
-                File desiredTarget = targetVersionDir.getCanonicalFile();
-                if (currentTarget.equals(desiredTarget)) {
-                    return;
-                }
-                FileUtils.delete(optVersionLink);
-            }
+            File desiredTarget = targetVersionDir.getCanonicalFile();
+            if (isLinkAlreadyCorrect(optVersionLink, desiredTarget)) return;
+            if (!deleteExistingPathIfPresent(optVersionLink)) return;
+
             FileUtils.symlink(targetVersionDir.getAbsolutePath(), optVersionLink.getAbsolutePath());
+            if (!Files.isSymbolicLink(optVersionLink.toPath())) {
+                Log.e("ImageFsInstaller", "Failed to create Proton symlink at: " + optVersionLink.getAbsolutePath());
+                return;
+            }
+            File linkedTarget = optVersionLink.getCanonicalFile();
+            if (!linkedTarget.equals(desiredTarget)) {
+                Log.e("ImageFsInstaller", "Proton symlink points to unexpected target: " + linkedTarget);
+                return;
+            }
             Log.d("ImageFsInstaller", "Created opt/" + protonVersion + " -> " + targetVersionDir.getAbsolutePath());
         } catch (Exception e) {
             Log.e("ImageFsInstaller", "ensureProtonVersionSymlink failed for " + protonVersion, e);
         }
+    }
+
+    private static boolean isLinkAlreadyCorrect(File optVersionLink, File desiredTarget) {
+        if (!Files.isSymbolicLink(optVersionLink.toPath())) return false;
+        try {
+            return optVersionLink.getCanonicalFile().equals(desiredTarget);
+        } catch (IOException ignored) {
+            // Dangling symlink (or inaccessible target): treat as incorrect and replace.
+            return false;
+        }
+    }
+
+    private static boolean deleteExistingPathIfPresent(File path) {
+        if (!Files.isSymbolicLink(path.toPath()) && !path.exists()) return true;
+        if (FileUtils.delete(path)) return true;
+        Log.e("ImageFsInstaller", "Failed to delete existing Proton path: " + path.getAbsolutePath());
+        return false;
     }
 
     private static File resolveInstalledProtonDir(Context context, String protonVersion) {

@@ -4,6 +4,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.winlator.core.FileUtils
 import java.io.File
 import java.lang.reflect.Method
+import java.nio.file.Files
 import io.mockk.every
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
@@ -129,6 +130,48 @@ class ImageFsInstallerTest {
         } finally {
             unmockkStatic(FileUtils::class)
         }
+
+        rootDir.deleteRecursively()
+    }
+
+    @Test
+    fun ensureProtonVersionSymlink_replacesDanglingSymlinkAtActivePath() {
+        val rootDir = File(filesDir, "imagefs-root-dangling-proton-${System.nanoTime()}").apply { mkdirs() }
+        val activeProtonVersion = "proton-ge-9-3"
+        val optDir = File(rootDir, "opt").apply { mkdirs() }
+        val optVersionLink = File(optDir, activeProtonVersion)
+        val missingTarget = File(rootDir, "missing-proton-target")
+        Files.createSymbolicLink(optVersionLink.toPath(), missingTarget.toPath())
+
+        val desiredTarget = File(sharedDir, "proton/$activeProtonVersion").apply { mkdirs() }
+
+        assertFalse("Dangling symlink should report exists=false", optVersionLink.exists())
+        assertTrue("Active path should still be a symlink", Files.isSymbolicLink(optVersionLink.toPath()))
+
+        mockkStatic(FileUtils::class)
+        try {
+            every { FileUtils.delete(optVersionLink) } answers { optVersionLink.delete() }
+            every { FileUtils.delete(any<File>()) } answers { firstArg<File>().delete() }
+            every { FileUtils.symlink(any<String>(), any<String>()) } answers {
+                val linkTarget = firstArg<String>()
+                val linkPath = secondArg<String>()
+                val linkFile = File(linkPath)
+                if (Files.exists(linkFile.toPath()) || Files.isSymbolicLink(linkFile.toPath())) {
+                    linkFile.delete()
+                }
+                Files.createSymbolicLink(linkFile.toPath(), File(linkTarget).toPath())
+            }
+
+            ImageFsInstaller.ensureProtonVersionSymlink(context, rootDir, activeProtonVersion)
+        } finally {
+            unmockkStatic(FileUtils::class)
+        }
+
+        assertTrue("Active path should remain a symlink", Files.isSymbolicLink(optVersionLink.toPath()))
+        assertEquals(
+            desiredTarget.canonicalPath,
+            optVersionLink.canonicalFile.absolutePath,
+        )
 
         rootDir.deleteRecursively()
     }
