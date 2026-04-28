@@ -221,7 +221,7 @@ object ManifestComponentHelper {
 
         val (finalLabels, finalIds, finalMuted) = if (isVKD3D) {
             val allowedIndices = ids.mapIndexedNotNull { index, id ->
-                if (isAtLeastVersion(id, 2, 6, 1)) index else null
+                if (isAtLeastVersion(id, 2, 1, 0)) index else null
             }
             if (allowedIndices.isNotEmpty()) {
                 Triple(

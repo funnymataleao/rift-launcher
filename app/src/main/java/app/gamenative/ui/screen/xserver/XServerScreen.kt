@@ -4019,7 +4019,7 @@ private fun extractDXWrapperFiles(
             val dxvkVersion = dxwrapperConfig.get("version", dxvkMinVersion)
             val dxvkVersionForVkd3d = if (vortekLike && GPUHelper.vkGetApiVersionSafe() < GPUHelper.vkMakeVersion(1, 3, 0)) {
                 "1.10.3"
-            } else if (ManifestComponentHelper.isAtLeastVersion(dxvkVersion, 2, 6, 1)) {
+            } else if (ManifestComponentHelper.isAtLeastVersion(dxvkVersion, 2, 1, 0)) {
                 dxvkVersion
             } else {
                 dxvkMinVersion
