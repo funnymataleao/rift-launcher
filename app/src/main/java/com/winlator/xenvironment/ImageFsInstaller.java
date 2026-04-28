@@ -207,9 +207,6 @@ public abstract class ImageFsInstaller {
 
     private static void chmod(File f) { if (f.exists()) FileUtils.chmod(f, 0755);}
 
-    public static Future<Boolean> installIfNeededFuture(final Context context, AssetManager assetManager) {
-        return installIfNeededFuture(context, assetManager, null, null);
-    }
     public static Future<Boolean> installIfNeededFuture(final Context context, AssetManager assetManager, Container container, Callback<Integer> onProgress) {
         ImageFs imageFs = ImageFs.find(context);
         String wineVersion = container.getWineVersion();
