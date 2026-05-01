@@ -102,6 +102,7 @@ import app.gamenative.ui.widget.PerformanceHudView
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ExecutableSelectionUtils
+import app.gamenative.utils.LsfgQuickMenuHelper
 import app.gamenative.utils.ManifestComponentHelper
 import app.gamenative.utils.PreInstallSteps
 import app.gamenative.utils.SteamTokenLogin
@@ -482,6 +483,13 @@ fun XServerScreen(
     var fpsLimiterEnabled by rememberSaveable(container.id) { mutableStateOf(initialFpsLimiterEnabled(container)) }
     var fpsLimiterTarget by rememberSaveable(container.id) { mutableIntStateOf(initialFpsLimiterTarget(container)) }
 
+    // LSFG tab in QuickMenu only visible when enabled in container settings
+    val isLsfgAvailable = LsfgQuickMenuHelper.isAvailable(container)
+    val initialLsfgSettings = remember(container.id) { LsfgQuickMenuHelper.readSettings(container) }
+    var lsfgMultiplier by rememberSaveable(container.id) { mutableIntStateOf(initialLsfgSettings.multiplier) }
+    var lsfgFlowScale by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.flowScale) }
+    var lsfgPerformanceMode by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.performanceMode) }
+
     fun persistFpsLimiterState() {
         container.putExtra(FPS_LIMITER_ENABLED_EXTRA, fpsLimiterEnabled)
         container.putExtra(FPS_LIMITER_TARGET_EXTRA, fpsLimiterTarget)
@@ -575,6 +583,28 @@ fun XServerScreen(
             applyFpsLimiterToEngines(sanitized)
         }
         persistFpsLimiterState()
+    }
+
+    fun applyLsfgSettings() {
+        LsfgQuickMenuHelper.applySettings(
+            container,
+            LsfgQuickMenuHelper.Settings(lsfgMultiplier, lsfgFlowScale, lsfgPerformanceMode),
+        )
+    }
+
+    fun applyLsfgMultiplier(mult: Int) {
+        lsfgMultiplier = LsfgQuickMenuHelper.sanitizeMultiplier(mult)
+        applyLsfgSettings()
+    }
+
+    fun applyLsfgFlowScale(scale: Float) {
+        lsfgFlowScale = LsfgQuickMenuHelper.sanitizeFlowScale(scale)
+        applyLsfgSettings()
+    }
+
+    fun applyLsfgPerformanceMode(enabled: Boolean) {
+        lsfgPerformanceMode = enabled
+        applyLsfgSettings()
     }
 
     LaunchedEffect(xServerView) {
@@ -2401,6 +2431,14 @@ fun XServerScreen(
                 if (isTouchscreenModeActive) add(QuickMenuAction.TOUCHSCREEN_MODE)
                 if (isDisableMouseInput) add(QuickMenuAction.DISABLE_MOUSE)
             },
+            // LSFG hot-reload (tab only visible when enabled in container settings)
+            isLsfgAvailable = isLsfgAvailable,
+            lsfgMultiplier = lsfgMultiplier,
+            lsfgFlowScale = lsfgFlowScale,
+            lsfgPerformanceMode = lsfgPerformanceMode,
+            onLsfgMultiplierChanged = ::applyLsfgMultiplier,
+            onLsfgFlowScaleChanged = ::applyLsfgFlowScale,
+            onLsfgPerformanceModeChanged = ::applyLsfgPerformanceMode,
         )
 
         if (manualResumeMode && PluviaApp.isOverlayPaused && !showQuickMenu && !keepPausedForEditor) {
