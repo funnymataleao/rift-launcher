@@ -568,33 +568,14 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
-        // For each appid in [targetAppIds], the union of depot_ids across every license that grants it.
-        // Tolerates the case where SteamApp.package_id points at one license but the depots live in another.
-        fun buildAccessibleDepotMap(targetAppIds: Collection<Int>): Map<Int, Set<Int>> {
-            if (targetAppIds.isEmpty()) return emptyMap()
-            val target = targetAppIds.toHashSet()
-            val licenses = runBlocking(Dispatchers.IO) {
-                instance?.licenseDao?.findLicensesContainingAnyApp(target.toList()).orEmpty()
-            }
-            val map = HashMap<Int, MutableSet<Int>>()
-            for (license in licenses) {
-                if (ELicenseFlags.Expired in license.licenseFlags) continue
-                if (license.depotIds.isEmpty()) continue
-                for (appId in license.appIds) {
-                    if (appId !in target) continue
-                    map.getOrPut(appId) { HashSet() }.addAll(license.depotIds)
-                }
-            }
-            return map
-        }
-
         /**
          * Depot IDs the user's license actually grants for [appId].
          * Returns null when unknown (license not cached yet) so callers
          * can fall back to the old behaviour instead of blocking everything.
          */
         fun getLicensedDepotIds(appId: Int): Set<Int>? {
-            val directDepotIds = buildAccessibleDepotMap(setOf(appId))[appId].orEmpty()
+            val ids = getPkgInfoOf(appId)?.depotIds ?: return null
+            val directDepotIds = ids.takeIf { it.isNotEmpty() }?.toSet() ?: emptySet()
             val sharedDepotIds = getSharedPkg()?.depotIds?.takeIf { it.isNotEmpty() }?.toSet() ?: emptySet()
             return (directDepotIds + sharedDepotIds).takeIf { it.isNotEmpty() }
         }
@@ -604,9 +585,13 @@ class SteamService : Service(), IChallengeUrlChanged {
          * Returns appId → depotIds; missing entries mean license unknown (fall back to unfiltered).
          */
         fun buildLicensedDepotMap(apps: List<SteamApp>): Map<Int, Set<Int>> {
-            val appToDepots = buildAccessibleDepotMap(apps.map { it.id })
+            val pkgIds = apps.map { it.packageId }.filter { it != INVALID_PKG_ID }.distinct()
+            val licenses = runBlocking(Dispatchers.IO) {
+                instance?.licenseDao?.findLicenses(pkgIds) ?: emptyList()
+            }
+            val pkgToDepots = licenses.associate { it.packageId to it.depotIds.toSet() }
             return apps.mapNotNull { app ->
-                val depots = appToDepots[app.id]?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+                val depots = pkgToDepots[app.packageId]?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
                 app.id to depots
             }.toMap()
         }
@@ -870,23 +855,16 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
-        fun getMainAppDepots(
-            appId: Int,
-            containerLanguage: String,
-            accessibleDepotMap: Map<Int, Set<Int>>? = null,
-        ): Map<Int, DepotInfo> {
+        fun getMainAppDepots(appId: Int, containerLanguage: String): Map<Int, DepotInfo> {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
             val hasSteamUnlockedBranch = runBlocking { getSteamUnlockedBranches(appId).isNotEmpty() }
-            val depotMap = accessibleDepotMap
-                ?: buildAccessibleDepotMap(buildSet { add(appId); addAll(ownedDlc.keys) })
-            val sharedDepotIds = getSharedPkg()?.depotIds?.takeIf { it.isNotEmpty() }?.toSet() ?: emptySet()
-            val licensedDepots = (depotMap[appId].orEmpty() + sharedDepotIds).toMutableSet()
+            val licensedDepots = getLicensedDepotIds(appId).orEmpty().toMutableSet()
 
             // Use the dlcAppID of the ownedDlc, to find the licensed depotIds from steam_license
             val mapDlcDepotIds = mutableMapOf<Int, List<Int>>()
             ownedDlc.forEach { (dlcAppId, info) ->
-                val dlcDepotIds = depotMap[dlcAppId].orEmpty().toList()
+                val dlcDepotIds = getPkgInfoOf(dlcAppId)?.depotIds.orEmpty()
                 mapDlcDepotIds[dlcAppId] = dlcDepotIds
 
                 // Make sure licensedDepots contains the dlc depots
@@ -927,26 +905,17 @@ class SteamService : Service(), IChallengeUrlChanged {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
             val hasSteamUnlockedBranch = runBlocking { getSteamUnlockedBranches(appId).isNotEmpty() }
-            val indirectDlcApps = getDownloadableDlcAppsOf(appId).orEmpty()
-            val accessibleDepotMap = buildAccessibleDepotMap(
-                buildSet {
-                    add(appId)
-                    addAll(ownedDlc.keys)
-                    indirectDlcApps.forEach { add(it.id) }
-                },
-            )
-            val sharedDepotIds = getSharedPkg()?.depotIds?.takeIf { it.isNotEmpty() }?.toSet() ?: emptySet()
-            val licensedDepots = (accessibleDepotMap[appId].orEmpty() + sharedDepotIds).toMutableSet()
+            val licensedDepots = getLicensedDepotIds(appId).orEmpty().toMutableSet()
 
-            val map = getMainAppDepots(appId, preferredLanguage, accessibleDepotMap).toMutableMap()
+            val map = getMainAppDepots(appId, preferredLanguage).toMutableMap()
 
             // parent app's arch applies to DLC arch selection
             val has64Bit = eligibleDepots(appInfo.depots, preferredLanguage, ownedDlc, licensedDepots)
                 .any { it.osArch == OSArch.Arch64 }
 
+            val indirectDlcApps = getDownloadableDlcAppsOf(appId).orEmpty()
             indirectDlcApps.forEach { dlcApp ->
-                val dlcLicensedDepots = accessibleDepotMap[dlcApp.id]
-                    ?.let { (it + sharedDepotIds).takeIf { combined -> combined.isNotEmpty() } }
+                val dlcLicensedDepots = getLicensedDepotIds(dlcApp.id)
                 val dlcEligible = eligibleDepots(dlcApp.depots, preferredLanguage, null, dlcLicensedDepots)
                 val dlcHasNonDeckWin = dlcEligible.any { !it.steamDeck && it.isWindowsCompatible }
                 dlcApp.depots
