@@ -862,13 +862,18 @@ class SteamService : Service(), IChallengeUrlChanged {
             val licensedDepots = getLicensedDepotIds(appId).orEmpty().toMutableSet()
 
             // Use the dlcAppID of the ownedDlc, to find the licensed depotIds from steam_license
+            val mainPackageDepotIds = getPkgInfoOf(appId)?.depotIds.orEmpty().toSet()
             val mapDlcDepotIds = mutableMapOf<Int, List<Int>>()
             ownedDlc.forEach { (dlcAppId, info) ->
                 val dlcDepotIds = getPkgInfoOf(dlcAppId)?.depotIds.orEmpty()
-                mapDlcDepotIds[dlcAppId] = dlcDepotIds
 
                 // Make sure licensedDepots contains the dlc depots
                 licensedDepots.addAll(dlcDepotIds)
+
+                val dlcOnlyDepotIds = dlcDepotIds.filter { it !in mainPackageDepotIds }
+                if (dlcOnlyDepotIds.isNotEmpty()) {
+                    mapDlcDepotIds[dlcAppId] = dlcOnlyDepotIds
+                }
             }
 
             val baseDepots = resolveDownloadableDepots(appInfo.depots, containerLanguage, ownedDlc, licensedDepots, hasSteamUnlockedBranch)
