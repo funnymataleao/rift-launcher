@@ -139,6 +139,16 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
             )
             SettingsListDropdown(
                 colors = settingsTileColors(),
+                title = { Text(text = stringResource(R.string.renderer_present_modes)) },
+                value = state.rendererPresentModeIndex.value.coerceIn(0, state.rendererPresentModes.lastIndex.coerceAtLeast(0)),
+                items = state.rendererPresentModes,
+                onItemSelected = { idx ->
+                    state.rendererPresentModeIndex.value = idx
+                    state.config.value = config.copy(rendererPresentMode = state.rendererPresentModes[idx])
+                },
+            )
+            SettingsListDropdown(
+                colors = settingsTileColors(),
                 title = { Text(text = stringResource(R.string.resource_type)) },
                 value = state.resourceTypeIndex.value.coerceIn(0, state.resourceTypes.lastIndex.coerceAtLeast(0)),
                 items = state.resourceTypes,

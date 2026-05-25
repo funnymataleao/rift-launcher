@@ -79,6 +79,7 @@ public class Container {
     private String dxwrapper = DEFAULT_DXWRAPPER;
     private String dxwrapperConfig = DEFAULT_DXWRAPPERCONFIG;
     private String graphicsDriverConfig = DEFAULT_GRAPHICSDRIVERCONFIG;
+    private String rendererPresentMode = "fifo";
     private String wincomponents = DEFAULT_WINCOMPONENTS;
     private String audioDriver = DEFAULT_AUDIO_DRIVER;
     private String drives = DEFAULT_DRIVES;
@@ -253,6 +254,10 @@ public class Container {
     public void setGraphicsDriverConfig(String graphicsDriverConfig) {
         this.graphicsDriverConfig = graphicsDriverConfig != null ? graphicsDriverConfig : "";
     }
+
+    public String getRendererPresentMode() { return rendererPresentMode; }
+
+    public void setRendererPresentMode(String v) { this.rendererPresentMode = v != null ? v : "fifo"; }
 
     public String getDXWrapperConfig() {
         return dxwrapperConfig;
@@ -654,6 +659,7 @@ public class Container {
             data.put("graphicsDriver", graphicsDriver);
             data.put("graphicsDriverVersion", graphicsDriverVersion); // Ensure this is added
             if (!graphicsDriverConfig.isEmpty()) data.put("graphicsDriverConfig", graphicsDriverConfig);
+            data.put("rendererPresentMode", rendererPresentMode);
             data.put("dxwrapper", dxwrapper);
             if (!dxwrapperConfig.isEmpty()) data.put("dxwrapperConfig", dxwrapperConfig);
             data.put("audioDriver", audioDriver);
@@ -762,6 +768,9 @@ public class Container {
                     break;
                 case "graphicsDriverConfig" :
                     setGraphicsDriverConfig(data.getString(key));
+                    break;
+                case "rendererPresentMode" :
+                    setRendererPresentMode(data.getString(key));
                     break;
                 case "wincomponents" :
                     setWinComponents(data.getString(key));

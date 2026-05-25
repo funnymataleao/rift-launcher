@@ -1654,6 +1654,16 @@ fun XServerScreen(
                 xServerView = this
                 setFrameRateLimit(if (fpsLimiterEnabled) fpsLimiterTarget else 0)
                 val renderer = this.renderer
+                if (!useGLRenderer && renderer is VulkanRenderer) {
+                    val pm = container.rendererPresentMode.ifEmpty { "fifo" }
+                    val vkMode = when (pm.lowercase(Locale.getDefault())) {
+                        "mailbox" -> 1
+                        "immediate" -> 0
+                        "relaxed" -> 3
+                        else -> 2
+                    }
+                    renderer.setVkPresentMode(vkMode)
+                }
                 renderer.setCursorVisible(false)
                 renderer.setOnFrameRenderedListener {
                     if (shouldTrackDisplayedFrames.get()) {
