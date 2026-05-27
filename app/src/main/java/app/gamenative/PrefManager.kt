@@ -202,6 +202,13 @@ object PrefManager {
             setPref(RENDERER_PRESENT_MODE, value)
         }
 
+    private val USE_LEGACY_RENDERER = booleanPreferencesKey("use_legacy_renderer")
+    var useLegacyRenderer: Boolean
+        get() = getPref(USE_LEGACY_RENDERER, true)
+        set(value) {
+            setPref(USE_LEGACY_RENDERER, value)
+        }
+
     private val SHARPNESS_EFFECT = stringPreferencesKey("sharpness_effect")
     var sharpnessEffect: String
         get() = getPref(SHARPNESS_EFFECT, "None")
