@@ -174,6 +174,43 @@ public abstract class ProcessHelper {
         }
     }
 
+    public static String execWithOutput(String command, String[] envp, File workingDir) {
+        StringBuilder output = new StringBuilder();
+        java.lang.Process process = null;
+        try {
+            Log.d("ProcessHelper", "Executing with output: " + Arrays.toString(splitCommand(command)));
+            process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
+
+            // Drain stderr in background to prevent blocking
+            java.lang.Process finalProcess = process;
+            Executors.newSingleThreadExecutor().execute(() -> {
+                try (BufferedReader errReader = new BufferedReader(new InputStreamReader(finalProcess.getErrorStream()))) {
+                    while (errReader.readLine() != null) { /* discard */ }
+                } catch (IOException ignored) {}
+            });
+
+
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append("\n");
+                }
+            }
+
+            if (!process.waitFor(5, TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+            }
+
+            return output.toString();
+        } catch (Exception e) {
+            Log.e("ProcessHelper", "Failed to execute command with output: " + e);
+            if (process != null) {
+                process.destroyForcibly();
+            }
+            return "";
+        }
+    }
+
     public static List<ProcessInfo> listSubProcesses() {
         List<ProcessInfo> processes = new ArrayList<>();
         String myUser = null;
