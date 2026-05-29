@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">Folosește aplicația Steam Mobile pentru a confirma autentificarea…</string>
     <string name="steam_2fa_device">Introdu codul de autentificare din aplicația ta de autentificare.</string>
     <string name="steam_2fa_email">Introdu codul trimis la adresa de email %s</string>
+    <string name="steam_2fa_use_guard_totp">Sau folosește codul de autentificare în doi pași</string>
     <string name="steam_install_space_prompt">Aplicația ce urmează să fie instalată are următoarele cerințe de spațiu. Vrei să continui?\n\n\tDimensiune descărcare: %1$s\n\tSpațiu pe disc: %2$s\n\tSpațiu disponibil: %3$s</string>
     <string name="steam_install_space">Dimensiune descărcare: %1$s\nSpațiu pe disc: %2$s\nSpațiu disponibil: %3$s</string>
     <string name="steam_install_not_enough_space">Aplicația necesită %1$s spațiu, dar pe dispozitiv sunt disponibile doar %2$s</string>

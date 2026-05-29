@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">Bitte bestätige die Anmeldung in der Steam Mobile App…</string>
     <string name="steam_2fa_device">Bitte gib deinen Zwei-Faktor-Code aus deiner Authenticator-App ein.</string>
     <string name="steam_2fa_email">Bitte gib den Authentifizierungscode ein, der an die E-Mail-Adresse %s gesendet wurde</string>
+    <string name="steam_2fa_use_guard_totp">Oder verwende den Code für die Zwei-Faktor-Authentifizierung</string>
     <string name="steam_install_space_prompt">Die App benötigt folgenden Speicherplatz. Möchtest du fortfahren?\n\n\tDownloadgröße: %1$s\n\tBelegter Speicher: %2$s\n\tVerfügbarer Speicher: %3$s</string>
     <string name="steam_install_not_enough_space">Diese App benötigt %1$s Speicherplatz, aber auf diesem Gerät sind nur noch %2$s frei</string>
     <string name="steam_cancel_download_message">Bist du sicher, dass du den Download der App abbrechen möchtest?</string>

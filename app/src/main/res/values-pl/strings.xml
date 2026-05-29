@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">Użyj aplikacji mobilnej Steam, aby potwierdzić logowanie…</string>
     <string name="steam_2fa_device">Podaj kod uwierzytelniania dwuskładnikowego z aplikacji uwierzytelniającej.</string>
     <string name="steam_2fa_email">Podaj kod uwierzytelniający wysłany na e-mail %s</string>
+    <string name="steam_2fa_use_guard_totp">Lub użyj kodu do uwierzytelniania dwuskładnikowego</string>
     <string name="steam_install_space_prompt">Instalowana aplikacja ma następujące wymagania dotyczące miejsca. Czy chcesz kontynuować?\n\n\tRozmiar pobierania: %1$s\n\tRozmiar na dysku: %2$s\n\tDostępne miejsce: %3$s</string>
     <string name="steam_install_space">Rozmiar pobierania: %1$s\nRozmiar na dysku: %2$s\nDostępne miejsce: %3$s</string>
     <string name="steam_install_not_enough_space">Instalowana aplikacja wymaga %1$s miejsca, ale na tym urządzeniu pozostało tylko %2$s</string>

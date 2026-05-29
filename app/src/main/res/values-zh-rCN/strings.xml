@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">正在通过Steam移动应用确认登录…</string>
     <string name="steam_2fa_device">请输入您验证器应用中的双重验证码</string>
     <string name="steam_2fa_email">请输入发送至邮箱 %s 的验证码</string>
+    <string name="steam_2fa_use_guard_totp">或使用双因素认证码</string>
     <string name="steam_install_space_prompt">要安装的应用有以下空间要求：\n\n\t下载大小：%1$s\n\t磁盘占用空间：%2$s\n\t可用空间：%3$s</string>
     <string name="steam_install_space">下载大小：%1$s\n\t磁盘占用空间：%2$s\n\t可用空间：%3$s</string>
     <string name="steam_install_not_enough_space">要安装的应用需要 %1$s 空间，但设备仅剩 %2$s 可用空间</string>

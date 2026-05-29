@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">Utilisez l\'application mobile Steam pour confirmer votre connexion…</string>
     <string name="steam_2fa_device">Veuillez entrer votre code d\'authentification à deux facteurs depuis votre application d\'authentification.</string>
     <string name="steam_2fa_email">Veuillez entrer le code d\'authentification envoyé à l\'adresse %s</string>
+    <string name="steam_2fa_use_guard_totp">Ou utilisez le code d\'authentification à deux facteurs</string>
     <string name="steam_install_space_prompt">L\'application en cours d\'installation nécessite l\'espace suivant. Voulez-vous continuer ?\n\n\tTaille du téléchargement : %1$s\n\tTaille sur le disque : %2$s\n\tEspace disponible : %3$s</string>
     <string name="steam_install_space">Taille du téléchargement : %1$s\nTaille sur le disque : %2$s\nEspace disponible : %3$s</string>
     <string name="steam_install_not_enough_space">L\'application en cours d\'installation nécessite %1$s d\'espace mais il ne reste que %2$s sur cet appareil</string>

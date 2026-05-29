@@ -12,6 +12,7 @@
     <string name="steam_2fa_confirmation">Підтвердіть вхід, за допомогою мобільного застосунку Steam…</string>
     <string name="steam_2fa_device">Введіть код двофакторної автентифікації.</string>
     <string name="steam_2fa_email">Введіть код, відправлений на пошту: %s</string>
+    <string name="steam_2fa_use_guard_totp">Або скористайтеся кодом двофакторної аутентифікації</string>
     <string name="steam_install_space_prompt">Застосунок, що інсталюється, має такі вимоги до обсягу пам\'яті. Продовжити?\n\n\tРозмір завантаження: %1$s\n\tРозмір на диску: %2$s\n\tДоступне місце: %3$s</string>
     <string name="steam_install_space">Розмір завантаження: %1$s\nРозмір на диску: %2$s\nДоступне місце: %3$s</string>
     <string name="steam_install_not_enough_space">Для інсталяції застосунка потрібно %1$s вільного місця, але на цьому пристрої доступно лише %2$s</string>
