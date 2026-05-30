@@ -81,7 +81,7 @@ public class Container {
     private String dxwrapperConfig = DEFAULT_DXWRAPPERCONFIG;
     private String graphicsDriverConfig = DEFAULT_GRAPHICSDRIVERCONFIG;
     private String rendererPresentMode = "fifo";
-    private boolean useLegacyRenderer = true;
+    private boolean useLegacyRenderer = false;
     private String wincomponents = DEFAULT_WINCOMPONENTS;
     private String audioDriver = DEFAULT_AUDIO_DRIVER;
     private String pulseaudioSuspendBehavior = PulseAudioComponent.SUSPEND_BEHAVIOR_THREAD;

@@ -17,7 +17,7 @@ data class ContainerData(
     val graphicsDriverVersion: String = "",
     val graphicsDriverConfig: String = "",
     val rendererPresentMode: String = "fifo",
-    val useLegacyRenderer: Boolean = true,
+    val useLegacyRenderer: Boolean = false,
     var dxwrapper: String = Container.DEFAULT_DXWRAPPER,
     val dxwrapperConfig: String = "",
     val audioDriver: String = Container.DEFAULT_AUDIO_DRIVER,

@@ -205,7 +205,7 @@ object PrefManager {
 
     private val USE_LEGACY_RENDERER = booleanPreferencesKey("use_legacy_renderer")
     var useLegacyRenderer: Boolean
-        get() = getPref(USE_LEGACY_RENDERER, true)
+        get() = getPref(USE_LEGACY_RENDERER, false)
         set(value) {
             setPref(USE_LEGACY_RENDERER, value)
         }
