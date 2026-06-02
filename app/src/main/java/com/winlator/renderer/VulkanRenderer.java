@@ -33,6 +33,14 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     public static final int EFFECT_CRT = 3;
     public static final int EFFECT_HDR = 4;
     public static final int EFFECT_NATURAL = 5;
+    public static final int SCALE_FIT = 0;
+    public static final int SCALE_STRETCH = 1;
+    public static final int SCALE_FILL = 2;
+    public static final int EFFECT_MASK_TOON = 1;
+    public static final int EFFECT_MASK_FXAA = 1 << 1;
+    public static final int EFFECT_MASK_VIVID = 1 << 2;
+    public static final int EFFECT_MASK_CRT = 1 << 3;
+    public static final int EFFECT_MASK_NTSC = 1 << 4;
 
     public final XServerView xServerView;
     private final XServer xServer;
@@ -50,6 +58,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private boolean cursorVisible = false;
     private boolean nativeMode = false;
     private String driverPath = null;
+    private int outputScalingMode = SCALE_FIT;
     private java.util.concurrent.ExecutorService initExecutor = null;
     private volatile boolean initComplete = false;
     private String driverLibraryName = null;
@@ -119,7 +128,8 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private native void nativeSetFilterMode(long handle, int mode);
     private native void nativeSetSwapRB(long handle, boolean enabled);
     private native void nativeSetPresentMode(long handle, int mode);
-    private native void nativeSetEffect(long handle, int effectId, float sharpness);
+    private native void nativeSetEffect(long handle, int effectId, float sharpness,
+        int effectMask, float brightness, float contrast, float gamma);
 
     private static volatile boolean gpuImageChecked = false;
 
@@ -162,7 +172,8 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     nativeSetPresentMode(nativeHandle, pendingPresentMode);
                     nativeSetFilterMode(nativeHandle, pendingFilterMode);
                     nativeSetSwapRB(nativeHandle, pendingSwapRB);
-                    nativeSetEffect(nativeHandle, pendingEffectId, pendingSharpness);
+                    nativeSetEffect(nativeHandle, pendingEffectId, pendingSharpness,
+                        pendingEffectMask, pendingBrightness, pendingContrast, pendingGamma);
                     updateTransform();
                     nativeSetCursorVisible(nativeHandle, cursorVisible);
                     if (nativeMode) {
@@ -276,15 +287,31 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
 
     private void updateTransform() {
         if (nativeHandle == 0) return;
-        if (fullscreen) {
+        if (fullscreen || outputScalingMode == SCALE_STRETCH) {
             nativeSetTransform(nativeHandle, 0, 0, 1.0f, 1.0f);
-            viewTransformation.update(surfaceWidth, surfaceHeight,
-                xServer.screenInfo.width, xServer.screenInfo.height);
             nativeScanoutSetDst(nativeHandle,
-                viewTransformation.viewOffsetX,
-                viewTransformation.viewOffsetY,
-                viewTransformation.viewWidth,
-                viewTransformation.viewHeight);
+                0,
+                0,
+                surfaceWidth,
+                surfaceHeight);
+        } else if (outputScalingMode == SCALE_FILL && surfaceWidth > 0 && surfaceHeight > 0) {
+            float scale = Math.max(
+                (float) surfaceWidth / (float) xServer.screenInfo.width,
+                (float) surfaceHeight / (float) xServer.screenInfo.height
+            );
+            float sceneScaleX = (xServer.screenInfo.width * scale) / surfaceWidth;
+            float sceneScaleY = (xServer.screenInfo.height * scale) / surfaceHeight;
+            float sceneOffsetX = (xServer.screenInfo.width - xServer.screenInfo.width * sceneScaleX) * 0.5f;
+            float sceneOffsetY = (xServer.screenInfo.height - xServer.screenInfo.height * sceneScaleY) * 0.5f;
+            nativeSetTransform(nativeHandle, sceneOffsetX, sceneOffsetY, sceneScaleX, sceneScaleY);
+
+            int dstW = Math.round(xServer.screenInfo.width * scale);
+            int dstH = Math.round(xServer.screenInfo.height * scale);
+            nativeScanoutSetDst(nativeHandle,
+                Math.round((surfaceWidth - dstW) * 0.5f),
+                Math.round((surfaceHeight - dstH) * 0.5f),
+                dstW,
+                dstH);
         } else {
             float py = 0;
             if (screenOffsetYRelativeToCursor) {
@@ -662,10 +689,32 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     }
 
     public void setEffect(int effectId, float sharpness) {
+        setEffect(effectId, sharpness, SCALE_FIT);
+    }
+
+    public void setEffect(int effectId, float sharpness, boolean preserveAspectFit) {
+        setEffect(effectId, sharpness, preserveAspectFit ? SCALE_FIT : SCALE_STRETCH);
+    }
+
+    public void setEffect(int effectId, float sharpness, int scalingMode) {
+        setEffect(effectId, sharpness, scalingMode, 0, 0.0f, 0.0f, 1.0f);
+    }
+
+    public void setEffect(int effectId, float sharpness, int scalingMode,
+                          int effectMask, float brightness, float contrast, float gamma) {
         pendingEffectId = Math.max(EFFECT_NONE, Math.min(EFFECT_NATURAL, effectId));
         pendingSharpness = Math.max(0.0f, Math.min(1.0f, sharpness));
+        pendingEffectMask = Math.max(0, effectMask);
+        pendingBrightness = Math.max(-1.0f, Math.min(1.0f, brightness));
+        pendingContrast = Math.max(-1.0f, Math.min(1.0f, contrast));
+        pendingGamma = Math.max(0.1f, Math.min(4.0f, gamma));
+        outputScalingMode = Math.max(SCALE_FIT, Math.min(SCALE_FILL, scalingMode));
         synchronized (lock) {
-            if (nativeHandle != 0) nativeSetEffect(nativeHandle, pendingEffectId, pendingSharpness);
+            if (nativeHandle != 0) {
+                nativeSetEffect(nativeHandle, pendingEffectId, pendingSharpness,
+                    pendingEffectMask, pendingBrightness, pendingContrast, pendingGamma);
+                updateTransform();
+            }
         }
     }
     public int getEffectId() { return pendingEffectId; }
@@ -715,6 +764,10 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private boolean pendingSwapRB         = false;
     private int     pendingEffectId       = EFFECT_NONE;
     private float   pendingSharpness      = 1.0f;
+    private int     pendingEffectMask     = 0;
+    private float   pendingBrightness     = 0.0f;
+    private float   pendingContrast       = 0.0f;
+    private float   pendingGamma          = 1.0f;
     public int getFpsLimit() { return fpsLimit; }
     public void setFpsLimit(int limit) {
         this.fpsLimit = limit;
