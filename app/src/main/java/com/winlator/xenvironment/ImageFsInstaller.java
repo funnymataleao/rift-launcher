@@ -128,7 +128,7 @@ public abstract class ImageFsInstaller {
             String imagefsFile = containerVariant.equals(Container.GLIBC) ? "imagefs_gamenative.txz" : "imagefs_bionic.txz";
             File downloaded = new File(imageFs.getFilesDir(), imagefsFile);
 
-            
+
             boolean success = false;
 
             if (Arrays.asList(context.getAssets().list("")).contains(imagefsFile) == true){
@@ -207,15 +207,40 @@ public abstract class ImageFsInstaller {
 
         ensureBionicLib(ctx, imagefs);
 
-        final String EXTRAS_TAR = "extras.tzst";          // ➊  add this to assets/
-        // ➋  Unpack straight into imagefs, preserving relative paths.
-        try (InputStream in  = ctx.getAssets().open(EXTRAS_TAR)) {
-            TarCompressorUtils.extract(
-                    TarCompressorUtils.Type.ZSTD,      // you said .tzst
-                    in, imagefs);                      // helper already exists in the project
-        } catch (IOException e) {
-            Log.e("ImageFsInstaller", "extras deploy failed", e);
-            return;
+        // Extract extras.tzst - download from server for modern variant, use bundled assets for legacy
+        if (app.gamenative.BuildConfig.MODERN_ANDROID) {
+            try {
+                // Modern variant: download and extract
+                java.io.File extrasFile = app.gamenative.utils.ContainerFilesDownloaderKt.ensureContainerFileAvailableBlocking(
+                    ctx,
+                    "extras",
+                    new app.gamenative.utils.ProgressCallback() {
+                        @Override
+                        public void onProgress(float progress) {
+                            Log.d("ImageFsInstaller", "Downloading extras.tzst: " + (int)(progress * 100) + "%");
+                        }
+                    }
+                );
+
+                if (extrasFile != null && extrasFile.exists()) {
+                    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, extrasFile, imagefs);
+                } else {
+                    Log.e("ImageFsInstaller", "Failed to download extras.tzst");
+                    return;
+                }
+            } catch (Exception e) {
+                Log.e("ImageFsInstaller", "extras download/extract failed", e);
+                return;
+            }
+        } else {
+            // Legacy variant: use bundled assets
+            final String EXTRAS_TAR = "extras.tzst";
+            try (InputStream in = ctx.getAssets().open(EXTRAS_TAR)) {
+                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, in, imagefs);
+            } catch (IOException e) {
+                Log.e("ImageFsInstaller", "extras deploy failed", e);
+                return;
+            }
         }
 
         // ➌  Make sure the new libs are world-readable / executable

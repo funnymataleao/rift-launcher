@@ -9,6 +9,8 @@ import android.util.Log;
 
 // import com.winlator.R;
 import app.gamenative.R;
+import app.gamenative.utils.ContainerFilesDownloaderKt;
+import app.gamenative.utils.ProgressCallback;
 import com.winlator.box86_64.Box86_64Preset;
 import com.winlator.contents.ContentsManager;
 import com.winlator.core.Callback;
@@ -62,12 +64,12 @@ public class ContainerManager {
                         try {
                             File configFile = container.getConfigFile();
                             String configContent = FileUtils.readString(configFile);
-                            
+
                             if (configContent == null || configContent.trim().isEmpty()) {
                                 Log.w("ContainerManager", "Container config file is null or empty, skipping: " + containerId);
                                 continue;
                             }
-                            
+
                             JSONObject data = new JSONObject(configContent);
                             container.loadData(data);
                             containers.add(container);
@@ -289,7 +291,7 @@ public class ContainerManager {
      * @param destinationDir Directory where the prefix should be extracted
      * @return true if extraction succeeded, false otherwise
      */
-    private static boolean extractPrefixPack(String wineInstallPath, File destinationDir) {
+    public static boolean extractPrefixPack(String wineInstallPath, File destinationDir) {
         if (wineInstallPath == null || wineInstallPath.isEmpty()) {
             return false;
         }
@@ -308,7 +310,7 @@ public class ContainerManager {
         return false;
     }
 
-    private void deleteCommonDlls(String dstName,
+    public void deleteCommonDlls(String dstName,
                                   JSONObject commonDlls,
                                   File containerDir) throws JSONException {
         // Get the list of DLL names for the given destination folder
@@ -330,7 +332,7 @@ public class ContainerManager {
         }
     }
 
-    private void extractCommonDlls(String srcName, String dstName, JSONObject commonDlls, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {
+    public void extractCommonDlls(String srcName, String dstName, JSONObject commonDlls, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {
         File srcDir = new File(ImageFs.find(context).getRootDir(), "/opt/wine/lib/wine/"+srcName);
         JSONArray dlnames = commonDlls.getJSONArray(dstName);
 
@@ -345,7 +347,7 @@ public class ContainerManager {
         }
     }
 
-    private void extractCommonDlls(WineInfo wineInfo, String srcName, String dstName, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {
+    public void extractCommonDlls(WineInfo wineInfo, String srcName, String dstName, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {
         Log.d("Extraction", "extracting common dlls for bionic: " + srcName);
         File srcDir = new File(wineInfo.path + "/lib/wine/" + srcName);
 
@@ -367,11 +369,42 @@ public class ContainerManager {
         }
     }
 
+    public boolean extractContainerPatternCommon(File containerDir, OnExtractFileListener onExtractFileListener) {
+        Log.d("Extraction", "extracting container_pattern_common.tzst");
+        File componentFile = ContainerFilesDownloaderKt.ensureContainerFileAvailableBlocking(context, "container_pattern_common", new ProgressCallback() {
+            @Override
+            public void onProgress(float progress) {
+                Log.d("Extraction", "Downloading container_pattern_common: " + (int)(progress * 100) + "%");
+            }
+        });
+
+        if (componentFile == null) {
+            Log.d("Extraction", "Using bundled asset for container_pattern_common");
+            return TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "container_pattern_common.tzst", containerDir, onExtractFileListener);
+        } else {
+            Log.d("Extraction", "Using downloaded file for container_pattern_common: " + componentFile.getAbsolutePath());
+            return TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, componentFile, containerDir, onExtractFileListener);
+        }
+    }
+
     public boolean extractContainerPatternFile(String wineVersion, ContentsManager contentsManager, File containerDir, OnExtractFileListener onExtractFileListener) {
         WineInfo wineInfo = WineInfo.fromIdentifier(context, contentsManager, wineVersion);
         if (WineInfo.isMainWineVersion(wineVersion)) {
             Log.d("Extraction", "extracting container_pattern_gamenative.tzst");
-            boolean result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "container_pattern_gamenative.tzst", containerDir, onExtractFileListener);
+            File componentFile = ContainerFilesDownloaderKt.ensureContainerFileAvailableBlocking(context, "container_pattern_gamenative", new ProgressCallback() {
+                @Override
+                public void onProgress(float progress) {
+                    Log.d("Extraction", "Downloading container_pattern_gamenative: " + (int)(progress * 100) + "%");
+                }
+            });
+            boolean result;
+            if (componentFile == null) {
+                Log.d("Extraction", "Using bundled asset for container_pattern_gamenative");
+                result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "container_pattern_gamenative.tzst", containerDir, onExtractFileListener);
+            } else {
+                Log.d("Extraction", "Using downloaded file for container_pattern_gamenative: " + componentFile.getAbsolutePath());
+                result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, componentFile, containerDir, onExtractFileListener);
+            }
 
             if (result) {
                 try {
@@ -395,9 +428,30 @@ public class ContainerManager {
             catch (JSONException e) {
                 return false;
             }
-            String containerPattern = wineVersion + "_container_pattern.tzst";
-            Log.d("Extraction", "exctracting " + containerPattern);
-            boolean result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, containerPattern, containerDir, onExtractFileListener);
+            String containerPatternId = wineVersion + "_container_pattern";
+            String containerPattern = containerPatternId + ".tzst";
+            Log.d("Extraction", "extracting " + containerPattern);
+            boolean result = false;
+
+            try {
+                File componentFile = ContainerFilesDownloaderKt.ensureContainerFileAvailableBlocking(context, containerPatternId, new ProgressCallback() {
+                    @Override
+                    public void onProgress(float progress) {
+                        Log.d("Extraction", "Downloading " + containerPatternId + ": " + (int)(progress * 100) + "%");
+                    }
+                });
+
+                if (componentFile == null) {
+                    Log.d("Extraction", "Using bundled asset for " + containerPatternId);
+                    result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, containerPattern, containerDir, onExtractFileListener);
+                } else {
+                    Log.d("Extraction", "Using downloaded file for " + containerPatternId + ": " + componentFile.getAbsolutePath());
+                    result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, componentFile, containerDir, onExtractFileListener);
+                }
+            } catch (Exception e) {
+                Log.w("Extraction", "Failed to download/extract " + containerPatternId + ": " + e.getMessage() + ", trying prefix pack");
+            }
+
             if (!result) {
                 result = extractPrefixPack(wineInfo.path, containerDir);
             }

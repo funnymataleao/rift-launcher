@@ -72,7 +72,7 @@ android {
         )
 
         ndk {
-            abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
+            //abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
         }
 
         // Localization support - specify which languages to include
@@ -112,6 +112,8 @@ android {
         create("legacy") {
             dimension = "androidApi"
             targetSdk = 28
+            ndk.abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            packaging.jniLibs.useLegacyPackaging = true
             buildConfigField("boolean", "MODERN_ANDROID", "false")
             buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic.so\"")
         }
@@ -119,6 +121,8 @@ android {
             dimension = "androidApi"
             minSdk = 29
             targetSdk = 36
+            ndk.abiFilters += listOf("arm64-v8a")
+            packaging.jniLibs.useLegacyPackaging = false
             buildConfigField("boolean", "MODERN_ANDROID", "true")
             buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic-wx.so\"")
         }
@@ -191,6 +195,20 @@ android {
         }
     }
     dynamicFeatures += setOf(":ubuntufs")
+
+    // Configure Assets to be used in different variants
+    sourceSets {
+        getByName("legacy") {
+            assets {
+                srcDirs("src/legacy/assets", "src/main/assets")
+            }
+        }
+        getByName("modern") {
+            assets {
+                srcDirs("src/modern/assets", "src/main/assets")
+            }
+        }
+    }
 
     kotlinter {
         ignoreFormatFailures  = false

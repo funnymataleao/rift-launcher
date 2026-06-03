@@ -92,6 +92,11 @@ class PluviaApp : SplitCompatApplication() {
             )
         }
 
+        // Preload all container files in the background
+        appScope.launch {
+            app.gamenative.utils.ContainerFilesDownloader.preloadAllContainerFiles(applicationContext)
+        }
+
         // Clear any stale temporary config overrides from previous app sessions
         try {
             IntentLaunchManager.clearAllTemporaryOverrides()
