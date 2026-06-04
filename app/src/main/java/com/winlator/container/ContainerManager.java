@@ -1,16 +1,13 @@
 package com.winlator.container;
 
-import static com.winlator.container.Container.STEAM_TYPE_LIGHT;
-import static com.winlator.container.Container.STEAM_TYPE_NORMAL;
-
 import android.content.Context;
 import android.os.Handler;
 import android.util.Log;
 
 // import com.winlator.R;
 import app.gamenative.R;
-import app.gamenative.utils.ContainerFilesDownloaderKt;
-import app.gamenative.utils.ProgressCallback;
+import app.gamenative.utils.downloader.ContainerFilesDownloaderKt;
+import app.gamenative.utils.downloader.ProgressCallback;
 import com.winlator.box86_64.Box86_64Preset;
 import com.winlator.contents.ContentsManager;
 import com.winlator.core.Callback;
@@ -20,10 +17,7 @@ import com.winlator.core.TarCompressorUtils;
 import com.winlator.core.WineInfo;
 import com.winlator.core.WineThemeManager;
 import com.winlator.xenvironment.ImageFs;
-import com.winlator.core.GPUInformation;
-import com.winlator.core.DefaultVersion;
 
-import org.apache.commons.lang3.ObjectUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;

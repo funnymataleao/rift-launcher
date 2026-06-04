@@ -1,4 +1,4 @@
-package app.gamenative.utils
+package app.gamenative.utils.downloader
 
 import android.content.Context
 import app.gamenative.BuildConfig
@@ -77,7 +77,7 @@ object DXWrapperDownloader {
                 context = context,
                 onProgress = onProgress
             )
-            Timber.i("Successfully downloaded dxwrapper: $componentId")
+            Timber.Forest.i("Successfully downloaded dxwrapper: $componentId")
         } catch (e: Exception) {
             Timber.e(e, "Failed to download dxwrapper: $componentId")
             destFile.delete()

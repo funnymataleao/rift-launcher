@@ -1,12 +1,12 @@
-package app.gamenative.utils
+package app.gamenative.utils.downloader
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import app.gamenative.PrefManager
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -49,7 +49,7 @@ class GraphicsDriverDownloaderTest {
         assertNotNull("${GraphicsDriverDownloader.GRAPHICS_DRIVER_MANIFEST_FILE} should exist in assets", manifestJson)
         assertTrue("Manifest should not be empty", manifestJson.isNotEmpty())
 
-        val manifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val manifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<GraphicsDriverDownloader.GraphicsDriverManifest>(manifestJson)
 
         assertTrue("Graphics driver components list should not be empty", manifest.components.isNotEmpty())
@@ -63,7 +63,7 @@ class GraphicsDriverDownloaderTest {
     @Test
     fun testTurnipComponentsExist() {
         val manifestJson = context.assets.open(GraphicsDriverDownloader.GRAPHICS_DRIVER_MANIFEST_FILE).bufferedReader().use { it.readText() }
-        val manifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val manifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<GraphicsDriverDownloader.GraphicsDriverManifest>(manifestJson)
 
         val turnipComponents = listOf(
@@ -85,7 +85,7 @@ class GraphicsDriverDownloaderTest {
     @Test
     fun testVortekComponentsExist() {
         val manifestJson = context.assets.open(GraphicsDriverDownloader.GRAPHICS_DRIVER_MANIFEST_FILE).bufferedReader().use { it.readText() }
-        val manifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val manifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<GraphicsDriverDownloader.GraphicsDriverManifest>(manifestJson)
 
         val vortekComponents = listOf("vortek-2.0", "vortek-2.1")
@@ -99,7 +99,7 @@ class GraphicsDriverDownloaderTest {
     @Test
     fun testZinkAndVirglComponentsExist() {
         val manifestJson = context.assets.open(GraphicsDriverDownloader.GRAPHICS_DRIVER_MANIFEST_FILE).bufferedReader().use { it.readText() }
-        val manifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val manifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<GraphicsDriverDownloader.GraphicsDriverManifest>(manifestJson)
 
         val components = listOf("zink-22.2.5", "virgl-23.1.9")
@@ -113,7 +113,7 @@ class GraphicsDriverDownloaderTest {
     @Test
     fun testAdrenotoolsComponentsExist() {
         val manifestJson = context.assets.open(GraphicsDriverDownloader.GRAPHICS_DRIVER_MANIFEST_FILE).bufferedReader().use { it.readText() }
-        val manifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val manifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<GraphicsDriverDownloader.GraphicsDriverManifest>(manifestJson)
 
         val adrenotoolsComponents = listOf(
@@ -132,7 +132,7 @@ class GraphicsDriverDownloaderTest {
     @Test
     fun testWrapperComponentsExist() {
         val manifestJson = context.assets.open(GraphicsDriverDownloader.GRAPHICS_DRIVER_MANIFEST_FILE).bufferedReader().use { it.readText() }
-        val manifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val manifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<GraphicsDriverDownloader.GraphicsDriverManifest>(manifestJson)
 
         val wrapperComponents = listOf(
@@ -151,7 +151,7 @@ class GraphicsDriverDownloaderTest {
     @Test
     fun testExtraComponentsExist() {
         val manifestJson = context.assets.open(GraphicsDriverDownloader.GRAPHICS_DRIVER_MANIFEST_FILE).bufferedReader().use { it.readText() }
-        val manifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val manifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<GraphicsDriverDownloader.GraphicsDriverManifest>(manifestJson)
 
         val extraComponents = listOf("extra_libs", "zink_dlls", "libvulkan_wrapper")
@@ -165,7 +165,7 @@ class GraphicsDriverDownloaderTest {
     @Test
     fun testGraphicsDriverUrlFormat() {
         val manifestJson = context.assets.open(GraphicsDriverDownloader.GRAPHICS_DRIVER_MANIFEST_FILE).bufferedReader().use { it.readText() }
-        val manifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val manifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<GraphicsDriverDownloader.GraphicsDriverManifest>(manifestJson)
 
         manifest.components.forEach { component ->
@@ -289,7 +289,7 @@ class GraphicsDriverDownloaderTest {
     @Test
     fun testAllManifestComponentsHaveValidUrls() {
         val manifestJson = context.assets.open(GraphicsDriverDownloader.GRAPHICS_DRIVER_MANIFEST_FILE).bufferedReader().use { it.readText() }
-        val manifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val manifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<GraphicsDriverDownloader.GraphicsDriverManifest>(manifestJson)
 
         val validDomains = listOf(
@@ -311,7 +311,7 @@ class GraphicsDriverDownloaderTest {
     @Test
     fun testComponentNamingConsistency() {
         val manifestJson = context.assets.open(GraphicsDriverDownloader.GRAPHICS_DRIVER_MANIFEST_FILE).bufferedReader().use { it.readText() }
-        val manifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val manifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<GraphicsDriverDownloader.GraphicsDriverManifest>(manifestJson)
 
         manifest.components.forEach { component ->
@@ -326,15 +326,15 @@ class GraphicsDriverDownloaderTest {
     @Test
     fun testNoOverlapWithOtherDownloaders() {
         val graphicsDriverJson = context.assets.open(GraphicsDriverDownloader.GRAPHICS_DRIVER_MANIFEST_FILE).bufferedReader().use { it.readText() }
-        val graphicsDriverManifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val graphicsDriverManifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<GraphicsDriverDownloader.GraphicsDriverManifest>(graphicsDriverJson)
 
         val dxwrapperJson = context.assets.open(DXWrapperDownloader.DXWRAPPER_MANIFEST_FILE).bufferedReader().use { it.readText() }
-        val dxwrapperManifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val dxwrapperManifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<DXWrapperDownloader.DXWrapperManifest>(dxwrapperJson)
 
         val wincomponentJson = context.assets.open(WinComponentDownloader.WINCOMPONENTS_MANIFEST_FILE).bufferedReader().use { it.readText() }
-        val wincomponentManifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val wincomponentManifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<WinComponentDownloader.WinComponentManifest>(wincomponentJson)
 
         val graphicsDriverIds = graphicsDriverManifest.components.map { it.id }.toSet()
@@ -357,7 +357,7 @@ class GraphicsDriverDownloaderTest {
     @Test
     fun testLibvulkanWrapperHasTarXzExtension() {
         val manifestJson = context.assets.open(GraphicsDriverDownloader.GRAPHICS_DRIVER_MANIFEST_FILE).bufferedReader().use { it.readText() }
-        val manifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val manifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<GraphicsDriverDownloader.GraphicsDriverManifest>(manifestJson)
 
         val libvulkanComponent = manifest.components.find { it.id == "libvulkan_wrapper" }

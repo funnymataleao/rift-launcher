@@ -1,4 +1,4 @@
-package app.gamenative.utils
+package app.gamenative.utils.downloader
 
 import android.content.Context
 import app.gamenative.BuildConfig
@@ -74,8 +74,8 @@ object CoreDriverDownloader {
         destFile.parentFile?.mkdirs()
 
         try {
-            SteamService.fetchFileWithFallback(
-                fileName = "coreDrivers/$componentName",
+            SteamService.Companion.fetchFileWithFallback(
+                fileName = "core_drivers/$componentName",
                 dest = destFile,
                 context = context,
                 onProgress = onProgress

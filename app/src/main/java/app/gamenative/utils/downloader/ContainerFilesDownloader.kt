@@ -1,9 +1,10 @@
-package app.gamenative.utils
+package app.gamenative.utils.downloader
 
 import android.content.Context
 import app.gamenative.BuildConfig
 import app.gamenative.service.SteamService
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -176,7 +177,7 @@ fun ensureContainerFileAvailableBlocking(
     componentId: String,
     onProgress: ProgressCallback? = null
 ): File? {
-    return kotlinx.coroutines.runBlocking {
+    return runBlocking {
         ContainerFilesDownloader.ensureContainerFileAvailable(context, componentId) { progress ->
             onProgress?.onProgress(progress)
         }

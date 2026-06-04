@@ -1,7 +1,5 @@
 package com.winlator.xenvironment;
 
-import static com.winlator.core.FileUtils.chmod;
-
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.util.Log;
@@ -12,6 +10,8 @@ import app.gamenative.enums.Marker;
 import app.gamenative.service.SteamService;
 import app.gamenative.utils.ContainerUtils;
 import app.gamenative.utils.MarkerUtils;
+import app.gamenative.utils.downloader.ContainerFilesDownloaderKt;
+import app.gamenative.utils.downloader.ProgressCallback;
 
 // import com.winlator.MainActivity;
 // import com.winlator.R;
@@ -23,7 +23,6 @@ import com.winlator.container.ContainerManager;
 import com.winlator.contents.ContentProfile;
 import com.winlator.contents.ContentsManager;
 import com.winlator.core.Callback;
-import com.winlator.core.DefaultVersion;
 import com.winlator.core.FileUtils;
 // import com.winlator.core.PreloaderDialog;
 import com.winlator.core.TarCompressorUtils;
@@ -39,7 +38,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
@@ -211,10 +209,10 @@ public abstract class ImageFsInstaller {
         if (app.gamenative.BuildConfig.MODERN_ANDROID) {
             try {
                 // Modern variant: download and extract
-                java.io.File extrasFile = app.gamenative.utils.ContainerFilesDownloaderKt.ensureContainerFileAvailableBlocking(
+                java.io.File extrasFile = ContainerFilesDownloaderKt.ensureContainerFileAvailableBlocking(
                     ctx,
                     "extras",
-                    new app.gamenative.utils.ProgressCallback() {
+                    new ProgressCallback() {
                         @Override
                         public void onProgress(float progress) {
                             Log.d("ImageFsInstaller", "Downloading extras.tzst: " + (int)(progress * 100) + "%");

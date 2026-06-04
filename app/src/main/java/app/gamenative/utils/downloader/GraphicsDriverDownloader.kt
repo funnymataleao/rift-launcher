@@ -1,4 +1,4 @@
-package app.gamenative.utils
+package app.gamenative.utils.downloader
 
 import android.content.Context
 import app.gamenative.BuildConfig
@@ -73,7 +73,7 @@ object GraphicsDriverDownloader {
         destFile.parentFile?.mkdirs()
 
         try {
-            SteamService.fetchFileWithFallback(
+            SteamService.Companion.fetchFileWithFallback(
                 fileName = "graphics_driver/${component.name}",
                 dest = destFile,
                 context = context,

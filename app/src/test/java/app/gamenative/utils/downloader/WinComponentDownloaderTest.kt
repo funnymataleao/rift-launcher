@@ -1,12 +1,12 @@
-package app.gamenative.utils
+package app.gamenative.utils.downloader
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import app.gamenative.PrefManager
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -49,7 +49,7 @@ class WinComponentDownloaderTest {
         assertNotNull("${WinComponentDownloader.WINCOMPONENTS_MANIFEST_FILE} should exist in assets", manifestJson)
         assertTrue("Manifest should not be empty", manifestJson.isNotEmpty())
 
-        val manifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val manifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<WinComponentDownloader.WinComponentManifest>(manifestJson)
 
         assertTrue("Wincomponents list should not be empty", manifest.components.isNotEmpty())
@@ -63,7 +63,7 @@ class WinComponentDownloaderTest {
     @Test
     fun testRequiredWinComponentsExist() {
         val manifestJson = context.assets.open(WinComponentDownloader.WINCOMPONENTS_MANIFEST_FILE).bufferedReader().use { it.readText() }
-        val manifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val manifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<WinComponentDownloader.WinComponentManifest>(manifestJson)
 
         val requiredComponents = listOf(
@@ -84,7 +84,7 @@ class WinComponentDownloaderTest {
     @Test
     fun testOptionalWinComponentsExist() {
         val manifestJson = context.assets.open(WinComponentDownloader.WINCOMPONENTS_MANIFEST_FILE).bufferedReader().use { it.readText() }
-        val manifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val manifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<WinComponentDownloader.WinComponentManifest>(manifestJson)
 
         val optionalComponents = listOf(
@@ -106,7 +106,7 @@ class WinComponentDownloaderTest {
     @Test
     fun testWinComponentUrlFormat() {
         val manifestJson = context.assets.open(WinComponentDownloader.WINCOMPONENTS_MANIFEST_FILE).bufferedReader().use { it.readText() }
-        val manifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val manifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<WinComponentDownloader.WinComponentManifest>(manifestJson)
 
         manifest.components.forEach { component ->
@@ -236,7 +236,7 @@ class WinComponentDownloaderTest {
     @Test
     fun testAllManifestComponentsHaveValidUrls() {
         val manifestJson = context.assets.open(WinComponentDownloader.WINCOMPONENTS_MANIFEST_FILE).bufferedReader().use { it.readText() }
-        val manifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val manifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<WinComponentDownloader.WinComponentManifest>(manifestJson)
 
         val validDomains = listOf(
@@ -258,7 +258,7 @@ class WinComponentDownloaderTest {
     @Test
     fun testComponentNamingConsistency() {
         val manifestJson = context.assets.open(WinComponentDownloader.WINCOMPONENTS_MANIFEST_FILE).bufferedReader().use { it.readText() }
-        val manifest = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val manifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<WinComponentDownloader.WinComponentManifest>(manifestJson)
 
         manifest.components.forEach { component ->

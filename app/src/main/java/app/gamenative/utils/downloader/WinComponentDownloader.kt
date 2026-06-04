@@ -1,4 +1,4 @@
-package app.gamenative.utils
+package app.gamenative.utils.downloader
 
 import android.content.Context
 import app.gamenative.BuildConfig
@@ -72,7 +72,7 @@ object WinComponentDownloader {
         destFile.parentFile?.mkdirs()
 
         try {
-            SteamService.fetchFileWithFallback(
+            SteamService.Companion.fetchFileWithFallback(
                 fileName = "wincomponents/$componentId.tzst",
                 dest = destFile,
                 context = context,
