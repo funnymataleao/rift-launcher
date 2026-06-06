@@ -1325,7 +1325,11 @@ fun XServerScreen(
                 if (escOrBackPressed) {
                     keyboardEscMenuHandler.handleOverlayEscOrBack(it.event, keyboard)
                     if (it.event.action == KeyEvent.ACTION_DOWN && it.event.repeatCount == 0) {
-                        (context as? ComponentActivity)?.onBackPressedDispatcher?.onBackPressed()
+                        if (BuildConfig.MODERN_ANDROID) {
+                            (context as? ComponentActivity)?.onBackPressedDispatcher?.onBackPressed()
+                        } else {
+                            gameBack()
+                        }
                     }
                     true
                 } else {
