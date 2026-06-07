@@ -93,6 +93,16 @@ The full [Privacy Policy](PrivacyPolicy/README.md) has the details.
 
 Thanks to our [Ko-fi sponsors](https://ko-fi.com/gamenative) and [GitHub sponsors](https://github.com/sponsors/utkarshdalal?preview=true), including [CodeRabbit](https://coderabbit.link/gnative).
 
+<p align="center">
+ <a href="https://www.star-history.com/utkarshdalal/gamenative">
+  <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/badge?repo=utkarshdalal/GameNative&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/badge?repo=utkarshdalal/GameNative" />
+   <img alt="Star History Rank" src="https://api.star-history.com/badge?repo=utkarshdalal/GameNative" />
+  </picture>
+ </a>
+</p>
+
 [![Star History Chart](https://api.star-history.com/svg?repos=utkarshdalal/GameNative&type=Date&theme=dark)](https://www.star-history.com/#utkarshdalal/GameNative&Date)
 
 ## License
