@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="media/gamenative_library.webp" alt="GameNative library" width="100%" />
-
 # GameNative
 
 **Play the PC games you already own — from Steam, Epic and GOG — on your Android device, with cloud saves.**
+
+<video src="https://github.com/user-attachments/assets/95b5397b-908a-44ef-a10a-dac7723580b0" autoplay loop muted playsinline width="100%"></video>
 
 <a href="https://trendshift.io/repositories/14497" target="_blank"><img src="https://trendshift.io/api/badge/repositories/14497" alt="utkarshdalal%2FGameNative | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
@@ -48,6 +48,8 @@ TechDweeb walks through setting up GameNative on an Android handheld in a couple
 <div align="center">
 
 [![Steam Games on Android with GameNative IN 2 MINUTES!](https://img.youtube.com/vi/QqIChmAu2_A/maxresdefault.jpg)](https://youtu.be/QqIChmAu2_A?t=53)
+
+[![Watch on YouTube](https://img.shields.io/badge/▶%20Watch%20on%20YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/QqIChmAu2_A?t=53)
 
 </div>
 
