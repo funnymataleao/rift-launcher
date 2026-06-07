@@ -1,6 +1,6 @@
 <div align="center">
 
-<!-- TODO: add a GameNative banner/logo here (the old media/ art is Pluvia's, not ours) -->
+<img src="media/gamenative_library.webp" alt="GameNative library" width="100%" />
 
 # GameNative
 
