@@ -20,6 +20,7 @@ data class TouchGestureConfig(
     // 3. Long Press — customizable action, disabled by default
     val longPressEnabled: Boolean = false,
     val longPressAction: String = ACTION_RIGHT_CLICK,
+    val longPressMouseBehavior: String = MOUSE_BEHAVIOR_HOLD,
     val longPressDelay: Int = DEFAULT_DELAY_MS,
 
     // 4. Double-Tap — fixed action: Double Left Click
@@ -41,6 +42,7 @@ data class TouchGestureConfig(
     // 8. Two-Finger Hold — customizable action + delay
     val twoFingerHoldEnabled: Boolean = true,
     val twoFingerHoldAction: String = ACTION_MIDDLE_CLICK,
+    val twoFingerHoldMouseBehavior: String = MOUSE_BEHAVIOR_HOLD,
     val twoFingerHoldDelay: Int = DEFAULT_DELAY_MS,
 
     // 9. Three-Finger Tap — customizable action
@@ -54,6 +56,7 @@ data class TouchGestureConfig(
     // 11. Three-Finger Hold — customizable action + delay
     val threeFingerHoldEnabled: Boolean = true,
     val threeFingerHoldAction: String = ACTION_KEY_ESC,
+    val threeFingerHoldMouseBehavior: String = MOUSE_BEHAVIOR_HOLD,
     val threeFingerHoldDelay: Int = DEFAULT_DELAY_MS,
 
     // 12. Click highlight circle
@@ -76,6 +79,7 @@ data class TouchGestureConfig(
             put(KEY_DRAG_ACTION, dragAction)
             put(KEY_LONG_PRESS_ENABLED, longPressEnabled)
             put(KEY_LONG_PRESS_ACTION, longPressAction)
+            put(KEY_LONG_PRESS_MOUSE_BEHAVIOR, longPressMouseBehavior)
             put(KEY_LONG_PRESS_DELAY, longPressDelay)
             put(KEY_DOUBLE_TAP_ENABLED, doubleTapEnabled)
             put(KEY_DOUBLE_TAP_DELAY, doubleTapDelay)
@@ -87,6 +91,7 @@ data class TouchGestureConfig(
             put(KEY_TWO_FINGER_TAP_ACTION, twoFingerTapAction)
             put(KEY_TWO_FINGER_HOLD_ENABLED, twoFingerHoldEnabled)
             put(KEY_TWO_FINGER_HOLD_ACTION, twoFingerHoldAction)
+            put(KEY_TWO_FINGER_HOLD_MOUSE_BEHAVIOR, twoFingerHoldMouseBehavior)
             put(KEY_TWO_FINGER_HOLD_DELAY, twoFingerHoldDelay)
             put(KEY_THREE_FINGER_TAP_ENABLED, threeFingerTapEnabled)
             put(KEY_THREE_FINGER_TAP_ACTION, threeFingerTapAction)
@@ -94,6 +99,7 @@ data class TouchGestureConfig(
             put(KEY_THREE_FINGER_DRAG_ACTION, threeFingerDragAction)
             put(KEY_THREE_FINGER_HOLD_ENABLED, threeFingerHoldEnabled)
             put(KEY_THREE_FINGER_HOLD_ACTION, threeFingerHoldAction)
+            put(KEY_THREE_FINGER_HOLD_MOUSE_BEHAVIOR, threeFingerHoldMouseBehavior)
             put(KEY_THREE_FINGER_HOLD_DELAY, threeFingerHoldDelay)
             put(KEY_SHOW_CLICK_HIGHLIGHT, showClickHighlight)
             put(KEY_SHOW_GESTURE_DEBUG_OVERLAY, showGestureDebugOverlay)
@@ -111,6 +117,9 @@ data class TouchGestureConfig(
         const val ACTION_LEFT_CLICK = "left_click"
         const val ACTION_RIGHT_CLICK = "right_click"
         const val ACTION_MIDDLE_CLICK = "middle_click"
+
+        const val MOUSE_BEHAVIOR_HOLD = "hold"
+        const val MOUSE_BEHAVIOR_CLICK = "click"
 
         // ── Special actions ──────────────────────────────────────────────
         const val ACTION_SHOW_KEYBOARD = "show_keyboard"
@@ -135,6 +144,7 @@ data class TouchGestureConfig(
         private const val KEY_DRAG_ACTION = "dragAction"
         private const val KEY_LONG_PRESS_ENABLED = "longPressEnabled"
         private const val KEY_LONG_PRESS_ACTION = "longPressAction"
+        private const val KEY_LONG_PRESS_MOUSE_BEHAVIOR = "longPressMouseBehavior"
         private const val KEY_LONG_PRESS_DELAY = "longPressDelay"
         private const val KEY_DOUBLE_TAP_ENABLED = "doubleTapEnabled"
         private const val KEY_DOUBLE_TAP_DELAY = "doubleTapDelay"
@@ -146,6 +156,7 @@ data class TouchGestureConfig(
         private const val KEY_TWO_FINGER_TAP_ACTION = "twoFingerTapAction"
         private const val KEY_TWO_FINGER_HOLD_ENABLED = "twoFingerHoldEnabled"
         private const val KEY_TWO_FINGER_HOLD_ACTION = "twoFingerHoldAction"
+        private const val KEY_TWO_FINGER_HOLD_MOUSE_BEHAVIOR = "twoFingerHoldMouseBehavior"
         private const val KEY_TWO_FINGER_HOLD_DELAY = "twoFingerHoldDelay"
         private const val KEY_THREE_FINGER_TAP_ENABLED = "threeFingerTapEnabled"
         private const val KEY_THREE_FINGER_TAP_ACTION = "threeFingerTapAction"
@@ -153,6 +164,7 @@ data class TouchGestureConfig(
         private const val KEY_THREE_FINGER_DRAG_ACTION = "threeFingerDragAction"
         private const val KEY_THREE_FINGER_HOLD_ENABLED = "threeFingerHoldEnabled"
         private const val KEY_THREE_FINGER_HOLD_ACTION = "threeFingerHoldAction"
+        private const val KEY_THREE_FINGER_HOLD_MOUSE_BEHAVIOR = "threeFingerHoldMouseBehavior"
         private const val KEY_THREE_FINGER_HOLD_DELAY = "threeFingerHoldDelay"
         private const val KEY_SHOW_CLICK_HIGHLIGHT = "showClickHighlight"
         private const val KEY_SHOW_GESTURE_DEBUG_OVERLAY = "showGestureDebugOverlay"
@@ -184,6 +196,9 @@ data class TouchGestureConfig(
                     dragAction = obj.optString(KEY_DRAG_ACTION, PAN_LEFT_CLICK_DRAG),
                     longPressEnabled = obj.optBoolean(KEY_LONG_PRESS_ENABLED, false),
                     longPressAction = obj.optString(KEY_LONG_PRESS_ACTION, ACTION_RIGHT_CLICK),
+                    longPressMouseBehavior = normalizeMouseBehavior(
+                        obj.optString(KEY_LONG_PRESS_MOUSE_BEHAVIOR, MOUSE_BEHAVIOR_HOLD)
+                    ),
                     longPressDelay = obj.optInt(KEY_LONG_PRESS_DELAY, DEFAULT_DELAY_MS),
                     doubleTapEnabled = obj.optBoolean(KEY_DOUBLE_TAP_ENABLED, true),
                     doubleTapDelay = obj.optInt(KEY_DOUBLE_TAP_DELAY, DEFAULT_DELAY_MS),
@@ -195,6 +210,9 @@ data class TouchGestureConfig(
                     twoFingerTapAction = obj.optString(KEY_TWO_FINGER_TAP_ACTION, ACTION_RIGHT_CLICK),
                     twoFingerHoldEnabled = obj.optBoolean(KEY_TWO_FINGER_HOLD_ENABLED, false),
                     twoFingerHoldAction = obj.optString(KEY_TWO_FINGER_HOLD_ACTION, ACTION_MIDDLE_CLICK),
+                    twoFingerHoldMouseBehavior = normalizeMouseBehavior(
+                        obj.optString(KEY_TWO_FINGER_HOLD_MOUSE_BEHAVIOR, MOUSE_BEHAVIOR_HOLD)
+                    ),
                     twoFingerHoldDelay = obj.optInt(KEY_TWO_FINGER_HOLD_DELAY, DEFAULT_DELAY_MS),
                     threeFingerTapEnabled = obj.optBoolean(KEY_THREE_FINGER_TAP_ENABLED, false),
                     threeFingerTapAction = obj.optString(KEY_THREE_FINGER_TAP_ACTION, ACTION_SHOW_KEYBOARD),
@@ -202,6 +220,9 @@ data class TouchGestureConfig(
                     threeFingerDragAction = obj.optString(KEY_THREE_FINGER_DRAG_ACTION, PAN_ARROW_KEYS),
                     threeFingerHoldEnabled = obj.optBoolean(KEY_THREE_FINGER_HOLD_ENABLED, false),
                     threeFingerHoldAction = obj.optString(KEY_THREE_FINGER_HOLD_ACTION, ACTION_KEY_ESC),
+                    threeFingerHoldMouseBehavior = normalizeMouseBehavior(
+                        obj.optString(KEY_THREE_FINGER_HOLD_MOUSE_BEHAVIOR, MOUSE_BEHAVIOR_HOLD)
+                    ),
                     threeFingerHoldDelay = obj.optInt(KEY_THREE_FINGER_HOLD_DELAY, DEFAULT_DELAY_MS),
                     showClickHighlight = obj.optBoolean(KEY_SHOW_CLICK_HIGHLIGHT, false),
                     showGestureDebugOverlay = obj.optBoolean(KEY_SHOW_GESTURE_DEBUG_OVERLAY, false),
@@ -218,6 +239,10 @@ data class TouchGestureConfig(
             ACTION_RIGHT_CLICK,
             ACTION_MIDDLE_CLICK,
         )
+
+        private fun normalizeMouseBehavior(value: String): String {
+            return if (value == MOUSE_BEHAVIOR_CLICK) MOUSE_BEHAVIOR_CLICK else MOUSE_BEHAVIOR_HOLD
+        }
 
         /** Ordered list of pan/camera-drag actions. */
         val PAN_ACTIONS = listOf(
