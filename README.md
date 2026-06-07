@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="media/play_store_feature_graphic.png" alt="GameNative" width="100%" />
+<!-- TODO: add a GameNative banner/logo here (the old media/ art is Pluvia's, not ours) -->
 
 # GameNative
 
@@ -10,7 +10,7 @@
 
 [![GitHub Release](https://img.shields.io/github/v/release/utkarshdalal/GameNative?style=flat-square&logo=github&label=latest)](https://github.com/utkarshdalal/GameNative/releases/latest)
 [![GitHub stars](https://img.shields.io/github/stars/utkarshdalal/GameNative?style=flat-square&logo=github&color=ffd700)](https://github.com/utkarshdalal/GameNative/stargazers)
-[![Discord](https://img.shields.io/discord/1378308569287622737?style=flat-square&logo=discord&logoColor=white&label=discord&color=5865F2)](https://discord.gg/2hKv4VfZfE)
+[![Discord](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Fv9%2Finvites%2F2hKv4VfZfE%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&style=flat-square&logo=discord&logoColor=white&label=discord&color=5865F2&suffix=%20members)](https://discord.gg/2hKv4VfZfE)
 [![License](https://img.shields.io/badge/license-GPL%203.0-blue?style=flat-square)](https://github.com/utkarshdalal/GameNative/blob/master/LICENSE)
 [![Ko-fi](https://img.shields.io/badge/ko--fi-support-FF5E5B?style=flat-square&logo=ko-fi&logoColor=white)](https://ko-fi.com/gamenative)
 
@@ -35,17 +35,9 @@ It's still early. Not every game runs yet, and some need tweaking to play well, 
 
 ## Screenshots
 
-<div align="center">
+<!-- TODO: drop in real GameNative screenshots here -->
 
-<img src="media/play_store_odin_screenshot_library.png" width="32%" />
-<img src="media/play_store_odin_screenshot_app_noita.png" width="32%" />
-<img src="media/play_store_odin_screenshot_search.png" width="32%" />
-<img src="media/play_store_odin_screenshot_default_config.png" width="32%" />
-<img src="media/play_store_odin_screenshot_presets.png" width="32%" />
-
-</div>
-
-There's also a clip of [Stray running on a Poco F6](https://github.com/user-attachments/assets/1870fd14-7de9-4054-ba92-d3a5c73686b5) if you want to see it in motion.
+There's a clip of [Stray running on a Poco F6](https://github.com/user-attachments/assets/1870fd14-7de9-4054-ba92-d3a5c73686b5) if you want to see it in motion.
 
 ## How to use
 
