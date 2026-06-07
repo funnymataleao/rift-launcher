@@ -34,12 +34,12 @@ It's still early. Not every game runs yet, and some need tweaking to play well, 
 
 ## What you get
 
-- Play games you actually own on Steam, Epic and GOG
+- Play games you actually own on Steam, Epic, GOG and Amazon
 - Cloud saves that carry over between your PC and your phone
-- Community-tuned configs applied automatically, so more games just work
+- Automatically applied known configs, so many games just work out of the box with no tweaking required
 - Controller and touch support, with a custom control editor and on-screen HUD
-- Automatic game artwork via SteamGridDB
-- Anonymous analytics only — no names, emails, IPs or device IDs, ever
+- Steam DLC, workshop and branch support
+- Active support over Discord if you need help getting a game running
 
 ## Demo
 
