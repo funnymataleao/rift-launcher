@@ -795,6 +795,9 @@
     <string name="gesture_zoom_page_up_down">Page Up/Down</string>
     <string name="gesture_action_label">Action</string>
     <string name="gesture_action_show_keyboard">Show Keyboard</string>
+    <string name="gesture_mouse_behavior_label">Mouse behavior</string>
+    <string name="gesture_mouse_behavior_click">Click</string>
+    <string name="gesture_mouse_behavior_hold">Hold</string>
     <string name="gesture_header_special">Special</string>
     <string name="gesture_header_mouse">Mouse</string>
     <string name="gesture_header_common_game">Common Game Keys</string>
