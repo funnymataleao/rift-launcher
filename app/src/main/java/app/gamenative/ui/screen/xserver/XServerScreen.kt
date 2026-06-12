@@ -1345,11 +1345,19 @@ fun XServerScreen(
             } else {
                 var handled = false
                 if (isGamepad) {
-                    xServerView!!.getxServer().winHandler.setCurrentController(it.event.device.id);
-                    handled = physicalControllerHandler?.onKeyEvent(it.event) == true
-                    if (!handled) handled = PluviaApp.inputControlsView?.onKeyEvent(it.event) == true
-                    // Final fallback to WinHandler passthrough
-                    if (!handled) handled = xServerView!!.getxServer().winHandler.onKeyEvent(it.event)
+                    val winHandler = xServerView!!.getxServer().winHandler
+                    val playerSlot = ControllerManager.getInstance().getSlotForDevice(it.event.deviceId)
+                    winHandler.setCurrentController(it.event.device.id)
+                    if (playerSlot >= 0) {
+                        handled = winHandler.onKeyEvent(it.event)
+                        Timber.d(
+                            "Assigned gamepad key routed to WinHandler: deviceId=${it.event.deviceId}, P${playerSlot + 1}, keyCode=${it.event.keyCode}, action=${it.event.action}, handled=$handled",
+                        )
+                    } else {
+                        handled = physicalControllerHandler?.onKeyEvent(it.event) == true
+                        if (!handled) handled = PluviaApp.inputControlsView?.onKeyEvent(it.event) == true
+                        if (!handled) handled = winHandler.onKeyEvent(it.event)
+                    }
                 }
                 if (!handled && isKeyboard) {
                     val isShiftEscPressed = it.event.keyCode == KeyEvent.KEYCODE_ESCAPE &&
@@ -1389,11 +1397,19 @@ fun XServerScreen(
             } else {
                 var handled = false
                 if (isGamepad && it.event != null) {
-                    xServerView!!.getxServer().winHandler.setCurrentController(it.event.device.id);
-                    handled = physicalControllerHandler?.onGenericMotionEvent(it.event!!) == true
-                    if (!handled) handled = PluviaApp.inputControlsView?.onGenericMotionEvent(it.event) == true
-                    // Final fallback to WinHandler passthrough
-                    if (!handled) handled = xServerView!!.getxServer().winHandler.onGenericMotionEvent(it.event)
+                    val winHandler = xServerView!!.getxServer().winHandler
+                    val playerSlot = ControllerManager.getInstance().getSlotForDevice(it.event.deviceId)
+                    winHandler.setCurrentController(it.event.device.id)
+                    if (playerSlot >= 0) {
+                        handled = winHandler.onGenericMotionEvent(it.event)
+                        Timber.d(
+                            "Assigned gamepad motion routed to WinHandler: deviceId=${it.event.deviceId}, P${playerSlot + 1}, handled=$handled",
+                        )
+                    } else {
+                        handled = physicalControllerHandler?.onGenericMotionEvent(it.event!!) == true
+                        if (!handled) handled = PluviaApp.inputControlsView?.onGenericMotionEvent(it.event) == true
+                        if (!handled) handled = winHandler.onGenericMotionEvent(it.event)
+                    }
                 }
                 if (PluviaApp.touchpadView?.hasPointerCapture() != true && !PluviaApp.isOverlayPaused) {
                     if ((it.event != null) && (it.event.device != null)) {
