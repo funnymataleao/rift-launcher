@@ -340,7 +340,7 @@ static void initialize_all_pads(void)
     const char *dbg = getenv("EVSHIM_DEBUG");
     g_debug_enabled = dbg && strchr("1yY", *dbg);
 
-    int players = 1;
+    int players = g_is_wine ? 1 : MAX_GAMEPADS;
     const char *ep = getenv("EVSHIM_MAX_PLAYERS");
     if (ep) players = atoi(ep);
     if (players > MAX_GAMEPADS) players = MAX_GAMEPADS;
@@ -358,7 +358,10 @@ static void initialize_all_pads(void)
 JNIEXPORT void JNICALL
 Java_com_winlator_winhandler_WinHandler_notifyStateChanged(JNIEnv *env, jclass cls, jint idx)
 {
-    if (idx < 0 || idx >= MAX_GAMEPADS || !shm[idx]) return;
+    if (idx < 0 || idx >= MAX_GAMEPADS || !shm[idx]) {
+        ALOGE("evshim: notifyStateChanged missing shm for slot=%d", idx);
+        return;
+    }
 
     atomic_thread_fence(memory_order_seq_cst); // not sure if necessary
     atomic_fetch_add_explicit(&shm[idx]->seq, 1u, memory_order_release);
