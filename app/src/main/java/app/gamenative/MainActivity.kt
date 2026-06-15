@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color.TRANSPARENT
+import android.hardware.input.InputManager
 import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
@@ -122,6 +123,21 @@ class MainActivity : ComponentActivity() {
         finishAndRemoveTask()
     }
 
+    private var controllerInputManager: InputManager? = null
+    private val controllerDeviceListener = object : InputManager.InputDeviceListener {
+        override fun onInputDeviceAdded(deviceId: Int) {
+            ControllerManager.getInstance().onDeviceConnected(deviceId)
+        }
+
+        override fun onInputDeviceRemoved(deviceId: Int) {
+            ControllerManager.getInstance().onDeviceDisconnected(deviceId)
+        }
+
+        override fun onInputDeviceChanged(deviceId: Int) {
+            ControllerManager.getInstance().onDeviceConnected(deviceId)
+        }
+    }
+
     private var index = totalIndex++
 
     // Add a property to keep a reference to the orientation sensor listener
@@ -156,7 +172,9 @@ class MainActivity : ComponentActivity() {
         applyImmersiveMode()
 
         // Initialize the controller management system
-        ControllerManager.getInstance().init(getApplicationContext())
+        ControllerManager.getInstance().init(applicationContext)
+        controllerInputManager = getSystemService(Context.INPUT_SERVICE) as InputManager
+        controllerInputManager?.registerInputDeviceListener(controllerDeviceListener, null)
 
         ContainerUtils.setContainerDefaults(applicationContext)
 
@@ -287,6 +305,9 @@ class MainActivity : ComponentActivity() {
         }
 
         super.onDestroy()
+
+        controllerInputManager?.unregisterInputDeviceListener(controllerDeviceListener)
+        controllerInputManager = null
 
         PluviaApp.events.off<AndroidEvent.SetSystemUIVisibility, Unit>(onSetSystemUi)
         PluviaApp.events.off<AndroidEvent.StartOrientator, Unit>(onStartOrientator)

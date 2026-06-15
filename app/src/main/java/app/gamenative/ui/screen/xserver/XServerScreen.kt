@@ -860,6 +860,7 @@ fun XServerScreen(
         val controllerManager = ControllerManager.getInstance()
         controllerManager.scanForDevices()
         hasPhysicalController = controllerManager.getDetectedDevices().isNotEmpty()
+        xServerView?.getxServer()?.winHandler?.refreshControllerMappingsForHotplug()
 
         if (!hasInternalTouchpad && !hasPhysicalMouse && !hasPhysicalKeyboard && !hasPhysicalController &&
             !container.isTouchscreenMode) {
@@ -929,7 +930,7 @@ fun XServerScreen(
         }
         val isGamepad = ExternalController.isGameController(device)
         if (isGamepad) {
-            xServerView!!.getxServer().winHandler.setCurrentController(device.id);
+            xServerView?.getxServer()?.winHandler?.setCurrentController(device.id)
             if (!showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode &&
                 !container.isTouchscreenMode &&
                 !hasUpdatedScreenGamepad) {
@@ -1246,16 +1247,19 @@ fun XServerScreen(
 
         val deviceListener = object : InputManager.InputDeviceListener {
             override fun onInputDeviceAdded(deviceId: Int) {
+                ControllerManager.getInstance().onDeviceConnected(deviceId)
+                scanForExternalDevices()
                 val device = InputDevice.getDevice(deviceId) ?: return
                 evaluateDevice(device)
             }
 
             override fun onInputDeviceRemoved(deviceId: Int) {
-                // Re-scan since we don't know which type was removed
+                ControllerManager.getInstance().onDeviceDisconnected(deviceId)
                 scanForExternalDevices()
             }
 
             override fun onInputDeviceChanged(deviceId: Int) {
+                ControllerManager.getInstance().onDeviceConnected(deviceId)
                 scanForExternalDevices()
                 val device = InputDevice.getDevice(deviceId) ?: return
                 evaluateDevice(device)
