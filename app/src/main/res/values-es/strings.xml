@@ -769,6 +769,8 @@
     <string name="enable_xinput_api">Activar API de XInput</string>
     <string name="enable_directinput_api">Activar API de DirectInput</string>
     <string name="directinput_mapper_type">Tipo de mapeador de DirectInput</string>
+    <string name="show_controller_debug_menu">Mostrar menú de depuración de mandos</string>
+    <string name="show_controller_debug_menu_subtitle">Muestra el panel en vivo de ranuras de mando P1-P4 en el menú rápido del juego</string>
     <string name="disable_mouse_input">Desactivar entrada de ratón</string>
     <string name="touchscreen_mode">Modo de pantalla táctil</string>
     <string name="touchscreen_mode_description">Para novelas visuales y juegos de estrategia en tiempo real.</string>

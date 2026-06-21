@@ -694,6 +694,8 @@
     <string name="enable_xinput_api">XInput-API aktivieren</string>
     <string name="enable_directinput_api">DirectInput-API aktivieren</string>
     <string name="directinput_mapper_type">DirectInput-Mapper-Typ</string>
+    <string name="show_controller_debug_menu">Controller-Debug-Menü anzeigen</string>
+    <string name="show_controller_debug_menu_subtitle">Live-P1-P4-Controller-Slot-Panel im Schnellmenü im Spiel anzeigen</string>
     <string name="disable_mouse_input">Mauseingabe deaktivieren</string>
     <string name="touchscreen_mode">Touchscreen-Modus</string>
     <string name="touchscreen_mode_description">Für Visual Novels und RTS-Spiele</string>

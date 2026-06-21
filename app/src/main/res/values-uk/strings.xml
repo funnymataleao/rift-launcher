@@ -719,6 +719,8 @@
     <string name="enable_xinput_api">Увімкнути XInput API</string>
     <string name="enable_directinput_api">Увімкнути DirectInput API</string>
     <string name="directinput_mapper_type">Тип мапера DirectInput</string>
+    <string name="show_controller_debug_menu">Показувати меню налагодження контролерів</string>
+    <string name="show_controller_debug_menu_subtitle">Показувати живу панель слотів контролерів P1-P4 у швидкому меню гри</string>
     <string name="disable_mouse_input">Вимкнути введення мишею</string>
     <string name="touchscreen_mode">Режим сенсорного екрану</string>
     <string name="touchscreen_mode_description">Для візуальних романів та ігор RTS</string>

@@ -545,6 +545,8 @@
     <string name="enable_xinput_api">Aktivér XInput API</string>
     <string name="enable_directinput_api">Aktivér DirectInput API</string>
     <string name="directinput_mapper_type">DirectInput-mappertype</string>
+    <string name="show_controller_debug_menu">Vis controller-fejlfindingsmenu</string>
+    <string name="show_controller_debug_menu_subtitle">Vis det live P1-P4-controller-slotpanel i hurtigmenuen i spillet</string>
     <string name="disable_mouse_input">Deaktivér musinput</string>
     <string name="touchscreen_mode">Touchskærmstilstand</string>
     <string name="touchscreen_mode_description">Til visuelle romaner og RTS-spil</string>

@@ -734,6 +734,8 @@
     <string name="enable_xinput_api">XInput API 활성화</string>
     <string name="enable_directinput_api">DirectInput API 활성화</string>
     <string name="directinput_mapper_type">DirectInput 매퍼 유형</string>
+    <string name="show_controller_debug_menu">컨트롤러 디버그 메뉴 표시</string>
+    <string name="show_controller_debug_menu_subtitle">게임 내 빠른 메뉴에 P1-P4 컨트롤러 슬롯 실시간 패널 표시</string>
     <string name="disable_mouse_input">마우스 입력 비활성화</string>
     <string name="touchscreen_mode">터치스크린 모드</string>
     <string name="touchscreen_mode_description">비주얼 노벨 및 RTS 게임용</string>
