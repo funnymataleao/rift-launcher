@@ -3,6 +3,7 @@ package com.winlator.winhandler;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.SystemClock;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.util.Log;
@@ -69,7 +70,7 @@ public class WinHandler {
     private PreferredInputApi preferredInputApi;
     private final ByteBuffer receiveData;
     private final DatagramPacket receivePacket;
-    private boolean running;
+    private volatile boolean running;
     private final ByteBuffer sendData;
     private final DatagramPacket sendPacket;
     private DatagramSocket socket;
@@ -100,6 +101,10 @@ public class WinHandler {
     private static final int OFF_RUMBLE_LOW = 32;
     private static final int OFF_RUMBLE_HIGH = 34;
     private static final int OFF_CONNECTED = 40;
+    private static final int CONTROLLER_RUMBLE_DURATION_MS = 1000;
+    private static final int PHONE_RUMBLE_FALLBACK_DURATION_MS = 40;
+    private static final int STANDALONE_PHONE_RUMBLE_DURATION_MS = 70;
+    private static final int STANDALONE_PHONE_RUMBLE_THROTTLE_MS = 120;
 
     // Add method to set InputControlsView
     public void setInputControlsView(InputControlsView view) {
@@ -126,7 +131,7 @@ public class WinHandler {
 
     private static native void notifyStateChanged(int playerIndex);
     public static native int waitForRumble(int idx, int lastSeq);
-    public static native int rumbleTeardown(int idx);
+    public static native void rumbleTeardown(int idx);
 
     public WinHandler(XServer xServer, XServerRendererView xServerView) {
         ByteBuffer allocate = ByteBuffer.allocate(64);
@@ -725,6 +730,7 @@ public class WinHandler {
                 while (running) {
                     try {
                         curSeq = WinHandler.waitForRumble(sl, lastSeq);
+                        if (!running) break;
                         if (curSeq == lastSeq) {
                             continue;
                         }
@@ -760,7 +766,7 @@ public class WinHandler {
                         }
                     } catch (Exception ignored) {
                     }
-                }
+                 }
             }, "rumble-poller-" + sl);
             thread.start();
             rumblePollerThreads[sl] = thread;
@@ -777,6 +783,21 @@ public class WinHandler {
     }
 
     private boolean startDeviceVibration(int deviceId, short lowFreq, short highFreq) {
+    private InputDevice getCurrentPhysicalControllerDevice() {
+        InputDevice device = InputDevice.getDevice(currentControllerId);
+        return ExternalController.isGameController(device) ? device : null;
+    }
+
+    private int getPhoneRumbleAmplitude(int amplitude) {
+        float normalizedAmplitude = (float) amplitude / 255.0f;
+        float curvedAmplitude = (float) Math.pow(normalizedAmplitude, 0.6f);
+        int phoneAmplitude = (int) (curvedAmplitude * 255);
+        if (phoneAmplitude > 255) phoneAmplitude = 255;
+        if (phoneAmplitude <= 1) phoneAmplitude = 0;
+        return phoneAmplitude;
+    }
+
+    private void startVibration(short lowFreq, short highFreq) {
         // --- Step 1: Calculate the base amplitude once at the top ---
         int unsignedLowFreq = lowFreq & 0xFFFF;
         int unsignedHighFreq = highFreq & 0xFFFF;
@@ -789,33 +810,43 @@ public class WinHandler {
             return false;
         }
         boolean controllerVibrated = false;
+        boolean phoneVibrated = false;
         // --- Step 2: Attempt to vibrate the physical controller first ---
         InputDevice device = InputDevice.getDevice(deviceId);
         if (device != null) {
             Vibrator controllerVibrator = device.getVibrator();
             if (controllerVibrator != null && controllerVibrator.hasVibrator()) {
-                controllerVibrator.vibrate(VibrationEffect.createOneShot(1000, amplitude));
+                controllerVibrator.vibrate(VibrationEffect.createOneShot(CONTROLLER_RUMBLE_DURATION_MS, amplitude));
                 controllerVibrated = true;
             }
         }
 
-        // --- Step 3: Fallback to phone vibration if physical controller fails or doesn't exist ---
-        if (!controllerVibrated) {
+        // --- Step 3: Fallback to phone vibration only for a real controller without rumble.
+        if (!controllerVibrated && device != null) {
             Log.w("WinHandler", "No physical controller vibrator found, falling back to device vibration.");
             Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
             if (phoneVibrator != null && phoneVibrator.hasVibrator()) {
-                // --- HAPTIC CURVE LOGIC to make phone vibration feel better ---
-                float normalizedAmplitude = (float) amplitude / 255.0f;
-                float curvedAmplitude = (float) Math.pow(normalizedAmplitude, 0.6f);
-                int finalPhoneAmplitude = (int) (curvedAmplitude * 255);
-                if (finalPhoneAmplitude > 255) finalPhoneAmplitude = 255;
-                if (finalPhoneAmplitude <= 1) finalPhoneAmplitude = 0;
+                int finalPhoneAmplitude = getPhoneRumbleAmplitude(amplitude);
                 if (finalPhoneAmplitude > 0) {
-                    phoneVibrator.vibrate(VibrationEffect.createOneShot(1000, finalPhoneAmplitude));
+                    phoneVibrator.vibrate(VibrationEffect.createOneShot(PHONE_RUMBLE_FALLBACK_DURATION_MS, finalPhoneAmplitude));
+                    phoneVibrated = true;
+                }
+            }
+        } else if (device == null) {
+            long now = SystemClock.uptimeMillis();
+            if (now - lastStandalonePhoneRumbleMs >= STANDALONE_PHONE_RUMBLE_THROTTLE_MS) {
+                Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
+                if (phoneVibrator != null && phoneVibrator.hasVibrator()) {
+                    int finalPhoneAmplitude = getPhoneRumbleAmplitude(amplitude);
+                    if (finalPhoneAmplitude > 0) {
+                        phoneVibrator.vibrate(VibrationEffect.createOneShot(STANDALONE_PHONE_RUMBLE_DURATION_MS, finalPhoneAmplitude));
+                        lastStandalonePhoneRumbleMs = now;
+                        phoneVibrated = true;
+                    }
                 }
             }
         }
-        return true;
+        isRumbling = controllerVibrated || phoneVibrated;
     }
 
     private void stopVibration(int slot) {
