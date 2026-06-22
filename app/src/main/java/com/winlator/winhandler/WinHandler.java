@@ -782,7 +782,6 @@ public class WinHandler {
         }
     }
 
-    private boolean startDeviceVibration(int deviceId, short lowFreq, short highFreq) {
     private InputDevice getCurrentPhysicalControllerDevice() {
         InputDevice device = InputDevice.getDevice(currentControllerId);
         return ExternalController.isGameController(device) ? device : null;
@@ -797,7 +796,7 @@ public class WinHandler {
         return phoneAmplitude;
     }
 
-    private void startVibration(short lowFreq, short highFreq) {
+    private boolean startDeviceVibration(int deviceId, short lowFreq, short highFreq) {
         // --- Step 1: Calculate the base amplitude once at the top ---
         int unsignedLowFreq = lowFreq & 0xFFFF;
         int unsignedHighFreq = highFreq & 0xFFFF;
@@ -846,7 +845,7 @@ public class WinHandler {
                 }
             }
         }
-        isRumbling = controllerVibrated || phoneVibrated;
+        return controllerVibrated || phoneVibrated;
     }
 
     private void stopVibration(int slot) {
