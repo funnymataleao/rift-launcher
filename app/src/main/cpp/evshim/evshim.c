@@ -265,11 +265,17 @@ static int attach_vjoy(int idx)
     return 0;
 }
 
-static void deactivate_vjoy(int idx)
+static void detach_vjoy(int idx)
 {
     pthread_mutex_lock(&sdl_vjoy_lock);
-    if (vjoy_handles[idx] && vjoy_ids[idx] >= 0) {
-        LOGI("evshim: P%d virtual joystick id=%d disconnected (slot retained)\n", idx, vjoy_ids[idx]);
+    if (vjoy_handles[idx]) {
+        p_SDL_JoystickClose(vjoy_handles[idx]);
+        vjoy_handles[idx] = NULL;
+    }
+    if (vjoy_ids[idx] >= 0) {
+        p_SDL_JoystickDetachVirtual(vjoy_ids[idx]);
+        LOGI("evshim: P%d virtual joystick id=%d disconnected\n", idx, vjoy_ids[idx]);
+        vjoy_ids[idx] = -1;
     }
     pthread_mutex_unlock(&sdl_vjoy_lock);
 }
@@ -281,7 +287,7 @@ static void set_vjoy_connected(int idx, int connected)
             attach_vjoy(idx);
         }
     } else {
-        deactivate_vjoy(idx);
+        detach_vjoy(idx);
     }
 }
 
@@ -332,7 +338,7 @@ static void *vjoy_updater(void *arg)
                 last_connected = connected;
             }
             SDL_Joystick *js = vjoy_handles[idx];
-            if (!js) {
+            if (!connected || !js) {
                 continue;
             }
 
