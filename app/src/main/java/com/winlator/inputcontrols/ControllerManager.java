@@ -14,7 +14,9 @@ import app.gamenative.PrefManager;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ControllerManager {
@@ -48,6 +50,7 @@ public class ControllerManager {
     // This maps a player slot (0-3) to the unique identifier of the physical device.
     // e.g., key=0, value="vendor_123_product_456"
     private final SparseArray<String> slotAssignments = new SparseArray<>();
+    private final Map<String, Integer> lastKnownSlotByIdentifier = new HashMap<>();
 
     // This tracks which of the 4 player slots are enabled by the user.
     private final boolean[] enabledSlots = new boolean[MAX_SLOTS];
@@ -101,12 +104,14 @@ public class ControllerManager {
      */
     private void loadAssignments() {
         slotAssignments.clear();
+        lastKnownSlotByIdentifier.clear();
         for (int i = 0; i < MAX_SLOTS; i++) {
             // Load which device is assigned to this slot
             String prefKey = PREF_PLAYER_SLOT_PREFIX + i;
             String deviceIdentifier = preferences.getString(prefKey, null);
             if (deviceIdentifier != null) {
                 slotAssignments.put(i, deviceIdentifier);
+                lastKnownSlotByIdentifier.put(deviceIdentifier, i);
             }
 
             // Load whether this slot is enabled. Default P1=true, P2-4=false.
@@ -252,6 +257,8 @@ public class ControllerManager {
 
         // Assign the new device to the target slot.
         slotAssignments.put(slotIndex, newDeviceIdentifier);
+        lastKnownSlotByIdentifier.put(newDeviceIdentifier, slotIndex);
+        recentlyFreedSlots.remove(slotIndex);
     }
 
     /**
@@ -260,6 +267,10 @@ public class ControllerManager {
      */
     public void unassignSlot(int slotIndex) {
         if (slotIndex < 0 || slotIndex >= MAX_SLOTS) return;
+        String deviceIdentifier = slotAssignments.get(slotIndex);
+        if (deviceIdentifier != null) {
+            lastKnownSlotByIdentifier.put(deviceIdentifier, slotIndex);
+        }
         slotAssignments.remove(slotIndex);
         markSlotRecentlyFreed(slotIndex);
         saveAssignments();
@@ -273,6 +284,12 @@ public class ControllerManager {
      */
     public int getSlotForDevice(int deviceId) {
         String deviceIdentifier = getDeviceIdentifierForDeviceId(deviceId);
+        if (deviceIdentifier == null) return -1;
+
+        return getSlotForIdentifier(deviceIdentifier);
+    }
+
+    private int getSlotForIdentifier(String deviceIdentifier) {
         if (deviceIdentifier == null) return -1;
 
         // Correctly loop through the sparse array to find the key for our value.
@@ -351,7 +368,7 @@ public class ControllerManager {
             return;
         }
 
-        int slot = getPreferredFreeSlot();
+        int slot = getPreferredFreeSlot(deviceIdentifier);
         if (slot >= 0) {
             enabledSlots[slot] = true;
             assignDeviceIdentifierToSlot(slot, deviceIdentifier);
@@ -377,7 +394,7 @@ public class ControllerManager {
                 continue;
             }
 
-            int slot = getPreferredFreeSlot();
+            int slot = getPreferredFreeSlot(deviceIdentifier);
             if (slot < 0) {
                 Log.i(TAG, "No free controller slot for connected deviceId=" + device.getId());
                 break;
@@ -398,11 +415,15 @@ public class ControllerManager {
     }
 
     public void onDeviceDisconnected(int deviceId) {
-        int slot = getSlotForDevice(deviceId);
+        String deviceIdentifier = getDeviceIdentifierForDeviceId(deviceId);
+        int slot = getSlotForIdentifier(deviceIdentifier);
         knownDeviceIdentifiers.remove(deviceId);
         scanForDevices();
         if (slot >= 0) {
             slotAssignments.remove(slot);
+            if (deviceIdentifier != null) {
+                lastKnownSlotByIdentifier.put(deviceIdentifier, slot);
+            }
             markSlotRecentlyFreed(slot);
             saveAssignments();
             notifySlotsChanged();
@@ -418,16 +439,19 @@ public class ControllerManager {
         recentlyFreedSlots.addLast(slot);
     }
 
-    private int getPreferredFreeSlot() {
-        while (!recentlyFreedSlots.isEmpty()) {
-            int slot = recentlyFreedSlots.removeFirst();
-            if (getAssignedDeviceForSlot(slot) == null) {
-                return slot;
-            }
+    private boolean isSlotAvailable(int slot) {
+        return slot >= 0 && slot < MAX_SLOTS && getAssignedDeviceForSlot(slot) == null;
+    }
+
+    private int getPreferredFreeSlot(String deviceIdentifier) {
+        Integer previousSlot = lastKnownSlotByIdentifier.get(deviceIdentifier);
+        if (previousSlot != null && isSlotAvailable(previousSlot)) {
+            recentlyFreedSlots.remove(previousSlot);
+            return previousSlot;
         }
 
         for (int slot = 0; slot < MAX_SLOTS; slot++) {
-            if (getAssignedDeviceForSlot(slot) == null) {
+            if (isSlotAvailable(slot)) {
                 return slot;
             }
         }

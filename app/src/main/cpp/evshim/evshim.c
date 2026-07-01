@@ -265,17 +265,11 @@ static int attach_vjoy(int idx)
     return 0;
 }
 
-static void detach_vjoy(int idx)
+static void deactivate_vjoy(int idx)
 {
     pthread_mutex_lock(&sdl_vjoy_lock);
-    if (vjoy_handles[idx]) {
-        p_SDL_JoystickClose(vjoy_handles[idx]);
-        vjoy_handles[idx] = NULL;
-    }
-    if (vjoy_ids[idx] >= 0) {
-        p_SDL_JoystickDetachVirtual(vjoy_ids[idx]);
-        LOGI("evshim: P%d virtual joystick id=%d disconnected\n", idx, vjoy_ids[idx]);
-        vjoy_ids[idx] = -1;
+    if (vjoy_handles[idx] && vjoy_ids[idx] >= 0) {
+        LOGI("evshim: P%d virtual joystick id=%d disconnected (slot retained)\n", idx, vjoy_ids[idx]);
     }
     pthread_mutex_unlock(&sdl_vjoy_lock);
 }
@@ -287,8 +281,22 @@ static void set_vjoy_connected(int idx, int connected)
             attach_vjoy(idx);
         }
     } else {
-        detach_vjoy(idx);
+        deactivate_vjoy(idx);
     }
+}
+
+static void apply_vjoy_state(SDL_Joystick *js, const struct gamepad_state *state)
+{
+    p_SDL_JoystickSetVirtualAxis(js, 0, state->lx);
+    p_SDL_JoystickSetVirtualAxis(js, 1, state->ly);
+    p_SDL_JoystickSetVirtualAxis(js, 2, state->rx);
+    p_SDL_JoystickSetVirtualAxis(js, 3, state->ry);
+    p_SDL_JoystickSetVirtualAxis(js, 4, state->lt);
+    p_SDL_JoystickSetVirtualAxis(js, 5, state->rt);
+    for (int i = 0; i < 15; i++) {
+        p_SDL_JoystickSetVirtualButton(js, i, state->btn[i]);
+    }
+    p_SDL_JoystickSetVirtualHat(js, 0, state->hat);
 }
 
 static void *vjoy_updater(void *arg)
@@ -324,20 +332,11 @@ static void *vjoy_updater(void *arg)
                 last_connected = connected;
             }
             SDL_Joystick *js = vjoy_handles[idx];
-            if (!connected || !js) {
+            if (!js) {
                 continue;
             }
 
-            p_SDL_JoystickSetVirtualAxis(js, 0, snap.state.lx);
-            p_SDL_JoystickSetVirtualAxis(js, 1, snap.state.ly);
-            p_SDL_JoystickSetVirtualAxis(js, 2, snap.state.rx);
-            p_SDL_JoystickSetVirtualAxis(js, 3, snap.state.ry);
-            p_SDL_JoystickSetVirtualAxis(js, 4, snap.state.lt);
-            p_SDL_JoystickSetVirtualAxis(js, 5, snap.state.rt);
-            for (int i = 0; i < 15; i++) {
-                p_SDL_JoystickSetVirtualButton(js, i, snap.state.btn[i]);
-            }
-            p_SDL_JoystickSetVirtualHat(js, 0, snap.state.hat);
+            apply_vjoy_state(js, &snap.state);
             continue;
         }
 
