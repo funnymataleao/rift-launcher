@@ -13,6 +13,8 @@ import com.winlator.xenvironment.XEnvironment;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import timber.log.Timber;
@@ -45,6 +47,8 @@ public class PulseAudioComponent extends EnvironmentComponent {
     private byte performanceMode = 1;
     private final AtomicBoolean isPaused = new AtomicBoolean(false);
     private boolean lowLatency = false;
+
+    private final ExecutorService pauseResumeExecutor = Executors.newSingleThreadExecutor();
 
     public PulseAudioComponent(UnixSocketConfig socketConfig, boolean lowLatency) {
         this.socketConfig = socketConfig;
@@ -105,35 +109,39 @@ public class PulseAudioComponent extends EnvironmentComponent {
     }
 
     public void pause() {
-        synchronized (lock) {
-            if (!isPaused.get() && isServerRunning()) {
-                Timber.tag("PulseAudioComponent").d("Pausing...");
+        pauseResumeExecutor.execute(() -> {
+            synchronized (lock) {
+                if (!isPaused.get() && isServerRunning()) {
+                    Timber.tag("PulseAudioComponent").d("Pausing...");
 
-                // Suspend sink and set isPaused together immediately
-                isPaused.set(true);
-                updateSink(true);
+                    // Suspend sink and set isPaused together immediately
+                    isPaused.set(true);
+                    updateSink(true);
 
-                Timber.tag("PulseAudioComponent").d("Audio paused");
+                    Timber.tag("PulseAudioComponent").d("Audio paused");
+                }
             }
-        }
+        });
     }
 
     public void resume() {
-        synchronized (lock) {
-            if (isPaused.get()) {
-                Timber.tag("PulseAudioComponent").d("Resuming...");
+        pauseResumeExecutor.execute(() -> {
+            synchronized (lock) {
+                if (isPaused.get()) {
+                    Timber.tag("PulseAudioComponent").d("Resuming...");
 
-                if (isServerRunning()) {
-                    // Set isPaused immediately
-                    isPaused.set(false);
-                    updateSink(false);
+                    if (isServerRunning()) {
+                        // Set isPaused immediately
+                        isPaused.set(false);
+                        updateSink(false);
 
-                    Timber.tag("PulseAudioComponent").d("Audio resumed");
-                } else {
-                    start();
+                        Timber.tag("PulseAudioComponent").d("Audio resumed");
+                    } else {
+                        start();
+                    }
                 }
             }
-        }
+        });
     }
 
     public boolean isServerRunning() {
