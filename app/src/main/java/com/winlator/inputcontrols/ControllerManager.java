@@ -4,6 +4,9 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.hardware.input.InputManager;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
 import android.preference.PreferenceManager;
 import android.util.SparseArray;
@@ -15,8 +18,10 @@ import app.gamenative.PrefManager;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ControllerManager {
@@ -57,6 +62,11 @@ public class ControllerManager {
     private final List<OnSlotsChangedListener> slotListeners = new CopyOnWriteArrayList<>();
     private final ArrayDeque<Integer> recentlyFreedSlots = new ArrayDeque<>();
 
+    private static final long ASSIGN_SETTLE_MS = 300L;
+    private final Map<String, Long> firstSeenByIdentifier = new HashMap<>();
+    private final Handler settleHandler = new Handler(Looper.getMainLooper());
+    private final Runnable settleAssignRunnable = this::autoAssignConnectedDevices;
+
     public interface OnSlotsChangedListener {
         void onSlotsChanged();
     }
@@ -88,15 +98,35 @@ public class ControllerManager {
     public void scanForDevices() {
         detectedDevices.clear();
         int[] deviceIds = inputManager.getInputDeviceIds();
+        Set<String> present = new HashSet<>();
         for (int deviceId : deviceIds) {
             InputDevice device = inputManager.getInputDevice(deviceId);
             // Some handhelds expose built-in controls as virtual devices, so
             // accept any device that reports a real gamepad/joystick shape.
             if (device != null && isGameController(device)) {
                 detectedDevices.add(device);
-                knownDeviceIdentifiers.put(deviceId, getDeviceIdentifier(device));
+                String ident = getDeviceIdentifier(device);
+                knownDeviceIdentifiers.put(deviceId, ident);
+                if (ident != null) present.add(ident);
             }
         }
+        long now = SystemClock.elapsedRealtime();
+        for (String ident : present) {
+            if (!firstSeenByIdentifier.containsKey(ident)) {
+                firstSeenByIdentifier.put(ident, now);
+            }
+        }
+        firstSeenByIdentifier.keySet().retainAll(present);
+    }
+
+    private boolean isSettled(String identifier) {
+        Long t = firstSeenByIdentifier.get(identifier);
+        return t != null && (SystemClock.elapsedRealtime() - t) >= ASSIGN_SETTLE_MS;
+    }
+
+    private void scheduleSettleAssign() {
+        settleHandler.removeCallbacks(settleAssignRunnable);
+        settleHandler.postDelayed(settleAssignRunnable, ASSIGN_SETTLE_MS + 20L);
     }
 
     /**
@@ -364,7 +394,13 @@ public class ControllerManager {
 
         knownDeviceIdentifiers.put(deviceId, deviceIdentifier);
         scanForDevices();
-        if (getSlotForDevice(deviceId) >= 0) {
+        int existing = getSlotForDevice(deviceId);
+        if (existing >= 0) {
+            return;
+        }
+
+        if (!isSettled(deviceIdentifier)) {
+            scheduleSettleAssign();
             return;
         }
 
@@ -391,6 +427,11 @@ public class ControllerManager {
         for (InputDevice device : detectedDevices) {
             String deviceIdentifier = getDeviceIdentifier(device);
             if (deviceIdentifier == null || getSlotForDevice(device.getId()) >= 0) {
+                continue;
+            }
+
+            if (!isSettled(deviceIdentifier)) {
+                scheduleSettleAssign();
                 continue;
             }
 

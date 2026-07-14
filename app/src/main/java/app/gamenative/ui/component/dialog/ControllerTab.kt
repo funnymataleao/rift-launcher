@@ -61,13 +61,6 @@ fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.shooter_mode_toggle)) },
-            subtitle = { Text(text = stringResource(R.string.shooter_mode_toggle_description)) },
-            state = config.shooterMode,
-            onCheckedChange = { state.config.value = config.copy(shooterMode = it) },
-        )
-        SettingsSwitch(
-            colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.show_controller_debug_menu)) },
             subtitle = { Text(text = stringResource(R.string.show_controller_debug_menu_subtitle)) },
             state = showControllerDebugMenu,

@@ -209,6 +209,17 @@ public class WinHandler {
         }
     }
 
+    public void reassertPrimaryController() {
+        controllerManager.scanForDevices();
+        InputDevice p1Device = controllerManager.getAssignedDeviceForSlot(0);
+        if (p1Device == null) return;
+        ExternalController c = ExternalController.getController(p1Device.getId());
+        if (c != null) {
+            c.setContext(activity);
+            currentController = c;
+        }
+    }
+
     private ExternalController getControllerFromSlot(int slot){
         if (slot == 0) return currentController;
         if (slot < 0 || slot >= MAX_PLAYERS) return null;
@@ -505,13 +516,11 @@ public class WinHandler {
                 gamepadRaf.close();
                 gamepadRaf = null;
             }
-            gamepadBuffer = null;
             for (int i = 0; i < extraGamepadRafs.length; i++) {
                 if (extraGamepadRafs[i] != null) {
                     extraGamepadRafs[i].close();
                     extraGamepadRafs[i] = null;
                 }
-                extraGamepadBuffers[i] = null;
             }
         } catch (IOException ignored) {
         }
