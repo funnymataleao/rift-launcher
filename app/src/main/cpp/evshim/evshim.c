@@ -73,6 +73,7 @@ _Static_assert(sizeof(struct gamepad_io) <= SHM_DATA_SIZE, "gamepad_io exceeds S
 static struct gamepad_io *shm [MAX_GAMEPADS];
 static int vjoy_ids[MAX_GAMEPADS];
 static SDL_Joystick *vjoy_handles[MAX_GAMEPADS];
+static SDL_JoystickID vjoy_instances[MAX_GAMEPADS];
 static size_t g_shm_map_size = 0;
 static int g_is_wine = 0;
 
@@ -182,6 +183,9 @@ static int          (*p_SDL_JoystickSetVirtualAxis)  (SDL_Joystick *, int, int16
 static int          (*p_SDL_JoystickSetVirtualButton)(SDL_Joystick *, int, uint8_t);
 static int          (*p_SDL_JoystickSetVirtualHat)   (SDL_Joystick *, int, uint8_t);
 static void         (*p_SDL_GetVersion)              (SDL_version *);
+static SDL_JoystickID (*p_SDL_JoystickInstanceID)    (SDL_Joystick *);
+static int          (*p_SDL_NumJoysticks)            (void);
+static SDL_JoystickID (*p_SDL_JoystickGetDeviceInstanceID)(int);
 
 #define GETFUNCPTR(name) \
     do { \
@@ -256,7 +260,8 @@ static int attach_vjoy(int idx)
         return -1;
     }
 
-    LOGI("evshim: P%d virtual joystick id=%d connected\n", idx, vjoy_ids[idx]);
+    vjoy_instances[idx] = p_SDL_JoystickInstanceID(vjoy_handles[idx]);
+    LOGI("evshim: P%d virtual joystick id=%d inst=%d connected\n", idx, vjoy_ids[idx], vjoy_instances[idx]);
     return 0;
 }
 
@@ -266,9 +271,26 @@ static void detach_vjoy(int idx)
         p_SDL_JoystickClose(vjoy_handles[idx]);
         vjoy_handles[idx] = NULL;
     }
-    if (vjoy_ids[idx] >= 0) {
-        p_SDL_JoystickDetachVirtual(vjoy_ids[idx]);
-        LOGI("evshim: P%d virtual joystick id=%d disconnected\n", idx, vjoy_ids[idx]);
+    if (vjoy_instances[idx] >= 0) {
+        // Device indexes shift when other joysticks are removed, so the index we
+        // stored at attach time may now point at a different pad. Re-resolve the
+        // current device index from the stable instance id before detaching.
+        int dev = -1;
+        int n = p_SDL_NumJoysticks();
+        for (int i = 0; i < n; i++) {
+            if (p_SDL_JoystickGetDeviceInstanceID(i) == vjoy_instances[idx]) {
+                dev = i;
+                break;
+            }
+        }
+        if (dev < 0) {
+            LOGI("evshim: P%d virtual joystick inst=%d already absent\n", idx, vjoy_instances[idx]);
+        } else if (p_SDL_JoystickDetachVirtual(dev) == 0) {
+            LOGI("evshim: P%d virtual joystick inst=%d disconnected\n", idx, vjoy_instances[idx]);
+        } else {
+            LOGE("evshim: P%d SDL_JoystickDetachVirtual(dev=%d) failed\n", idx, dev);
+        }
+        vjoy_instances[idx] = -1;
         vjoy_ids[idx] = -1;
     }
 }
@@ -356,11 +378,14 @@ static void initialize_wine(int players)
     GETFUNCPTR(SDL_JoystickSetVirtualAxis);  GETFUNCPTR(SDL_JoystickSetVirtualButton);
     GETFUNCPTR(SDL_JoystickSetVirtualHat);
     GETFUNCPTR(SDL_GetVersion);
+    GETFUNCPTR(SDL_JoystickInstanceID);  GETFUNCPTR(SDL_NumJoysticks);
+    GETFUNCPTR(SDL_JoystickGetDeviceInstanceID);
     if (!p_SDL_Init || !p_SDL_GetError || !p_SDL_JoystickOpen ||
                 !p_SDL_JoystickAttachVirtualEx || !p_SDL_JoystickDetachVirtual ||
                 !p_SDL_JoystickClose || !p_SDL_JoystickSetVirtualAxis ||
                 !p_SDL_JoystickSetVirtualButton || !p_SDL_JoystickSetVirtualHat ||
-                !p_SDL_GetVersion) {
+                !p_SDL_GetVersion || !p_SDL_JoystickInstanceID ||
+                !p_SDL_NumJoysticks || !p_SDL_JoystickGetDeviceInstanceID) {
         LOGE("evshim: SDL symbol resolution incomplete; aborting init\n");
         dlclose(sdl_handle);
         sdl_handle = NULL;
@@ -395,6 +420,7 @@ static void initialize_all_pads(void)
     if (players > MAX_GAMEPADS) players = MAX_GAMEPADS;
     for (int i = 0; i < MAX_GAMEPADS; i++) {
         vjoy_ids[i] = -1;
+        vjoy_instances[i] = -1;
     }
 
     setup_shm(players);
