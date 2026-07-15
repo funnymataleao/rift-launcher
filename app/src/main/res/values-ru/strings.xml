@@ -299,6 +299,8 @@
     <string name="developer">Разработчик</string>
     <string name="direct3d">Direct3D</string>
     <string name="directinput_mapper_type">Тип отображения DirectInput</string>
+    <string name="show_controller_debug_menu">Показывать меню отладки контроллеров</string>
+    <string name="show_controller_debug_menu_subtitle">Показывать живую панель слотов контроллеров P1-P4 в игровом быстром меню</string>
     <string name="direction_down">Вниз</string>
     <string name="direction_left">Влево</string>
     <string name="direction_right">Вправо</string>

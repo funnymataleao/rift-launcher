@@ -749,6 +749,8 @@
     <string name="enable_xinput_api">XInput API を有効にする</string>
     <string name="enable_directinput_api">DirectInput API を有効にする</string>
     <string name="directinput_mapper_type">DirectInput マッパーのタイプ</string>
+    <string name="show_controller_debug_menu">コントローラー デバッグ メニューを表示</string>
+    <string name="show_controller_debug_menu_subtitle">ゲーム内クイックメニューに P1-P4 コントローラー スロットのライブパネルを表示します</string>
     <string name="disable_mouse_input">マウス入力を無効にする</string>
     <string name="touchscreen_mode">タッチスクリーンモード</string>
     <string name="shooter_mode_toggle">シューターモード</string>

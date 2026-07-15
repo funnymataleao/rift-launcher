@@ -724,6 +724,8 @@
     <string name="enable_xinput_api">启用 XInput API</string>
     <string name="enable_directinput_api">启用 DirectInput API</string>
     <string name="directinput_mapper_type">DirectInput 映射器类型</string>
+    <string name="show_controller_debug_menu">显示控制器调试菜单</string>
+    <string name="show_controller_debug_menu_subtitle">在游戏内快捷菜单中显示 P1-P4 控制器槽位实时面板</string>
     <string name="disable_mouse_input">禁用鼠标输入</string>
     <string name="touchscreen_mode">触屏模式</string>
     <string name="touchscreen_mode_description">适用于视觉小说和即时战略游戏</string>
