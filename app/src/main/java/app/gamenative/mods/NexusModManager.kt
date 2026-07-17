@@ -3,6 +3,7 @@ package app.gamenative.mods
 import android.content.Context
 import app.gamenative.NetworkMonitor
 import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.data.ModInstall
 import app.gamenative.data.ModInstallStatus
 import app.gamenative.data.ModOverwriteManifest
@@ -106,6 +107,19 @@ object NexusModManager {
     fun installIdFor(appId: String, gameDomain: String, modId: Long, fileId: Long): String =
         installId(appId, gameDomain, modId, fileId)
 
+    fun hasCompletePendingArchive(context: Context, install: ModInstall): Boolean {
+        val archiveFile = File(
+            cacheRoot(context, install.appId),
+            "archives/${sanitizeFileName("${install.installId}_${install.fileName}")}",
+        )
+        val tempArchiveFile = File(archiveFile.parentFile, "${archiveFile.name}.part")
+        return tempArchiveFile.isFile &&
+            (
+                (install.sizeBytes > 0L && tempArchiveFile.length() == install.sizeBytes) ||
+                    NexusImportState.hasCompletedDownload(install, tempArchiveFile.length())
+            )
+    }
+
     fun estimateImportScratchBytes(files: List<NexusModFile>): Long =
         files.fold(0L) { total, file ->
             val estimate = estimateImportScratchBytes(file.sizeBytes)
@@ -155,8 +169,12 @@ object NexusModManager {
         modInfo: NexusModInfo,
         file: NexusModFile,
         apiClient: NexusApiClient = NexusApiClient(),
+        isPremiumAccount: Boolean? = null,
         onDetailedProgress: (ModImportProgress) -> Unit = {},
     ): ModInstall = withContext(Dispatchers.IO) {
+        if (reference.fileId != null && reference.fileId != file.fileId) {
+            throw IOException("The Nexus authorization does not match the selected file")
+        }
         val dao = dao(context)
         val installId = installId(appId, reference.gameDomain, reference.modId, file.fileId)
         val root = cacheRoot(context, appId)
@@ -168,6 +186,10 @@ object NexusModManager {
         val archiveFile = File(archiveDir, sanitizeFileName("${installId}_${file.fileName}"))
         val tempArchiveFile = File(archiveDir, "${archiveFile.name}.part")
         val previousInstall = dao.getInstall(installId)
+        val previousDownloadCompleted = NexusImportState.hasCompletedDownload(
+            previousInstall,
+            tempArchiveFile.length(),
+        )
         val restorablePreviousInstall = NexusImportState.restorablePreviousInstall(previousInstall)
         val importing = ModInstall(
             installId = installId,
@@ -199,24 +221,65 @@ object NexusModManager {
             )
         }
 
-        ModDownloadRegistry.start(installId, appId, modInfo.name)
+        val startAllowed = ModDownloadRegistry.start(installId, appId, modInfo.name)
         var downloadCompleted = false
         var extractionCompleted = false
         try {
-            ensureDownloadNetworkAllowed()
-            val links = apiClient.getDownloadLinks(reference.gameDomain, reference.modId, file.fileId)
-            val downloadUrl = links.firstOrNull()?.uri ?: throw IOException("Nexus did not return a download link")
-            download(installId, downloadUrl, tempArchiveFile, file.sizeBytes) {
+            if (!startAllowed || ModDownloadRegistry.isCancelRequested(installId)) {
+                throw ModImportCanceledException("Import canceled")
+            }
+            val archiveAlreadyDownloaded = tempArchiveFile.isFile &&
+                (
+                    (file.sizeBytes > 0L && tempArchiveFile.length() == file.sizeBytes) ||
+                        previousDownloadCompleted
+                )
+            if (archiveAlreadyDownloaded) {
+                val completedBytes = tempArchiveFile.length()
+                val expectedBytes = file.sizeBytes.takeIf { it > 0L } ?: completedBytes
+                val complete = ModImportProgress(
+                    status = "Downloading",
+                    progress = 1f,
+                    downloadedBytes = completedBytes,
+                    totalBytes = expectedBytes,
+                )
                 ModDownloadRegistry.update(
                     installId = installId,
-                    progress = it.progress,
-                    status = it.status,
-                    downloadedBytes = it.downloadedBytes,
-                    totalBytes = it.totalBytes,
+                    progress = complete.progress,
+                    status = complete.status,
+                    downloadedBytes = complete.downloadedBytes,
+                    totalBytes = complete.totalBytes,
                 )
-                onDetailedProgress(it)
+                onDetailedProgress(complete)
+            } else {
+                if (reference.downloadAuthorization?.isExpired() == true) {
+                    throw NexusApiException(
+                        message = context.getString(R.string.nexus_authorization_expired),
+                        statusCode = 410,
+                        reason = NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_EXPIRED,
+                    )
+                }
+                ensureDownloadNetworkAllowed()
+                val links = apiClient.getDownloadLinks(
+                    gameDomain = reference.gameDomain,
+                    modId = reference.modId,
+                    fileId = file.fileId,
+                    downloadAuthorization = reference.downloadAuthorization,
+                    isPremiumAccount = isPremiumAccount,
+                )
+                val downloadUrl = links.firstOrNull()?.uri ?: throw IOException("Nexus did not return a download link")
+                download(installId, downloadUrl, tempArchiveFile, file.sizeBytes) {
+                    ModDownloadRegistry.update(
+                        installId = installId,
+                        progress = it.progress,
+                        status = it.status,
+                        downloadedBytes = it.downloadedBytes,
+                        totalBytes = it.totalBytes,
+                    )
+                    onDetailedProgress(it)
+                }
             }
             downloadCompleted = true
+            dao.upsertInstall(NexusImportState.markDownloadComplete(importing, tempArchiveFile.length()))
             val unpacking = ModImportProgress("Unpacking", progress = 0f)
             ModDownloadRegistry.update(installId, 0f, unpacking.status)
             onDetailedProgress(unpacking)
@@ -300,8 +363,12 @@ object NexusModManager {
                 tempArchiveFile.delete()
             }
             tempExtractDir.deleteRecursively()
-            val message = NexusImportState.userMessage(e)
+            val message = NexusImportState.userMessage(
+                error = e,
+                expiredAuthorizationMessage = context.getString(R.string.nexus_authorization_expired),
+            )
             recordTerminalImport(ModInstallStatus.ERROR, message)
+            if (e is NexusApiException) throw e
             throw IOException(message, e)
         } finally {
             ModDownloadRegistry.finish(installId)

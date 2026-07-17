@@ -4,6 +4,7 @@ import app.gamenative.data.ModInstall
 import app.gamenative.data.ModInstallStatus
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
@@ -75,7 +76,7 @@ class NexusImportStateTest {
     @Test
     fun userMessage_classifiesCommonImportFailures() {
         assertEquals(
-            "Nexus API authentication failed. Check the API key and account access.",
+            "Nexus denied access to this resource for the current account.",
             NexusImportState.userMessage(NexusApiException("Download failed (403)", statusCode = 403)),
         )
         assertEquals(
@@ -85,6 +86,64 @@ class NexusImportStateTest {
         assertTrue(
             NexusImportState.userMessage(IOException("Nexus did not return a download link"))
                 .contains("manual download"),
+        )
+    }
+
+    @Test
+    fun completedDownload_requiresExactRecordedByteCountAndClearsAuthorizationPause() {
+        val paused = NexusImportState.pauseForWebsiteAuthorization(
+            install = install(status = ModInstallStatus.IMPORTING, fileId = 10L),
+            message = "Authorize on Nexus",
+        )
+
+        val completed = NexusImportState.markDownloadComplete(paused, downloadedBytes = 4_096L)
+
+        assertTrue(NexusImportState.hasCompletedDownload(completed, archiveBytes = 4_096L))
+        assertFalse(NexusImportState.hasCompletedDownload(completed, archiveBytes = 4_095L))
+        assertFalse(NexusImportState.isWaitingForWebsiteAuthorization(completed))
+    }
+
+    @Test
+    fun authorizationPause_invalidatesPreviouslyCompletedDownload() {
+        val completed = NexusImportState.markDownloadComplete(
+            install = install(status = ModInstallStatus.IMPORTING, fileId = 10L),
+            downloadedBytes = 4_096L,
+        )
+
+        val paused = NexusImportState.pauseForWebsiteAuthorization(completed, "Authorize on Nexus")
+
+        assertTrue(NexusImportState.isWaitingForWebsiteAuthorization(paused))
+        assertFalse(NexusImportState.hasCompletedDownload(paused, archiveBytes = 4_096L))
+    }
+
+    @Test
+    fun userMessage_expiredAuthorizationAlwaysIncludesRecoveryStep() {
+        val error = NexusApiException(
+            message = "The Nexus website download authorization expired",
+            statusCode = 410,
+            reason = NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_EXPIRED,
+        )
+
+        assertEquals(
+            "The Nexus website download authorization expired. Open Nexus Mods and authorize the file again.",
+            NexusImportState.userMessage(error),
+        )
+    }
+
+    @Test
+    fun userMessage_expiredAuthorizationPrefersLocalizedOverride() {
+        val error = NexusApiException(
+            message = "The Nexus website download authorization expired",
+            statusCode = 410,
+            reason = NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_EXPIRED,
+        )
+
+        assertEquals(
+            "Autorisierung abgelaufen",
+            NexusImportState.userMessage(
+                error = error,
+                expiredAuthorizationMessage = "Autorisierung abgelaufen",
+            ),
         )
     }
 

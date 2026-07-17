@@ -23,18 +23,19 @@ object ModDownloadRegistry {
 
     fun get(installId: String): ModDownloadInfo? = downloads.value[installId]
 
-    fun start(installId: String, appId: String, displayName: String) {
+    /** Returns false when cancellation arrived before the service registered the import. */
+    fun start(installId: String, appId: String, displayName: String): Boolean =
         synchronized(canceledImports) {
-            canceledImports.remove(installId)
+            val canceledBeforeStart = canceledImports.remove(installId)
+            val info = ModDownloadInfo(
+                installId = installId,
+                appId = appId,
+                displayName = displayName,
+                status = "Starting",
+            )
+            downloads.update { current -> current + (installId to info) }
+            !canceledBeforeStart
         }
-        val info = ModDownloadInfo(
-            installId = installId,
-            appId = appId,
-            displayName = displayName,
-            status = "Starting",
-        )
-        downloads.update { current -> current + (installId to info) }
-    }
 
     fun update(
         installId: String,
