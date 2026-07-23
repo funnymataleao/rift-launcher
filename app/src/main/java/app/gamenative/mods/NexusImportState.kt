@@ -86,6 +86,29 @@ internal object NexusImportState {
         )
     }
 
+    fun pauseWhileOnlineAccessUnavailable(
+        install: ModInstall,
+        message: String,
+        now: Long = System.currentTimeMillis(),
+    ): ModInstall {
+        val metadata = runCatching { JSONObject(install.metadataJson) }.getOrElse { JSONObject() }
+        if (
+            install.status == ModInstallStatus.PAUSED.name &&
+            metadata.optString("error") == message &&
+            !metadata.optBoolean(WEBSITE_AUTHORIZATION_REQUIRED_KEY, false)
+        ) {
+            return install
+        }
+        metadata
+            .put("error", message)
+            .put(WEBSITE_AUTHORIZATION_REQUIRED_KEY, false)
+        return install.copy(
+            status = ModInstallStatus.PAUSED.name,
+            updatedAt = now,
+            metadataJson = metadata.toString(),
+        )
+    }
+
     fun isWaitingForWebsiteAuthorization(install: ModInstall): Boolean =
         runCatching {
             JSONObject(install.metadataJson).optBoolean(WEBSITE_AUTHORIZATION_REQUIRED_KEY, false)
@@ -114,6 +137,7 @@ internal object NexusImportState {
         error: Throwable,
         fallback: String = "Failed to import Nexus mod",
         expiredAuthorizationMessage: String? = null,
+        authenticationMessage: String? = null,
     ): String {
         val raw = error.message.orEmpty()
         val normalized = raw.lowercase()
@@ -124,7 +148,7 @@ internal object NexusImportState {
             return raw.ifBlank { "Import canceled." }
         }
         apiException(error)?.let {
-            return apiMessage(it, fallback, expiredAuthorizationMessage)
+            return apiMessage(it, fallback, expiredAuthorizationMessage, authenticationMessage)
         }
         return when (error) {
             is UnknownHostException -> "Network connection failed. Check your connection and try again."
@@ -167,6 +191,7 @@ internal object NexusImportState {
         error: NexusApiException,
         fallback: String,
         expiredAuthorizationMessage: String?,
+        authenticationMessage: String?,
     ): String {
         val quota = if (error.reason == NexusApiErrorReason.RATE_LIMITED || error.statusCode == 429) {
             buildString {
@@ -177,7 +202,7 @@ internal object NexusImportState {
             ""
         }
         val base = when (error.reason) {
-            NexusApiErrorReason.AUTHENTICATION -> "Nexus rejected the API key. Reconnect the Nexus account and try again."
+            NexusApiErrorReason.AUTHENTICATION -> authenticationMessage ?: error.message ?: fallback
             NexusApiErrorReason.FORBIDDEN -> "Nexus denied access to this resource for the current account."
             NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_REQUIRED ->
                 "Free Nexus accounts must authorize this file on the Nexus Mods website before GameNative can download it."
@@ -191,7 +216,7 @@ internal object NexusImportState {
             NexusApiErrorReason.NOT_FOUND -> error.message ?: "Nexus could not find this mod, file, or collection revision."
             NexusApiErrorReason.RATE_LIMITED -> "Nexus API rate limit reached."
             NexusApiErrorReason.OTHER -> when (error.statusCode) {
-                401 -> "Nexus rejected the API key. Reconnect the Nexus account and try again."
+                401 -> authenticationMessage ?: error.message ?: fallback
                 403 -> "Nexus denied access to this resource for the current account."
                 404 -> error.message ?: "Nexus could not find this mod, file, or collection revision."
                 429 -> "Nexus API rate limit reached."
