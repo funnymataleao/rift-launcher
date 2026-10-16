@@ -11,9 +11,16 @@ on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
+  # Used by rift-sync-upstream.yml: a PR opened with GITHUB_TOKEN starts no workflows.
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Commit to build'
+        required: true
+        type: string
 
 concurrency:
-  group: rift-build-${{ github.ref }}
+  group: rift-build-${{ inputs.ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -28,6 +35,8 @@ jobs:
           df -h /
 
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || '' }}
 
       - name: Check that no proprietary blobs are committed
         run: |
