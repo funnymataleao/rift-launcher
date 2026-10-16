@@ -60,7 +60,7 @@ android {
 
         minSdk = 26
 
-        manifestPlaceholders["screenOrientation"] = "unspecified"
+        manifestPlaceholders["screenOrientation"] = "landscape"
         buildConfigField("boolean", "XR_BUILD", "false")
         buildConfigField("boolean", "MODERN_XR", "false")
 

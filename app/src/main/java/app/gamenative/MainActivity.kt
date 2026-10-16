@@ -83,7 +83,8 @@ class MainActivity : ComponentActivity() {
         private var totalIndex = 0
 
         private var currentOrientationChangeValue: Int = 0
-        private var availableOrientations: EnumSet<Orientation> = EnumSet.of(Orientation.UNSPECIFIED)
+        // Rift: the launcher UI stays in landscape; games still apply their own orientation.
+        private var availableOrientations: EnumSet<Orientation> = EnumSet.of(Orientation.LANDSCAPE)
 
         fun isHeadset(context: Context): Boolean =
             context.packageManager.hasSystemFeature("android.hardware.vr.headtracking") ||

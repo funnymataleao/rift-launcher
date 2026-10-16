@@ -879,7 +879,8 @@ fun PluviaMain(
                 // reset system ui visibility based on user preference
                 // TODO: add option for user to set
                 // reset available orientations
-                PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(EnumSet.of(Orientation.UNSPECIFIED)))
+                // Rift: outside games the launcher stays in landscape, without flipping.
+                PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(EnumSet.of(Orientation.LANDSCAPE)))
             }
             // find out if back is available
             hasBack = navController.previousBackStackEntry?.destination?.route != null
