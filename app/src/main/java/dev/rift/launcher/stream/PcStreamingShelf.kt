@@ -63,7 +63,7 @@ import kotlinx.coroutines.withContext
 private const val ADD_PC_KEY = "stream:add"
 
 /** One cover in the "PC streaming" row: an app of a paired PC, or the "Add PC" card at the end. */
-private sealed interface StreamEntry {
+internal sealed interface StreamEntry {
     val key: String
 
     data class App(val pc: ComputerDetails, val app: NvApp) : StreamEntry {

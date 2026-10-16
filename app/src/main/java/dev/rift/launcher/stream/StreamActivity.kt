@@ -141,17 +141,17 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
         display.getRealSize(size)
         val nativeWidth = max(size.x, size.y) and 1.inv()
         val nativeHeight = min(size.x, size.y) and 1.inv()
-        val fixedHeight = StreamSettings.heightOf(settings.resolution)
-        if (fixedHeight == null) {
+        val fixedSize = StreamSettings.sizeOf(settings.resolution)
+        if (fixedSize == null) {
             streamWidth = nativeWidth
             streamHeight = nativeHeight
         } else {
-            streamHeight = fixedHeight
-            streamWidth = (fixedHeight * 16 / 9) and 1.inv()
+            streamWidth = fixedSize.first
+            streamHeight = fixedSize.second
         }
         val refreshRate = display.mode.refreshRate
         val fps = if (settings.fps > 0) settings.fps else min(refreshRate.roundToInt(), 120)
-        val bitrate = settings.bitrateKbps.takeIf { it > 0 } ?: StreamSettings.autoBitrateKbps(streamWidth, streamHeight, fps)
+        val bitrate = settings.bitrateMbps.takeIf { it > 0 }?.times(1000) ?: StreamSettings.autoBitrateKbps(streamWidth, streamHeight, fps)
 
         val decoderConfig = DecoderConfiguration().apply {
             this.fps = fps.toFloat()
@@ -162,7 +162,13 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
                 "av1" -> DecoderConfiguration.FormatOption.FORCE_AV1
                 else -> DecoderConfiguration.FormatOption.AUTO
             }
-            enablePerfOverlay = settings.showStats
+            fullRange = settings.fullRange
+            enableUltraLowLatency = settings.ultraLowLatency
+            framePacing = settings.framePacing.coerceIn(
+                DecoderConfiguration.FRAME_PACING_MIN_LATENCY,
+                DecoderConfiguration.FRAME_PACING_MAX_SMOOTHNESS,
+            )
+            enablePerfOverlay = settings.perfOverlay
         }
         val wantHdr = settings.hdr && appSupportsHdr
         decoder = MediaCodecDecoderRenderer(this, decoderConfig, { }, 0, false, wantHdr, false, null, this)
@@ -187,17 +193,27 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
             .setRefreshRate(fps.toFloat())
             .setApp(app)
             .setBitrate(bitrate)
-            .setEnableSops(true)
-            .enableLocalAudioPlayback(settings.playAudioOnPc)
+            .setEnableSops(settings.optimizeGameSettings)
+            .setVirtualDisplay(settings.virtualDisplay)
+            .enableAdaptiveResolution(settings.adaptiveResolution)
+            .setEnableUltraLowLatency(settings.ultraLowLatency)
+            .enableLocalAudioPlayback(settings.playLocalAudio)
             .setMaxPacketSize(1392)
-            .setRemoteConfiguration(StreamConfiguration.STREAM_CFG_AUTO)
+            .setRemoteConfiguration(
+                when (settings.connection) {
+                    "local" -> StreamConfiguration.STREAM_CFG_LOCAL
+                    "remote" -> StreamConfiguration.STREAM_CFG_REMOTE
+                    else -> StreamConfiguration.STREAM_CFG_AUTO
+                },
+            )
             .setSupportedVideoFormats(videoFormats)
-            .setAttachedGamepadMask(1)
+            .setAttachedGamepadMaskByCount(settings.gamepadCount.takeIf { it > 0 } ?: connectedGamepads().coerceIn(1, 4))
+            .setPersistGamepadsAfterDisconnect(settings.keepGamepads)
             .setClientRefreshRateX100((refreshRate * 100).toInt())
             .setAudioConfiguration(
                 when (settings.audio) {
-                    "surround51" -> MoonBridge.AUDIO_CONFIGURATION_51_SURROUND
-                    "surround71" -> MoonBridge.AUDIO_CONFIGURATION_71_SURROUND
+                    "5.1" -> MoonBridge.AUDIO_CONFIGURATION_51_SURROUND
+                    "7.1" -> MoonBridge.AUDIO_CONFIGURATION_71_SURROUND
                     else -> MoonBridge.AUDIO_CONFIGURATION_STEREO
                 },
             )
@@ -270,7 +286,7 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
 
     override fun connectionStarted() {
         runOnUiThread {
-            if (!settings.showStats) statusText.visibility = View.GONE
+            if (!settings.perfOverlay) statusText.visibility = View.GONE
         }
     }
 
@@ -342,6 +358,10 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
     }
 
     // Input: one gamepad
+
+    private fun connectedGamepads() = InputDevice.getDeviceIds().count { id ->
+        InputDevice.getDevice(id)?.let { !it.isVirtual && isGamepad(it.sources) } == true
+    }
 
     private fun isGamepad(source: Int) =
         source and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD ||
