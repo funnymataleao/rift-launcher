@@ -17,8 +17,8 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.TextView
-import android.widget.Toast
 import app.gamenative.R
+import app.gamenative.ui.util.SnackbarManager
 import com.limelight.binding.PlatformBinding
 import com.limelight.binding.audio.AndroidAudioRenderer
 import com.limelight.binding.video.DecoderConfiguration
@@ -68,6 +68,8 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
 
     private lateinit var surfaceView: SurfaceView
     private lateinit var statusText: TextView
+    private lateinit var messageText: TextView
+    private val hideMessage = Runnable { messageText.visibility = View.GONE }
     private lateinit var decoder: MediaCodecDecoderRenderer
     private lateinit var conn: NvConnection
     private lateinit var settings: StreamSettings
@@ -98,11 +100,23 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
             textSize = 13f
             setPadding(24, 12, 24, 12)
         }
+        messageText = TextView(this).apply {
+            setTextColor(Color.WHITE)
+            setBackgroundColor(0xCC000000.toInt())
+            textSize = 18f
+            setPadding(40, 20, 40, 20)
+            visibility = View.GONE
+        }
         setContentView(
             FrameLayout(this).apply {
                 setBackgroundColor(Color.BLACK)
                 addView(surfaceView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT, Gravity.CENTER))
                 addView(statusText, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.START))
+                addView(
+                    messageText,
+                    FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
+                        .apply { bottomMargin = 64 },
+                )
             },
         )
 
@@ -153,7 +167,7 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
         val wantHdr = settings.hdr && appSupportsHdr
         decoder = MediaCodecDecoderRenderer(this, decoderConfig, { }, 0, false, wantHdr, false, null, this)
         if (!decoder.isAvcSupported) {
-            Toast.makeText(this, R.string.rift_stream_no_decoder, Toast.LENGTH_LONG).show()
+            SnackbarManager.show(getString(R.string.rift_stream_no_decoder))
             return finish()
         }
 
@@ -248,7 +262,7 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
 
     override fun stageFailed(stage: String, portFlags: Int, errorCode: Int): Boolean {
         runOnUiThread {
-            Toast.makeText(this, getString(R.string.rift_stream_stage_failed, stage, errorCode), Toast.LENGTH_LONG).show()
+            SnackbarManager.show(getString(R.string.rift_stream_stage_failed, stage, errorCode))
             finish()
         }
         return false
@@ -263,7 +277,7 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
     override fun connectionTerminated(errorCode: Int) {
         runOnUiThread {
             if (errorCode != MoonBridge.ML_ERROR_GRACEFUL_TERMINATION) {
-                Toast.makeText(this, getString(R.string.rift_stream_terminated, errorCode), Toast.LENGTH_LONG).show()
+                SnackbarManager.show(getString(R.string.rift_stream_terminated, errorCode))
             }
             finish()
         }
@@ -272,11 +286,19 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
     override fun connectionStatusUpdate(connectionStatus: Int) = Unit
 
     override fun displayMessage(message: String) {
-        runOnUiThread { Toast.makeText(this, message, Toast.LENGTH_LONG).show() }
+        runOnUiThread { showMessage(message, 6000) }
     }
 
     override fun displayTransientMessage(message: String) {
-        runOnUiThread { Toast.makeText(this, message, Toast.LENGTH_SHORT).show() }
+        runOnUiThread { showMessage(message, 2500) }
+    }
+
+    /** In-stream message over the video; snackbars live in the main activity. */
+    private fun showMessage(message: String, durationMs: Long) {
+        messageText.removeCallbacks(hideMessage)
+        messageText.text = message
+        messageText.visibility = View.VISIBLE
+        messageText.postDelayed(hideMessage, durationMs)
     }
 
     override fun rumble(controllerNumber: Short, lowFreqMotor: Short, highFreqMotor: Short) {
