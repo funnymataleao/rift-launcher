@@ -100,7 +100,9 @@ internal fun QuickAccessRow() {
     }
 }
 
+@Composable
 private fun buttonName(code: Int): String = when (code) {
+    KeyEvent.KEYCODE_UNKNOWN -> stringResource(R.string.rift_settings_quick_access_hold_select)
     KeyEvent.KEYCODE_BUTTON_MODE -> "Guide"
     KeyEvent.KEYCODE_BUTTON_THUMBL -> "L3"
     KeyEvent.KEYCODE_BUTTON_THUMBR -> "R3"

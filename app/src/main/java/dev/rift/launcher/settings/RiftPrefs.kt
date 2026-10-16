@@ -160,10 +160,11 @@ class RiftPrefs private constructor(
 
     /**
      * KeyEvent key code of the gamepad button that opens the right-hand panel on the home screen
-     * (file "rift_prefs", key "quick_access_keycode", Guide by default).
+     * (file "rift_prefs", key "quick_access_keycode"). None by default: holding Select always works,
+     * and Android keeps Guide for itself on some devices.
      */
     var quickAccessKeyCode: Int
-        get() = homePrefs.getInt(QUICK_ACCESS, android.view.KeyEvent.KEYCODE_BUTTON_MODE)
+        get() = homePrefs.getInt(QUICK_ACCESS, dev.rift.launcher.home.RiftControls.DEFAULT_QUICK_ACCESS)
         set(value) = homePrefs.edit().putInt(QUICK_ACCESS, value).apply()
 
     // --- Emulator folders ---
