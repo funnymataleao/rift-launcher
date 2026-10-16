@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rift_section_pc_games">PC-игры</string>
+    <string name="rift_shelf_installed">Установлено</string>
+    <string name="rift_shelf_library">Вся библиотека</string>
+    <string name="rift_play">Играть</string>
+    <string name="rift_install">Установить</string>
+    <string name="rift_details">Об игре</string>
+    <string name="rift_installed">Установлена</string>
+    <string name="rift_not_installed">Не установлена</string>
+    <string name="rift_stores">Магазины</string>
+    <string name="rift_settings">Настройки</string>
+    <string name="rift_empty_title">Игр пока нет</string>
+    <string name="rift_empty_message">Войдите в Steam, GOG, Epic или Amazon, и ваши PC-игры появятся здесь.</string>
+    <string name="rift_empty_action">Подключить магазин</string>
+    <string name="rift_no_sources_message">Источники пока не настроены. Подключите магазин, и появится раздел PC-игр.</string>
+    <string name="rift_hint_select">Выбрать</string>
+    <string name="rift_hint_play">Играть</string>
+    <string name="rift_hint_sections">Разделы</string>
+    <string name="rift_hint_back">Назад</string>
+    <string name="rift_source_steam">Steam</string>
+    <string name="rift_source_gog">GOG</string>
+    <string name="rift_source_epic">Epic Games</string>
+    <string name="rift_source_amazon">Amazon</string>
+    <string name="rift_source_custom">Свои игры</string>
+</resources>

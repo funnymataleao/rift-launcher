@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -15,6 +16,7 @@ import app.gamenative.ui.model.HomeViewModel
 import app.gamenative.ui.screen.downloads.HomeDownloadsScreen
 import app.gamenative.ui.screen.library.HomeLibraryScreen
 import app.gamenative.ui.theme.PluviaTheme
+import dev.rift.launcher.home.RiftHomeScreen
 
 @Composable
 fun HomeScreen(
@@ -33,12 +35,27 @@ fun HomeScreen(
 ) {
     val homeState by viewModel.homeState.collectAsStateWithLifecycle()
 
+    // Rift: our home screen comes first; GameNative's library stays reachable as "Stores".
+    var showRiftHome by rememberSaveable { mutableStateOf(true) }
+    if (showRiftHome) {
+        RiftHomeScreen(
+            onClickPlay = onClickPlay,
+            onTestGraphics = onTestGraphics,
+            onPlayWithDiagnostics = onPlayWithDiagnostics,
+            onAiDebugRun = onAiDebugRun,
+            onOpenStores = { showRiftHome = false },
+            onOpenSettings = { onNavigateRoute(PluviaScreen.Settings.route) },
+            onExit = onClickExit,
+        )
+        return
+    }
+
     // Pressing back while logged in, confirm we want to close the app.
     BackHandler {
         if (homeState.currentDestination != HomeDestination.Library) {
             viewModel.onDestination(HomeDestination.Library)
         } else {
-            onClickExit()
+            showRiftHome = true
         }
     }
 
