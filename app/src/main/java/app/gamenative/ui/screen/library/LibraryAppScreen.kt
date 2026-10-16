@@ -1452,7 +1452,7 @@ internal fun AppScreenContent(
                                 }
                             }
                         } else {
-                            // Rift: community stats spread evenly in a grey strip between Install/Play and settings.
+                            // Rift: community stats spread evenly on the action bar plate between Install/Play and settings.
                             val hasStats = gameStats != null &&
                                 (gameStats.runsGpu > 0 || gameStats.reviewsGpu > 0 || gameStats.reviewsDevice > 0 ||
                                     gameStats.fps != null || gameStats.sessionSec != null)
@@ -1462,8 +1462,6 @@ internal fun AppScreenContent(
                                     modifier = Modifier
                                         .weight(1f)
                                         .heightIn(min = 48.dp)
-                                        .clip(RoundedCornerShape(50))
-                                        .background(Color.White.copy(alpha = 0.1f))
                                         .padding(horizontal = 12.dp),
                                 )
                             } else {
