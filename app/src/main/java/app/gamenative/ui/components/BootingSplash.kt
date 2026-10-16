@@ -377,7 +377,7 @@ fun BootingSplash(
                 ) {
                     // Glow layer (blurred behind)
                     Text(
-                        text = "GameNative",
+                        text = "Rift Launcher",
                         style = MaterialTheme.typography.displaySmall.copy(
                             fontWeight = FontWeight.Bold,
                             fontSize = 36.sp,
@@ -392,7 +392,7 @@ fun BootingSplash(
 
                     // Main logo text
                     Text(
-                        text = "GameNative",
+                        text = "Rift Launcher",
                         style = MaterialTheme.typography.displaySmall.copy(
                             fontWeight = FontWeight.Bold,
                             fontSize = 36.sp,
