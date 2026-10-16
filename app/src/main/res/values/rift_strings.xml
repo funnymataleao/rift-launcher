@@ -192,8 +192,6 @@
     <string name="rift_settings_clock">Clock, hours</string>
     <string name="rift_settings_show_battery">Show battery</string>
     <string name="rift_settings_show_network">Show network</string>
-    <string name="rift_settings_button_glyphs">Button icons</string>
-    <string name="rift_settings_button_glyphs_summary">Which gamepad icons the hints show</string>
     <string name="rift_settings_ui_sounds">Interface sounds</string>
     <string name="rift_settings_ui_sounds_summary">A soft click when moving and pressing</string>
     <string name="rift_settings_sound_note">Put files named move, select, back, tab, open, close and launch (ogg, wav or mp3) in the folder. Missing ones stay built-in.</string>
@@ -248,4 +246,9 @@
     <string name="rift_search">Search</string>
     <string name="rift_settings_stream_vibration">Gamepad vibration</string>
     <string name="rift_settings_stream_vibration_summary">Pass the game\'s rumble to your gamepad</string>
+    <string name="rift_settings_quick_access">Right panel button</string>
+    <string name="rift_settings_quick_access_summary">The gamepad button that opens the game options panel</string>
+    <string name="rift_settings_quick_access_press">Press the button on your gamepad</string>
+    <string name="rift_settings_quick_access_reset">Guide button</string>
+    <string name="rift_settings_cancel">Cancel</string>
 </resources>
