@@ -2,16 +2,8 @@
 <!-- Rift Launcher strings. Kept apart from GameNative's strings.xml to avoid upstream merge conflicts. -->
 <resources>
     <string name="rift_section_pc_games">PC games</string>
-    <string name="rift_filter_all">All</string>
-    <string name="rift_filter_installed">Installed</string>
-    <string name="rift_filter_not_installed">Not installed</string>
     <string name="rift_filter_empty">Nothing here yet</string>
     <string name="rift_hint_filters">Filters</string>
-    <string name="rift_filter_show">Show</string>
-    <string name="rift_filter_favorites">Favorites</string>
-    <string name="rift_filter_sort">Sort</string>
-    <string name="rift_filter_source">Source</string>
-    <string name="rift_menu_sections">Sections</string>
     <string name="rift_play">Play</string>
     <string name="rift_install">Install</string>
     <string name="rift_details">Details</string>
@@ -32,6 +24,8 @@
     <string name="rift_source_epic">Epic Games</string>
     <string name="rift_source_amazon">Amazon</string>
     <string name="rift_source_custom">Custom</string>
-    <string name="rift_menu">Menu</string>
-    <string name="rift_exit">Exit</string>
+    <string name="rift_section_android_games">Android games</string>
+    <string name="rift_hint_menu">Menu</string>
+    <string name="rift_source_android">Android</string>
+    <string name="rift_search">Search</string>
 </resources>

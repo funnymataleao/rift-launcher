@@ -9,7 +9,7 @@ val customBackground = Color(0xFF000000)
 val customForeground = Color(0xFFFAFAFA)
 val customCard = Color(0xFF000000)
 val customCardForeground = Color(0xFFFAFAFA)
-val customPrimary = Color(0xFFFFF44F)
+val customPrimary = Color(0xFFF2F2F2)
 val customPrimaryForeground = Color(0xFF000000)
 val customSecondary = Color(0xFF27272A)
 val customSecondaryForeground = Color(0xFFFAFAFA)
@@ -26,8 +26,8 @@ val pluviaSeedColor = Color(0x284561FF)
  * These are the base colors used to construct theme palettes.
  */
 
-// Brand (Rift: black and lemon instead of GameNative's magenta, Denis 2026-10-16)
-val PluviaPrimary = Color(0xFFFFF44F)
+// Brand (Rift: black with white controls instead of GameNative's magenta; lemon is only an accent, Denis 2026-10-16)
+val PluviaPrimary = Color(0xFFF2F2F2)
 val PluviaOnPrimary = Color(0xFF000000)
 val PluviaSeed = Color(0x284561FF)
 
@@ -45,10 +45,10 @@ val PluviaForegroundMuted = Color(0xFF94969C)
 val PluviaSecondary = Color(0xFF27272A)
 
 // Accents
-// Rift: the cyan, purple and pink accents become lemon tints, so brand gradients read black and lemon.
+// Rift: cyan becomes the lemon accent; purple and pink become greys, so brand gradients stay quiet.
 val PluviaCyan = Color(0xFFFFF44F)
-val PluviaPurple = Color(0xFFF5E50A)
-val PluviaPink = Color(0xFFFFF9A6)
+val PluviaPurple = Color(0xFFBDBDBD)
+val PluviaPink = Color(0xFFFFFFFF)
 
 // Semantic
 val PluviaSuccess = Color(0xFF10B981)

@@ -1,16 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="rift_section_pc_games">PC-игры</string>
-    <string name="rift_filter_all">Все</string>
-    <string name="rift_filter_installed">Установленные</string>
-    <string name="rift_filter_not_installed">Не установленные</string>
     <string name="rift_filter_empty">Здесь пока пусто</string>
     <string name="rift_hint_filters">Фильтры</string>
-    <string name="rift_filter_show">Показать</string>
-    <string name="rift_filter_favorites">Избранное</string>
-    <string name="rift_filter_sort">Сортировка</string>
-    <string name="rift_filter_source">Источник</string>
-    <string name="rift_menu_sections">Разделы</string>
     <string name="rift_play">Играть</string>
     <string name="rift_install">Установить</string>
     <string name="rift_details">Об игре</string>
@@ -31,6 +23,8 @@
     <string name="rift_source_epic">Epic Games</string>
     <string name="rift_source_amazon">Amazon</string>
     <string name="rift_source_custom">Свои игры</string>
-    <string name="rift_menu">Меню</string>
-    <string name="rift_exit">Выход</string>
+    <string name="rift_section_android_games">Android-игры</string>
+    <string name="rift_hint_menu">Меню</string>
+    <string name="rift_source_android">Android</string>
+    <string name="rift_search">Поиск</string>
 </resources>
