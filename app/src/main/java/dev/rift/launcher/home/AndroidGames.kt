@@ -22,7 +22,7 @@ object AndroidGames {
     const val KEY_PACKAGES = "android_games_packages"
 
     private const val ICON_SIZE = 256
-    private val icons = LruCache<String, Bitmap>(64)
+    private val icons = LruCache<String, Bitmap>(160)
 
     fun prefs(context: Context): SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
@@ -54,6 +54,8 @@ object AndroidGames {
         if (picked.isEmpty()) return emptyList()
         return launchable(context).filter { it.packageName in picked }.sortedBy { it.label.lowercase() }
     }
+
+    fun iconCached(packageName: String): Bitmap? = icons.get(packageName)
 
     fun icon(context: Context, packageName: String): Bitmap? {
         icons.get(packageName)?.let { return it }

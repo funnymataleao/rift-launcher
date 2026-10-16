@@ -241,6 +241,8 @@
     <string name="rift_section_android_games">Android-игры</string>
     <string name="rift_hint_options">Опции</string>
     <string name="rift_settings_quick_access_hold_select">Удерживать Select</string>
+    <string name="rift_apps_title">Приложения</string>
+    <string name="rift_hint_apps">Приложения</string>
     <string name="rift_hint_menu">Удерживать: быстрый доступ</string>
     <string name="rift_source_android">Android</string>
     <string name="rift_search">Поиск</string>

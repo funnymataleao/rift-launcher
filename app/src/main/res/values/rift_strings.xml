@@ -242,6 +242,8 @@
     <string name="rift_section_android_games">Android games</string>
     <string name="rift_hint_options">Options</string>
     <string name="rift_settings_quick_access_hold_select">Hold Select</string>
+    <string name="rift_apps_title">Apps</string>
+    <string name="rift_hint_apps">Apps</string>
     <string name="rift_hint_menu">Hold: quick access</string>
     <string name="rift_source_android">Android</string>
     <string name="rift_search">Search</string>

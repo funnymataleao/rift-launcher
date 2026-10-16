@@ -61,6 +61,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import app.gamenative.events.AndroidEvent
+import app.gamenative.PluviaApp
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.runtime.SideEffect
 import androidx.compose.foundation.focusable
 import kotlinx.coroutines.delay
@@ -352,7 +361,9 @@ fun RiftHomeScreen(
     var optionsToken by remember { mutableIntStateOf(0) }
     val optionsOnly = remember { RiftOptionsOnly() }
     val gameOptionsOpen = optionsItem != null && optionsOnly.panelOpen
-    val overlayOpen = panelOpen || systemMenuOpen || gameOptionsOpen
+    // B on the home: every installed Android app in a grid, Beacon style.
+    var appsOpen by rememberSaveable { mutableStateOf(false) }
+    val overlayOpen = panelOpen || systemMenuOpen || gameOptionsOpen || appsOpen
     var selectLongPressed by remember { mutableStateOf(false) }
     val quickAccessKey = remember { RiftControls.quickAccessKey(context) }
     // B / Back closes the open panel and never leaves the app.
@@ -369,7 +380,42 @@ fun RiftHomeScreen(
     // Keeps key handling alive when no cover holds focus (after a panel closes, say): the screen
     // itself takes focus instead of nothing.
     val rootFocus = remember { FocusRequester() }
+    var rootFocused by remember { mutableStateOf(false) }
+    val composeView = LocalView.current
+    fun refocusCover() {
+        // Compose can hand focus back to the window (Back at the top of the focus tree), and then no
+        // key reaches the screen at all: take the view's focus back first.
+        if (!composeView.hasFocus()) composeView.requestFocus()
+        // Across a frame, so the cover sees its focus request change even if it was the last one.
+        pendingFocusKey = null
+        homeScope.launch {
+            withFrameNanos { }
+            focusSection(section)
+        }
+    }
     LaunchedEffect(Unit) { runCatching { rootFocus.requestFocus() } }
+    // Safety net at the activity level (GameNative's key event bus sees every key first): any press
+    // while nothing in this screen has focus puts focus back on a cover and is not passed on.
+    DisposableEffect(composeView) {
+        val listener: (AndroidEvent.KeyEvent) -> Boolean = { androidEvent ->
+            val ev = androidEvent.event
+            if (ev.action == KeyEvent.ACTION_DOWN && !composeView.hasFocus() && composeView.hasWindowFocus()) {
+                refocusCover()
+                true
+            } else {
+                false
+            }
+        }
+        PluviaApp.events.on<AndroidEvent.KeyEvent, Boolean>(listener)
+        onDispose { PluviaApp.events.off<AndroidEvent.KeyEvent, Boolean>(listener) }
+    }
+    // Coming back to the app: focus a cover again.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, e -> if (e == Lifecycle.Event.ON_RESUME) refocusCover() }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     // What the footer blurs: the screen behind it, recorded once per frame and drawn again under the footer.
     val backdrop = rememberGraphicsLayer()
     // The panel's layout choice belongs to GameNative's library screen; Rift only keeps it in sync.
@@ -391,6 +437,12 @@ fun RiftHomeScreen(
                     val native = event.nativeKeyEvent
                     if (optionsItem != null && optionsOnly.panelOpen) return@onPreviewKeyEvent false
                     if (optionsItem != null && event.type == KeyEventType.KeyDown) optionsItem = null
+                    if (appsOpen) return@onPreviewKeyEvent false
+                    // Never stranded: a direction press with nothing but the screen focused goes to a cover.
+                    if (rootFocused && event.type == KeyEventType.KeyDown && native.keyCode in KeyEvent.KEYCODE_DPAD_UP..KeyEvent.KEYCODE_DPAD_RIGHT) {
+                        refocusCover()
+                        return@onPreviewKeyEvent true
+                    }
                     if (searchOpen) {
                         val leave = native.keyCode == KeyEvent.KEYCODE_BUTTON_B || native.keyCode == KeyEvent.KEYCODE_BACK ||
                             native.keyCode == KeyEvent.KEYCODE_ESCAPE ||
@@ -402,6 +454,14 @@ fun RiftHomeScreen(
                             }
                             return@onPreviewKeyEvent true
                         }
+                    }
+                    // B on the home opens the apps grid. Both halves of the press are taken here: left to
+                    // Compose, Back moves focus out of the row and the gamepad has nothing left to drive.
+                    val isBack = native.keyCode == KeyEvent.KEYCODE_BUTTON_B || native.keyCode == KeyEvent.KEYCODE_BACK ||
+                        native.keyCode == KeyEvent.KEYCODE_ESCAPE
+                    if (isBack && !systemMenuOpen && !viewModel.state.value.isOptionsPanelOpen) {
+                        if (event.type == KeyEventType.KeyUp) appsOpen = true
+                        return@onPreviewKeyEvent true
                     }
                     // Select: short press opens the filter panel, a long press the quick access panel.
                     if (native.keyCode == KeyEvent.KEYCODE_BUTTON_SELECT) {
@@ -465,6 +525,11 @@ fun RiftHomeScreen(
                     }
                 }
                 .focusRequester(rootFocus)
+                // Focus should sit on a cover; if it ever lands on the screen itself, send it back.
+                .onFocusChanged {
+                    rootFocused = it.isFocused
+                    if (it.isFocused) refocusCover()
+                }
                 .focusable(),
         ) {
             val cardHeight = (maxHeight * 0.37f).coerceIn(160.dp, 340.dp)
@@ -630,6 +695,7 @@ fun RiftHomeScreen(
                         }
                     }
                 }
+                RiftAppsGrid(isOpen = appsOpen, onDismiss = { appsOpen = false })
                 RiftSystemMenu(
                     isOpen = systemMenuOpen,
                     onDismiss = { systemMenuOpen = false },
@@ -1325,6 +1391,7 @@ private fun HintsBar(showFilters: Boolean, modifier: Modifier = Modifier) {
         if (showFilters) Hint(listOf(GamepadButton.START.iconRes), stringResource(R.string.rift_hint_options))
         if (showFilters) Hint(listOf(face(GamepadButton.Y, GamepadButton.X)), stringResource(R.string.rift_details))
         Hint(listOf(face(GamepadButton.A, GamepadButton.B)), stringResource(R.string.rift_hint_play))
+        Hint(listOf(face(GamepadButton.B, GamepadButton.A)), stringResource(R.string.rift_hint_apps))
     }
 }
 
