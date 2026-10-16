@@ -245,4 +245,6 @@
     <string name="rift_hint_menu">Menu</string>
     <string name="rift_source_android">Android</string>
     <string name="rift_search">Search</string>
+    <string name="rift_settings_stream_vibration">Gamepad vibration</string>
+    <string name="rift_settings_stream_vibration_summary">Pass the game\'s rumble to your gamepad</string>
 </resources>

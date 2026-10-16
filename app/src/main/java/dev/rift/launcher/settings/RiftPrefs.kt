@@ -15,7 +15,10 @@ import android.content.SharedPreferences
 /** One configured emulator platform: [platformId] is an [EmulatorCatalog] id, [emulatorPackage] the app that plays it. */
 data class EmulatorPlatform(val platformId: String, val emulatorPackage: String, val folderUri: String)
 
-class RiftPrefs private constructor(private val prefs: SharedPreferences) {
+class RiftPrefs private constructor(
+    private val prefs: SharedPreferences,
+    private val homePrefs: SharedPreferences,
+) {
 
     // --- PC streaming (Artemis) ---
 
@@ -93,6 +96,11 @@ class RiftPrefs private constructor(private val prefs: SharedPreferences) {
         get() = prefs.getBoolean(STREAM_KEEP_GAMEPADS, false)
         set(value) = prefs.edit().putBoolean(STREAM_KEEP_GAMEPADS, value).apply()
 
+    /** Rumble from the game is passed to the gamepad. */
+    var streamGamepadVibration: Boolean
+        get() = prefs.getBoolean(STREAM_GAMEPAD_VIBRATION, true)
+        set(value) = prefs.edit().putBoolean(STREAM_GAMEPAD_VIBRATION, value).apply()
+
     var streamPerfOverlay: Boolean
         get() = prefs.getBoolean(STREAM_PERF_OVERLAY, false)
         set(value) = prefs.edit().putBoolean(STREAM_PERF_OVERLAY, value).apply()
@@ -101,11 +109,12 @@ class RiftPrefs private constructor(private val prefs: SharedPreferences) {
 
     /**
      * Package names of the installed Android games the user added. The home screen shows an
-     * "Android games" tab only while this is not empty, like every other source.
+     * "Android games" tab only while this is not empty, like every other source. Stored where the home
+     * screen reads it (file "rift_prefs", key "android_games_packages").
      */
     var androidGamePackages: Set<String>
-        get() = prefs.getStringSet(ANDROID_GAMES, emptySet())?.toSet() ?: emptySet()
-        set(value) = prefs.edit().putStringSet(ANDROID_GAMES, value.toSet()).apply()
+        get() = homePrefs.getStringSet(ANDROID_GAMES, emptySet())?.toSet() ?: emptySet()
+        set(value) = homePrefs.edit().putStringSet(ANDROID_GAMES, value.toSet()).apply()
 
     // --- Emulator platforms (platform -> emulator -> ROM folder) ---
 
@@ -189,9 +198,11 @@ class RiftPrefs private constructor(private val prefs: SharedPreferences) {
         private const val STREAM_CONNECTION = "stream_connection"
         private const val STREAM_GAMEPADS = "stream_gamepad_count"
         private const val STREAM_KEEP_GAMEPADS = "stream_keep_gamepads"
+        private const val STREAM_GAMEPAD_VIBRATION = "stream_gamepad_vibration"
         private const val STREAM_PERF_OVERLAY = "stream_perf_overlay"
 
-        private const val ANDROID_GAMES = "android_game_packages"
+        private const val HOME_FILE = "rift_prefs"
+        private const val ANDROID_GAMES = "android_games_packages"
         private const val EMULATOR_PLATFORMS = "emulator_platforms"
         private const val CLOCK_24H = "clock_24h"
         private const val SHOW_BATTERY = "show_battery"
@@ -202,6 +213,11 @@ class RiftPrefs private constructor(private val prefs: SharedPreferences) {
         private const val ESDE_URI = "emulators_esde_uri"
 
         fun of(context: Context): RiftPrefs =
-            RiftPrefs(context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE))
+            context.applicationContext.let {
+                RiftPrefs(
+                    it.getSharedPreferences(FILE, Context.MODE_PRIVATE),
+                    it.getSharedPreferences(HOME_FILE, Context.MODE_PRIVATE),
+                )
+            }
     }
 }

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Router
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.runtime.Composable
@@ -51,6 +52,7 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
     var virtualDisplay by remember { mutableStateOf(prefs.streamVirtualDisplay) }
     var gamepads by remember { mutableStateOf(prefs.streamGamepadCount) }
     var keepGamepads by remember { mutableStateOf(prefs.streamKeepGamepads) }
+    var vibration by remember { mutableStateOf(prefs.streamGamepadVibration) }
 
     if (onOpenPcPairing != null) {
         SettingsGroup {
@@ -269,6 +271,16 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
             onCheckedChange = {
                 keepGamepads = it
                 prefs.streamKeepGamepads = it
+            },
+        )
+        SwitchRow(
+            title = stringResource(R.string.rift_settings_stream_vibration),
+            subtitle = stringResource(R.string.rift_settings_stream_vibration_summary),
+            icon = Icons.Rounded.Vibration,
+            checked = vibration,
+            onCheckedChange = {
+                vibration = it
+                prefs.streamGamepadVibration = it
             },
         )
     }

@@ -244,4 +244,6 @@
     <string name="rift_hint_menu">Меню</string>
     <string name="rift_source_android">Android</string>
     <string name="rift_search">Поиск</string>
+    <string name="rift_settings_stream_vibration">Вибрация геймпада</string>
+    <string name="rift_settings_stream_vibration_summary">Передавать вибрацию игры на геймпад</string>
 </resources>
