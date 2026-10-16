@@ -39,8 +39,12 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.CircularProgressIndicator
@@ -84,9 +88,11 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gamenative.R
+import app.gamenative.data.FavoritesManager
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.ui.enums.LibraryTab
+import app.gamenative.ui.enums.SortOption
 import app.gamenative.ui.model.LibraryViewModel
 import app.gamenative.ui.screen.library.components.LibraryDetailPane
 import com.skydoves.landscapist.ImageOptions
@@ -146,18 +152,31 @@ fun RiftHomeScreen(
     var lastOpenedItem by remember { mutableStateOf<LibraryItem?>(null) }
     var pendingFocusKey by remember { mutableStateOf<String?>(null) }
 
+    // Library filters live in the left panel (Select), as in Beacon.
     var shelfFilter by rememberSaveable { mutableStateOf(ShelfFilter.ALL) }
-    val shown = remember(library, shelfFilter) { shelfFilter.apply(library) }
+    var favoritesOnly by rememberSaveable { mutableStateOf(false) }
+    var sourceNames by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    val favorites by FavoritesManager.favorites.collectAsStateWithLifecycle()
+    val sources = remember(sourceNames) { GameSource.entries.filter { it.name in sourceNames }.toSet() }
+    val presentSources = remember(library) { GameSource.entries.filter { source -> library.any { it.gameSource == source } } }
+    val filterActive = shelfFilter != ShelfFilter.ALL || favoritesOnly || sources.isNotEmpty()
+    val shown = remember(library, shelfFilter, favoritesOnly, sources, favorites) {
+        shelfFilter.apply(library).filter { item ->
+            (!favoritesOnly || item.appId in favorites) && (sources.isEmpty() || item.gameSource in sources)
+        }
+    }
     val focusedItem = shown.firstOrNull { it.appId == focusedAppId } ?: shown.firstOrNull()
 
-    fun selectFilter(filter: ShelfFilter, moveFocus: Boolean) {
-        shelfFilter = filter
-        if (moveFocus) filter.apply(library).firstOrNull()?.let { pendingFocusKey = focusKeyFor(it) }
+    fun toggleSource(source: GameSource) {
+        val current = sources.ifEmpty { presentSources.toSet() }
+        val next = if (source in current) current - source else current + source
+        // Nothing or everything picked both mean "all sources".
+        sourceNames = if (next.isEmpty() || next.containsAll(presentSources)) emptyList() else next.map { it.name }
     }
 
     // A filter only sees loaded pages, so pull in the rest of the library while one is active.
-    LaunchedEffect(shelfFilter, libraryState.currentPaginationPage, libraryState.lastPaginationPage, libraryState.isLoading) {
-        if (shelfFilter != ShelfFilter.ALL && !libraryState.isLoading &&
+    LaunchedEffect(filterActive, libraryState.currentPaginationPage, libraryState.lastPaginationPage, libraryState.isLoading) {
+        if (filterActive && !libraryState.isLoading &&
             libraryState.currentPaginationPage < libraryState.lastPaginationPage
         ) {
             viewModel.onPageChange(1)
@@ -232,11 +251,6 @@ fun RiftHomeScreen(
                             focusedItem?.let(::playOrOpen)
                             focusedItem != null
                         }
-                        KeyEvent.KEYCODE_BUTTON_X -> {
-                            if (library.isEmpty()) return@onPreviewKeyEvent false
-                            selectFilter(shelfFilter.next(), moveFocus = true)
-                            true
-                        }
                         else -> false
                     }
                 },
@@ -280,17 +294,16 @@ fun RiftHomeScreen(
                             modifier = Modifier.weight(1f),
                         )
                         PcGamesShelf(
-                            library = library,
                             shown = shown,
-                            filter = shelfFilter,
-                            onFilter = { selectFilter(it, moveFocus = false) },
+                            title = shelfTitle(shelfFilter, favoritesOnly, sources),
+                            resetKey = listOf(shelfFilter, favoritesOnly, sources, libraryState.currentSortOption),
                             cardHeight = cardHeight,
                             pendingFocusKey = pendingFocusKey,
                             onFocusConsumed = { pendingFocusKey = null },
                             onFocused = { focusedAppId = it.appId },
                             onOpen = ::openGame,
                             onNearEnd = {
-                                if (shelfFilter == ShelfFilter.ALL &&
+                                if (!filterActive &&
                                     libraryState.currentPaginationPage < libraryState.lastPaginationPage) {
                                     viewModel.onPageChange(1)
                                 }
@@ -304,6 +317,17 @@ fun RiftHomeScreen(
 
             LeftMenu(
                 visible = menuOpen,
+                filters = LeftMenuFilters(
+                    show = shelfFilter,
+                    onShow = { shelfFilter = it },
+                    favoritesOnly = favoritesOnly,
+                    onFavoritesOnly = { favoritesOnly = it },
+                    sort = libraryState.currentSortOption,
+                    onSort = viewModel::onSortOptionChanged,
+                    presentSources = presentSources,
+                    isSourceOn = { sources.isEmpty() || it in sources },
+                    onToggleSource = ::toggleSource,
+                ),
                 sections = sections,
                 selected = section,
                 onSelectSection = {
@@ -343,24 +367,31 @@ private enum class ShelfFilter(val label: Int) {
     NOT_INSTALLED(R.string.rift_filter_not_installed),
     ;
 
-    /** Installed games come first in every view; the sort is stable, so the library order is kept otherwise. */
     fun apply(library: List<LibraryItem>): List<LibraryItem> = when (this) {
-        ALL -> library.sortedBy { !it.isInstalled }
+        ALL -> library
         INSTALLED -> library.filter { it.isInstalled }
         NOT_INSTALLED -> library.filterNot { it.isInstalled }
     }
-
-    fun next(): ShelfFilter = entries[(ordinal + 1) % entries.size]
 }
+
+/** Sort options offered in the left panel; the order itself comes from GameNative's library. */
+private val SORT_OPTIONS = listOf(SortOption.INSTALLED_FIRST, SortOption.RECENTLY_PLAYED, SortOption.NAME_ASC, SortOption.SIZE_LARGEST)
 
 private fun focusKeyFor(item: LibraryItem): String = item.appId
 
 @Composable
+private fun shelfTitle(filter: ShelfFilter, favoritesOnly: Boolean, sources: Set<GameSource>): String {
+    val parts = mutableListOf(stringResource(filter.label))
+    if (favoritesOnly) parts += stringResource(R.string.rift_filter_favorites)
+    sources.forEach { parts += sourceLabel(it) }
+    return parts.joinToString(" · ")
+}
+
+@Composable
 private fun PcGamesShelf(
-    library: List<LibraryItem>,
     shown: List<LibraryItem>,
-    filter: ShelfFilter,
-    onFilter: (ShelfFilter) -> Unit,
+    title: String,
+    resetKey: Any,
     cardHeight: Dp,
     pendingFocusKey: String?,
     onFocusConsumed: () -> Unit,
@@ -370,23 +401,17 @@ private fun PcGamesShelf(
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    LaunchedEffect(filter) { listState.scrollToItem(0) }
+    LaunchedEffect(resetKey) { listState.scrollToItem(0) }
 
     Column(modifier = Modifier.padding(bottom = 4.dp)) {
-        Row(
+        Text(
+            text = "${title.uppercase()} · ${shown.size}",
+            color = RiftColors.OnSurfaceVariant,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.7.sp,
             modifier = Modifier.padding(start = ScreenPadding, top = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ShelfFilter.entries.forEach { option ->
-                val count = remember(library, option) { option.apply(library).size }
-                SectionTab(
-                    title = "${stringResource(option.label)} · $count",
-                    selected = option == filter,
-                    onClick = { onFilter(option) },
-                )
-            }
-        }
+        )
         if (shown.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -583,7 +608,7 @@ private fun TopBar(
             .padding(horizontal = ScreenPadding, vertical = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RoundIconButton(Icons.Outlined.Menu, stringResource(R.string.rift_menu), onOpenMenu)
+        RoundIconButton(Icons.Outlined.Tune, stringResource(R.string.rift_hint_filters), onOpenMenu)
         Spacer(modifier = Modifier.width(16.dp))
         RiftWordmark()
         Spacer(modifier = Modifier.width(32.dp))
@@ -825,10 +850,9 @@ private fun HintsBar() {
         horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.End),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Hint("SELECT", stringResource(R.string.rift_menu))
+        Hint("SELECT", stringResource(R.string.rift_hint_filters))
         Hint("A", stringResource(R.string.rift_hint_select))
         Hint("Y", stringResource(R.string.rift_hint_play))
-        Hint("X", stringResource(R.string.rift_hint_filter))
         Hint("LB RB", stringResource(R.string.rift_hint_sections))
         Hint("B", stringResource(R.string.rift_hint_back))
     }
@@ -856,14 +880,28 @@ private fun Hint(glyph: String, label: String) {
     }
 }
 
+/** What the left panel needs to show and change the library filters. */
+private class LeftMenuFilters(
+    val show: ShelfFilter,
+    val onShow: (ShelfFilter) -> Unit,
+    val favoritesOnly: Boolean,
+    val onFavoritesOnly: (Boolean) -> Unit,
+    val sort: SortOption,
+    val onSort: (SortOption) -> Unit,
+    val presentSources: List<GameSource>,
+    val isSourceOn: (GameSource) -> Boolean,
+    val onToggleSource: (GameSource) -> Unit,
+)
+
 /**
- * Left navigation panel, Beacon style: opened with Select (or the menu button), closed with B.
- * Focus stays inside while it is open.
+ * Left panel, Beacon style: library filters on top, then sections, Stores and Settings.
+ * Opened with Select (or the menu button), closed with B. Focus stays inside while it is open.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun LeftMenu(
     visible: Boolean,
+    filters: LeftMenuFilters,
     sections: List<RiftSection>,
     selected: RiftSection?,
     onSelectSection: (RiftSection) -> Unit,
@@ -894,29 +932,74 @@ private fun LeftMenu(
                 .background(RiftColors.Surface.copy(alpha = 0.96f))
                 .focusProperties { exit = { FocusRequester.Cancel } }
                 .focusGroup()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             RiftWordmark()
-            Spacer(modifier = Modifier.height(14.dp))
-            sections.forEachIndexed { index, section ->
+
+            MenuLabel(stringResource(R.string.rift_filter_show))
+            ShelfFilter.entries.forEachIndexed { index, option ->
                 MenuItem(
-                    title = stringResource(section.titleRes),
-                    selected = section == selected,
+                    title = stringResource(option.label),
+                    selected = option == filters.show,
                     focusRequester = if (index == 0) firstItem else null,
-                    onClick = { onSelectSection(section) },
+                    onClick = { filters.onShow(option) },
                 )
             }
             MenuItem(
-                title = stringResource(R.string.rift_stores),
-                focusRequester = if (sections.isEmpty()) firstItem else null,
-                onClick = onOpenStores,
+                title = stringResource(R.string.rift_filter_favorites),
+                icon = if (filters.favoritesOnly) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                selected = filters.favoritesOnly,
+                onClick = { filters.onFavoritesOnly(!filters.favoritesOnly) },
             )
-            MenuItem(title = stringResource(R.string.rift_settings), onClick = onOpenSettings)
-            Spacer(modifier = Modifier.weight(1f))
+
+            MenuLabel(stringResource(R.string.rift_filter_sort))
+            SORT_OPTIONS.forEach { option ->
+                MenuItem(
+                    title = stringResource(option.displayTextRes),
+                    selected = option == filters.sort,
+                    onClick = { filters.onSort(option) },
+                )
+            }
+
+            if (filters.presentSources.size > 1) {
+                MenuLabel(stringResource(R.string.rift_filter_source))
+                filters.presentSources.forEach { source ->
+                    MenuItem(
+                        title = sourceLabel(source),
+                        selected = filters.isSourceOn(source),
+                        onClick = { filters.onToggleSource(source) },
+                    )
+                }
+            }
+
+            MenuLabel(stringResource(R.string.rift_menu_sections))
+            sections.forEach { section ->
+                MenuItem(
+                    title = stringResource(section.titleRes),
+                    selected = section == selected,
+                    onClick = { onSelectSection(section) },
+                )
+            }
+            MenuItem(title = stringResource(R.string.rift_stores), icon = Icons.Outlined.Storefront, onClick = onOpenStores)
+            MenuItem(title = stringResource(R.string.rift_settings), icon = Icons.Outlined.Settings, onClick = onOpenSettings)
+            Spacer(modifier = Modifier.height(12.dp))
             MenuItem(title = stringResource(R.string.rift_exit), onClick = onExit)
         }
     }
+}
+
+@Composable
+private fun MenuLabel(text: String) {
+    Text(
+        text = text.uppercase(),
+        color = RiftColors.OnSurfaceVariant,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.7.sp,
+        modifier = Modifier.padding(start = 8.dp, top = 14.dp, bottom = 2.dp),
+    )
 }
 
 @Composable
@@ -924,6 +1007,7 @@ private fun MenuItem(
     title: String,
     onClick: () -> Unit,
     selected: Boolean = false,
+    icon: ImageVector? = null,
     focusRequester: FocusRequester? = null,
 ) {
     PillButton(
@@ -938,12 +1022,14 @@ private fun MenuItem(
         modifier = Modifier.fillMaxWidth(),
         focusRequester = focusRequester,
     ) {
-        Text(
-            text = title,
-            color = if (selected) RiftColors.OnPrimary else RiftColors.OnSurface,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
+        val color = if (selected) RiftColors.OnPrimary else RiftColors.OnSurface
+        Row(
             modifier = Modifier.fillMaxWidth(),
-        )
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (icon != null) Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
+            Text(text = title, color = color, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        }
     }
 }

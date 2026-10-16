@@ -6,7 +6,12 @@
     <string name="rift_filter_installed">Installed</string>
     <string name="rift_filter_not_installed">Not installed</string>
     <string name="rift_filter_empty">Nothing here yet</string>
-    <string name="rift_hint_filter">Filter</string>
+    <string name="rift_hint_filters">Filters</string>
+    <string name="rift_filter_show">Show</string>
+    <string name="rift_filter_favorites">Favorites</string>
+    <string name="rift_filter_sort">Sort</string>
+    <string name="rift_filter_source">Source</string>
+    <string name="rift_menu_sections">Sections</string>
     <string name="rift_play">Play</string>
     <string name="rift_install">Install</string>
     <string name="rift_details">Details</string>

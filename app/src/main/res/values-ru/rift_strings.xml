@@ -5,7 +5,12 @@
     <string name="rift_filter_installed">Установленные</string>
     <string name="rift_filter_not_installed">Не установленные</string>
     <string name="rift_filter_empty">Здесь пока пусто</string>
-    <string name="rift_hint_filter">Фильтр</string>
+    <string name="rift_hint_filters">Фильтры</string>
+    <string name="rift_filter_show">Показать</string>
+    <string name="rift_filter_favorites">Избранное</string>
+    <string name="rift_filter_sort">Сортировка</string>
+    <string name="rift_filter_source">Источник</string>
+    <string name="rift_menu_sections">Разделы</string>
     <string name="rift_play">Играть</string>
     <string name="rift_install">Установить</string>
     <string name="rift_details">Об игре</string>
