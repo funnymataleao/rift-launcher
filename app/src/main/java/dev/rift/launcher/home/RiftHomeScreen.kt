@@ -62,6 +62,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.focusable
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.key
 import app.gamenative.ui.component.GamepadButton
@@ -296,7 +299,8 @@ fun RiftHomeScreen(
         return
     }
 
-    BackHandler { onExit() }
+    // B on the home does nothing, like Big Picture (and a HOME launcher has nowhere to go back to).
+    BackHandler { }
 
     // Search: a quiet icon in the top bar; typing filters the row through GameNative's library search.
     // With a gamepad: A on the icon starts typing, B (or Down) hides the keyboard and goes back to the
@@ -330,6 +334,21 @@ fun RiftHomeScreen(
     val overlayOpen = panelOpen || systemMenuOpen || gameOptionsOpen
     var selectLongPressed by remember { mutableStateOf(false) }
     val quickAccessKey = remember { RiftControls.quickAccessKey(context) }
+    // B / Back closes the open panel and never leaves the app.
+    BackHandler(enabled = panelOpen) { viewModel.onOptionsPanelToggle(false) }
+    BackHandler(enabled = systemMenuOpen) { systemMenuOpen = false }
+    // Holding Select opens the quick access panel: on the key's repeats, or after a hold timer for
+    // controllers that do not repeat.
+    val selectHold = remember { arrayOfNulls<Job>(1) }
+    fun toggleQuickAccess() {
+        if (selectLongPressed) return
+        selectLongPressed = true
+        if (!viewModel.state.value.isOptionsPanelOpen) systemMenuOpen = !systemMenuOpen
+    }
+    // Keeps key handling alive when no cover holds focus (after a panel closes, say): the screen
+    // itself takes focus instead of nothing.
+    val rootFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { rootFocus.requestFocus() } }
     // What the footer blurs: the screen behind it, recorded once per frame and drawn again under the footer.
     val backdrop = rememberGraphicsLayer()
     // The panel's layout choice belongs to GameNative's library screen; Rift only keeps it in sync.
@@ -347,8 +366,8 @@ fun RiftHomeScreen(
                 .riftKeySounds(sidebarOpen = overlayOpen)
                 .onPreviewKeyEvent { event ->
                     val native = event.nativeKeyEvent
-                    if (gameOptionsOpen) return@onPreviewKeyEvent false
-                    if (optionsItem != null) optionsItem = null
+                    if (optionsItem != null && optionsOnly.panelOpen) return@onPreviewKeyEvent false
+                    if (optionsItem != null && event.type == KeyEventType.KeyDown) optionsItem = null
                     if (searchOpen) {
                         val leave = native.keyCode == KeyEvent.KEYCODE_BUTTON_B || native.keyCode == KeyEvent.KEYCODE_BACK ||
                             native.keyCode == KeyEvent.KEYCODE_ESCAPE ||
@@ -364,13 +383,23 @@ fun RiftHomeScreen(
                     // Select: short press opens the filter panel, a long press the quick access panel.
                     if (native.keyCode == KeyEvent.KEYCODE_BUTTON_SELECT) {
                         when {
-                            event.type == KeyEventType.KeyDown && native.repeatCount == 0 -> selectLongPressed = false
-                            event.type == KeyEventType.KeyDown && native.repeatCount == 1 -> {
-                                selectLongPressed = true
-                                if (!panelOpen) systemMenuOpen = !systemMenuOpen
+                            event.type == KeyEventType.KeyDown && native.repeatCount == 0 && !native.isLongPress -> {
+                                selectLongPressed = false
+                                selectHold[0]?.cancel()
+                                selectHold[0] = homeScope.launch {
+                                    delay(SELECT_HOLD_MS)
+                                    toggleQuickAccess()
+                                }
                             }
-                            event.type == KeyEventType.KeyUp && !selectLongPressed -> {
-                                if (section == RiftSection.PcGames && !systemMenuOpen) viewModel.onOptionsPanelToggle(!panelOpen)
+                            event.type == KeyEventType.KeyDown -> {
+                                selectHold[0]?.cancel()
+                                toggleQuickAccess()
+                            }
+                            event.type == KeyEventType.KeyUp -> {
+                                selectHold[0]?.cancel()
+                                if (!selectLongPressed && !systemMenuOpen && section == RiftSection.PcGames) {
+                                    viewModel.onOptionsPanelToggle(!viewModel.state.value.isOptionsPanelOpen)
+                                }
                             }
                         }
                         return@onPreviewKeyEvent true
@@ -411,7 +440,9 @@ fun RiftHomeScreen(
                         }
                         else -> false
                     }
-                },
+                }
+                .focusRequester(rootFocus)
+                .focusable(),
         ) {
             val cardHeight = (maxHeight * 0.37f).coerceIn(160.dp, 340.dp)
 
@@ -1201,6 +1232,7 @@ private fun EmptyState(message: String, onConnect: () -> Unit, modifier: Modifie
 }
 
 private val FooterHeight = 58.dp
+private const val SELECT_HOLD_MS = 450L
 
 /**
  * Frosted glass: the recorded [backdrop], shifted so it lines up with what is behind this box,
@@ -1234,19 +1266,19 @@ private fun HintsBar(showFilters: Boolean, modifier: Modifier = Modifier) {
             .height(FooterHeight)
             .drawBehind { drawLine(Color.White.copy(alpha = 0.12f), Offset.Zero, Offset(size.width, 0f), strokeWidth = 1.dp.toPx()) }
             .padding(horizontal = ScreenPadding),
-        horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.End),
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // GameNative's own Kenney prompts (coloured face buttons), with its A/B X/Y swap setting.
+        // Menus on the left, game actions on the right, like Big Picture; the tabs explain LB/RB.
         val swap = PrefManager.swapFaceButtons
         fun face(button: GamepadButton, swapped: GamepadButton) = if (swap) swapped.iconRes else button.iconRes
         if (showFilters) Hint(listOf(GamepadButton.SELECT.iconRes), stringResource(R.string.rift_hint_filters))
-        if (showFilters) Hint(listOf(GamepadButton.START.iconRes), stringResource(R.string.rift_hint_options))
         Hint(listOf(GamepadButton.SELECT.iconRes), stringResource(R.string.rift_hint_menu))
-        Hint(listOf(face(GamepadButton.A, GamepadButton.B)), stringResource(R.string.rift_hint_play))
+        Spacer(modifier = Modifier.weight(1f))
+        if (showFilters) Hint(listOf(GamepadButton.START.iconRes), stringResource(R.string.rift_hint_options))
         if (showFilters) Hint(listOf(face(GamepadButton.Y, GamepadButton.X)), stringResource(R.string.rift_details))
-        Hint(listOf(GamepadButton.LB.iconRes, GamepadButton.RB.iconRes), stringResource(R.string.rift_hint_sections))
-        Hint(listOf(face(GamepadButton.B, GamepadButton.A)), stringResource(R.string.rift_hint_back))
+        Hint(listOf(face(GamepadButton.A, GamepadButton.B)), stringResource(R.string.rift_hint_play))
     }
 }
 

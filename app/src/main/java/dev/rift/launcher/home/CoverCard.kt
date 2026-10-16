@@ -28,6 +28,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -109,6 +114,9 @@ fun CoverCard(
     }
 
     val width = height * aspectRatio
+    // The card's picture, recorded as it is drawn and reused flipped for the reflection, so every
+    // card gets the very same reflection as soon as it shows anything.
+    val picture = rememberGraphicsLayer()
     Column(modifier = Modifier.width(width)) {
         Box(
             modifier = Modifier
@@ -128,6 +136,10 @@ fun CoverCard(
                 .clip(RiftShapes.card)
                 .background(RiftColors.SurfaceContainer)
                 .coverFrame(focused, palette, RiftShapes.card)
+                .drawWithContent {
+                    picture.record { this@drawWithContent.drawContent() }
+                    drawLayer(picture)
+                }
                 .focusRequester(focusRequester)
                 .onFocusChanged { if (it.isFocused) onFocused() }
                 .clickable(interactionSource = interaction, indication = null, onClick = onClick),
@@ -137,11 +149,11 @@ fun CoverCard(
         }
         Spacer(modifier = Modifier.height(10.dp))
         CoverReflection(
+            picture = picture,
             coverHeight = height,
             height = height * REFLECTION_SHARE,
             focused = focused,
             scale = scale,
-            cover = cover,
         )
     }
 }
@@ -181,15 +193,14 @@ private fun Modifier.coverFrame(focused: Boolean, colors: List<Color>, shape: Sh
 
 @Composable
 private fun CoverReflection(
+    picture: GraphicsLayer,
     coverHeight: Dp,
     height: Dp,
     focused: Boolean,
     scale: Float,
-    cover: @Composable BoxScope.() -> Unit,
 ) {
-    val alpha by animateFloatAsState(if (focused) 0.42f else 0.26f, tween(300), label = "reflectionAlpha")
+    val alpha by animateFloatAsState(if (focused) 0.42f else 0.3f, tween(300), label = "reflectionAlpha")
     // One mask for everything: the card's own rounded shape, so the reflection has the same corners.
-    // The coloured glow comes from the card's shadow; a separate glow layer here showed square edges.
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -202,23 +213,16 @@ private fun CoverReflection(
                 compositingStrategy = CompositingStrategy.Offscreen
             }
             .drawWithContent {
-                drawContent()
+                // Same base as the card, then its picture flipped: its bottom edge at the top here.
+                drawRect(RiftColors.SurfaceContainer)
+                val coverPx = coverHeight.toPx()
+                translate(top = coverPx) {
+                    scale(scaleX = 1f, scaleY = -1f, pivot = Offset.Zero) { drawLayer(picture) }
+                }
                 drawRect(
                     Brush.verticalGradient(0f to Color.Black, 0.35f to Color.Black.copy(alpha = 0.45f), 1f to Color.Transparent),
                     blendMode = BlendMode.DstIn,
                 )
             },
-    ) {
-        // The whole cover, flipped, with its bottom edge at the top of the reflection.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight(Alignment.Top, unbounded = true)
-                .height(coverHeight)
-                .graphicsLayer { scaleY = -1f }
-                // Same base as the card, so a cover still loading (or a dark one) reflects too.
-                .background(RiftColors.SurfaceContainer),
-            content = cover,
-        )
-    }
+    )
 }

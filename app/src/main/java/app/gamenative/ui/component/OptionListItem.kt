@@ -286,7 +286,8 @@ fun OptionSectionHeader(
     Text(
         text = text.uppercase(),
         style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+        // Rift: neutral section titles, no accent colour.
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         letterSpacing = MaterialTheme.typography.labelMedium.letterSpacing * 1.5f,
         modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)
     )

@@ -91,12 +91,34 @@ private val RiftColorScheme = darkColorScheme(
     outline = RiftColors.Outline,
     outlineVariant = RiftColors.OutlineVariant,
     surfaceTint = Color.Transparent,
+    // Every container role set explicitly: Material's dark defaults are purple (GameNative's panels
+    // use primaryContainer for focused rows).
+    primaryContainer = Color.White.copy(alpha = 0.14f),
+    onPrimaryContainer = RiftColors.OnSurface,
+    secondaryContainer = Color.White.copy(alpha = 0.10f),
+    onSecondaryContainer = RiftColors.OnSurface,
+    tertiaryContainer = Color.White.copy(alpha = 0.10f),
+    onTertiaryContainer = RiftColors.OnSurface,
+    onTertiary = RiftColors.OnPrimary,
+    inversePrimary = RiftColors.Primary,
+    inverseSurface = RiftColors.OnSurface,
+    inverseOnSurface = RiftColors.Background,
+    surfaceBright = RiftColors.SurfaceContainerHigh,
+    surfaceDim = RiftColors.Background,
+    surfaceContainerLowest = RiftColors.Background,
+    surfaceContainerLow = RiftColors.Surface,
+    surfaceContainerHighest = RiftColors.SurfaceContainerHigh,
 )
 
 /** Side panels: translucent black over a blurred home screen, like frosted glass. */
 private val RiftGlassColorScheme = RiftColorScheme.copy(
-    surface = Color.Black.copy(alpha = 0.65f),
-    surfaceContainer = Color.Black.copy(alpha = 0.65f),
+    surface = Color.Black.copy(alpha = 0.7f),
+    surfaceContainer = Color.Black.copy(alpha = 0.7f),
+    // Cards inside the panels stay see-through too, just a little lighter than the glass.
+    surfaceVariant = Color.White.copy(alpha = 0.06f),
+    surfaceContainerLow = Color.White.copy(alpha = 0.04f),
+    surfaceContainerHigh = Color.White.copy(alpha = 0.07f),
+    surfaceContainerHighest = Color.White.copy(alpha = 0.10f),
     surfaceTint = Color.Transparent,
     scrim = Color.Black.copy(alpha = 0.3f),
 )
