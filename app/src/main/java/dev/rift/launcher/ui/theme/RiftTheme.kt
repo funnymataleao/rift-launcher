@@ -47,6 +47,12 @@ object RiftShapes {
     val full = RoundedCornerShape(50)
 }
 
+object RiftSizes {
+    /** Every Rift button is a pill (or a circle when square) of this height. */
+    val button = 52.dp
+    val leftPanel = 336.dp
+}
+
 object RiftMotion {
     /** Cover lift and scale on focus, Play button shape change. */
     fun <T> focusSpring() = spring<T>(dampingRatio = 0.6f, stiffness = 400f)

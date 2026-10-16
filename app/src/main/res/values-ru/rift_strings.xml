@@ -23,4 +23,6 @@
     <string name="rift_source_epic">Epic Games</string>
     <string name="rift_source_amazon">Amazon</string>
     <string name="rift_source_custom">Свои игры</string>
+    <string name="rift_menu">Меню</string>
+    <string name="rift_exit">Выход</string>
 </resources>

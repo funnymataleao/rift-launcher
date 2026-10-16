@@ -2,6 +2,11 @@ package dev.rift.launcher.home
 
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -11,6 +16,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -36,6 +42,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.CircularProgressIndicator
@@ -54,7 +61,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -88,6 +97,7 @@ import dev.rift.launcher.ui.theme.RiftBrush
 import dev.rift.launcher.ui.theme.RiftColors
 import dev.rift.launcher.ui.theme.RiftMotion
 import dev.rift.launcher.ui.theme.RiftShapes
+import dev.rift.launcher.ui.theme.RiftSizes
 import dev.rift.launcher.ui.theme.RiftTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -174,6 +184,14 @@ fun RiftHomeScreen(
 
     BackHandler { onExit() }
 
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
+    fun closeMenu() {
+        menuOpen = false
+        // Hand focus back to the cover that had it before the menu opened.
+        focusedItem?.let { pendingFocusKey = focusKeyFor(it, library) }
+    }
+    BackHandler(enabled = menuOpen) { closeMenu() }
+
     RiftTheme {
         BoxWithConstraints(
             modifier = Modifier
@@ -181,7 +199,13 @@ fun RiftHomeScreen(
                 .background(RiftColors.Background)
                 .onPreviewKeyEvent { event ->
                     if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                    when (event.nativeKeyEvent.keyCode) {
+                    val keyCode = event.nativeKeyEvent.keyCode
+                    if (keyCode in MENU_KEYS) {
+                        if (menuOpen) closeMenu() else menuOpen = true
+                        return@onPreviewKeyEvent true
+                    }
+                    if (menuOpen) return@onPreviewKeyEvent false
+                    when (keyCode) {
                         KeyEvent.KEYCODE_BUTTON_L1 -> {
                             switchSection(-1)
                             true
@@ -207,6 +231,7 @@ fun RiftHomeScreen(
                     sections = sections,
                     selected = section,
                     onSelect = { sectionKey = it.key },
+                    onOpenMenu = { menuOpen = true },
                     onOpenStores = onOpenStores,
                     onOpenSettings = onOpenSettings,
                 )
@@ -253,6 +278,26 @@ fun RiftHomeScreen(
 
                 HintsBar()
             }
+
+            LeftMenu(
+                visible = menuOpen,
+                sections = sections,
+                selected = section,
+                onSelectSection = {
+                    sectionKey = it.key
+                    closeMenu()
+                },
+                onOpenStores = {
+                    menuOpen = false
+                    onOpenStores()
+                },
+                onOpenSettings = {
+                    menuOpen = false
+                    onOpenSettings()
+                },
+                onExit = onExit,
+                onDismiss = ::closeMenu,
+            )
         }
     }
 
@@ -264,6 +309,9 @@ fun RiftHomeScreen(
         }
     }
 }
+
+/** Select (View) opens the left menu, as in Beacon; Start (Menu) does the same until the right panel exists. */
+private val MENU_KEYS = setOf(KeyEvent.KEYCODE_BUTTON_SELECT, KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_MENU)
 
 private const val SHELF_INSTALLED = "installed"
 private const val SHELF_LIBRARY = "library"
@@ -513,6 +561,7 @@ private fun TopBar(
     sections: List<RiftSection>,
     selected: RiftSection?,
     onSelect: (RiftSection) -> Unit,
+    onOpenMenu: () -> Unit,
     onOpenStores: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
@@ -522,13 +571,9 @@ private fun TopBar(
             .padding(horizontal = ScreenPadding, vertical = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = "RIFT",
-            style = TextStyle(brush = RiftBrush.accent),
-            fontSize = 24.sp,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 3.sp,
-        )
+        RoundIconButton(Icons.Outlined.Menu, stringResource(R.string.rift_menu), onOpenMenu)
+        Spacer(modifier = Modifier.width(16.dp))
+        RiftWordmark()
         Spacer(modifier = Modifier.width(32.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             sections.forEach { section ->
@@ -548,21 +593,62 @@ private fun TopBar(
 }
 
 @Composable
-private fun SectionTab(title: String, selected: Boolean, onClick: () -> Unit) {
+private fun RiftWordmark() {
+    Text(
+        text = "RIFT",
+        style = TextStyle(brush = RiftBrush.accent),
+        fontSize = 24.sp,
+        fontWeight = FontWeight.ExtraBold,
+        letterSpacing = 3.sp,
+    )
+}
+
+/**
+ * The one button shape Rift uses: a full pill (or a circle when square), [RiftSizes.button] tall,
+ * white ring and a slight spring scale on focus.
+ */
+@Composable
+private fun PillButton(
+    onClick: () -> Unit,
+    background: (focused: Boolean) -> Brush,
+    modifier: Modifier = Modifier,
+    square: Boolean = false,
+    focusRequester: FocusRequester? = null,
+    content: @Composable (focused: Boolean) -> Unit,
+) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val scale by animateFloatAsState(if (focused) 1.06f else 1f, RiftMotion.focusSpring(), label = "tabScale")
+    val scale by animateFloatAsState(if (focused) 1.06f else 1f, RiftMotion.focusSpring(), label = "buttonScale")
     Box(
-        modifier = Modifier
+        modifier = modifier
+            .height(RiftSizes.button)
+            .then(if (square) Modifier.width(RiftSizes.button) else Modifier.widthIn(min = RiftSizes.button))
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
             .clip(RiftShapes.full)
-            .background(if (selected) Color.White else RiftColors.Surface.copy(alpha = 0.6f))
-            .border(if (focused) 3.dp else 0.dp, if (focused) RiftColors.Primary else Color.Transparent, RiftShapes.full)
+            .background(background(focused))
+            .border(if (focused) 3.dp else 0.dp, if (focused) Color.White else Color.Transparent, RiftShapes.full)
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 10.dp),
+            .padding(horizontal = if (square) 0.dp else 24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        content(focused)
+    }
+}
+
+private fun solid(color: Color) = Brush.linearGradient(listOf(color, color))
+
+private fun quietBackground(focused: Boolean) =
+    solid(if (focused) RiftColors.SurfaceContainerHigh else RiftColors.Surface.copy(alpha = 0.7f))
+
+@Composable
+private fun SectionTab(title: String, selected: Boolean, onClick: () -> Unit) {
+    PillButton(
+        onClick = onClick,
+        background = { focused -> if (selected) solid(Color.White) else quietBackground(focused) },
     ) {
         Text(
             text = title,
@@ -575,20 +661,7 @@ private fun SectionTab(title: String, selected: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun RoundIconButton(icon: ImageVector, description: String, onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
-    // Expressive shape change: rounded square at rest, near circle on focus.
-    val radius by animateDpAsState(if (focused) 21.dp else 15.dp, RiftMotion.focusSpring(), label = "iconRadius")
-    val shape = androidx.compose.foundation.shape.RoundedCornerShape(radius)
-    Box(
-        modifier = Modifier
-            .size(43.dp)
-            .clip(shape)
-            .background(if (focused) RiftColors.SurfaceContainerHigh else RiftColors.Surface.copy(alpha = 0.7f))
-            .border(if (focused) 3.dp else 0.dp, if (focused) Color.White else Color.Transparent, shape)
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
+    PillButton(onClick = onClick, background = ::quietBackground, square = true) {
         Icon(icon, contentDescription = description, tint = RiftColors.OnSurface)
     }
 }
@@ -677,25 +750,12 @@ private fun sourceLabel(source: GameSource): String = stringResource(
 )
 
 @Composable
-private fun PlayButton(text: String, onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
-    // Expressive: corners tighten and the button grows a little when focused.
-    val radius by animateDpAsState(if (focused) 19.dp else 29.dp, RiftMotion.focusSpring(), label = "playRadius")
-    val scale by animateFloatAsState(if (focused) 1.05f else 1f, RiftMotion.focusSpring(), label = "playScale")
-    val shape = androidx.compose.foundation.shape.RoundedCornerShape(radius)
-    Box(
-        modifier = Modifier
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .shadow(if (focused) 24.dp else 0.dp, shape, spotColor = RiftColors.Primary.copy(alpha = 0.4f))
-            .clip(shape)
-            .background(RiftBrush.accent)
-            .border(if (focused) 3.dp else 0.dp, if (focused) Color.White else Color.Transparent, shape)
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            .padding(horizontal = 36.dp, vertical = 14.dp),
+private fun PlayButton(text: String, onClick: () -> Unit, focusRequester: FocusRequester? = null) {
+    PillButton(
+        onClick = onClick,
+        background = { RiftBrush.accent },
+        modifier = Modifier.widthIn(min = 160.dp),
+        focusRequester = focusRequester,
     ) {
         Text(text = text, color = RiftColors.OnPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
     }
@@ -703,16 +763,7 @@ private fun PlayButton(text: String, onClick: () -> Unit) {
 
 @Composable
 private fun SecondaryButton(text: String, onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
-    Box(
-        modifier = Modifier
-            .clip(RiftShapes.control)
-            .background(if (focused) RiftColors.SurfaceContainerHigh else RiftColors.Surface.copy(alpha = 0.7f))
-            .border(if (focused) 3.dp else 0.dp, if (focused) Color.White else Color.Transparent, RiftShapes.control)
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 14.dp),
-    ) {
+    PillButton(onClick = onClick, background = ::quietBackground) {
         Text(text = text, color = RiftColors.OnSurface, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
     }
 }
@@ -743,9 +794,11 @@ private fun EmptyState(message: String, onConnect: () -> Unit, modifier: Modifie
             modifier = Modifier.widthIn(max = 520.dp),
         )
         Spacer(modifier = Modifier.height(20.dp))
-        Box(modifier = Modifier.focusRequester(focusRequester)) {
-            PlayButton(text = stringResource(R.string.rift_empty_action), onClick = onConnect)
-        }
+        PlayButton(
+            text = stringResource(R.string.rift_empty_action),
+            onClick = onConnect,
+            focusRequester = focusRequester,
+        )
     }
 }
 
@@ -760,6 +813,7 @@ private fun HintsBar() {
         horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.End),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Hint("SELECT", stringResource(R.string.rift_menu))
         Hint("A", stringResource(R.string.rift_hint_select))
         Hint("Y", stringResource(R.string.rift_hint_play))
         Hint("LB RB", stringResource(R.string.rift_hint_sections))
@@ -785,6 +839,98 @@ private fun Hint(glyph: String, label: String) {
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp,
             style = MaterialTheme.typography.labelLarge,
+        )
+    }
+}
+
+/**
+ * Left navigation panel, Beacon style: opened with Select (or the menu button), closed with B.
+ * Focus stays inside while it is open.
+ */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+private fun LeftMenu(
+    visible: Boolean,
+    sections: List<RiftSection>,
+    selected: RiftSection?,
+    onSelectSection: (RiftSection) -> Unit,
+    onOpenStores: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onExit: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AnimatedVisibility(visible = visible, enter = fadeIn(tween(300)), exit = fadeOut(tween(300))) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(RiftColors.Background.copy(alpha = 0.6f))
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss),
+        )
+    }
+    AnimatedVisibility(
+        visible = visible,
+        enter = slideInHorizontally(RiftMotion.panelSpring()) { -it },
+        exit = slideOutHorizontally(RiftMotion.panelSpring()) { -it },
+    ) {
+        val firstItem = remember { FocusRequester() }
+        LaunchedEffect(Unit) { runCatching { firstItem.requestFocus() } }
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(RiftSizes.leftPanel)
+                .background(RiftColors.Surface.copy(alpha = 0.96f))
+                .focusProperties { exit = { FocusRequester.Cancel } }
+                .focusGroup()
+                .padding(horizontal = 24.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            RiftWordmark()
+            Spacer(modifier = Modifier.height(14.dp))
+            sections.forEachIndexed { index, section ->
+                MenuItem(
+                    title = stringResource(section.titleRes),
+                    selected = section == selected,
+                    focusRequester = if (index == 0) firstItem else null,
+                    onClick = { onSelectSection(section) },
+                )
+            }
+            MenuItem(
+                title = stringResource(R.string.rift_stores),
+                focusRequester = if (sections.isEmpty()) firstItem else null,
+                onClick = onOpenStores,
+            )
+            MenuItem(title = stringResource(R.string.rift_settings), onClick = onOpenSettings)
+            Spacer(modifier = Modifier.weight(1f))
+            MenuItem(title = stringResource(R.string.rift_exit), onClick = onExit)
+        }
+    }
+}
+
+@Composable
+private fun MenuItem(
+    title: String,
+    onClick: () -> Unit,
+    selected: Boolean = false,
+    focusRequester: FocusRequester? = null,
+) {
+    PillButton(
+        onClick = onClick,
+        background = { focused ->
+            when {
+                selected -> solid(Color.White)
+                focused -> solid(RiftColors.SurfaceContainerHigh)
+                else -> solid(Color.Transparent)
+            }
+        },
+        modifier = Modifier.fillMaxWidth(),
+        focusRequester = focusRequester,
+    ) {
+        Text(
+            text = title,
+            color = if (selected) RiftColors.OnPrimary else RiftColors.OnSurface,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
