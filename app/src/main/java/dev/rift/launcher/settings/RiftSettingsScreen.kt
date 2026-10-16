@@ -254,7 +254,7 @@ private fun RailItem(
                     else -> Color.Transparent
                 },
             )
-            .border(if (focused) 3.dp else 0.dp, if (focused) Color.White else Color.Transparent, RiftShapes.full)
+            .border(if (focused) 2.dp else 0.dp, if (focused) Color.White.copy(alpha = 0.9f) else Color.Transparent, RiftShapes.full)
             .clickable(interactionSource = interaction, indication = null, role = Role.Tab, onClick = onClick)
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -263,7 +263,7 @@ private fun RailItem(
         Icon(
             imageVector = section.icon,
             contentDescription = null,
-            tint = if (selected) RiftColors.Primary else RiftColors.OnSurfaceVariant,
+            tint = if (selected) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
             modifier = Modifier.size(26.dp),
         )
         Text(
