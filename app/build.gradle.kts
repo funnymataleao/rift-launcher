@@ -415,6 +415,7 @@ android {
 
 dependencies {
     implementation(libs.material)
+    implementation(libs.androidx.palette)
 
     // Chrome Custom Tabs for GOG OAuth
     implementation("androidx.browser:browser:1.8.0")

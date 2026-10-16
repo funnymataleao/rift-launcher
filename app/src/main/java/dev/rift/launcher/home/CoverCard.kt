@@ -55,7 +55,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private val FrameWidth = 2.dp
-private const val FRAME_SWEEP_MS = 2600
+private const val FRAME_SWEEP_MS = 1400
 private const val REFLECTION_SHARE = 0.14f
 
 /** Neutral frame until the cover's own colours are known. */
@@ -90,10 +90,9 @@ fun CoverCard(
     val lift by animateDpAsState(if (focused) (-8).dp else 0.dp, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "cardLift")
 
     var loaded by remember(paletteKey) { mutableStateOf<List<Color>?>(null) }
-    LaunchedEffect(paletteKey, focused) {
-        if (focused && loaded == null) {
-            loaded = withContext(Dispatchers.IO) { runCatching { loadPalette() }.getOrNull() }
-        }
+    // Loaded up front (cached per image), so the frame already has the right colours when focus lands.
+    LaunchedEffect(paletteKey) {
+        if (loaded == null) loaded = withContext(Dispatchers.IO) { runCatching { loadPalette() }.getOrNull() }
     }
     val palette = loaded ?: FallbackPalette
 
@@ -142,25 +141,34 @@ fun CoverCard(
     }
 }
 
-/** Diagonal gradient frame in the cover colours; on focus it turns 90 degrees once. */
+/**
+ * Gradient frame in the cover colours. On focus the first colour starts as a small patch in the
+ * top right corner, spreads along the edge while the gradient turns 90 degrees, then stays.
+ */
 @Composable
 private fun Modifier.coverFrame(focused: Boolean, colors: List<Color>, shape: Shape): Modifier {
-    val angle = remember { Animatable(45f) }
-    LaunchedEffect(focused) {
-        if (focused) {
-            angle.snapTo(45f)
-            angle.animateTo(135f, tween(FRAME_SWEEP_MS, easing = FastOutSlowInEasing))
-        } else {
-            angle.snapTo(45f)
-        }
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(focused, colors) {
+        progress.snapTo(0f)
+        if (focused) progress.animateTo(1f, tween(FRAME_SWEEP_MS, easing = FastOutSlowInEasing))
     }
-    val alpha by animateFloatAsState(if (focused) 1f else 0f, tween(220), label = "frameAlpha")
+    val alpha by animateFloatAsState(if (focused) 1f else 0f, tween(160), label = "frameAlpha")
     return drawWithContent {
         drawContent()
         if (alpha <= 0f) return@drawWithContent
-        val radians = Math.toRadians(angle.value.toDouble())
+        val p = progress.value
+        // 135 degrees puts the gradient's start in the top right corner; it turns to 225.
+        val radians = Math.toRadians(135.0 + 90.0 * p)
         val half = Offset((cos(radians) * size.width / 2).toFloat(), (sin(radians) * size.height / 2).toFloat())
-        val brush = Brush.linearGradient(colors, start = center - half, end = center + half)
+        val bandEnd = 0.08f + 0.37f * p
+        val brush = Brush.linearGradient(
+            0f to colors[0],
+            bandEnd to colors[0],
+            (bandEnd + 0.45f).coerceAtMost(1f) to colors[1],
+            1f to colors[1],
+            start = center - half,
+            end = center + half,
+        )
         // The card is clipped to its shape, so only the inner half of this stroke shows.
         drawOutline(shape.createOutline(size, layoutDirection, this), brush, alpha = alpha, style = Stroke(FrameWidth.toPx() * 2))
     }

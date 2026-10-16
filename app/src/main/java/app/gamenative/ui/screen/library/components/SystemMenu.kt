@@ -65,6 +65,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
@@ -268,6 +270,10 @@ fun SystemMenu(
     onAmazonLoginClick: () -> Unit,
     onAmazonLogoutClick: () -> Unit,
     modifier: Modifier = Modifier,
+    // Rift draws the panel as a flat, full height glass sheet without a close button (B closes it).
+    panelShape: Shape = RoundedCornerShape(topStart = 32.dp, bottomStart = 32.dp),
+    panelShadowElevation: Dp = 24.dp,
+    showCloseButton: Boolean = true,
 ) {
     val scope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
@@ -371,10 +377,10 @@ fun SystemMenu(
                 modifier = Modifier
                     .width(adaptivePanelWidth(380.dp))
                     .fillMaxHeight(),
-                shape = RoundedCornerShape(topStart = 32.dp, bottomStart = 32.dp),
+                shape = panelShape,
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 8.dp,
-                shadowElevation = 24.dp,
+                shadowElevation = panelShadowElevation,
             ) {
                 Column(
                     modifier = Modifier
@@ -395,12 +401,14 @@ fun SystemMenu(
                             ),
                             color = MaterialTheme.colorScheme.onSurface,
                         )
-                        IconButton(onClick = onDismiss) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = stringResource(R.string.options_panel_close),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                        if (showCloseButton) {
+                            IconButton(onClick = onDismiss) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = stringResource(R.string.options_panel_close),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
 

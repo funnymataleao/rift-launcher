@@ -45,6 +45,8 @@ zstd-jni = "1.5.7-5" # https://mvnrepository.com/artifact/com.github.luben/zstd-
 zxing = "3.5.3" # https://mvnrepository.com/artifact/com.google.zxing/core
 
 [libraries]
+# Rift: cover colours for the focus frame
+androidx-palette = { module = "androidx.palette:palette-ktx", version = "1.0.0" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

@@ -47,10 +47,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,6 +62,21 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.drawWithContent
+import android.os.Build
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
@@ -148,6 +165,7 @@ fun RiftHomeScreen(
     viewModel: LibraryViewModel = hiltViewModel(key = "rift-home-library"),
 ) {
     val context = LocalContext.current
+    val homeScope = rememberCoroutineScope()
     val libraryState by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(libraryState.visibleLibraryTabs) {
@@ -209,6 +227,13 @@ fun RiftHomeScreen(
 
     /** Puts focus back on the cover this section had last. */
     fun focusSection(target: RiftSection?) {
+        // The cover may be scrolled out of the row (a search changes it), so bring it into view first.
+        if (target == RiftSection.PcGames) {
+            val index = focusedItem?.let(library::indexOf) ?: -1
+            if (index >= 0 && pcRowState.layoutInfo.visibleItemsInfo.none { it.index == index }) {
+                homeScope.launch { pcRowState.scrollToItem((index - 1).coerceAtLeast(0)) }
+            }
+        }
         pendingFocusKey = when (target) {
             RiftSection.PcGames -> focusedItem?.let(::focusKeyFor)
             RiftSection.AndroidGames -> focusedAndroid?.let(::androidFocusKey)
@@ -246,18 +271,33 @@ fun RiftHomeScreen(
     BackHandler { onExit() }
 
     // Search: a quiet icon in the top bar; typing filters the row through GameNative's library search.
+    // With a gamepad: A on the icon starts typing, B (or Down) hides the keyboard and goes back to the
+    // row with the results, B again closes the search. The field only takes focus while typing.
     var searchOpen by rememberSaveable { mutableStateOf(false) }
+    var searchTyping by remember { mutableStateOf(false) }
+    val keyboard = LocalSoftwareKeyboardController.current
+    fun stopTyping() {
+        searchTyping = false
+        keyboard?.hide()
+        focusSection(section)
+    }
     fun closeSearch() {
+        searchTyping = false
+        keyboard?.hide()
         searchOpen = false
         viewModel.onIsSearching(false)
         focusSection(section)
     }
-    BackHandler(enabled = searchOpen) { closeSearch() }
+    BackHandler(enabled = searchOpen) { if (searchTyping) stopTyping() else closeSearch() }
 
     // Select: GameNative's library filter panel. Start: its system menu. Both over a blurred screen.
     val panelOpen = libraryState.isOptionsPanelOpen
     var systemMenuOpen by rememberSaveable { mutableStateOf(false) }
     val overlayOpen = panelOpen || systemMenuOpen
+    var selectLongPressed by remember { mutableStateOf(false) }
+    val quickAccessKey = remember { RiftControls.quickAccessKey(context) }
+    // What the footer blurs: the screen behind it, recorded once per frame and drawn again under the footer.
+    val backdrop = rememberGraphicsLayer()
     // The panel's layout choice belongs to GameNative's library screen; Rift only keeps it in sync.
     var libraryLayout by remember { mutableStateOf(PrefManager.libraryLayout) }
     LaunchedEffect(overlayOpen) {
@@ -271,16 +311,37 @@ fun RiftHomeScreen(
                 .fillMaxSize()
                 .background(RiftColors.Background)
                 .onPreviewKeyEvent { event ->
+                    val native = event.nativeKeyEvent
+                    if (searchOpen) {
+                        val leave = native.keyCode == KeyEvent.KEYCODE_BUTTON_B || native.keyCode == KeyEvent.KEYCODE_BACK ||
+                            native.keyCode == KeyEvent.KEYCODE_ESCAPE ||
+                            (searchTyping && native.keyCode == KeyEvent.KEYCODE_DPAD_DOWN)
+                        if (leave) {
+                            // Handled on key up, after the whole press, so nothing else sees half of it.
+                            if (event.type == KeyEventType.KeyUp) {
+                                if (searchTyping) stopTyping() else if (native.keyCode != KeyEvent.KEYCODE_DPAD_DOWN) closeSearch()
+                            }
+                            return@onPreviewKeyEvent true
+                        }
+                    }
+                    // Select: short press opens the filter panel, a long press the quick access panel.
+                    if (native.keyCode == KeyEvent.KEYCODE_BUTTON_SELECT) {
+                        when {
+                            event.type == KeyEventType.KeyDown && native.repeatCount == 0 -> selectLongPressed = false
+                            event.type == KeyEventType.KeyDown && native.repeatCount == 1 -> {
+                                selectLongPressed = true
+                                if (!panelOpen) systemMenuOpen = !systemMenuOpen
+                            }
+                            event.type == KeyEventType.KeyUp && !selectLongPressed -> {
+                                if (section == RiftSection.PcGames && !systemMenuOpen) viewModel.onOptionsPanelToggle(!panelOpen)
+                            }
+                        }
+                        return@onPreviewKeyEvent true
+                    }
                     if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                    when (event.nativeKeyEvent.keyCode) {
-                        KeyEvent.KEYCODE_BUTTON_SELECT -> {
-                            if (section == RiftSection.PcGames && !systemMenuOpen) viewModel.onOptionsPanelToggle(!panelOpen)
-                            return@onPreviewKeyEvent true
-                        }
-                        KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_MENU -> {
-                            if (!panelOpen) systemMenuOpen = !systemMenuOpen
-                            return@onPreviewKeyEvent true
-                        }
+                    if (native.keyCode == quickAccessKey) {
+                        if (!panelOpen) systemMenuOpen = !systemMenuOpen
+                        return@onPreviewKeyEvent true
                     }
                     if (overlayOpen) return@onPreviewKeyEvent false
                     when (event.nativeKeyEvent.keyCode) {
@@ -309,6 +370,14 @@ fun RiftHomeScreen(
             val cardHeight = (maxHeight * 0.37f).coerceIn(160.dp, 340.dp)
 
             Box(modifier = Modifier.fillMaxSize().blur(blur)) {
+              Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .drawWithContent {
+                        backdrop.record { this@drawWithContent.drawContent() }
+                        drawLayer(backdrop)
+                    },
+              ) {
                 if (section == RiftSection.AndroidGames) AndroidBackdrop(focusedAndroid) else HeroBackdrop(item = focusedItem)
 
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -320,13 +389,15 @@ fun RiftHomeScreen(
                         search = if (section == RiftSection.PcGames) {
                             SearchState(
                                 open = searchOpen,
+                                typing = searchTyping,
                                 query = libraryState.searchQuery,
                                 onOpen = {
+                                    if (!searchOpen) viewModel.onIsSearching(true)
                                     searchOpen = true
-                                    viewModel.onIsSearching(true)
+                                    searchTyping = true
                                 },
                                 onQuery = viewModel::onSearchQuery,
-                                onDone = { focusSection(section) },
+                                onDone = ::stopTyping,
                             )
                         } else {
                             null
@@ -378,6 +449,12 @@ fun RiftHomeScreen(
                         }
                     }
 
+                    // The footer floats over the row's reflections (frosted glass), so only reserve its height.
+                    Spacer(modifier = Modifier.height(FooterHeight))
+                }
+              }
+                Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(FooterHeight)) {
+                    FrostedGlass(backdrop = backdrop, modifier = Modifier.matchParentSize())
                     HintsBar(showFilters = section == RiftSection.PcGames)
                 }
             }
@@ -409,6 +486,9 @@ fun RiftHomeScreen(
                     curatedListCounts = libraryState.curatedListCounts,
                     onCuratedListToggle = viewModel::onCuratedListToggle,
                     onClearCuratedLists = viewModel::onClearCuratedLists,
+                    panelShape = RectangleShape,
+                    panelShadowElevation = 0.dp,
+                    showCloseButton = false,
                 )
                 RiftSystemMenu(
                     isOpen = systemMenuOpen,
@@ -478,7 +558,10 @@ private fun BoxScope.CoverBadges(item: LibraryItem, libraryState: LibraryState) 
                     .background(RiftColors.Success),
             )
         }
-        GameSourceIcon(gameSource = item.gameSource, iconSize = 12, alignmentBoxSize = 20)
+        // Store icons take the content colour; white so they read on the dark pill.
+        CompositionLocalProvider(LocalContentColor provides Color.White) {
+            GameSourceIcon(gameSource = item.gameSource, iconSize = 12, alignmentBoxSize = 20)
+        }
     }
     val stats = libraryState.statsFor(item)
     if (stats != null) {
@@ -509,6 +592,7 @@ private fun HeroLogo(item: LibraryItem?, modifier: Modifier = Modifier) {
 /** What the top bar needs for the library search. */
 private class SearchState(
     val open: Boolean,
+    val typing: Boolean,
     val query: String,
     val onOpen: () -> Unit,
     val onQuery: (String) -> Unit,
@@ -809,6 +893,26 @@ private fun SearchField(search: SearchState) {
         }
         return
     }
+    if (!search.typing) {
+        // Not typing: a plain pill with the query; A opens the keyboard again.
+        PillButton(onClick = search.onOpen, background = { focused -> solid(Color.White.copy(alpha = if (focused) 0.16f else 0.08f)) }, modifier = Modifier.width(320.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.rift_search), tint = RiftColors.OnSurfaceVariant.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
+                Text(
+                    text = search.query.ifEmpty { stringResource(R.string.rift_search) },
+                    color = if (search.query.isEmpty()) RiftColors.OnSurfaceVariant else RiftColors.OnSurface,
+                    fontSize = 16.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        return
+    }
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
     Row(
@@ -1024,19 +1128,45 @@ private fun EmptyState(message: String, onConnect: () -> Unit, modifier: Modifie
     }
 }
 
+private val FooterHeight = 58.dp
+
+/**
+ * Frosted glass: the recorded [backdrop], shifted so it lines up with what is behind this box,
+ * blurred and darkened. The blur needs Android 12; older systems get the dark tint only.
+ */
 @Composable
-private fun HintsBar(showFilters: Boolean) {
+private fun FrostedGlass(backdrop: GraphicsLayer, modifier: Modifier = Modifier) {
+    var top by remember { mutableFloatStateOf(0f) }
+    Box(
+        modifier = modifier
+            .onGloballyPositioned { top = it.positionInRoot().y }
+            .graphicsLayer {
+                clip = true
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    renderEffect = BlurEffect(28.dp.toPx(), 28.dp.toPx(), TileMode.Clamp)
+                }
+            }
+            .drawBehind {
+                translate(top = -top) { drawLayer(backdrop) }
+                drawRect(Color.Black.copy(alpha = 0.42f))
+            },
+    )
+}
+
+/** Frosted glass footer with a hairline on top; the blur itself comes from [modifier]. */
+@Composable
+private fun HintsBar(showFilters: Boolean, modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .height(58.dp)
-            .background(Brush.verticalGradient(listOf(Color.Transparent, RiftColors.Background.copy(alpha = 0.92f))))
+            .height(FooterHeight)
+            .drawBehind { drawLine(Color.White.copy(alpha = 0.12f), Offset.Zero, Offset(size.width, 0f), strokeWidth = 1.dp.toPx()) }
             .padding(horizontal = ScreenPadding),
         horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.End),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showFilters) Hint("SELECT", stringResource(R.string.rift_hint_filters))
-        Hint("START", stringResource(R.string.rift_hint_menu))
+        Hint("HOME", stringResource(R.string.rift_hint_menu))
         Hint("A", stringResource(R.string.rift_hint_select))
         Hint("Y", stringResource(R.string.rift_hint_play))
         Hint("LB RB", stringResource(R.string.rift_hint_sections))

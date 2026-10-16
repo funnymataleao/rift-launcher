@@ -25,7 +25,7 @@
     <string name="rift_source_amazon">Amazon</string>
     <string name="rift_source_custom">Custom</string>
     <string name="rift_section_android_games">Android games</string>
-    <string name="rift_hint_menu">Menu</string>
+    <string name="rift_hint_menu">Quick access</string>
     <string name="rift_source_android">Android</string>
     <string name="rift_search">Search</string>
 </resources>
