@@ -416,6 +416,9 @@ android {
 dependencies {
     implementation(libs.material)
 
+    // Rift: Artemis streaming core (PC streaming)
+    implementation(project(":artemis-core"))
+
     // Chrome Custom Tabs for GOG OAuth
     implementation("androidx.browser:browser:1.8.0")
     implementation("androidx.documentfile:documentfile:1.0.1")

@@ -22,4 +22,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "gamenative"
 include(":app")
+include(":artemis-core")
 include(":ubuntufs")
