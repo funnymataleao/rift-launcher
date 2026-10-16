@@ -97,14 +97,6 @@ class PcStreamingTab internal constructor(internal val hosts: PcHosts, val rowSt
         val keys = entries.map { it.key }
         return focusedKey?.takeIf { it in keys } ?: keys.first()
     }
-
-    /** Y on the home screen: streams the focused app straight away. */
-    fun launchFocused(context: Context): Boolean {
-        val entry = entries.firstOrNull { it.key == focusKey() } as? StreamEntry.App ?: return false
-        val uniqueId = hosts.uniqueId ?: return false
-        PcStreaming.startStream(context, entry.pc, entry.app, uniqueId)
-        return true
-    }
 }
 
 @Composable
@@ -120,7 +112,7 @@ fun rememberPcStreamingTab(): PcStreamingTab {
 
 /**
  * Content of the "PC streaming" tab: the focused app's name large, and one row of every app the
- * paired PCs' hosts (Apollo / Vibepollo / Sunshine) offer. A or Y starts the stream.
+ * paired PCs' hosts (Apollo / Vibepollo / Sunshine) offer. A starts the stream.
  */
 @Composable
 fun PcStreamingContent(
