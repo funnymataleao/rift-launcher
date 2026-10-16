@@ -2265,6 +2265,8 @@ fun PluviaMain(
 
             AchievementOverlay()
             GameInviteOverlay()
+            // Rift: black curtain with a loader until the Rift home is ready (not over the login screen).
+            dev.rift.launcher.ui.RiftStartup.Curtain(skip = !startDestination.startsWith(PluviaScreen.Home.route))
         }
     }
 }

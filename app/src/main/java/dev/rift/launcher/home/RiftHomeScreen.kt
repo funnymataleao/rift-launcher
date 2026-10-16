@@ -61,6 +61,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import dev.rift.launcher.ui.RiftStartup
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -239,8 +240,15 @@ fun RiftHomeScreen(
     val introSpec = MaterialTheme.motionScheme.slowEffectsSpec<Float>()
     LaunchedEffect(ready) {
         if (ready && !introPlayed) {
+            // Let the start-up curtain fade first, then play the entrance.
+            if (!RiftStartup.homeReady) {
+                RiftStartup.homeReady = true
+                delay(RiftStartup.CURTAIN_FADE_MS.toLong())
+            }
             intro.animateTo(1f, introSpec)
             introPlayed = true
+        } else if (ready) {
+            RiftStartup.homeReady = true
         }
     }
     val streamTab = if (pairedPcs.isNotEmpty()) rememberPcStreamingTab() else null
@@ -355,6 +363,11 @@ fun RiftHomeScreen(
     val gameOptionsOpen = optionsItem != null && optionsOnly.panelOpen
     // B on the home: every installed Android app in a grid, Beacon style.
     var appsOpen by rememberSaveable { mutableStateOf(false) }
+    // Load the app list ahead (after start-up), so B opens the grid at once.
+    LaunchedEffect(Unit) {
+        delay(APPS_PRELOAD_DELAY_MS)
+        withContext(Dispatchers.IO) { runCatching { AndroidGames.launchable(context) } }
+    }
     var backDownHere by remember { mutableStateOf(false) }
     val overlayOpen = panelOpen || systemMenuOpen || gameOptionsOpen || appsOpen
     var selectLongPressed by remember { mutableStateOf(false) }
@@ -1346,6 +1359,7 @@ private fun EmptyState(message: String, onConnect: () -> Unit, modifier: Modifie
 
 private val FooterHeight = 58.dp
 private const val STARTUP_SETTLE_MS = 2500L
+private const val APPS_PRELOAD_DELAY_MS = 4000L
 private const val ROLL_IN_START_MS = 120L
 private const val ROLL_IN_STEP_MS = 55L
 private val ROLL_IN_DISTANCE = 180.dp

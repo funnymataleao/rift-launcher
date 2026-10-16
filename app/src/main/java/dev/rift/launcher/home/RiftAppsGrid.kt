@@ -37,6 +37,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import app.gamenative.ui.component.GamepadButton
+import app.gamenative.PrefManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.text.input.ImeAction
@@ -95,8 +98,17 @@ fun RiftAppsGrid(isOpen: Boolean, onDismiss: () -> Unit) {
 @Composable
 private fun AppsGridContent(onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val apps by produceState<List<AndroidGame>?>(null) {
+    // Opens on the cached list at once; the fresh one replaces it when ready.
+    val apps by produceState(AndroidGames.cachedLaunchable) {
         value = withContext(Dispatchers.IO) { runCatching { AndroidGames.launchable(context) }.getOrDefault(emptyList()) }
+    }
+    val lastOpened by produceState(emptyMap<String, Long>()) {
+        value = withContext(Dispatchers.IO) { AndroidGames.lastOpened(context) }
+    }
+    var sort by remember { mutableStateOf(AppsSort.load(context)) }
+    fun nextSort() {
+        sort = AppsSort.entries[(sort.ordinal + 1) % AppsSort.entries.size]
+        AppsSort.save(context, sort)
     }
     val firstFocus = remember { FocusRequester() }
     val searchFocus = remember { FocusRequester() }
@@ -112,8 +124,17 @@ private fun AppsGridContent(onDismiss: () -> Unit) {
     }
     BackHandler(enabled = typing) { stopTyping() }
     LaunchedEffect(apps) { if (!apps.isNullOrEmpty()) runCatching { firstFocus.requestFocus() } }
-    val shown = remember(apps, query) {
-        apps?.let { all -> if (query.isBlank()) all else all.filter { it.label.contains(query.trim(), ignoreCase = true) } }
+    val shown = remember(apps, query, sort, lastOpened) {
+        apps?.let { all ->
+            val found = if (query.isBlank()) all else all.filter { it.label.contains(query.trim(), ignoreCase = true) }
+            when (sort) {
+                AppsSort.RECENT -> found.sortedWith(
+                    compareByDescending<AndroidGame> { lastOpened[it.packageName] ?: 0L }.thenByDescending { it.installedAt },
+                )
+                AppsSort.NEWEST -> found.sortedByDescending { it.installedAt }
+                AppsSort.NAME -> found.sortedBy { it.label.lowercase() }
+            }
+        }
     }
 
     Box(
@@ -125,6 +146,11 @@ private fun AppsGridContent(onDismiss: () -> Unit) {
             .focusGroup()
             .onPreviewKeyEvent { event ->
                 val code = event.nativeKeyEvent.keyCode
+                // X changes the order.
+                if (code == KeyEvent.KEYCODE_BUTTON_X && !typing) {
+                    if (event.type == KeyEventType.KeyUp) nextSort()
+                    return@onPreviewKeyEvent true
+                }
                 val leaveField = typing && code == KeyEvent.KEYCODE_DPAD_DOWN
                 if (code != KeyEvent.KEYCODE_BUTTON_B && !leaveField) return@onPreviewKeyEvent false
                 // Both halves of the press are consumed so focus never falls out.
@@ -146,6 +172,8 @@ private fun AppsGridContent(onDismiss: () -> Unit) {
                     fontWeight = FontWeight.Black,
                     modifier = Modifier.weight(1f),
                 )
+                SortChip(sort = sort, onClick = ::nextSort)
+                Spacer(modifier = Modifier.width(12.dp))
                 AppSearchField(
                     query = query,
                     typing = typing,
@@ -177,6 +205,45 @@ private fun AppsGridContent(onDismiss: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+/** The apps grid's order, kept between openings (rift_prefs / apps_sort). */
+enum class AppsSort(val labelRes: Int) {
+    RECENT(R.string.rift_apps_sort_recent),
+    NEWEST(R.string.rift_apps_sort_newest),
+    NAME(R.string.rift_apps_sort_name),
+    ;
+
+    companion object {
+        private const val KEY = "apps_sort"
+        fun load(context: android.content.Context): AppsSort =
+            runCatching { valueOf(AndroidGames.prefs(context).getString(KEY, null) ?: RECENT.name) }.getOrDefault(RECENT)
+        fun save(context: android.content.Context, sort: AppsSort) {
+            AndroidGames.prefs(context).edit().putString(KEY, sort.name).apply()
+        }
+    }
+}
+
+/** The current order as a small chip with the X prompt; X (or a tap) switches it. */
+@Composable
+private fun SortChip(sort: AppsSort, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .height(52.dp)
+            .background(Color.White.copy(alpha = 0.08f), RiftShapes.full)
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+            .focusProperties { canFocus = false }
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Image(
+            painter = painterResource(if (PrefManager.swapFaceButtons) GamepadButton.Y.iconRes else GamepadButton.X.iconRes),
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+        )
+        Text(text = stringResource(sort.labelRes), color = RiftColors.OnSurface, fontSize = 15.sp, fontWeight = FontWeight.Medium)
     }
 }
 

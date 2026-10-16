@@ -10,7 +10,7 @@ import androidx.core.content.edit
 import androidx.core.graphics.drawable.toBitmap
 
 /** An installed Android app shown in the "Android games" section. */
-data class AndroidGame(val packageName: String, val label: String, val isGame: Boolean = false)
+data class AndroidGame(val packageName: String, val label: String, val isGame: Boolean = false, val installedAt: Long = 0L)
 
 /**
  * Android games for the "Android games" section. Like every other section it only appears once the
@@ -43,10 +43,24 @@ object AndroidGames {
             .distinctBy { it.packageName }
             .map { info ->
                 val isGame = info.category == ApplicationInfo.CATEGORY_GAME || info.flags and ApplicationInfo.FLAG_IS_GAME != 0
-                AndroidGame(info.packageName, pm.getApplicationLabel(info).toString(), isGame)
+                @Suppress("DEPRECATION")
+                val installedAt = runCatching { pm.getPackageInfo(info.packageName, 0).firstInstallTime }.getOrDefault(0L)
+                AndroidGame(info.packageName, pm.getApplicationLabel(info).toString(), isGame, installedAt)
             }
             .sortedWith(compareBy<AndroidGame> { !it.isGame }.thenBy { it.label.lowercase() })
+            .also { cachedLaunchable = it }
     }
+
+    /** The last [launchable] result, so the apps grid opens instantly; refreshed in the background. */
+    @Volatile
+    var cachedLaunchable: List<AndroidGame>? = null
+        private set
+
+    // --- When each app was last opened from Rift, for the apps grid's "recent" order ---
+    private const val USAGE_PREFS = "rift_app_usage"
+
+    fun lastOpened(context: Context): Map<String, Long> =
+        context.getSharedPreferences(USAGE_PREFS, Context.MODE_PRIVATE).all.mapNotNull { (k, v) -> (v as? Long)?.let { k to it } }.toMap()
 
     /** The games the user added in settings that are still installed. */
     fun selected(context: Context): List<AndroidGame> {
@@ -68,6 +82,7 @@ object AndroidGames {
 
     fun launch(context: Context, game: AndroidGame) {
         val intent = context.packageManager.getLaunchIntentForPackage(game.packageName) ?: return
+        context.getSharedPreferences(USAGE_PREFS, Context.MODE_PRIVATE).edit { putLong(game.packageName, System.currentTimeMillis()) }
         context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 }
