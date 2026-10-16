@@ -46,7 +46,7 @@ public abstract class WineUtils {
                 missingDrives += "D:" + android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
             }
             if (!currentDrives.contains("E:")) {
-                missingDrives += "E:/data/data/app.gamenative/storage";
+                missingDrives += "E:/data/data/" + app.gamenative.BuildConfig.APPLICATION_ID + "/storage";
             }
             String updatedDrives = missingDrives + currentDrives;
             container.setDrives(updatedDrives);

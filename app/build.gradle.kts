@@ -56,7 +56,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "app.gamenative"
+        applicationId = "dev.rift.launcher"
 
         minSdk = 26
 

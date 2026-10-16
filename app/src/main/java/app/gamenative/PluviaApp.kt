@@ -64,6 +64,8 @@ class PluviaApp : SplitCompatApplication() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        // evshim (loaded via WinHandler) falls back to /data/data/app.gamenative/files without this
+        android.system.Os.setenv("EVSHIM_BASE_PATH", filesDir.absolutePath, true)
 
         preloadSystemLibraries()
 
