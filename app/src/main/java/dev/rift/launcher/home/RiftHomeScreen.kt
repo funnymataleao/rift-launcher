@@ -134,6 +134,9 @@ import com.skydoves.landscapist.coil.CoilImage
 import dev.rift.launcher.sound.RiftSound
 import dev.rift.launcher.sound.rememberRiftSoundPlayer
 import dev.rift.launcher.sound.riftKeySounds
+import dev.rift.launcher.stream.PcStreaming
+import dev.rift.launcher.stream.PcStreamingContent
+import dev.rift.launcher.stream.rememberPcStreamingTab
 import dev.rift.launcher.ui.theme.RiftBrush
 import dev.rift.launcher.ui.theme.RiftColors
 import dev.rift.launcher.ui.theme.RiftGlassTheme
@@ -204,7 +207,9 @@ fun RiftHomeScreen(
         prefs.registerOnSharedPreferenceChangeListener(listener)
         awaitDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
-    val sections = remember(library, androidGames) { RiftSections.configured(context, library, androidGames) }
+    val pairedPcs by PcStreaming.pairedHosts(context).collectAsStateWithLifecycle()
+    val sections = remember(library, androidGames, pairedPcs) { RiftSections.configured(context, library, androidGames, pairedPcs) }
+    val streamTab = if (pairedPcs.isNotEmpty()) rememberPcStreamingTab() else null
 
     var sectionKey by rememberSaveable { mutableStateOf<String?>(null) }
     val section = sections.firstOrNull { it.key == sectionKey } ?: sections.firstOrNull()
@@ -256,6 +261,7 @@ fun RiftHomeScreen(
         pendingFocusKey = when (target) {
             RiftSection.PcGames -> focusedItem?.let(::focusKeyFor)
             RiftSection.AndroidGames -> focusedAndroid?.let(::androidFocusKey)
+            RiftSection.PcStreaming -> streamTab?.focusKey()
             null -> null
         }
     }
@@ -418,7 +424,7 @@ fun RiftHomeScreen(
                         drawLayer(backdrop)
                     },
               ) {
-                if (section == RiftSection.AndroidGames) AndroidBackdrop(focusedAndroid) else HeroBackdrop(item = focusedItem)
+                if (section == RiftSection.AndroidGames) AndroidBackdrop(focusedAndroid) else HeroBackdrop(item = focusedItem.takeIf { section == RiftSection.PcGames })
 
                 Column(modifier = Modifier.fillMaxSize()) {
                     TopBar(
@@ -462,6 +468,17 @@ fun RiftHomeScreen(
                                 onOpen = { AndroidGames.launch(context, it) },
                             )
                         }
+                        section == RiftSection.PcStreaming && streamTab != null -> PcStreamingContent(
+                            tab = streamTab,
+                            cardHeight = cardHeight,
+                            screenPadding = ScreenPadding,
+                            cardGap = CardGap,
+                            rowBottomGap = RowBottomGap,
+                            pendingFocusKey = pendingFocusKey,
+                            onFocusConsumed = { pendingFocusKey = null },
+                            onWantFocus = { if (pendingFocusKey == null) focusSection(section) },
+                            modifier = Modifier.weight(1f),
+                        )
                         library.isEmpty() && libraryState.isLoading -> Box(
                             modifier = Modifier.weight(1f).fillMaxWidth(),
                             contentAlignment = Alignment.Center,

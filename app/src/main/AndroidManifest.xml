@@ -129,6 +129,21 @@
         </activity>
 
         <!-- Nexus OAuth uses an external browser and returns only through this exact native redirect. -->
+        <!-- Rift: PC streaming (embedded Artemis core) -->
+        <activity
+            android:name="dev.rift.launcher.stream.AddPcActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.Pluvia" />
+        <activity
+            android:name="dev.rift.launcher.stream.StreamActivity"
+            android:exported="false"
+            android:screenOrientation="sensorLandscape"
+            android:resizeableActivity="true"
+            android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection"
+            android:theme="@style/Theme.Pluvia" />
+
         <activity
             android:name=".ui.screen.auth.NexusOAuthCallbackActivity"
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation|uiMode"

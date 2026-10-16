@@ -119,6 +119,7 @@ import app.gamenative.ui.screen.HomeScreen
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.login.UserLoginScreen
 import dev.rift.launcher.settings.RiftSettingsScreen
+import dev.rift.launcher.stream.PcStreaming
 import app.gamenative.ui.screen.support.SnackbarActionContent
 import app.gamenative.ui.screen.support.SupportAppliedRun
 import app.gamenative.ui.screen.support.SupportReplyEffects
@@ -2209,7 +2210,10 @@ fun PluviaMain(
                 /** Settings **/
                 composable(route = PluviaScreen.Settings.route) {
                     // Rift: sectioned settings instead of GameNative's single list (same preferences).
-                    RiftSettingsScreen(onBack = { navController.navigateUp() })
+                    RiftSettingsScreen(
+                        onBack = { navController.navigateUp() },
+                        onOpenPcPairing = { PcStreaming.openAddPc(context) },
+                    )
                 }
 
                 composable(route = PluviaScreen.Support.route) {

@@ -456,3 +456,16 @@ This project bundles `app/src/main/lib/perfsdk-v1.0.0.jar`, the Samsung Performa
 power-control feature. The SDK is proprietary to Samsung Electronics and is NOT covered by
 this project's GPL-3.0 license; it is used under the terms of Samsung's SDK license
 agreement. If you redistribute this project, verify your right to redistribute the SDK.
+
+---
+
+## Artemis / Moonlight streaming core (`artemis-core/`)
+
+- **Artemis** (`ClassicOldSong/moonlight-android`, branch `moonlight-noir`, commit
+  `c5cf27f4dc822db0e863c4691e7a70c74bea977a`), a fork of **Moonlight for Android**
+  (`moonlight-stream/moonlight-android`). License: GPL-3.0.
+  Used: `com.limelight.nvstream`, `binding/{video,audio,crypto}`, `computers`, `discovery` and
+  the JNI layer, with Rift changes listed in `artemis-core/README.md`.
+- **moonlight-common-c** (`ClassicOldSong/moonlight-common-c` fork of
+  `moonlight-stream/moonlight-common-c`), with **ENet** (MIT) and **Reed-Solomon** code. License: GPL-3.0.
+- Prebuilt **Opus** (BSD-3-Clause) and **OpenSSL** (Apache-2.0) static libraries shipped by Artemis.
