@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,10 +59,23 @@ fun HomeScreen(
     var focused by remember { mutableStateOf<Game?>(null) }
     val selected = focused ?: state.games.firstOrNull()
 
+    // Surface sets LocalContentColor to onBackground; without it Text falls back to black.
+    Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
+        HomeContent(state, selected, onFocused = { focused = it }, onPlay, onRefresh)
+    }
+}
+
+@Composable
+private fun HomeContent(
+    state: HomeUiState,
+    selected: Game?,
+    onFocused: (Game) -> Unit,
+    onPlay: (Game) -> Unit,
+    onRefresh: () -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .safeDrawingPadding()
             .padding(horizontal = 48.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
@@ -86,7 +100,7 @@ fun HomeScreen(
             items(state.games, key = { it.id.value }) { game ->
                 GameCard(
                     game = game,
-                    onFocused = { focused = game },
+                    onFocused = { onFocused(game) },
                     onClick = { onPlay(game) },
                     modifier = if (game == state.games.first()) Modifier.focusRequester(firstCard) else Modifier,
                 )
