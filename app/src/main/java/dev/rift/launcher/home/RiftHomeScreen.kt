@@ -64,7 +64,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.key
-import app.gamenative.ui.icons.InputIcons
 import app.gamenative.ui.component.GamepadButton
 import androidx.compose.ui.res.painterResource
 import androidx.annotation.DrawableRes
@@ -371,7 +370,7 @@ fun RiftHomeScreen(
                         return@onPreviewKeyEvent true
                     }
                     if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                    if (native.keyCode == quickAccessKey) {
+                    if (quickAccessKey != KeyEvent.KEYCODE_UNKNOWN && native.keyCode == quickAccessKey) {
                         if (!panelOpen) systemMenuOpen = !systemMenuOpen
                         return@onPreviewKeyEvent true
                     }
@@ -1226,7 +1225,7 @@ private fun HintsBar(showFilters: Boolean, modifier: Modifier = Modifier) {
         fun face(button: GamepadButton, swapped: GamepadButton) = if (swap) swapped.iconRes else button.iconRes
         if (showFilters) Hint(listOf(GamepadButton.SELECT.iconRes), stringResource(R.string.rift_hint_filters))
         if (showFilters) Hint(listOf(GamepadButton.START.iconRes), stringResource(R.string.rift_hint_options))
-        Hint(listOf(InputIcons.Xbox.guide), stringResource(R.string.rift_hint_menu))
+        Hint(listOf(GamepadButton.SELECT.iconRes), stringResource(R.string.rift_hint_menu))
         Hint(listOf(face(GamepadButton.A, GamepadButton.B)), stringResource(R.string.rift_hint_play))
         if (showFilters) Hint(listOf(face(GamepadButton.Y, GamepadButton.X)), stringResource(R.string.rift_details))
         Hint(listOf(GamepadButton.LB.iconRes, GamepadButton.RB.iconRes), stringResource(R.string.rift_hint_sections))
