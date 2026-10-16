@@ -97,6 +97,9 @@ import app.gamenative.ui.model.LibraryViewModel
 import app.gamenative.ui.screen.library.components.LibraryDetailPane
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
+import dev.rift.launcher.sound.RiftSound
+import dev.rift.launcher.sound.rememberRiftSoundPlayer
+import dev.rift.launcher.sound.riftKeySounds
 import dev.rift.launcher.ui.theme.RiftBrush
 import dev.rift.launcher.ui.theme.RiftColors
 import dev.rift.launcher.ui.theme.RiftMotion
@@ -131,6 +134,7 @@ fun RiftHomeScreen(
     viewModel: LibraryViewModel = hiltViewModel(key = "rift-home-library"),
 ) {
     val context = LocalContext.current
+    val sounds = rememberRiftSoundPlayer()
     val libraryState by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(libraryState.visibleLibraryTabs) {
@@ -189,7 +193,12 @@ fun RiftHomeScreen(
     }
 
     fun playOrOpen(item: LibraryItem) {
-        if (item.isInstalled) onClickPlay(item.appId, false) else openGame(item)
+        if (item.isInstalled) {
+            sounds.play(RiftSound.Launch)
+            onClickPlay(item.appId, false)
+        } else {
+            openGame(item)
+        }
     }
 
     fun switchSection(step: Int) {
@@ -203,7 +212,10 @@ fun RiftHomeScreen(
         BackHandler { openedAppId = null }
         LibraryDetailPane(
             libraryItem = opened,
-            onClickPlay = { asContainer -> onClickPlay(opened.appId, asContainer) },
+            onClickPlay = { asContainer ->
+                sounds.play(RiftSound.Launch)
+                onClickPlay(opened.appId, asContainer)
+            },
             onTestGraphics = { onTestGraphics(opened.appId) },
             onPlayWithDiagnostics = { onPlayWithDiagnostics(opened.appId) },
             onAiDebugRun = { onAiDebugRun(opened.appId) },
@@ -230,6 +242,7 @@ fun RiftHomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(RiftColors.Background)
+                .riftKeySounds(sidebarOpen = menuOpen)
                 .onPreviewKeyEvent { event ->
                     if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                     val keyCode = event.nativeKeyEvent.keyCode
