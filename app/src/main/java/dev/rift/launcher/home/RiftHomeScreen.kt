@@ -354,6 +354,7 @@ fun RiftHomeScreen(
     val gameOptionsOpen = optionsItem != null && optionsOnly.panelOpen
     // B on the home: every installed Android app in a grid, Beacon style.
     var appsOpen by rememberSaveable { mutableStateOf(false) }
+    var backDownHere by remember { mutableStateOf(false) }
     val overlayOpen = panelOpen || systemMenuOpen || gameOptionsOpen || appsOpen
     var selectLongPressed by remember { mutableStateOf(false) }
     val quickAccessKey = remember { RiftControls.quickAccessKey(context) }
@@ -451,7 +452,13 @@ fun RiftHomeScreen(
                     val isBack = native.keyCode == KeyEvent.KEYCODE_BUTTON_B || native.keyCode == KeyEvent.KEYCODE_BACK ||
                         native.keyCode == KeyEvent.KEYCODE_ESCAPE
                     if (isBack && !systemMenuOpen && !viewModel.state.value.isOptionsPanelOpen) {
-                        if (event.type == KeyEventType.KeyUp) appsOpen = true
+                        // Only a press that started here: the release of a B that closed the game page,
+                        // a panel or the options must not open the grid.
+                        if (event.type == KeyEventType.KeyDown) backDownHere = true
+                        if (event.type == KeyEventType.KeyUp && backDownHere) {
+                            backDownHere = false
+                            appsOpen = true
+                        }
                         return@onPreviewKeyEvent true
                     }
                     // Select: short press opens the filter panel, a long press the quick access panel.

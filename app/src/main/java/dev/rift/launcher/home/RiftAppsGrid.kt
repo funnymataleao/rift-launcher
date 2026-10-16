@@ -256,7 +256,8 @@ private fun AppTile(app: AndroidGame, focusRequester: FocusRequester?, onClick: 
             color = if (focused) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
-            maxLines = 2,
+            // One line for every tile, so all tiles are the same height.
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
         )
