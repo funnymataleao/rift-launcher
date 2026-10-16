@@ -37,6 +37,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -118,6 +120,9 @@ private fun AppsGridContent(onDismiss: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.55f))
+            // Focus stays inside the grid: scrolling past the edge must not land on the home behind it.
+            .focusProperties { onExit = { cancelFocusChange() } }
+            .focusGroup()
             .onPreviewKeyEvent { event ->
                 val code = event.nativeKeyEvent.keyCode
                 val leaveField = typing && code == KeyEvent.KEYCODE_DPAD_DOWN

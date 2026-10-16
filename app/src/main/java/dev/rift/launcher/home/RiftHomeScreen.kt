@@ -61,6 +61,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -378,6 +379,8 @@ fun RiftHomeScreen(
         // Compose can hand focus back to the window (Back at the top of the focus tree), and then no
         // key reaches the screen at all: take the view's focus back first.
         if (!composeView.hasFocus()) composeView.requestFocus()
+        // Behind the apps grid the covers must not take focus; the grid keeps its own.
+        if (appsOpen) return
         // Across a frame, so the cover sees its focus request change even if it was the last one.
         pendingFocusKey = null
         homeScope.launch {
@@ -517,6 +520,13 @@ fun RiftHomeScreen(
                         }
                         else -> false
                     }
+                }
+                // Last resort for the apps grid: a B the grid did not take (focus somewhere odd) closes it.
+                .onKeyEvent { event ->
+                    val code = event.nativeKeyEvent.keyCode
+                    if (!appsOpen || (code != KeyEvent.KEYCODE_BUTTON_B && code != KeyEvent.KEYCODE_BACK)) return@onKeyEvent false
+                    if (event.type == KeyEventType.KeyUp) appsOpen = false
+                    true
                 }
                 .focusRequester(rootFocus)
                 // Focus should sit on a cover; if it ever lands on the screen itself, send it back.
