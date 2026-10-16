@@ -95,9 +95,10 @@ private val RiftColorScheme = darkColorScheme(
 
 /** Side panels: translucent black over a blurred home screen, like frosted glass. */
 private val RiftGlassColorScheme = RiftColorScheme.copy(
-    surface = Color.Black.copy(alpha = 0.55f),
-    surfaceContainer = Color.Black.copy(alpha = 0.55f),
-    scrim = Color.Black.copy(alpha = 0.35f),
+    surface = Color.Black.copy(alpha = 0.65f),
+    surfaceContainer = Color.Black.copy(alpha = 0.65f),
+    surfaceTint = Color.Transparent,
+    scrim = Color.Black.copy(alpha = 0.3f),
 )
 
 @Composable

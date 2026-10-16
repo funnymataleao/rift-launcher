@@ -1,6 +1,7 @@
 package app.gamenative.ui.screen.library.components
 
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,7 +34,9 @@ internal fun LibraryDetailPane(
     onAiDebugRun: () -> Unit,
     onBack: () -> Unit,
 ) {
-    Surface {
+    // Rift: transparent in options-only mode, so the Rift home stays visible behind the panel.
+    val riftOptionsOnly = dev.rift.launcher.home.LocalRiftOptionsOnly.current != null
+    Surface(color = if (riftOptionsOnly) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.surface) {
         if (libraryItem == null) {
             val listState = rememberLazyGridState()
             val emptyState = remember {
