@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Rift</string>
+    <string name="home_empty">No games yet. Connect a PC, a store or an emulator to fill your library.</string>
+    <string name="home_refresh">Refresh</string>
+    <string name="home_play">Play</string>
+    <string name="home_no_source">No source can start this game yet</string>
+    <string name="launch_failed">Could not start: %1$s</string>
+</resources>
