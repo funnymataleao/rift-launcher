@@ -966,7 +966,9 @@ internal fun AppScreenContent(
         derivedStateOf { heroHeightPx > 0 && scrollState.value < heroHeightPx }
     }
 
-    var optionsMenuVisible by remember { mutableStateOf(false) }
+    // Rift: Start on the Rift home opens the game page with its options already out.
+    val openOptions = dev.rift.launcher.home.LocalRiftOpenGameOptions.current
+    var optionsMenuVisible by remember { mutableStateOf(openOptions) }
 
     // Track the original progress bar bounds for ambient mode morph animation
     var progressBarBounds by remember { mutableStateOf<Rect?>(null) }

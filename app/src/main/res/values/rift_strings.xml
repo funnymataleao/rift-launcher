@@ -242,6 +242,7 @@
     <string name="rift_settings_sound_pack_builtin">Built-in sounds</string>
     <string name="rift_settings_sound_pack_reset">Back to built-in sounds</string>
     <string name="rift_section_android_games">Android games</string>
+    <string name="rift_hint_options">Options</string>
     <string name="rift_hint_menu">Quick access</string>
     <string name="rift_source_android">Android</string>
     <string name="rift_search">Search</string>
