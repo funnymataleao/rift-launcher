@@ -117,6 +117,9 @@ import kotlinx.coroutines.withContext
 
 private val ScreenPadding = 48.dp
 private val CardGap = 18.dp
+
+/** Lifts the row off the hints bar (Denis: covers bigger and higher). */
+private val RowBottomGap = 20.dp
 private const val LOAD_MORE_THRESHOLD = 6
 
 /**
@@ -303,7 +306,7 @@ fun RiftHomeScreen(
                     }
                 },
         ) {
-            val cardHeight = (maxHeight * 0.3f).coerceIn(140.dp, 280.dp)
+            val cardHeight = (maxHeight * 0.37f).coerceIn(160.dp, 340.dp)
 
             Box(modifier = Modifier.fillMaxSize().blur(blur)) {
                 if (section == RiftSection.AndroidGames) AndroidBackdrop(focusedAndroid) else HeroBackdrop(item = focusedItem)
@@ -546,7 +549,7 @@ private fun PcGamesShelf(
     }
     LazyRow(
         state = listState,
-        contentPadding = PaddingValues(start = ScreenPadding, end = ScreenPadding, top = 18.dp, bottom = 4.dp),
+        contentPadding = PaddingValues(start = ScreenPadding, end = ScreenPadding, top = 18.dp, bottom = RowBottomGap),
         horizontalArrangement = Arrangement.spacedBy(CardGap),
     ) {
         itemsIndexed(shown, key = { _, item -> item.appId }) { index, item ->
@@ -619,7 +622,7 @@ private fun AndroidShelf(
     val context = LocalContext.current
     LazyRow(
         state = listState,
-        contentPadding = PaddingValues(start = ScreenPadding, end = ScreenPadding, top = 18.dp, bottom = 4.dp),
+        contentPadding = PaddingValues(start = ScreenPadding, end = ScreenPadding, top = 18.dp, bottom = RowBottomGap),
         horizontalArrangement = Arrangement.spacedBy(CardGap),
     ) {
         itemsIndexed(games, key = { _, game -> game.packageName }) { index, game ->
@@ -931,12 +934,13 @@ private val LogoTitleStyle = TextStyle(
  */
 @Composable
 private fun GameLogo(item: LibraryItem) {
-    val logoUrl = if (item.gameSource == GameSource.STEAM && item.gameId != 0) {
-        "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/logo.png"
-    } else {
-        ""
+    val isSteam = item.gameSource == GameSource.STEAM && item.gameId != 0
+    // Resolved off the main thread; null while looking it up, "" when the game has no logo image.
+    val logoUrl by produceState<String?>(if (isSteam) null else "", item.appId) {
+        value = if (isSteam) withContext(Dispatchers.IO) { GameLogos.steamLogoUrl(item.gameId) } else ""
     }
-    Crossfade(targetState = item.appId to logoUrl, animationSpec = tween(250), label = "logo") { (appId, url) ->
+    val url = logoUrl ?: return
+    Crossfade(targetState = item.appId to url, animationSpec = tween(250), label = "logo") { (appId, url) ->
         var logoFailed by remember(appId) { mutableStateOf(url.isEmpty()) }
         Box(modifier = Modifier.width(LogoWidth).height(LogoHeight), contentAlignment = Alignment.BottomStart) {
             if (!logoFailed) {

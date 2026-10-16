@@ -54,7 +54,7 @@ import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private val FrameWidth = 3.5.dp
+private val FrameWidth = 2.dp
 private const val FRAME_SWEEP_MS = 2600
 private const val REFLECTION_SHARE = 0.14f
 
@@ -63,8 +63,8 @@ private val FallbackPalette = listOf(Color.White, Color(0xFF9E9E9E))
 
 /**
  * A 2:3 cover with Rift's focus treatment (Denis 2026-10-16): the cover lifts, a frame in the
- * cover's own two colours turns its diagonal gradient 90 degrees once, slowly, and a soft
- * reflection with a glow in the cover colour sits under it.
+ * cover's own two colours turns its diagonal gradient 90 degrees once, slowly, a glow in the
+ * cover colour shows through the shadow, and a soft reflection with the same rounded corners sits under it.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -136,7 +136,6 @@ fun CoverCard(
             coverHeight = height,
             height = height * REFLECTION_SHARE,
             focused = focused,
-            palette = palette,
             scale = scale,
             cover = cover,
         )
@@ -172,53 +171,36 @@ private fun CoverReflection(
     coverHeight: Dp,
     height: Dp,
     focused: Boolean,
-    palette: List<Color>,
     scale: Float,
     cover: @Composable BoxScope.() -> Unit,
 ) {
     val alpha by animateFloatAsState(if (focused) 0.36f else 0.14f, tween(300), label = "reflectionAlpha")
-    val glow by animateFloatAsState(if (focused) 0.45f else 0f, tween(300), label = "reflectionGlow")
+    // One mask for everything: the card's own rounded shape, so the reflection has the same corners.
+    // The coloured glow comes from the card's shadow; a separate glow layer here showed square edges.
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(height)
-            .graphicsLayer { scaleX = scale }
-            .drawBehind {
-                if (glow > 0f) {
-                    drawRect(
-                        Brush.radialGradient(
-                            listOf(palette.first().copy(alpha = glow), Color.Transparent),
-                            center = Offset(size.width / 2, 0f),
-                            radius = size.width * 0.75f,
-                        ),
-                    )
-                }
+            .graphicsLayer {
+                scaleX = scale
+                this.alpha = alpha
+                shape = RiftShapes.card
+                clip = true
+                compositingStrategy = CompositingStrategy.Offscreen
+            }
+            .drawWithContent {
+                drawContent()
+                drawRect(Brush.verticalGradient(listOf(Color.Black, Color.Transparent)), blendMode = BlendMode.DstIn)
             },
     ) {
+        // The whole cover, flipped, with its bottom edge at the top of the reflection.
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .clip(ReflectionShape)
-                .graphicsLayer {
-                    this.alpha = alpha
-                    compositingStrategy = CompositingStrategy.Offscreen
-                }
-                .drawWithContent {
-                    drawContent()
-                    drawRect(Brush.verticalGradient(listOf(Color.Black, Color.Transparent)), blendMode = BlendMode.DstIn)
-                },
-        ) {
-            // The whole cover, flipped, with its bottom edge at the top of the reflection.
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(Alignment.Top, unbounded = true)
-                    .height(coverHeight)
-                    .graphicsLayer { scaleY = -1f },
-                content = cover,
-            )
-        }
+                .fillMaxWidth()
+                .wrapContentHeight(Alignment.Top, unbounded = true)
+                .height(coverHeight)
+                .graphicsLayer { scaleY = -1f },
+            content = cover,
+        )
     }
 }
-
-private val ReflectionShape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)
