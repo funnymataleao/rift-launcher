@@ -9,6 +9,8 @@ permissions:
 
 jobs:
   close-non-contributors:
+    # Rift: upstream-only policy; it points reporters to GameNative's Discord.
+    if: github.repository == 'utkarshdalal/GameNative'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/github-script@v7
