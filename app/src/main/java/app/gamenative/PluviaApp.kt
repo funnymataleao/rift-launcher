@@ -162,7 +162,10 @@ class PluviaApp : SplitCompatApplication() {
         PostHogAndroid.setup(this, postHogConfig)
         com.posthog.PostHog.register("build_flavor", BuildConfig.FLAVOR)
         DeviceInfo.registerSuperProperties(this)
-        Thread({ DeviceInfo.registerGpuSuperProperties(applicationContext) }, "device-info").apply { isDaemon = true }.start()
+        // Rift: the Vulkan probe crashes the Android emulator, which is only used to look at the UI.
+        if (!dev.rift.launcher.platform.Emulator.isEmulator) {
+            Thread({ DeviceInfo.registerGpuSuperProperties(applicationContext) }, "device-info").apply { isDaemon = true }.start()
+        }
 
         if (PrefManager.usageAnalyticsEnabled) {
             com.posthog.PostHog.capture(

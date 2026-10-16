@@ -31,7 +31,9 @@ public abstract class GPUHelper {
 
     // start the work immediately; runs exactly once
     private static final CompletableFuture<Integer> apiVersionFuture =
-            CompletableFuture.supplyAsync(GPUHelper::vkGetApiVersion, io);
+            CompletableFuture.supplyAsync(
+                    // Rift: the Vulkan probe crashes the Android emulator; assume 1.3 there.
+                    () -> dev.rift.launcher.platform.Emulator.isEmulator() ? VK_API_VERSION_1_3 : vkGetApiVersion(), io);
 
     // Note: Removed @CriticalNative to allow proper JNI error handling and logging
     // in the native implementation. Performance is not impacted since this is
