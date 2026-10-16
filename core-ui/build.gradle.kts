@@ -10,7 +10,7 @@ android {
 
 kotlin {
     compilerOptions {
-        // Material 3 Expressive APIs were experimental before material3 1.5; harmless once they are stable.
+        // Some Material 3 Expressive APIs are still experimental; opting in is harmless for the stable ones.
         freeCompilerArgs.add("-opt-in=androidx.compose.material3.ExperimentalMaterial3ExpressiveApi")
     }
 }
