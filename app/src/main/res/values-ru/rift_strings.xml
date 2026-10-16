@@ -191,8 +191,6 @@
     <string name="rift_settings_clock">Часы, формат</string>
     <string name="rift_settings_show_battery">Показывать заряд</string>
     <string name="rift_settings_show_network">Показывать сеть</string>
-    <string name="rift_settings_button_glyphs">Значки кнопок</string>
-    <string name="rift_settings_button_glyphs_summary">Какие значки геймпада показывают подсказки</string>
     <string name="rift_settings_ui_sounds">Звуки интерфейса</string>
     <string name="rift_settings_ui_sounds_summary">Тихий щелчок при движении и нажатии</string>
     <string name="rift_settings_sound_note">Положите в папку файлы move, select, back, tab, open, close и launch (ogg, wav или mp3). Чего не хватит, останется встроенным.</string>
@@ -247,4 +245,9 @@
     <string name="rift_search">Поиск</string>
     <string name="rift_settings_stream_vibration">Вибрация геймпада</string>
     <string name="rift_settings_stream_vibration_summary">Передавать вибрацию игры на геймпад</string>
+    <string name="rift_settings_quick_access">Кнопка правой панели</string>
+    <string name="rift_settings_quick_access_summary">Кнопка геймпада, которая открывает панель с настройками игры</string>
+    <string name="rift_settings_quick_access_press">Нажмите кнопку на геймпаде</string>
+    <string name="rift_settings_quick_access_reset">Кнопка Guide</string>
+    <string name="rift_settings_cancel">Отмена</string>
 </resources>

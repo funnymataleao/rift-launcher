@@ -122,11 +122,11 @@ private fun Modifier.focusChrome(
         }
         .clip(shape)
         .background(if (focused) focusedColor else restColor)
-        .border(if (focused) 3.dp else 1.dp, if (focused) Color.White else RiftColors.OutlineVariant, shape)
+        .border(if (focused) 2.dp else 1.dp, if (focused) Color.White.copy(alpha = 0.9f) else RiftColors.OutlineVariant, shape)
 }
 
 @Composable
-private fun RowIcon(icon: ImageVector, focused: Boolean, tint: Color = RiftColors.Primary) {
+private fun RowIcon(icon: ImageVector, focused: Boolean, tint: Color = RiftColors.OnSurface) {
     Box(
         modifier = Modifier
             .size(RowIconSize)
@@ -178,25 +178,37 @@ private fun RowChrome(
     leading: (@Composable () -> Unit)? = null,
     trailing: @Composable RowScope.() -> Unit,
 ) {
-    Row(
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .alpha(if (enabled) 1f else 0.45f)
             .background(if (focused) RiftColors.SurfaceContainerHigh else RiftColors.SurfaceContainer)
-            .border(if (focused) 3.dp else 0.dp, if (focused) Color.White else Color.Transparent)
             .then(interactive)
-            .heightIn(min = RowMinHeight)
-            .padding(horizontal = 18.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+            .heightIn(min = RowMinHeight),
     ) {
-        if (leading != null) {
-            leading()
-        } else if (icon != null) {
-            RowIcon(icon, focused, tint = if (danger) RiftColors.Error else RiftColors.Primary)
+        // The focus ring sits inside the row, away from the card's rounded corners, so the card's mask never
+        // cuts it and it stays a thin, whole outline.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 6.dp)
+                .border(
+                    width = if (focused) 2.dp else 0.dp,
+                    color = if (focused) Color.White.copy(alpha = 0.9f) else Color.Transparent,
+                    shape = RoundedCornerShape(18.dp),
+                )
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            if (leading != null) {
+                leading()
+            } else if (icon != null) {
+                RowIcon(icon, focused, tint = if (danger) RiftColors.Error else RiftColors.OnSurface)
+            }
+            RowTexts(title, subtitle, danger, Modifier.weight(1f))
+            trailing()
         }
-        RowTexts(title, subtitle, danger, Modifier.weight(1f))
-        trailing()
     }
 }
 
@@ -436,7 +448,7 @@ internal fun RiftChip(
             checkedContentColor = RiftColors.OnSurface,
         ),
         border = BorderStroke(
-            width = if (focused) 3.dp else if (selected) 2.dp else 1.dp,
+            width = if (focused) 2.dp else if (selected) 1.5.dp else 1.dp,
             color = when {
                 focused -> Color.White
                 selected -> RiftColors.Primary
@@ -488,7 +500,7 @@ internal fun RiftPillButton(
             containerColor = if (primary) Color.White else RiftColors.SurfaceContainerHigh,
             contentColor = if (primary) RiftColors.OnPrimary else RiftColors.OnSurface,
         ),
-        border = if (focused) BorderStroke(3.dp, if (primary) RiftColors.Primary else Color.White) else null,
+        border = if (focused) BorderStroke(2.dp, if (primary) RiftColors.Primary else Color.White.copy(alpha = 0.9f)) else null,
         contentPadding = PaddingValues(horizontal = 26.dp),
         interactionSource = interaction,
         modifier = modifier
@@ -540,13 +552,13 @@ internal fun SectionBadge(icon: ImageVector, size: Dp = RiftSizes.button) {
             .size(size)
             .clip(CircleShape)
             .background(RiftColors.SurfaceContainer)
-            .border(1.5.dp, RiftColors.Primary.copy(alpha = 0.55f), CircleShape),
+            .border(1.dp, RiftColors.OutlineVariant, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = RiftColors.Primary,
+            tint = RiftColors.OnSurface,
             modifier = Modifier.size(size * 0.5f),
         )
     }
