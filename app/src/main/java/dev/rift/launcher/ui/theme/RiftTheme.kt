@@ -53,6 +53,18 @@ object RiftShapes {
     val control = RoundedCornerShape(19.dp)
     val sheet = RoundedCornerShape(26.dp)
     val full = RoundedCornerShape(50)
+
+    /**
+     * Denis 2026-10-16: nothing square anywhere (side panels themselves aside). One rounded family
+     * for every Material component, in Rift's own screens and GameNative's alike.
+     */
+    val material = Shapes(
+        extraSmall = RoundedCornerShape(12.dp),
+        small = control,
+        medium = card,
+        large = sheet,
+        extraLarge = RoundedCornerShape(32.dp),
+    )
 }
 
 object RiftSizes {
@@ -141,11 +153,7 @@ private fun RiftMaterialTheme(colorScheme: ColorScheme, content: @Composable () 
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
         motionScheme = MotionScheme.expressive(),
-        shapes = Shapes(
-            small = RiftShapes.control,
-            medium = RiftShapes.card,
-            large = RiftShapes.sheet,
-        ),
+        shapes = RiftShapes.material,
         content = content,
     )
 }

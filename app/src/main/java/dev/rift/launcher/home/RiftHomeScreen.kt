@@ -48,7 +48,6 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,6 +61,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.runtime.SideEffect
 import androidx.compose.foundation.focusable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
@@ -122,10 +122,8 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.ui.component.CommunityCompatibilityBadge
 import app.gamenative.ui.component.CompatibilityBadge
-import app.gamenative.ui.component.GameStatsRow
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.data.communityCompatibilityFor
-import app.gamenative.ui.data.statsFor
 import app.gamenative.ui.enums.LibraryTab
 import app.gamenative.ui.model.LibraryViewModel
 import app.gamenative.ui.screen.library.components.GameSourceIcon
@@ -194,9 +192,13 @@ fun RiftHomeScreen(
         }
     }
 
-    val library = remember(libraryState.appInfoList) {
+    val loadedLibrary = remember(libraryState.appInfoList) {
         libraryState.appInfoList.filterNot { it.isRecommended || it.isFeatured || it.isRecTeaser || it.isRecLoading }
     }
+    // While GameNative reloads the list (it empties it first), keep showing the last one: no flashes.
+    var lastLibrary by remember { mutableStateOf(emptyList<LibraryItem>()) }
+    val library = if (loadedLibrary.isEmpty() && libraryState.isLoading) lastLibrary else loadedLibrary
+    SideEffect { if (loadedLibrary.isNotEmpty() || !libraryState.isLoading) lastLibrary = loadedLibrary }
     // Android games the user added in settings; reloads when that list changes.
     val androidGames by produceState(emptyList<AndroidGame>()) {
         suspend fun load() {
@@ -212,6 +214,25 @@ fun RiftHomeScreen(
     }
     val pairedPcs by PcStreaming.pairedHosts(context).collectAsStateWithLifecycle()
     val sections = remember(library, androidGames, pairedPcs) { RiftSections.configured(context, library, androidGames, pairedPcs) }
+
+    // Start-up: pure black until there is something to show (or, with nothing set up, until the
+    // stores have had a moment to sign in), then one entrance: the art drifts in with a slight zoom
+    // and the covers roll in from the right one after another.
+    var settled by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(STARTUP_SETTLE_MS)
+        settled = true
+    }
+    val ready = library.isNotEmpty() || androidGames.isNotEmpty() || pairedPcs.isNotEmpty() || (settled && !libraryState.isLoading)
+    var introPlayed by rememberSaveable { mutableStateOf(false) }
+    val intro = remember { Animatable(if (introPlayed) 1f else 0f) }
+    val introSpec = MaterialTheme.motionScheme.slowEffectsSpec<Float>()
+    LaunchedEffect(ready) {
+        if (ready && !introPlayed) {
+            intro.animateTo(1f, introSpec)
+            introPlayed = true
+        }
+    }
     val streamTab = if (pairedPcs.isNotEmpty()) rememberPcStreamingTab() else null
 
     var sectionKey by rememberSaveable { mutableStateOf<String?>(null) }
@@ -358,7 +379,9 @@ fun RiftHomeScreen(
     }
     val blur by animateDpAsState(if (overlayOpen) 28.dp else 0.dp, tween(300), label = "backdropBlur")
 
+    val rightStick = rememberRightStick()
     RiftTheme {
+      CompositionLocalProvider(LocalRightStick provides rightStick) {
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
@@ -455,9 +478,21 @@ fun RiftHomeScreen(
                         drawLayer(backdrop)
                     },
               ) {
-                if (section == RiftSection.AndroidGames) AndroidBackdrop(focusedAndroid) else HeroBackdrop(item = focusedItem.takeIf { section == RiftSection.PcGames })
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val p = intro.value
+                            alpha = p
+                            scaleX = 1.12f - 0.12f * p
+                            scaleY = 1.12f - 0.12f * p
+                        },
+                ) {
+                    if (section == RiftSection.AndroidGames) AndroidBackdrop(focusedAndroid) else HeroBackdrop(item = focusedItem.takeIf { section == RiftSection.PcGames })
+                }
 
-                Column(modifier = Modifier.fillMaxSize()) {
+                Column(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = if (ready) 1f else 0f }) {
+                    Box(modifier = Modifier.graphicsLayer { alpha = intro.value }) {
                     TopBar(
                         sections = sections,
                         selected = section,
@@ -480,8 +515,10 @@ fun RiftHomeScreen(
                             null
                         },
                     )
+                    }
 
                     when {
+                        !ready -> Spacer(modifier = Modifier.weight(1f))
                         section == null -> EmptyState(
                             message = stringResource(R.string.rift_no_sources_message),
                             onConnect = onOpenStores,
@@ -510,17 +547,14 @@ fun RiftHomeScreen(
                             onWantFocus = { if (pendingFocusKey == null) focusSection(section) },
                             modifier = Modifier.weight(1f),
                         )
-                        library.isEmpty() && libraryState.isLoading -> Box(
-                            modifier = Modifier.weight(1f).fillMaxWidth(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            LoadingIndicator(color = RiftColors.Primary)
-                        }
+                        // Still loading with nothing cached: stay black rather than show a spinner.
+                        library.isEmpty() && libraryState.isLoading -> Spacer(modifier = Modifier.weight(1f))
                         else -> {
                             // Big Picture style: only the big logo of the focused game over its art.
-                            HeroLogo(item = focusedItem, modifier = Modifier.weight(1f))
+                            HeroLogo(item = focusedItem, modifier = Modifier.weight(1f).graphicsLayer { alpha = intro.value })
                             PcGamesShelf(
                                 shown = library,
+                                rollIn = !introPlayed,
                                 libraryState = libraryState,
                                 listState = pcRowState,
                                 cardHeight = cardHeight,
@@ -542,7 +576,7 @@ fun RiftHomeScreen(
                     Spacer(modifier = Modifier.height(FooterHeight - 36.dp))
                 }
               }
-                Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(FooterHeight)) {
+                Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(FooterHeight).graphicsLayer { alpha = intro.value }) {
                     FrostedGlass(backdrop = backdrop, modifier = Modifier.matchParentSize())
                     HintsBar(showFilters = section == RiftSection.PcGames)
                 }
@@ -613,6 +647,7 @@ fun RiftHomeScreen(
                 )
             }
         }
+      }
     }
 
     // Focus a cover once the section has something to show, so a gamepad works without touching the screen.
@@ -669,18 +704,7 @@ private fun BoxScope.CoverBadges(item: LibraryItem, libraryState: LibraryState) 
             GameSourceIcon(gameSource = item.gameSource, iconSize = 12, alignmentBoxSize = 20)
         }
     }
-    val stats = libraryState.statsFor(item)
-    if (stats != null) {
-        GameStatsRow(
-            stats = stats,
-            tint = Color.White.copy(alpha = 0.75f),
-            animate = false,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))))
-                .padding(start = 10.dp, end = 10.dp, top = 16.dp, bottom = 8.dp),
-        )
-    }
+    // Device play stats (GameStatsRow) stay on the game page; on the home they clutter the covers.
 }
 
 @Composable
@@ -710,6 +734,7 @@ private fun androidFocusKey(game: AndroidGame): String = "android:${game.package
 @Composable
 private fun PcGamesShelf(
     shown: List<LibraryItem>,
+    rollIn: Boolean,
     libraryState: LibraryState,
     listState: LazyListState,
     cardHeight: Dp,
@@ -751,6 +776,22 @@ private fun PcGamesShelf(
                 item.capsuleImageUrl.ifEmpty { item.headerImageUrl }
             }
             val context = LocalContext.current
+            // Entrance: the covers on screen roll in from the right one after another.
+            val appear = remember { Animatable(if (rollIn) 0f else 1f) }
+            val appearSpec = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
+            LaunchedEffect(Unit) {
+                if (appear.value < 1f) {
+                    delay(ROLL_IN_START_MS + ROLL_IN_STEP_MS * index.coerceAtMost(10))
+                    appear.animateTo(1f, appearSpec)
+                }
+            }
+            Box(
+                modifier = Modifier.graphicsLayer {
+                    val p = appear.value
+                    translationX = (1f - p) * ROLL_IN_DISTANCE.toPx()
+                    alpha = p.coerceIn(0f, 1f)
+                },
+            ) {
             CoverCard(
                 height = cardHeight,
                 aspectRatio = if (wide) WIDE_TILE_RATIO else 2f / 3f,
@@ -783,6 +824,7 @@ private fun PcGamesShelf(
                 },
                 badge = { CoverBadges(item, libraryState) },
             )
+            }
         }
     }
 }
@@ -1232,6 +1274,10 @@ private fun EmptyState(message: String, onConnect: () -> Unit, modifier: Modifie
 }
 
 private val FooterHeight = 58.dp
+private const val STARTUP_SETTLE_MS = 2500L
+private const val ROLL_IN_START_MS = 120L
+private const val ROLL_IN_STEP_MS = 55L
+private val ROLL_IN_DISTANCE = 180.dp
 private const val SELECT_HOLD_MS = 450L
 
 /**
@@ -1247,12 +1293,12 @@ private fun FrostedGlass(backdrop: GraphicsLayer, modifier: Modifier = Modifier)
             .graphicsLayer {
                 clip = true
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    renderEffect = BlurEffect(28.dp.toPx(), 28.dp.toPx(), TileMode.Clamp)
+                    renderEffect = BlurEffect(18.dp.toPx(), 18.dp.toPx(), TileMode.Clamp)
                 }
             }
             .drawBehind {
                 translate(top = -top) { drawLayer(backdrop) }
-                drawRect(Color.Black.copy(alpha = 0.42f))
+                drawRect(Color.Black.copy(alpha = 0.28f))
             },
     )
 }

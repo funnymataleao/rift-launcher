@@ -219,7 +219,8 @@ private fun OptionSection(
             text = title,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.primary,
+            // Rift: neutral section titles.
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
         )
 
@@ -278,7 +279,7 @@ private fun OptionItem(
                 if (isFocused) {
                     Modifier.border(
                         1.dp,
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                         RoundedCornerShape(12.dp),
                     )
                 } else {
@@ -307,7 +308,7 @@ private fun OptionItem(
             contentDescription = null,
             tint = when {
                 isDestructive -> MaterialTheme.colorScheme.error
-                isFocused -> MaterialTheme.colorScheme.primary
+                isFocused -> MaterialTheme.colorScheme.onSurface
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
             },
             modifier = Modifier.size(24.dp),

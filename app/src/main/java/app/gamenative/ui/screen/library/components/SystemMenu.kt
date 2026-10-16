@@ -442,8 +442,8 @@ fun SystemMenu(
                                 .then(
                                     if (isProfileFocused) {
                                         Modifier.border(
-                                            2.dp,
-                                            MaterialTheme.colorScheme.primary,
+                                            1.dp,
+                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                                             RoundedCornerShape(16.dp),
                                         )
                                     } else {

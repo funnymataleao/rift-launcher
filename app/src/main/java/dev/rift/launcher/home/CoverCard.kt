@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.rift.launcher.ui.theme.RiftColors
 import dev.rift.launcher.ui.theme.RiftShapes
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
@@ -61,6 +62,8 @@ import kotlinx.coroutines.withContext
 
 private val FrameWidth = 1.dp
 private const val FRAME_SWEEP_MS = 1400
+private const val SHEEN_SWEEP_MS = 900
+private const val MAX_TILT_DEGREES = 9f
 
 /** How far a focused cover grows on each side; less than the gap between covers. */
 private val FocusGrowth = 7.dp
@@ -113,6 +116,12 @@ fun CoverCard(
         }
     }
 
+    // Apple TV style: the right stick tilts the focused cover a little in 3D, the sheen follows.
+    val stick by LocalRightStick.current
+    val tiltSpec = MaterialTheme.motionScheme.fastSpatialSpec<Float>()
+    val tiltX by animateFloatAsState(if (focused) stick.x else 0f, tiltSpec, label = "tiltX")
+    val tiltY by animateFloatAsState(if (focused) stick.y else 0f, tiltSpec, label = "tiltY")
+
     val width = height * aspectRatio
     // The card's picture, recorded as it is drawn and reused flipped for the reflection, so every
     // card gets the very same reflection as soon as it shows anything.
@@ -126,6 +135,9 @@ fun CoverCard(
                     scaleX = scale
                     scaleY = scale
                     translationY = lift.toPx()
+                    rotationY = tiltX * MAX_TILT_DEGREES
+                    rotationX = -tiltY * MAX_TILT_DEGREES
+                    cameraDistance = 14f * density
                 }
                 .shadow(
                     elevation = if (focused) 20.dp else 0.dp,
@@ -135,6 +147,7 @@ fun CoverCard(
                 )
                 .clip(RiftShapes.card)
                 .background(RiftColors.SurfaceContainer)
+                .coverSheen(focused, tiltX, tiltY)
                 .coverFrame(focused, palette, RiftShapes.card)
                 .drawWithContent {
                     picture.record { this@drawWithContent.drawContent() }
@@ -188,6 +201,41 @@ private fun Modifier.coverFrame(focused: Boolean, colors: List<Color>, shape: Sh
         )
         // The card is clipped to its shape, so only the inner half of this stroke shows.
         drawOutline(shape.createOutline(size, layoutDirection, this), brush, alpha = alpha, style = Stroke(FrameWidth.toPx() * 2))
+    }
+}
+
+/**
+ * A light sheen over the cover: on focus it sweeps across once, corner to corner; afterwards it
+ * shows only while the cover is tilted, sliding with the tilt.
+ */
+@Composable
+private fun Modifier.coverSheen(focused: Boolean, tiltX: Float, tiltY: Float): Modifier {
+    val sweep = remember { Animatable(1f) }
+    LaunchedEffect(focused) {
+        if (focused) {
+            sweep.snapTo(0f)
+            sweep.animateTo(1f, tween(SHEEN_SWEEP_MS, easing = FastOutSlowInEasing))
+        }
+    }
+    return drawWithContent {
+        drawContent()
+        val sweeping = focused && sweep.value < 1f
+        val tilt = (abs(tiltX) + abs(tiltY)).coerceAtMost(1f)
+        val strength = if (sweeping) 0.32f * sin(Math.PI * sweep.value).toFloat() else 0.22f * tilt
+        if (strength <= 0.01f) return@drawWithContent
+        // Position along the diagonal: the sweep runs past both corners; a tilt moves it off centre.
+        val t = if (sweeping) -0.3f + 1.6f * sweep.value else 0.5f + 0.5f * (tiltX + tiltY) / 2f
+        val band = size.minDimension * 0.6f
+        val c = Offset(size.width * t, size.height * t)
+        drawRect(
+            Brush.linearGradient(
+                0f to Color.Transparent,
+                0.5f to Color.White.copy(alpha = strength),
+                1f to Color.Transparent,
+                start = c - Offset(band, band) / 2f,
+                end = c + Offset(band, band) / 2f,
+            ),
+        )
     }
 }
 
