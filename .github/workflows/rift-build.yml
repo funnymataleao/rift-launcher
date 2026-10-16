@@ -50,6 +50,11 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      # The secrets Gradle plugin needs local.properties to exist, and turns every
+      # entry into a raw BuildConfig field, so it must not hold empty secrets.
+      - name: Create local.properties
+        run: echo "sdk.dir=$ANDROID_HOME" > local.properties
+
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
 
