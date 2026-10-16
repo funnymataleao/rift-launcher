@@ -100,6 +100,40 @@ private fun StatItem(
 }
 
 /**
+ * Stats laid out evenly across the full width of the game page action bar (Rift). Entries without
+ * data (no runs, no reviews, unknown FPS or session) are left out instead of showing 0/?.
+ */
+@Composable
+fun GameStatsStrip(
+    stats: GameCardStats?,
+    modifier: Modifier = Modifier,
+    tint: Color = Color.White,
+) {
+    val entries = statEntries(stats).filter { it.value != "0" && it.value != "0/0" && it.value != "?" }
+    if (entries.isEmpty()) return
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        entries.forEach { entry ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(imageVector = entry.icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+                Text(
+                    text = entry.value,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = tint,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+/**
  * Vertical key explaining each stat icon, with device-specific descriptions. Designed to sit at the
  * top of the library options panel. Matches the white icon/text styling used on the game cards.
  */

@@ -98,8 +98,11 @@ fun LibraryState.statsFor(item: LibraryItem): GameCardStats? = statsFor(item.gam
 
 /** Combined device + GPU stats for a game, or null when neither dataset has an entry. */
 fun LibraryState.statsFor(source: GameSource, name: String): GameCardStats? {
-    val device = deviceGameStats[source]?.get(name)
-    val gpu = gpuGameStats[source]?.get(name)
+    return combineGameCardStats(deviceGameStats[source]?.get(name), gpuGameStats[source]?.get(name))
+}
+
+/** Combines the device and GPU datasets of one game into card stats, or null when both are absent. */
+fun combineGameCardStats(device: DeviceGameStats?, gpu: DeviceGameStats?): GameCardStats? {
     if (device == null && gpu == null) return null
     return GameCardStats(
         runsGpu = gpu?.successfulRuns ?: 0,

@@ -264,21 +264,19 @@ private fun PrimaryActionButton(
         label = "downloadProgress",
     )
 
-    val buttonColor = when {
-        isDownloading -> PluviaTheme.colors.statusDownloading
-        isInstalled -> PluviaTheme.colors.statusInstalled
-        else -> PluviaTheme.colors.statusAvailable
-    }
+    // Rift: lemon pill with dark content in every state (no blue/green/cyan).
+    val buttonColor = dev.rift.launcher.ui.theme.RiftColors.Primary
+    val contentColor = dev.rift.launcher.ui.theme.RiftColors.OnPrimary
 
     Box(
         modifier = modifier
             .heightIn(min = 52.dp)
             .scale(scale)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(50))
             .background(
                 if (enabled) buttonColor else buttonColor.copy(alpha = 0.5f),
             )
-            .focusRing(interactionSource, RoundedCornerShape(8.dp), width = 2.dp)
+            .focusRing(interactionSource, RoundedCornerShape(50), width = 2.dp)
             .focusRequester(focusRequester)
             .selectable(
                 selected = isFocused,
@@ -298,7 +296,7 @@ private fun PrimaryActionButton(
                 Icon(
                     imageVector = Icons.Default.Pause,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = contentColor,
                     modifier = Modifier.size(16.dp),
                 )
                 LinearProgressIndicator(
@@ -316,8 +314,8 @@ private fun PrimaryActionButton(
                                 Modifier
                             },
                         ),
-                    color = Color.White,
-                    trackColor = Color.White.copy(alpha = 0.3f),
+                    color = contentColor,
+                    trackColor = contentColor.copy(alpha = 0.25f),
                 )
                 Box(modifier = Modifier.width(36.dp), contentAlignment = Alignment.CenterEnd) {
                     Text(
@@ -326,7 +324,7 @@ private fun PrimaryActionButton(
                             fontWeight = FontWeight.Bold,
                             fontFeatureSettings = "tnum",
                         ),
-                        color = Color.White,
+                        color = contentColor,
                         maxLines = 1,
                         softWrap = false,
                     )
@@ -340,13 +338,13 @@ private fun PrimaryActionButton(
                 Icon(
                     imageVector = if (isInstalled) Icons.Default.PlayArrow else Icons.Default.CloudDownload,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = contentColor,
                     modifier = Modifier.size(24.dp),
                 )
                 Text(
                     text = text,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White,
+                    color = contentColor,
                 )
             }
         }
@@ -379,7 +377,7 @@ private fun ActionIconButton(
         modifier = modifier
             .scale(scale)
             .size(48.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(CircleShape)
             .background(
                 if (isFocused) {
                     Color.White.copy(alpha = 0.2f)
@@ -387,7 +385,7 @@ private fun ActionIconButton(
                     Color.White.copy(alpha = 0.1f)
                 },
             )
-            .focusRing(interactionSource, RoundedCornerShape(8.dp), width = 2.dp)
+            .focusRing(interactionSource, CircleShape, width = 2.dp)
             .selectable(
                 selected = isFocused,
                 interactionSource = interactionSource,
@@ -928,6 +926,7 @@ internal fun AppScreenContent(
     dialogOpen: Boolean = false,
     immersiveMode: ImmersiveModeUiState = ImmersiveModeUiState(),
     communityCompatibility: CommunityCompatibilityUiState = CommunityCompatibilityUiState(),
+    gameStats: app.gamenative.ui.data.GameCardStats? = null,
 ) {
     // Unpacked so the body below is unchanged; bundling the params avoids a Compose VerifyError.
     val isInstalled = downloadDisplayDetails.isInstalled
@@ -1453,7 +1452,23 @@ internal fun AppScreenContent(
                                 }
                             }
                         } else {
-                            Spacer(modifier = Modifier.weight(1f))
+                            // Rift: community stats spread evenly in a grey strip between Install/Play and settings.
+                            val hasStats = gameStats != null &&
+                                (gameStats.runsGpu > 0 || gameStats.reviewsGpu > 0 || gameStats.reviewsDevice > 0 ||
+                                    gameStats.fps != null || gameStats.sessionSec != null)
+                            if (hasStats) {
+                                app.gamenative.ui.component.GameStatsStrip(
+                                    stats = gameStats,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .heightIn(min = 48.dp)
+                                        .clip(RoundedCornerShape(50))
+                                        .background(Color.White.copy(alpha = 0.1f))
+                                        .padding(horizontal = 12.dp),
+                                )
+                            } else {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
                         }
 
                         // Secondary action icons (right-aligned)
@@ -1640,9 +1655,10 @@ internal fun AppScreenContent(
                             }
                             Button(
                                 onClick = onUpdateClick,
-                                shape = RoundedCornerShape(8.dp),
+                                shape = RoundedCornerShape(50),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    containerColor = dev.rift.launcher.ui.theme.RiftColors.Primary,
+                                    contentColor = dev.rift.launcher.ui.theme.RiftColors.OnPrimary,
                                 ),
                             ) {
                                 Text(stringResource(R.string.update_now))
