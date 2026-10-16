@@ -20,12 +20,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -234,7 +235,8 @@ private fun ChoiceOptionRow(
     }
 }
 
-/** Blocks the screen with a spinner and a message, for example while the app restarts. */
+/** Blocks the screen with Material 3 Expressive's morphing loading indicator and a message, for example while the app restarts. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun RiftBusyDialog(message: String) {
     Dialog(
@@ -254,7 +256,7 @@ internal fun RiftBusyDialog(message: String) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            CircularProgressIndicator(color = RiftColors.Primary, strokeWidth = 4.dp, modifier = Modifier.size(34.dp))
+            LoadingIndicator(color = RiftColors.Primary, modifier = Modifier.size(48.dp))
             Text(text = message, color = RiftColors.OnSurface, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         }
     }

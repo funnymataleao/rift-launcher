@@ -1,7 +1,18 @@
 package dev.rift.launcher.settings
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.OutlinedToggleButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -17,9 +28,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -227,31 +236,33 @@ internal fun SwitchRow(
     }
 }
 
-/** The switch graphic: a lemon outline, thumb and faint tint when on, a grey outline when off. */
+/**
+ * Material 3 Expressive switch: the thumb grows and carries a check mark when on. Lemon outline, thumb and
+ * a faint tint when on, a grey outline when off, so a switch stays a small accent on black.
+ */
 @Composable
 private fun RiftSwitch(checked: Boolean) {
-    val thumbX by animateDpAsState(if (checked) 31.dp else 5.dp, RiftMotion.noBounce(), label = "switchThumb")
-    val track by animateColorAsState(
-        if (checked) RiftColors.Primary.copy(alpha = 0.26f) else RiftColors.SurfaceContainerHigh,
-        label = "switchTrack",
+    Switch(
+        checked = checked,
+        onCheckedChange = null,
+        thumbContent = {
+            Icon(
+                imageVector = if (checked) Icons.Rounded.Check else Icons.Rounded.Close,
+                contentDescription = null,
+                modifier = Modifier.size(SwitchDefaults.IconSize),
+            )
+        },
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = RiftColors.Primary,
+            checkedTrackColor = RiftColors.Primary.copy(alpha = 0.26f),
+            checkedBorderColor = RiftColors.Primary,
+            checkedIconColor = RiftColors.OnPrimary,
+            uncheckedThumbColor = RiftColors.Outline,
+            uncheckedTrackColor = RiftColors.SurfaceContainerHigh,
+            uncheckedBorderColor = RiftColors.Outline,
+            uncheckedIconColor = RiftColors.SurfaceContainerHigh,
+        ),
     )
-    Box(
-        modifier = Modifier
-            .width(60.dp)
-            .height(34.dp)
-            .clip(RiftShapes.full)
-            .background(track)
-            .border(2.dp, if (checked) RiftColors.Primary else RiftColors.Outline, RiftShapes.full),
-    ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .offset(x = thumbX)
-                .size(if (checked) 24.dp else 20.dp)
-                .clip(CircleShape)
-                .background(if (checked) RiftColors.Primary else RiftColors.Outline),
-        )
-    }
 }
 
 /**
@@ -393,6 +404,11 @@ internal fun ChoiceChipsRow(
     }
 }
 
+/**
+ * Material 3 Expressive toggle button: the chosen option is a full pill and the others are softer rounded
+ * rectangles, and the shape springs between them when the choice changes.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun RiftChip(
     text: String,
@@ -404,41 +420,40 @@ internal fun RiftChip(
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val scale by animateFloatAsState(if (focused) 1.05f else 1f, RiftMotion.focusSpring(), label = "chipScale")
-    // Expressive shape morph: the chosen chip is a full pill, the others settle into softer rounded rectangles.
-    val corner by animateDpAsState(if (selected) 26.dp else 16.dp, RiftMotion.focusSpring(), label = "chipCorner")
-    val shape = RoundedCornerShape(corner)
-    Box(
+    OutlinedToggleButton(
+        checked = selected,
+        onCheckedChange = { onClick() },
+        enabled = enabled,
+        shapes = ToggleButtonShapes(
+            shape = RoundedCornerShape(16.dp),
+            pressedShape = RoundedCornerShape(10.dp),
+            checkedShape = RoundedCornerShape(26.dp),
+        ),
+        colors = ToggleButtonDefaults.outlinedToggleButtonColors(
+            containerColor = RiftColors.Surface,
+            contentColor = RiftColors.OnSurfaceVariant,
+            checkedContainerColor = RiftColors.SurfaceContainerHigh,
+            checkedContentColor = RiftColors.OnSurface,
+        ),
+        border = BorderStroke(
+            width = if (focused) 3.dp else if (selected) 2.dp else 1.dp,
+            color = when {
+                focused -> Color.White
+                selected -> RiftColors.Primary
+                else -> RiftColors.OutlineVariant
+            },
+        ),
+        contentPadding = PaddingValues(horizontal = 14.dp),
+        interactionSource = interaction,
         modifier = modifier
-            .height(RiftSizes.button)
-            .alpha(if (enabled) 1f else 0.45f)
+            .heightIn(min = RiftSizes.button)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-            }
-            .clip(shape)
-            .background(if (selected) RiftColors.SurfaceContainerHigh else RiftColors.Surface)
-            .border(
-                width = if (focused) 3.dp else if (selected) 2.dp else 1.dp,
-                color = when {
-                    focused -> Color.White
-                    selected -> RiftColors.Primary
-                    else -> RiftColors.OutlineVariant
-                },
-                shape = shape,
-            )
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                enabled = enabled,
-                role = Role.RadioButton,
-                onClick = onClick,
-            )
-            .padding(horizontal = 14.dp),
-        contentAlignment = Alignment.Center,
+            },
     ) {
         Text(
             text = text,
-            color = if (selected) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
             fontSize = 14.5.sp,
             fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
             maxLines = 1,
@@ -447,7 +462,11 @@ internal fun RiftChip(
     }
 }
 
-/** A pill button for dialogs and calls to action. Primary is white with black text, like Play on the home screen. */
+/**
+ * A Material 3 Expressive button for dialogs and calls to action. Primary is white with black text, like Play
+ * on the home screen; its shape springs to a softer rectangle while pressed.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun RiftPillButton(
     text: String,
@@ -458,36 +477,32 @@ internal fun RiftPillButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    Row(
+    val scale by animateFloatAsState(if (focused) 1.06f else 1f, RiftMotion.focusSpring(), label = "pillScale")
+    Button(
+        onClick = onClick,
+        shapes = ButtonDefaults.shapes(
+            shape = RiftShapes.full,
+            pressedShape = RoundedCornerShape(14.dp),
+        ),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (primary) Color.White else RiftColors.SurfaceContainerHigh,
+            contentColor = if (primary) RiftColors.OnPrimary else RiftColors.OnSurface,
+        ),
+        border = if (focused) BorderStroke(3.dp, if (primary) RiftColors.Primary else Color.White) else null,
+        contentPadding = PaddingValues(horizontal = 26.dp),
+        interactionSource = interaction,
         modifier = modifier
-            .height(RiftSizes.button)
-            .widthIn(min = RiftSizes.button)
-            .focusChrome(
-                focused = focused,
-                shape = RiftShapes.full,
-                restColor = if (primary) Color.White else RiftColors.SurfaceContainerHigh,
-                focusedColor = if (primary) Color.White else RiftColors.SurfaceContainerHigh,
-                scaleOnFocus = 1.06f,
-            )
-            .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
-            .padding(horizontal = 26.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            .heightIn(min = RiftSizes.button)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
     ) {
         if (icon != null) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (primary) RiftColors.OnPrimary else RiftColors.OnSurface,
-                modifier = Modifier.size(20.dp),
-            )
+            Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
         }
-        Text(
-            text = text,
-            color = if (primary) RiftColors.OnPrimary else RiftColors.OnSurface,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-        )
+        Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.Bold)
     }
 }
 
