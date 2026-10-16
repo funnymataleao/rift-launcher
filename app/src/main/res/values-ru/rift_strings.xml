@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="rift_section_pc_games">PC-игры</string>
-    <string name="rift_shelf_installed">Установлено</string>
-    <string name="rift_shelf_library">Вся библиотека</string>
+    <string name="rift_filter_all">Все</string>
+    <string name="rift_filter_installed">Установленные</string>
+    <string name="rift_filter_not_installed">Не установленные</string>
+    <string name="rift_filter_empty">Здесь пока пусто</string>
+    <string name="rift_hint_filter">Фильтр</string>
     <string name="rift_play">Играть</string>
     <string name="rift_install">Установить</string>
     <string name="rift_details">Об игре</string>

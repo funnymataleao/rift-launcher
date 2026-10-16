@@ -5,18 +5,18 @@ import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
 
 // Your custom color scheme
-val customBackground = Color(0xFF09090B)
+val customBackground = Color(0xFF000000)
 val customForeground = Color(0xFFFAFAFA)
-val customCard = Color(0xFF09090B)
+val customCard = Color(0xFF000000)
 val customCardForeground = Color(0xFFFAFAFA)
-val customPrimary = Color(0xFFA21CAF)
-val customPrimaryForeground = Color(0xFFFAFAFA)
+val customPrimary = Color(0xFFFFF44F)
+val customPrimaryForeground = Color(0xFF000000)
 val customSecondary = Color(0xFF27272A)
 val customSecondaryForeground = Color(0xFFFAFAFA)
 val customMuted = Color(0xFF27272A)
 val customMutedForeground = Color(0xFF94969C)
-val customAccent = Color(0xFF06B6D4)
-val customAccentForeground = Color(0xFFFAFAFA)
+val customAccent = Color(0xFFFFF44F)
+val customAccentForeground = Color(0xFF000000)
 val customDestructive = Color(0xFF7F1D1D)
 
 val pluviaSeedColor = Color(0x284561FF)
@@ -26,15 +26,16 @@ val pluviaSeedColor = Color(0x284561FF)
  * These are the base colors used to construct theme palettes.
  */
 
-// Brand
-val PluviaPrimary = Color(0xFFA21CAF)
+// Brand (Rift: black and lemon instead of GameNative's magenta, Denis 2026-10-16)
+val PluviaPrimary = Color(0xFFFFF44F)
+val PluviaOnPrimary = Color(0xFF000000)
 val PluviaSeed = Color(0x284561FF)
 
 // Backgrounds
-val PluviaBackground = Color(0xFF09090B)
-val PluviaSurface = Color(0xFF12121A)
-val PluviaSurfaceElevated = Color(0xFF1A1A24)
-val PluviaCard = Color(0xFF09090B)
+val PluviaBackground = Color(0xFF000000)
+val PluviaSurface = Color(0xFF121212)
+val PluviaSurfaceElevated = Color(0xFF1C1C1C)
+val PluviaCard = Color(0xFF000000)
 
 // Foregrounds
 val PluviaForeground = Color(0xFFFAFAFA)
@@ -44,9 +45,10 @@ val PluviaForegroundMuted = Color(0xFF94969C)
 val PluviaSecondary = Color(0xFF27272A)
 
 // Accents
-val PluviaCyan = Color(0xFF00D4FF)
-val PluviaPurple = Color(0xFF8B5CF6)
-val PluviaPink = Color(0xFFEC4899)
+// Rift: the cyan, purple and pink accents become lemon tints, so brand gradients read black and lemon.
+val PluviaCyan = Color(0xFFFFF44F)
+val PluviaPurple = Color(0xFFF5E50A)
+val PluviaPink = Color(0xFFFFF9A6)
 
 // Semantic
 val PluviaSuccess = Color(0xFF10B981)
@@ -55,7 +57,7 @@ val PluviaDanger = Color(0xFFEF4444)
 val PluviaDestructive = Color(0xFF7F1D1D)
 
 // Border
-val PluviaBorder = Color(0xFF3A3A4A)
+val PluviaBorder = Color(0xFF3A3A3A)
 
 // Status - Installed/Download states
 val StatusInstalled = Color(0xFF4CAF50)

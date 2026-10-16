@@ -39,8 +39,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Settings
@@ -148,7 +146,23 @@ fun RiftHomeScreen(
     var lastOpenedItem by remember { mutableStateOf<LibraryItem?>(null) }
     var pendingFocusKey by remember { mutableStateOf<String?>(null) }
 
-    val focusedItem = library.firstOrNull { it.appId == focusedAppId } ?: library.firstOrNull()
+    var shelfFilter by rememberSaveable { mutableStateOf(ShelfFilter.ALL) }
+    val shown = remember(library, shelfFilter) { shelfFilter.apply(library) }
+    val focusedItem = shown.firstOrNull { it.appId == focusedAppId } ?: shown.firstOrNull()
+
+    fun selectFilter(filter: ShelfFilter, moveFocus: Boolean) {
+        shelfFilter = filter
+        if (moveFocus) filter.apply(library).firstOrNull()?.let { pendingFocusKey = focusKeyFor(it) }
+    }
+
+    // A filter only sees loaded pages, so pull in the rest of the library while one is active.
+    LaunchedEffect(shelfFilter, libraryState.currentPaginationPage, libraryState.lastPaginationPage, libraryState.isLoading) {
+        if (shelfFilter != ShelfFilter.ALL && !libraryState.isLoading &&
+            libraryState.currentPaginationPage < libraryState.lastPaginationPage
+        ) {
+            viewModel.onPageChange(1)
+        }
+    }
 
     fun openGame(item: LibraryItem) {
         lastOpenedItem = item
@@ -175,7 +189,7 @@ fun RiftHomeScreen(
             onPlayWithDiagnostics = { onPlayWithDiagnostics(opened.appId) },
             onAiDebugRun = { onAiDebugRun(opened.appId) },
             onBack = {
-                pendingFocusKey = focusKeyFor(opened, library)
+                pendingFocusKey = focusKeyFor(opened)
                 openedAppId = null
             },
         )
@@ -188,7 +202,7 @@ fun RiftHomeScreen(
     fun closeMenu() {
         menuOpen = false
         // Hand focus back to the cover that had it before the menu opened.
-        focusedItem?.let { pendingFocusKey = focusKeyFor(it, library) }
+        focusedItem?.let { pendingFocusKey = focusKeyFor(it) }
     }
     BackHandler(enabled = menuOpen) { closeMenu() }
 
@@ -217,6 +231,11 @@ fun RiftHomeScreen(
                         KeyEvent.KEYCODE_BUTTON_Y -> {
                             focusedItem?.let(::playOrOpen)
                             focusedItem != null
+                        }
+                        KeyEvent.KEYCODE_BUTTON_X -> {
+                            if (library.isEmpty()) return@onPreviewKeyEvent false
+                            selectFilter(shelfFilter.next(), moveFocus = true)
+                            true
                         }
                         else -> false
                     }
@@ -260,15 +279,19 @@ fun RiftHomeScreen(
                             onDetails = { focusedItem?.let(::openGame) },
                             modifier = Modifier.weight(1f),
                         )
-                        PcGamesShelves(
+                        PcGamesShelf(
                             library = library,
+                            shown = shown,
+                            filter = shelfFilter,
+                            onFilter = { selectFilter(it, moveFocus = false) },
                             cardHeight = cardHeight,
                             pendingFocusKey = pendingFocusKey,
                             onFocusConsumed = { pendingFocusKey = null },
                             onFocused = { focusedAppId = it.appId },
                             onOpen = ::openGame,
                             onNearEnd = {
-                                if (libraryState.currentPaginationPage < libraryState.lastPaginationPage) {
+                                if (shelfFilter == ShelfFilter.ALL &&
+                                    libraryState.currentPaginationPage < libraryState.lastPaginationPage) {
                                     viewModel.onPageChange(1)
                                 }
                             },
@@ -302,10 +325,10 @@ fun RiftHomeScreen(
     }
 
     // Focus the first cover once the library shows up, so a gamepad works without touching the screen.
-    LaunchedEffect(library.isNotEmpty()) {
-        if (library.isNotEmpty() && pendingFocusKey == null) {
-            val target = focusedAppId?.let { id -> library.firstOrNull { it.appId == id } } ?: library.first()
-            pendingFocusKey = focusKeyFor(target, library)
+    LaunchedEffect(shown.isNotEmpty()) {
+        if (shown.isNotEmpty() && pendingFocusKey == null) {
+            val target = focusedAppId?.let { id -> shown.firstOrNull { it.appId == id } } ?: shown.first()
+            pendingFocusKey = focusKeyFor(target)
         }
     }
 }
@@ -313,65 +336,31 @@ fun RiftHomeScreen(
 /** Select (View) opens the left menu, as in Beacon; Start (Menu) does the same until the right panel exists. */
 private val MENU_KEYS = setOf(KeyEvent.KEYCODE_BUTTON_SELECT, KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_MENU)
 
-private const val SHELF_INSTALLED = "installed"
-private const val SHELF_LIBRARY = "library"
+/** One cover row on the home screen; Denis wants installed or not installed picked with a filter, not a second row. */
+private enum class ShelfFilter(val label: Int) {
+    ALL(R.string.rift_filter_all),
+    INSTALLED(R.string.rift_filter_installed),
+    NOT_INSTALLED(R.string.rift_filter_not_installed),
+    ;
 
-private fun focusKeyFor(item: LibraryItem, library: List<LibraryItem>): String {
-    val hasInstalledShelf = library.any { it.isInstalled }
-    val shelf = if (item.isInstalled && hasInstalledShelf) SHELF_INSTALLED else SHELF_LIBRARY
-    return "$shelf:${item.appId}"
-}
-
-@Composable
-private fun PcGamesShelves(
-    library: List<LibraryItem>,
-    cardHeight: Dp,
-    pendingFocusKey: String?,
-    onFocusConsumed: () -> Unit,
-    onFocused: (LibraryItem) -> Unit,
-    onOpen: (LibraryItem) -> Unit,
-    onNearEnd: () -> Unit,
-) {
-    val installed = remember(library) { library.filter { it.isInstalled } }
-    // One shelf stays fully visible, the next one peeks in so it is clear there is more below.
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(cardHeight + 96.dp)
-            .verticalScroll(rememberScrollState()),
-    ) {
-        if (installed.isNotEmpty()) {
-            Shelf(
-                key = SHELF_INSTALLED,
-                title = stringResource(R.string.rift_shelf_installed),
-                items = installed,
-                cardHeight = cardHeight,
-                pendingFocusKey = pendingFocusKey,
-                onFocusConsumed = onFocusConsumed,
-                onFocused = onFocused,
-                onOpen = onOpen,
-                onNearEnd = {},
-            )
-        }
-        Shelf(
-            key = SHELF_LIBRARY,
-            title = stringResource(R.string.rift_shelf_library),
-            items = library,
-            cardHeight = cardHeight,
-            pendingFocusKey = pendingFocusKey,
-            onFocusConsumed = onFocusConsumed,
-            onFocused = onFocused,
-            onOpen = onOpen,
-            onNearEnd = onNearEnd,
-        )
+    /** Installed games come first in every view; the sort is stable, so the library order is kept otherwise. */
+    fun apply(library: List<LibraryItem>): List<LibraryItem> = when (this) {
+        ALL -> library.sortedBy { !it.isInstalled }
+        INSTALLED -> library.filter { it.isInstalled }
+        NOT_INSTALLED -> library.filterNot { it.isInstalled }
     }
+
+    fun next(): ShelfFilter = entries[(ordinal + 1) % entries.size]
 }
 
+private fun focusKeyFor(item: LibraryItem): String = item.appId
+
 @Composable
-private fun Shelf(
-    key: String,
-    title: String,
-    items: List<LibraryItem>,
+private fun PcGamesShelf(
+    library: List<LibraryItem>,
+    shown: List<LibraryItem>,
+    filter: ShelfFilter,
+    onFilter: (ShelfFilter) -> Unit,
     cardHeight: Dp,
     pendingFocusKey: String?,
     onFocusConsumed: () -> Unit,
@@ -381,33 +370,56 @@ private fun Shelf(
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    LaunchedEffect(filter) { listState.scrollToItem(0) }
 
-    Column(modifier = Modifier.padding(bottom = 12.dp)) {
-        Text(
-            text = "${title.uppercase()} · ${items.size}",
-            color = RiftColors.OnSurfaceVariant,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.7.sp,
-            modifier = Modifier.padding(start = ScreenPadding, bottom = 10.dp, top = 6.dp),
-        )
+    Column(modifier = Modifier.padding(bottom = 4.dp)) {
+        Row(
+            modifier = Modifier.padding(start = ScreenPadding, top = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ShelfFilter.entries.forEach { option ->
+                val count = remember(library, option) { option.apply(library).size }
+                SectionTab(
+                    title = "${stringResource(option.label)} · $count",
+                    selected = option == filter,
+                    onClick = { onFilter(option) },
+                )
+            }
+        }
+        if (shown.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(cardHeight + 28.dp)
+                    .padding(horizontal = ScreenPadding),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Text(
+                    text = stringResource(R.string.rift_filter_empty),
+                    color = RiftColors.OnSurfaceVariant,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+            return@Column
+        }
         LazyRow(
             state = listState,
             contentPadding = PaddingValues(horizontal = ScreenPadding, vertical = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(CardGap),
         ) {
-            itemsIndexed(items, key = { _, item -> item.appId }) { index, item ->
-                val focusKey = "$key:${item.appId}"
+            itemsIndexed(shown, key = { _, item -> item.appId }) { index, item ->
                 GameCard(
                     item = item,
                     height = cardHeight,
-                    requestFocus = pendingFocusKey == focusKey,
+                    requestFocus = pendingFocusKey == focusKeyFor(item),
                     onFocusRequested = onFocusConsumed,
                     onFocused = {
                         onFocused(item)
                         // Keep the focused cover near the left edge, Big Picture style.
                         scope.launch { listState.animateScrollToItem((index - 1).coerceAtLeast(0)) }
-                        if (index >= items.size - LOAD_MORE_THRESHOLD) onNearEnd()
+                        if (index >= shown.size - LOAD_MORE_THRESHOLD) onNearEnd()
                     },
                     onClick = { onOpen(item) },
                 )
@@ -648,7 +660,7 @@ private fun quietBackground(focused: Boolean) =
 private fun SectionTab(title: String, selected: Boolean, onClick: () -> Unit) {
     PillButton(
         onClick = onClick,
-        background = { focused -> if (selected) solid(Color.White) else quietBackground(focused) },
+        background = { focused -> if (selected) solid(RiftColors.Primary) else quietBackground(focused) },
     ) {
         Text(
             text = title,
@@ -816,6 +828,7 @@ private fun HintsBar() {
         Hint("SELECT", stringResource(R.string.rift_menu))
         Hint("A", stringResource(R.string.rift_hint_select))
         Hint("Y", stringResource(R.string.rift_hint_play))
+        Hint("X", stringResource(R.string.rift_hint_filter))
         Hint("LB RB", stringResource(R.string.rift_hint_sections))
         Hint("B", stringResource(R.string.rift_hint_back))
     }
@@ -917,7 +930,7 @@ private fun MenuItem(
         onClick = onClick,
         background = { focused ->
             when {
-                selected -> solid(Color.White)
+                selected -> solid(RiftColors.Primary)
                 focused -> solid(RiftColors.SurfaceContainerHigh)
                 else -> solid(Color.Transparent)
             }

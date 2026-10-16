@@ -16,20 +16,21 @@ import androidx.compose.ui.unit.dp
  *
  * Kept in its own package so GameNative's ui/ tree stays untouched and upstream merges stay clean.
  */
+/** Black and lemon (Denis 2026-10-16): pure black for OLED, one lemon accent, black text on lemon. */
 object RiftColors {
-    val Background = Color(0xFF06080C)
-    val Surface = Color(0xFF10161F)
-    val SurfaceContainer = Color(0xFF18202C)
-    val SurfaceContainerHigh = Color(0xFF232D3D)
-    val OnSurface = Color(0xFFF2F6FB)
-    val OnSurfaceVariant = Color(0xFF93A0B3)
-    val Outline = Color(0xFF5D6A7D)
+    val Background = Color(0xFF000000)
+    val Surface = Color(0xFF0E0E0E)
+    val SurfaceContainer = Color(0xFF171717)
+    val SurfaceContainerHigh = Color(0xFF242424)
+    val OnSurface = Color(0xFFF5F5F0)
+    val OnSurfaceVariant = Color(0xFFA3A39A)
+    val Outline = Color(0xFF6B6B63)
     val OutlineVariant = Color(0x17FFFFFF)
-    val Primary = Color(0xFF36F2FF)
-    val OnPrimary = Color(0xFF04121A)
-    val Secondary = Color(0xFF7DFFA6)
+    val Primary = Color(0xFFFFF44F)
+    val OnPrimary = Color(0xFF000000)
+    val Secondary = Color(0xFFF5E50A)
     val Error = Color(0xFFFF6B6B)
-    val Warning = Color(0xFFFFC94D)
+    val Warning = Color(0xFFFFB84D)
     val Success = Color(0xFF4BE38A)
 
     /** Fallback glow when a cover's own colour is not known yet. */
@@ -37,7 +38,7 @@ object RiftColors {
 }
 
 object RiftBrush {
-    val accent = Brush.horizontalGradient(listOf(RiftColors.Secondary, RiftColors.Primary))
+    val accent = Brush.horizontalGradient(listOf(RiftColors.Primary, RiftColors.Secondary))
 }
 
 object RiftShapes {

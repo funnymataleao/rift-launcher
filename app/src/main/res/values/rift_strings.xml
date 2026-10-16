@@ -2,8 +2,11 @@
 <!-- Rift Launcher strings. Kept apart from GameNative's strings.xml to avoid upstream merge conflicts. -->
 <resources>
     <string name="rift_section_pc_games">PC games</string>
-    <string name="rift_shelf_installed">Installed</string>
-    <string name="rift_shelf_library">Library</string>
+    <string name="rift_filter_all">All</string>
+    <string name="rift_filter_installed">Installed</string>
+    <string name="rift_filter_not_installed">Not installed</string>
+    <string name="rift_filter_empty">Nothing here yet</string>
+    <string name="rift_hint_filter">Filter</string>
     <string name="rift_play">Play</string>
     <string name="rift_install">Install</string>
     <string name="rift_details">Details</string>
