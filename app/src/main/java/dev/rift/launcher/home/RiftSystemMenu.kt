@@ -4,7 +4,9 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import app.gamenative.R
@@ -22,8 +24,8 @@ import app.gamenative.utils.PlatformOAuthHandlers
 import kotlinx.coroutines.launch
 
 /**
- * GameNative's system menu (profile, store accounts, downloads, settings), opened with Start on the
- * Rift home screen. The store sign-in plumbing is the same as in GameNative's LibraryScreen.
+ * GameNative's system menu (profile, store accounts, downloads, settings): Rift's right, quick access
+ * panel, opened with the quick access button (see [RiftControls]). The store sign-in plumbing is the same as in GameNative's LibraryScreen.
  */
 @Composable
 fun RiftSystemMenu(
@@ -166,5 +168,8 @@ fun RiftSystemMenu(
         onAmazonLogoutClick = {
             PlatformAuthUiHelpers.logoutAmazon(context = context, scope = lifecycleScope, callbacks = PlatformLogoutCallbacks())
         },
+        panelShape = RectangleShape,
+        panelShadowElevation = 0.dp,
+        showCloseButton = false,
     )
 }

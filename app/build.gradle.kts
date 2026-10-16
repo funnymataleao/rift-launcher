@@ -415,6 +415,7 @@ android {
 
 dependencies {
     implementation(libs.material)
+    implementation(libs.androidx.palette)
 
     // Rift: Artemis streaming core (PC streaming)
     implementation(project(":artemis-core"))

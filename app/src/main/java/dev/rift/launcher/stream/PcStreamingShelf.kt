@@ -128,6 +128,7 @@ fun PcStreamingContent(
     cardHeight: Dp,
     screenPadding: Dp,
     cardGap: Dp,
+    rowBottomGap: Dp,
     pendingFocusKey: String?,
     onFocusConsumed: () -> Unit,
     onWantFocus: () -> Unit,
@@ -171,6 +172,7 @@ fun PcStreamingContent(
             cardHeight = cardHeight,
             screenPadding = screenPadding,
             cardGap = cardGap,
+            rowBottomGap = rowBottomGap,
             pendingFocusKey = pendingFocusKey,
             onFocusConsumed = onFocusConsumed,
         )
@@ -238,6 +240,7 @@ private fun StreamRow(
     cardHeight: Dp,
     screenPadding: Dp,
     cardGap: Dp,
+    rowBottomGap: Dp,
     pendingFocusKey: String?,
     onFocusConsumed: () -> Unit,
 ) {
@@ -246,7 +249,7 @@ private fun StreamRow(
     val loading = tab.paired.any { PcStreaming.isOnline(it) && tab.apps[it.uuid] == null && tab.errors[it.uuid] == null }
     LazyRow(
         state = tab.rowState,
-        contentPadding = PaddingValues(start = screenPadding, end = screenPadding, top = 18.dp, bottom = 4.dp),
+        contentPadding = PaddingValues(start = screenPadding, end = screenPadding, top = 18.dp, bottom = rowBottomGap),
         horizontalArrangement = Arrangement.spacedBy(cardGap),
         verticalAlignment = Alignment.Top,
     ) {

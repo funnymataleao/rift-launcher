@@ -54,8 +54,8 @@ import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private val FrameWidth = 3.5.dp
-private const val FRAME_SWEEP_MS = 2600
+private val FrameWidth = 2.dp
+private const val FRAME_SWEEP_MS = 1400
 private const val REFLECTION_SHARE = 0.14f
 
 /** Neutral frame until the cover's own colours are known. */
@@ -63,8 +63,8 @@ private val FallbackPalette = listOf(Color.White, Color(0xFF9E9E9E))
 
 /**
  * A 2:3 cover with Rift's focus treatment (Denis 2026-10-16): the cover lifts, a frame in the
- * cover's own two colours turns its diagonal gradient 90 degrees once, slowly, and a soft
- * reflection with a glow in the cover colour sits under it.
+ * cover's own two colours turns its diagonal gradient 90 degrees once, slowly, a glow in the
+ * cover colour shows through the shadow, and a soft reflection with the same rounded corners sits under it.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -90,10 +90,9 @@ fun CoverCard(
     val lift by animateDpAsState(if (focused) (-8).dp else 0.dp, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "cardLift")
 
     var loaded by remember(paletteKey) { mutableStateOf<List<Color>?>(null) }
-    LaunchedEffect(paletteKey, focused) {
-        if (focused && loaded == null) {
-            loaded = withContext(Dispatchers.IO) { runCatching { loadPalette() }.getOrNull() }
-        }
+    // Loaded up front (cached per image), so the frame already has the right colours when focus lands.
+    LaunchedEffect(paletteKey) {
+        if (loaded == null) loaded = withContext(Dispatchers.IO) { runCatching { loadPalette() }.getOrNull() }
     }
     val palette = loaded ?: FallbackPalette
 
@@ -136,32 +135,40 @@ fun CoverCard(
             coverHeight = height,
             height = height * REFLECTION_SHARE,
             focused = focused,
-            palette = palette,
             scale = scale,
             cover = cover,
         )
     }
 }
 
-/** Diagonal gradient frame in the cover colours; on focus it turns 90 degrees once. */
+/**
+ * Gradient frame in the cover colours. On focus the first colour starts as a small patch in the
+ * top right corner, spreads along the edge while the gradient turns 90 degrees, then stays.
+ */
 @Composable
 private fun Modifier.coverFrame(focused: Boolean, colors: List<Color>, shape: Shape): Modifier {
-    val angle = remember { Animatable(45f) }
-    LaunchedEffect(focused) {
-        if (focused) {
-            angle.snapTo(45f)
-            angle.animateTo(135f, tween(FRAME_SWEEP_MS, easing = FastOutSlowInEasing))
-        } else {
-            angle.snapTo(45f)
-        }
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(focused, colors) {
+        progress.snapTo(0f)
+        if (focused) progress.animateTo(1f, tween(FRAME_SWEEP_MS, easing = FastOutSlowInEasing))
     }
-    val alpha by animateFloatAsState(if (focused) 1f else 0f, tween(220), label = "frameAlpha")
+    val alpha by animateFloatAsState(if (focused) 1f else 0f, tween(160), label = "frameAlpha")
     return drawWithContent {
         drawContent()
         if (alpha <= 0f) return@drawWithContent
-        val radians = Math.toRadians(angle.value.toDouble())
+        val p = progress.value
+        // 135 degrees puts the gradient's start in the top right corner; it turns to 225.
+        val radians = Math.toRadians(135.0 + 90.0 * p)
         val half = Offset((cos(radians) * size.width / 2).toFloat(), (sin(radians) * size.height / 2).toFloat())
-        val brush = Brush.linearGradient(colors, start = center - half, end = center + half)
+        val bandEnd = 0.08f + 0.37f * p
+        val brush = Brush.linearGradient(
+            0f to colors[0],
+            bandEnd to colors[0],
+            (bandEnd + 0.45f).coerceAtMost(1f) to colors[1],
+            1f to colors[1],
+            start = center - half,
+            end = center + half,
+        )
         // The card is clipped to its shape, so only the inner half of this stroke shows.
         drawOutline(shape.createOutline(size, layoutDirection, this), brush, alpha = alpha, style = Stroke(FrameWidth.toPx() * 2))
     }
@@ -172,53 +179,36 @@ private fun CoverReflection(
     coverHeight: Dp,
     height: Dp,
     focused: Boolean,
-    palette: List<Color>,
     scale: Float,
     cover: @Composable BoxScope.() -> Unit,
 ) {
     val alpha by animateFloatAsState(if (focused) 0.36f else 0.14f, tween(300), label = "reflectionAlpha")
-    val glow by animateFloatAsState(if (focused) 0.45f else 0f, tween(300), label = "reflectionGlow")
+    // One mask for everything: the card's own rounded shape, so the reflection has the same corners.
+    // The coloured glow comes from the card's shadow; a separate glow layer here showed square edges.
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(height)
-            .graphicsLayer { scaleX = scale }
-            .drawBehind {
-                if (glow > 0f) {
-                    drawRect(
-                        Brush.radialGradient(
-                            listOf(palette.first().copy(alpha = glow), Color.Transparent),
-                            center = Offset(size.width / 2, 0f),
-                            radius = size.width * 0.75f,
-                        ),
-                    )
-                }
+            .graphicsLayer {
+                scaleX = scale
+                this.alpha = alpha
+                shape = RiftShapes.card
+                clip = true
+                compositingStrategy = CompositingStrategy.Offscreen
+            }
+            .drawWithContent {
+                drawContent()
+                drawRect(Brush.verticalGradient(listOf(Color.Black, Color.Transparent)), blendMode = BlendMode.DstIn)
             },
     ) {
+        // The whole cover, flipped, with its bottom edge at the top of the reflection.
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .clip(ReflectionShape)
-                .graphicsLayer {
-                    this.alpha = alpha
-                    compositingStrategy = CompositingStrategy.Offscreen
-                }
-                .drawWithContent {
-                    drawContent()
-                    drawRect(Brush.verticalGradient(listOf(Color.Black, Color.Transparent)), blendMode = BlendMode.DstIn)
-                },
-        ) {
-            // The whole cover, flipped, with its bottom edge at the top of the reflection.
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(Alignment.Top, unbounded = true)
-                    .height(coverHeight)
-                    .graphicsLayer { scaleY = -1f },
-                content = cover,
-            )
-        }
+                .fillMaxWidth()
+                .wrapContentHeight(Alignment.Top, unbounded = true)
+                .height(coverHeight)
+                .graphicsLayer { scaleY = -1f },
+            content = cover,
+        )
     }
 }
-
-private val ReflectionShape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)
