@@ -1,32 +1,31 @@
 package dev.rift.launcher.home
 
+import android.content.SharedPreferences
+import android.graphics.Bitmap
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,38 +35,41 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Menu
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Storefront
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
@@ -76,6 +78,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -83,16 +86,27 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.ui.component.CommunityCompatibilityBadge
+import app.gamenative.ui.component.CompatibilityBadge
+import app.gamenative.ui.component.GameStatsRow
+import app.gamenative.ui.data.LibraryState
+import app.gamenative.ui.data.communityCompatibilityFor
+import app.gamenative.ui.data.statsFor
 import app.gamenative.ui.enums.LibraryTab
 import app.gamenative.ui.model.LibraryViewModel
+import app.gamenative.ui.screen.library.components.GameSourceIcon
 import app.gamenative.ui.screen.library.components.LibraryDetailPane
+import app.gamenative.ui.screen.library.components.LibraryOptionsPanel
+import app.gamenative.utils.SteamUtils
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import dev.rift.launcher.ui.theme.RiftBrush
 import dev.rift.launcher.ui.theme.RiftColors
+import dev.rift.launcher.ui.theme.RiftGlassTheme
 import dev.rift.launcher.ui.theme.RiftMotion
 import dev.rift.launcher.ui.theme.RiftShapes
 import dev.rift.launcher.ui.theme.RiftSizes
@@ -106,12 +120,13 @@ private val CardGap = 18.dp
 private const val LOAD_MORE_THRESHOLD = 6
 
 /**
- * Rift's start screen: Big Picture style hero, Beacon style section tabs on top, cover shelves.
+ * Rift's start screen: Big Picture style hero, section tabs between the bumpers on top, one cover row.
  *
  * Games and launching come from GameNative: the library is GameNative's [LibraryViewModel], the game
- * page is its [LibraryDetailPane] and Play goes through the same pre-launch flow that opens
- * XServerScreen.
+ * page is its [LibraryDetailPane], Select opens its library filter panel, Start its system menu, and
+ * Play goes through the same pre-launch flow that opens XServerScreen.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun RiftHomeScreen(
     onClickPlay: (appId: String, asContainer: Boolean) -> Unit,
@@ -119,8 +134,13 @@ fun RiftHomeScreen(
     onPlayWithDiagnostics: (String) -> Unit,
     onAiDebugRun: (String) -> Unit,
     onOpenStores: () -> Unit,
-    onOpenSettings: () -> Unit,
+    onNavigateRoute: (String) -> Unit,
+    onDownloadsClick: () -> Unit,
+    onLogout: () -> Unit,
+    onGoOnline: () -> Unit,
     onExit: () -> Unit,
+    isOffline: Boolean,
+    isSteamConnected: Boolean,
     // Own key so Rift does not share tab and paging state with GameNative's library screen.
     viewModel: LibraryViewModel = hiltViewModel(key = "rift-home-library"),
 ) {
@@ -136,33 +156,44 @@ fun RiftHomeScreen(
     val library = remember(libraryState.appInfoList) {
         libraryState.appInfoList.filterNot { it.isRecommended || it.isFeatured || it.isRecTeaser || it.isRecLoading }
     }
-    val sections = remember(library) { RiftSections.configured(context, library) }
+    // Android games the user added in settings; reloads when that list changes.
+    val androidGames by produceState(emptyList<AndroidGame>()) {
+        suspend fun load() {
+            value = withContext(Dispatchers.IO) { runCatching { AndroidGames.selected(context) }.getOrDefault(emptyList()) }
+        }
+        load()
+        val prefs = AndroidGames.prefs(context)
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == AndroidGames.KEY_PACKAGES) launch { load() }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        awaitDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+    val sections = remember(library, androidGames) { RiftSections.configured(context, library, androidGames) }
 
     var sectionKey by rememberSaveable { mutableStateOf<String?>(null) }
     val section = sections.firstOrNull { it.key == sectionKey } ?: sections.firstOrNull()
 
     var focusedAppId by rememberSaveable { mutableStateOf<String?>(null) }
+    var focusedPackage by rememberSaveable { mutableStateOf<String?>(null) }
     var openedAppId by rememberSaveable { mutableStateOf<String?>(null) }
     var lastOpenedItem by remember { mutableStateOf<LibraryItem?>(null) }
     var pendingFocusKey by remember { mutableStateOf<String?>(null) }
 
-    var shelfFilter by rememberSaveable { mutableStateOf(ShelfFilter.ALL) }
-    val shown = remember(library, shelfFilter) { shelfFilter.apply(library) }
-    val focusedItem = shown.firstOrNull { it.appId == focusedAppId } ?: shown.firstOrNull()
-
-    fun selectFilter(filter: ShelfFilter, moveFocus: Boolean) {
-        shelfFilter = filter
-        if (moveFocus) filter.apply(library).firstOrNull()?.let { pendingFocusKey = focusKeyFor(it) }
-    }
-
-    // A filter only sees loaded pages, so pull in the rest of the library while one is active.
-    LaunchedEffect(shelfFilter, libraryState.currentPaginationPage, libraryState.lastPaginationPage, libraryState.isLoading) {
-        if (shelfFilter != ShelfFilter.ALL && !libraryState.isLoading &&
-            libraryState.currentPaginationPage < libraryState.lastPaginationPage
-        ) {
-            viewModel.onPageChange(1)
+    // Row positions live here, above the game page, so coming back (or switching tabs) keeps them.
+    val pcRowState = rememberLazyListState()
+    val androidRowState = rememberLazyListState()
+    val filterKey = listOf(libraryState.appInfoSortType.toList(), libraryState.currentSortOption)
+    var lastFilterKey by remember { mutableStateOf(filterKey) }
+    LaunchedEffect(filterKey) {
+        if (filterKey != lastFilterKey) {
+            lastFilterKey = filterKey
+            pcRowState.scrollToItem(0)
         }
     }
+
+    val focusedItem = library.firstOrNull { it.appId == focusedAppId } ?: library.firstOrNull()
+    val focusedAndroid = androidGames.firstOrNull { it.packageName == focusedPackage } ?: androidGames.firstOrNull()
 
     fun openGame(item: LibraryItem) {
         lastOpenedItem = item
@@ -173,10 +204,23 @@ fun RiftHomeScreen(
         if (item.isInstalled) onClickPlay(item.appId, false) else openGame(item)
     }
 
+    /** Puts focus back on the cover this section had last. */
+    fun focusSection(target: RiftSection?) {
+        pendingFocusKey = when (target) {
+            RiftSection.PcGames -> focusedItem?.let(::focusKeyFor)
+            RiftSection.AndroidGames -> focusedAndroid?.let(::androidFocusKey)
+            null -> null
+        }
+    }
+
+    fun selectSection(target: RiftSection) {
+        sectionKey = target.key
+        focusSection(target)
+    }
+
     fun switchSection(step: Int) {
         if (sections.size < 2 || section == null) return
-        val index = (sections.indexOf(section) + step).mod(sections.size)
-        sectionKey = sections[index].key
+        selectSection(sections[(sections.indexOf(section) + step).mod(sections.size)])
     }
 
     val opened = openedAppId?.let { id -> library.firstOrNull { it.appId == id } ?: lastOpenedItem?.takeIf { it.appId == id } }
@@ -198,13 +242,25 @@ fun RiftHomeScreen(
 
     BackHandler { onExit() }
 
-    var menuOpen by rememberSaveable { mutableStateOf(false) }
-    fun closeMenu() {
-        menuOpen = false
-        // Hand focus back to the cover that had it before the menu opened.
-        focusedItem?.let { pendingFocusKey = focusKeyFor(it) }
+    // Search: a quiet icon in the top bar; typing filters the row through GameNative's library search.
+    var searchOpen by rememberSaveable { mutableStateOf(false) }
+    fun closeSearch() {
+        searchOpen = false
+        viewModel.onIsSearching(false)
+        focusSection(section)
     }
-    BackHandler(enabled = menuOpen) { closeMenu() }
+    BackHandler(enabled = searchOpen) { closeSearch() }
+
+    // Select: GameNative's library filter panel. Start: its system menu. Both over a blurred screen.
+    val panelOpen = libraryState.isOptionsPanelOpen
+    var systemMenuOpen by rememberSaveable { mutableStateOf(false) }
+    val overlayOpen = panelOpen || systemMenuOpen
+    // The panel's layout choice belongs to GameNative's library screen; Rift only keeps it in sync.
+    var libraryLayout by remember { mutableStateOf(PrefManager.libraryLayout) }
+    LaunchedEffect(overlayOpen) {
+        if (!overlayOpen) focusSection(section)
+    }
+    val blur by animateDpAsState(if (overlayOpen) 28.dp else 0.dp, tween(300), label = "backdropBlur")
 
     RiftTheme {
         BoxWithConstraints(
@@ -213,13 +269,18 @@ fun RiftHomeScreen(
                 .background(RiftColors.Background)
                 .onPreviewKeyEvent { event ->
                     if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                    val keyCode = event.nativeKeyEvent.keyCode
-                    if (keyCode in MENU_KEYS) {
-                        if (menuOpen) closeMenu() else menuOpen = true
-                        return@onPreviewKeyEvent true
+                    when (event.nativeKeyEvent.keyCode) {
+                        KeyEvent.KEYCODE_BUTTON_SELECT -> {
+                            if (section == RiftSection.PcGames && !systemMenuOpen) viewModel.onOptionsPanelToggle(!panelOpen)
+                            return@onPreviewKeyEvent true
+                        }
+                        KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_MENU -> {
+                            if (!panelOpen) systemMenuOpen = !systemMenuOpen
+                            return@onPreviewKeyEvent true
+                        }
                     }
-                    if (menuOpen) return@onPreviewKeyEvent false
-                    when (keyCode) {
+                    if (overlayOpen) return@onPreviewKeyEvent false
+                    when (event.nativeKeyEvent.keyCode) {
                         KeyEvent.KEYCODE_BUTTON_L1 -> {
                             switchSection(-1)
                             true
@@ -228,139 +289,236 @@ fun RiftHomeScreen(
                             switchSection(1)
                             true
                         }
-                        KeyEvent.KEYCODE_BUTTON_Y -> {
-                            focusedItem?.let(::playOrOpen)
-                            focusedItem != null
-                        }
-                        KeyEvent.KEYCODE_BUTTON_X -> {
-                            if (library.isEmpty()) return@onPreviewKeyEvent false
-                            selectFilter(shelfFilter.next(), moveFocus = true)
-                            true
+                        KeyEvent.KEYCODE_BUTTON_Y -> when (section) {
+                            RiftSection.AndroidGames -> {
+                                focusedAndroid?.let { AndroidGames.launch(context, it) }
+                                focusedAndroid != null
+                            }
+                            else -> {
+                                focusedItem?.let(::playOrOpen)
+                                focusedItem != null
+                            }
                         }
                         else -> false
                     }
                 },
         ) {
-            val cardHeight = (maxHeight * 0.34f).coerceIn(150.dp, 300.dp)
+            val cardHeight = (maxHeight * 0.3f).coerceIn(140.dp, 280.dp)
 
-            HeroBackdrop(item = focusedItem)
+            Box(modifier = Modifier.fillMaxSize().blur(blur)) {
+                if (section == RiftSection.AndroidGames) AndroidBackdrop(focusedAndroid) else HeroBackdrop(item = focusedItem)
 
-            Column(modifier = Modifier.fillMaxSize()) {
-                TopBar(
-                    sections = sections,
-                    selected = section,
-                    onSelect = { sectionKey = it.key },
-                    onOpenMenu = { menuOpen = true },
-                    onOpenStores = onOpenStores,
-                    onOpenSettings = onOpenSettings,
-                )
-
-                when {
-                    section == null -> EmptyState(
-                        message = stringResource(R.string.rift_no_sources_message),
-                        onConnect = onOpenStores,
-                        modifier = Modifier.weight(1f),
+                Column(modifier = Modifier.fillMaxSize()) {
+                    TopBar(
+                        sections = sections,
+                        selected = section,
+                        onSelect = ::selectSection,
+                        onStep = ::switchSection,
+                        search = if (section == RiftSection.PcGames) {
+                            SearchState(
+                                open = searchOpen,
+                                query = libraryState.searchQuery,
+                                onOpen = {
+                                    searchOpen = true
+                                    viewModel.onIsSearching(true)
+                                },
+                                onQuery = viewModel::onSearchQuery,
+                                onDone = { focusSection(section) },
+                            )
+                        } else {
+                            null
+                        },
                     )
-                    library.isEmpty() && libraryState.isLoading -> Box(
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(color = RiftColors.Primary)
-                    }
-                    library.isEmpty() -> EmptyState(
-                        message = stringResource(R.string.rift_empty_message),
-                        onConnect = onOpenStores,
-                        modifier = Modifier.weight(1f),
-                    )
-                    else -> {
-                        HeroInfo(
-                            item = focusedItem,
-                            onPlay = { focusedItem?.let(::playOrOpen) },
-                            onDetails = { focusedItem?.let(::openGame) },
+
+                    when {
+                        section == null -> EmptyState(
+                            message = stringResource(R.string.rift_no_sources_message),
+                            onConnect = onOpenStores,
                             modifier = Modifier.weight(1f),
                         )
-                        PcGamesShelf(
-                            library = library,
-                            shown = shown,
-                            filter = shelfFilter,
-                            onFilter = { selectFilter(it, moveFocus = false) },
-                            cardHeight = cardHeight,
-                            pendingFocusKey = pendingFocusKey,
-                            onFocusConsumed = { pendingFocusKey = null },
-                            onFocused = { focusedAppId = it.appId },
-                            onOpen = ::openGame,
-                            onNearEnd = {
-                                if (shelfFilter == ShelfFilter.ALL &&
-                                    libraryState.currentPaginationPage < libraryState.lastPaginationPage) {
-                                    viewModel.onPageChange(1)
-                                }
-                            },
-                        )
+                        section == RiftSection.AndroidGames -> {
+                            AndroidHero(game = focusedAndroid, modifier = Modifier.weight(1f))
+                            AndroidShelf(
+                                games = androidGames,
+                                listState = androidRowState,
+                                cardHeight = cardHeight,
+                                pendingFocusKey = pendingFocusKey,
+                                onFocusConsumed = { pendingFocusKey = null },
+                                onFocused = { focusedPackage = it.packageName },
+                                onOpen = { AndroidGames.launch(context, it) },
+                            )
+                        }
+                        library.isEmpty() && libraryState.isLoading -> Box(
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            LoadingIndicator(color = RiftColors.Primary)
+                        }
+                        else -> {
+                            // Big Picture style: only the big logo of the focused game over its art.
+                            HeroLogo(item = focusedItem, modifier = Modifier.weight(1f))
+                            PcGamesShelf(
+                                shown = library,
+                                libraryState = libraryState,
+                                listState = pcRowState,
+                                cardHeight = cardHeight,
+                                pendingFocusKey = pendingFocusKey,
+                                onFocusConsumed = { pendingFocusKey = null },
+                                onFocused = { focusedAppId = it.appId },
+                                onOpen = ::openGame,
+                                onNearEnd = {
+                                    if (libraryState.currentPaginationPage < libraryState.lastPaginationPage) {
+                                        viewModel.onPageChange(1)
+                                    }
+                                },
+                            )
+                        }
                     }
-                }
 
-                HintsBar()
+                    HintsBar(showFilters = section == RiftSection.PcGames)
+                }
             }
 
-            LeftMenu(
-                visible = menuOpen,
-                sections = sections,
-                selected = section,
-                onSelectSection = {
-                    sectionKey = it.key
-                    closeMenu()
-                },
-                onOpenStores = {
-                    menuOpen = false
-                    onOpenStores()
-                },
-                onOpenSettings = {
-                    menuOpen = false
-                    onOpenSettings()
-                },
-                onExit = onExit,
-                onDismiss = ::closeMenu,
-            )
+            RiftGlassTheme {
+                LibraryOptionsPanel(
+                    isOpen = panelOpen,
+                    onDismiss = { viewModel.onOptionsPanelToggle(false) },
+                    selectedFilters = libraryState.appInfoSortType,
+                    onFilterChanged = viewModel::onFilterChanged,
+                    currentSortOption = libraryState.currentSortOption,
+                    onSortOptionChanged = viewModel::onSortOptionChanged,
+                    currentView = libraryLayout,
+                    onViewChanged = { layout ->
+                        PrefManager.libraryLayout = layout
+                        libraryLayout = layout
+                    },
+                    steamCollections = libraryState.steamCollections,
+                    selectedSteamCollectionIds = libraryState.selectedSteamCollectionIds,
+                    steamCollectionCounts = libraryState.steamCollectionCounts,
+                    skippedDynamicCollections = libraryState.skippedDynamicCollections,
+                    isSteamConnected = isSteamConnected,
+                    hasSteamCredentials = SteamUtils.hasStoredCredentials(),
+                    isOffline = isOffline,
+                    onSteamCollectionToggle = viewModel::onSteamCollectionToggle,
+                    onClearSteamCollections = viewModel::onClearSteamCollections,
+                    curatedLists = libraryState.curatedLists,
+                    selectedCuratedListIds = libraryState.selectedCuratedListIds,
+                    curatedListCounts = libraryState.curatedListCounts,
+                    onCuratedListToggle = viewModel::onCuratedListToggle,
+                    onClearCuratedLists = viewModel::onClearCuratedLists,
+                )
+                RiftSystemMenu(
+                    isOpen = systemMenuOpen,
+                    onDismiss = { systemMenuOpen = false },
+                    onNavigateRoute = { route ->
+                        systemMenuOpen = false
+                        onNavigateRoute(route)
+                    },
+                    onDownloadsClick = {
+                        systemMenuOpen = false
+                        onDownloadsClick()
+                    },
+                    onLogout = onLogout,
+                    onGoOnline = onGoOnline,
+                    isOffline = isOffline,
+                )
+            }
         }
     }
 
-    // Focus the first cover once the library shows up, so a gamepad works without touching the screen.
-    LaunchedEffect(shown.isNotEmpty()) {
-        if (shown.isNotEmpty() && pendingFocusKey == null) {
-            val target = focusedAppId?.let { id -> shown.firstOrNull { it.appId == id } } ?: shown.first()
-            pendingFocusKey = focusKeyFor(target)
-        }
+    // Focus a cover once the section has something to show, so a gamepad works without touching the screen.
+    LaunchedEffect(section, library.isNotEmpty(), androidGames.isNotEmpty()) {
+        if (pendingFocusKey == null) focusSection(section)
     }
-}
-
-/** Select (View) opens the left menu, as in Beacon; Start (Menu) does the same until the right panel exists. */
-private val MENU_KEYS = setOf(KeyEvent.KEYCODE_BUTTON_SELECT, KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_MENU)
-
-/** One cover row on the home screen; Denis wants installed or not installed picked with a filter, not a second row. */
-private enum class ShelfFilter(val label: Int) {
-    ALL(R.string.rift_filter_all),
-    INSTALLED(R.string.rift_filter_installed),
-    NOT_INSTALLED(R.string.rift_filter_not_installed),
-    ;
-
-    /** Installed games come first in every view; the sort is stable, so the library order is kept otherwise. */
-    fun apply(library: List<LibraryItem>): List<LibraryItem> = when (this) {
-        ALL -> library.sortedBy { !it.isInstalled }
-        INSTALLED -> library.filter { it.isInstalled }
-        NOT_INSTALLED -> library.filterNot { it.isInstalled }
-    }
-
-    fun next(): ShelfFilter = entries[(ordinal + 1) % entries.size]
 }
 
 private fun focusKeyFor(item: LibraryItem): String = item.appId
 
+/** Steam's library header art ratio (460×215), used for the first, wide tile. */
+private const val WIDE_TILE_RATIO = 460f / 215f
+
+/**
+ * GameNative's own card badges, kept small: compatibility verdict top left, store icon top right,
+ * per-device stats (engine, runs, FPS) along the bottom.
+ */
+@Composable
+private fun BoxScope.CoverBadges(item: LibraryItem, libraryState: LibraryState) {
+    val community = libraryState.communityCompatibilityFor(item)
+    val status = libraryState.compatibilityMap[item.name]
+    val badgeModifier = Modifier.align(Alignment.TopStart).padding(8.dp)
+    when {
+        community != null -> CommunityCompatibilityBadge(
+            verdict = community.verdict,
+            verdictLoaded = community.verdictLoaded,
+            loadFailed = community.loadFailed,
+            checking = community.isChecking,
+            showLabel = true,
+            modifier = badgeModifier,
+        )
+        status != null -> CompatibilityBadge(status = status, showLabel = true, modifier = badgeModifier)
+    }
+    Row(
+        modifier = Modifier
+            .align(Alignment.TopEnd)
+            .padding(6.dp)
+            .clip(RiftShapes.full)
+            .background(Color.Black.copy(alpha = 0.55f))
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (item.isInstalled) {
+            Box(
+                modifier = Modifier
+                    .padding(start = 4.dp)
+                    .size(6.dp)
+                    .clip(RiftShapes.full)
+                    .background(RiftColors.Success),
+            )
+        }
+        GameSourceIcon(gameSource = item.gameSource, iconSize = 12, alignmentBoxSize = 20)
+    }
+    val stats = libraryState.statsFor(item)
+    if (stats != null) {
+        GameStatsRow(
+            stats = stats,
+            tint = Color.White.copy(alpha = 0.75f),
+            animate = false,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))))
+                .padding(start = 10.dp, end = 10.dp, top = 16.dp, bottom = 8.dp),
+        )
+    }
+}
+
+@Composable
+private fun HeroLogo(item: LibraryItem?, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = ScreenPadding, end = ScreenPadding, bottom = 4.dp),
+        contentAlignment = Alignment.BottomStart,
+    ) {
+        if (item != null) GameLogo(item = item)
+    }
+}
+
+/** What the top bar needs for the library search. */
+private class SearchState(
+    val open: Boolean,
+    val query: String,
+    val onOpen: () -> Unit,
+    val onQuery: (String) -> Unit,
+    val onDone: () -> Unit,
+)
+
+private fun androidFocusKey(game: AndroidGame): String = "android:${game.packageName}"
+
 @Composable
 private fun PcGamesShelf(
-    library: List<LibraryItem>,
     shown: List<LibraryItem>,
-    filter: ShelfFilter,
-    onFilter: (ShelfFilter) -> Unit,
+    libraryState: LibraryState,
+    listState: LazyListState,
     cardHeight: Dp,
     pendingFocusKey: String?,
     onFocusConsumed: () -> Unit,
@@ -368,151 +526,192 @@ private fun PcGamesShelf(
     onOpen: (LibraryItem) -> Unit,
     onNearEnd: () -> Unit,
 ) {
-    val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    LaunchedEffect(filter) { listState.scrollToItem(0) }
-
-    Column(modifier = Modifier.padding(bottom = 4.dp)) {
-        Row(
-            modifier = Modifier.padding(start = ScreenPadding, top = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    if (shown.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(cardHeight * 1.2f + 40.dp)
+                .padding(horizontal = ScreenPadding),
+            contentAlignment = Alignment.CenterStart,
         ) {
-            ShelfFilter.entries.forEach { option ->
-                val count = remember(library, option) { option.apply(library).size }
-                SectionTab(
-                    title = "${stringResource(option.label)} · $count",
-                    selected = option == filter,
-                    onClick = { onFilter(option) },
-                )
-            }
+            Text(
+                text = stringResource(R.string.rift_filter_empty),
+                color = RiftColors.OnSurfaceVariant,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+            )
         }
-        if (shown.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(cardHeight + 28.dp)
-                    .padding(horizontal = ScreenPadding),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                Text(
-                    text = stringResource(R.string.rift_filter_empty),
-                    color = RiftColors.OnSurfaceVariant,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                )
+        return
+    }
+    LazyRow(
+        state = listState,
+        contentPadding = PaddingValues(start = ScreenPadding, end = ScreenPadding, top = 18.dp, bottom = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(CardGap),
+    ) {
+        itemsIndexed(shown, key = { _, item -> item.appId }) { index, item ->
+            // The first tile is the wide one (library header art), the rest are 2:3 covers.
+            val wide = index == 0
+            val url = if (wide) {
+                item.headerImageUrl.ifEmpty { item.heroImageUrl.ifEmpty { item.capsuleImageUrl } }
+            } else {
+                item.capsuleImageUrl.ifEmpty { item.headerImageUrl }
             }
-            return@Column
-        }
-        LazyRow(
-            state = listState,
-            contentPadding = PaddingValues(horizontal = ScreenPadding, vertical = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(CardGap),
-        ) {
-            itemsIndexed(shown, key = { _, item -> item.appId }) { index, item ->
-                GameCard(
-                    item = item,
-                    height = cardHeight,
-                    requestFocus = pendingFocusKey == focusKeyFor(item),
-                    onFocusRequested = onFocusConsumed,
-                    onFocused = {
-                        onFocused(item)
-                        // Keep the focused cover near the left edge, Big Picture style.
-                        scope.launch { listState.animateScrollToItem((index - 1).coerceAtLeast(0)) }
-                        if (index >= shown.size - LOAD_MORE_THRESHOLD) onNearEnd()
-                    },
-                    onClick = { onOpen(item) },
-                )
-            }
+            val context = LocalContext.current
+            CoverCard(
+                height = cardHeight,
+                aspectRatio = if (wide) WIDE_TILE_RATIO else 2f / 3f,
+                paletteKey = url,
+                loadPalette = { CoverColors.palette(context, url) },
+                requestFocus = pendingFocusKey == focusKeyFor(item),
+                onFocusRequested = onFocusConsumed,
+                onFocused = {
+                    onFocused(item)
+                    // Keep the focused cover near the left edge, Big Picture style.
+                    scope.launch { listState.animateScrollToItem((index - 1).coerceAtLeast(0)) }
+                    if (index >= shown.size - LOAD_MORE_THRESHOLD) onNearEnd()
+                },
+                onClick = { onOpen(item) },
+                cover = {
+                    Text(
+                        text = item.name,
+                        color = RiftColors.OnSurfaceVariant,
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center,
+                        maxLines = 4,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.align(Alignment.Center).padding(12.dp),
+                    )
+                    CoilImage(
+                        modifier = Modifier.fillMaxSize(),
+                        imageModel = { url },
+                        imageOptions = ImageOptions(contentScale = ContentScale.Crop, contentDescription = item.name),
+                        loading = {},
+                        failure = {},
+                    )
+                },
+                badge = { CoverBadges(item, libraryState) },
+            )
         }
     }
 }
 
 @Composable
-private fun GameCard(
-    item: LibraryItem,
-    height: Dp,
-    requestFocus: Boolean,
-    onFocusRequested: () -> Unit,
-    onFocused: () -> Unit,
-    onClick: () -> Unit,
+private fun rememberAppIcon(packageName: String?): Bitmap? {
+    val context = LocalContext.current
+    val icon by produceState<Bitmap?>(null, packageName) {
+        value = packageName?.let { withContext(Dispatchers.IO) { AndroidGames.icon(context, it) } }
+    }
+    return icon
+}
+
+@Composable
+private fun AndroidShelf(
+    games: List<AndroidGame>,
+    listState: LazyListState,
+    cardHeight: Dp,
+    pendingFocusKey: String?,
+    onFocusConsumed: () -> Unit,
+    onFocused: (AndroidGame) -> Unit,
+    onOpen: (AndroidGame) -> Unit,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
-    val focusRequester = remember { FocusRequester() }
-
-    val scale by animateFloatAsState(if (focused) 1.07f else 1f, RiftMotion.focusSpring(), label = "cardScale")
-    val lift by animateDpAsState(if (focused) (-8).dp else 0.dp, RiftMotion.focusSpring(), label = "cardLift")
-    val glow = rememberCoverGlow(item.capsuleImageUrl.ifEmpty { item.headerImageUrl }, enabled = focused)
-
-    LaunchedEffect(requestFocus) {
-        if (requestFocus) {
-            runCatching { focusRequester.requestFocus() }
-            onFocusRequested()
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    LazyRow(
+        state = listState,
+        contentPadding = PaddingValues(start = ScreenPadding, end = ScreenPadding, top = 18.dp, bottom = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(CardGap),
+    ) {
+        itemsIndexed(games, key = { _, game -> game.packageName }) { index, game ->
+            val icon = rememberAppIcon(game.packageName)
+            CoverCard(
+                height = cardHeight,
+                paletteKey = "android:${game.packageName}",
+                loadPalette = { AndroidGames.icon(context, game.packageName)?.let(CoverColors::palette) },
+                requestFocus = pendingFocusKey == androidFocusKey(game),
+                onFocusRequested = onFocusConsumed,
+                onFocused = {
+                    onFocused(game)
+                    scope.launch { listState.animateScrollToItem((index - 1).coerceAtLeast(0)) }
+                },
+                onClick = { onOpen(game) },
+                cover = {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Brush.verticalGradient(listOf(RiftColors.SurfaceContainerHigh, RiftColors.Surface)))
+                            .padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        if (icon != null) {
+                            Image(
+                                bitmap = icon.asImageBitmap(),
+                                contentDescription = game.label,
+                                modifier = Modifier.fillMaxWidth(0.55f).clip(RiftShapes.card),
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = game.label,
+                            color = RiftColors.OnSurface,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.Center,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                },
+            )
         }
     }
+}
 
+@Composable
+private fun AndroidBackdrop(game: AndroidGame?) {
+    val icon = rememberAppIcon(game?.packageName)
+    val palette = remember(icon) { icon?.let(CoverColors::palette) }
+    val glow = palette?.first() ?: Color.Transparent
     Box(
         modifier = Modifier
-            .height(height)
-            .aspectRatio(2f / 3f)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                translationY = lift.toPx()
-            }
-            .shadow(
-                elevation = if (focused) 29.dp else 0.dp,
-                shape = RiftShapes.card,
-                ambientColor = glow.copy(alpha = 0.34f),
-                spotColor = glow.copy(alpha = 0.34f),
-            )
-            .clip(RiftShapes.card)
-            .background(RiftColors.SurfaceContainer)
-            .border(if (focused) 3.dp else 0.dp, if (focused) Color.White else Color.Transparent, RiftShapes.card)
-            .focusRequester(focusRequester)
-            .onFocusChanged { if (it.isFocused) onFocused() }
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
-    ) {
-        Text(
-            text = item.name,
-            color = RiftColors.OnSurfaceVariant,
-            fontSize = 13.sp,
-            textAlign = TextAlign.Center,
-            maxLines = 4,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.align(Alignment.Center).padding(12.dp),
-        )
-        CoilImage(
-            modifier = Modifier.fillMaxSize(),
-            imageModel = { item.capsuleImageUrl.ifEmpty { item.headerImageUrl } },
-            imageOptions = ImageOptions(contentScale = ContentScale.Crop, contentDescription = item.name),
-            loading = {},
-            failure = {},
-        )
-        if (item.isInstalled) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
-                    .size(10.dp)
-                    .clip(RiftShapes.full)
-                    .background(RiftColors.Success),
-            )
-        }
-    }
+            .fillMaxSize()
+            .background(
+                Brush.radialGradient(
+                    listOf(glow.copy(alpha = 0.22f), Color.Transparent),
+                    center = androidx.compose.ui.geometry.Offset(1400f, 200f),
+                    radius = 1400f,
+                ),
+            ),
+    )
 }
 
 @Composable
-private fun rememberCoverGlow(url: String, enabled: Boolean): Color {
-    val context = LocalContext.current
-    var color by remember(url) { mutableStateOf<Color?>(null) }
-    LaunchedEffect(url, enabled) {
-        if (enabled && color == null) {
-            color = withContext(Dispatchers.IO) { runCatching { CoverColors.dominant(context, url) }.getOrNull() }
-        }
+private fun AndroidHero(game: AndroidGame?, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = ScreenPadding),
+        verticalArrangement = Arrangement.Bottom,
+    ) {
+        if (game == null) return@Column
+        Text(
+            text = game.label.uppercase(),
+            color = RiftColors.OnSurface,
+            style = LogoTitleStyle,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = LogoWidth),
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = stringResource(R.string.rift_source_android),
+            color = RiftColors.OnSurfaceVariant,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
     }
-    return color ?: RiftColors.GlowFallback
 }
 
 @Composable
@@ -573,52 +772,71 @@ private fun TopBar(
     sections: List<RiftSection>,
     selected: RiftSection?,
     onSelect: (RiftSection) -> Unit,
-    onOpenMenu: () -> Unit,
-    onOpenStores: () -> Unit,
-    onOpenSettings: () -> Unit,
+    onStep: (Int) -> Unit,
+    search: SearchState?,
 ) {
+    // Big Picture style: only the section tabs, between the bumpers that switch them.
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = ScreenPadding, vertical = 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RoundIconButton(Icons.Outlined.Menu, stringResource(R.string.rift_menu), onOpenMenu)
-        Spacer(modifier = Modifier.width(16.dp))
-        RiftWordmark()
-        Spacer(modifier = Modifier.width(32.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            sections.forEach { section ->
-                SectionTab(
-                    title = stringResource(section.titleRes),
-                    selected = section == selected,
-                    onClick = { onSelect(section) },
-                )
-            }
+        BumperButton("LB") { onStep(-1) }
+        sections.forEach { section ->
+            SectionTab(
+                title = stringResource(section.titleRes),
+                selected = section == selected,
+                onClick = { onSelect(section) },
+            )
         }
+        BumperButton("RB") { onStep(1) }
         Spacer(modifier = Modifier.weight(1f))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            RoundIconButton(Icons.Outlined.Storefront, stringResource(R.string.rift_stores), onOpenStores)
-            RoundIconButton(Icons.Outlined.Settings, stringResource(R.string.rift_settings), onOpenSettings)
-        }
+        if (search != null) SearchField(search)
     }
 }
 
+/** Light, half transparent search: an icon until used, then a slim pill with the query. */
 @Composable
-private fun RiftWordmark() {
-    Text(
-        text = "RIFT",
-        style = TextStyle(brush = RiftBrush.accent),
-        fontSize = 24.sp,
-        fontWeight = FontWeight.ExtraBold,
-        letterSpacing = 3.sp,
-    )
+private fun SearchField(search: SearchState) {
+    if (!search.open) {
+        PillButton(onClick = search.onOpen, background = { focused -> solid(if (focused) RiftColors.SurfaceContainerHigh else Color.Transparent) }, square = true) {
+            Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.rift_search), tint = RiftColors.OnSurfaceVariant.copy(alpha = 0.7f))
+        }
+        return
+    }
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
+    Row(
+        modifier = Modifier
+            .height(RiftSizes.button)
+            .width(320.dp)
+            .clip(RiftShapes.full)
+            .background(Color.White.copy(alpha = 0.08f))
+            .padding(horizontal = 18.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(Icons.Outlined.Search, contentDescription = null, tint = RiftColors.OnSurfaceVariant.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
+        BasicTextField(
+            value = search.query,
+            onValueChange = search.onQuery,
+            singleLine = true,
+            textStyle = TextStyle(color = RiftColors.OnSurface, fontSize = 16.sp),
+            cursorBrush = solid(RiftColors.Primary),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { search.onDone() }),
+            modifier = Modifier.weight(1f).focusRequester(focusRequester),
+        )
+    }
 }
 
 /**
  * The one button shape Rift uses: a full pill (or a circle when square), [RiftSizes.button] tall,
  * white ring and a slight spring scale on focus.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun PillButton(
     onClick: () -> Unit,
@@ -626,11 +844,16 @@ private fun PillButton(
     modifier: Modifier = Modifier,
     square: Boolean = false,
     focusRequester: FocusRequester? = null,
+    focusable: Boolean = true,
     content: @Composable (focused: Boolean) -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val scale by animateFloatAsState(if (focused) 1.06f else 1f, RiftMotion.focusSpring(), label = "buttonScale")
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (focused) 1.06f else 1f, MaterialTheme.motionScheme.fastSpatialSpec(), label = "buttonScale")
+    // Expressive press feedback: the pill squeezes toward a rounded square and springs back.
+    val corner by animateIntAsState(if (pressed) 30 else 50, MaterialTheme.motionScheme.fastSpatialSpec(), label = "buttonCorner")
+    val shape = RoundedCornerShape(corner)
     Box(
         modifier = modifier
             .height(RiftSizes.button)
@@ -639,10 +862,11 @@ private fun PillButton(
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(RiftShapes.full)
+            .clip(shape)
             .background(background(focused))
-            .border(if (focused) 3.dp else 0.dp, if (focused) Color.White else Color.Transparent, RiftShapes.full)
+            .border(if (focused) 3.dp else 0.dp, if (focused) Color.White else Color.Transparent, shape)
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .then(if (focusable) Modifier else Modifier.focusProperties { canFocus = false })
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = if (square) 0.dp else 24.dp),
         contentAlignment = Alignment.Center,
@@ -658,95 +882,84 @@ private fun quietBackground(focused: Boolean) =
 
 @Composable
 private fun SectionTab(title: String, selected: Boolean, onClick: () -> Unit) {
+    // Active tab: dark grey pill with a thin lemon mark; lemon stays an accent.
     PillButton(
         onClick = onClick,
-        background = { focused -> if (selected) solid(RiftColors.Primary) else quietBackground(focused) },
+        background = { focused -> solid(if (selected || focused) RiftColors.SurfaceContainerHigh else Color.Transparent) },
     ) {
-        Text(
-            text = title,
-            color = if (selected) RiftColors.OnPrimary else RiftColors.OnSurface,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-        )
-    }
-}
-
-@Composable
-private fun RoundIconButton(icon: ImageVector, description: String, onClick: () -> Unit) {
-    PillButton(onClick = onClick, background = ::quietBackground, square = true) {
-        Icon(icon, contentDescription = description, tint = RiftColors.OnSurface)
-    }
-}
-
-@Composable
-private fun HeroInfo(
-    item: LibraryItem?,
-    onPlay: () -> Unit,
-    onDetails: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = ScreenPadding),
-        verticalArrangement = Arrangement.Bottom,
-    ) {
-        if (item == null) return@Column
-        GameLogo(item = item)
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = "${sourceLabel(item.gameSource)} · " +
-                stringResource(if (item.isInstalled) R.string.rift_installed else R.string.rift_not_installed),
-            color = RiftColors.OnSurfaceVariant,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            PlayButton(
-                text = stringResource(if (item.isInstalled) R.string.rift_play else R.string.rift_install),
-                onClick = onPlay,
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = title,
+                color = if (selected) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
             )
-            SecondaryButton(text = stringResource(R.string.rift_details), onClick = onDetails)
+            Spacer(modifier = Modifier.height(4.dp))
+            Box(
+                modifier = Modifier
+                    .width(18.dp)
+                    .height(3.dp)
+                    .clip(RiftShapes.full)
+                    .background(if (selected) RiftColors.Primary else Color.Transparent),
+            )
         }
-        Spacer(modifier = Modifier.height(8.dp))
     }
 }
 
+@Composable
+private fun BumperButton(glyph: String, onClick: () -> Unit) {
+    PillButton(onClick = onClick, background = ::quietBackground, square = true, focusable = false) {
+        Text(text = glyph, color = RiftColors.OnSurfaceVariant, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+private val LogoWidth = 560.dp
+private val LogoHeight = 190.dp
+
+/** The one style for games without a logo image: same size and weight everywhere, never a cover. */
+private val LogoTitleStyle = TextStyle(
+    color = RiftColors.OnSurface,
+    fontSize = 54.sp,
+    lineHeight = 56.sp,
+    fontWeight = FontWeight.Black,
+    letterSpacing = (-0.5).sp,
+)
+
+/**
+ * The focused game's logo: Steam's transparent library logo when the game has one, otherwise its
+ * name in [LogoTitleStyle]. Coil caches the logos.
+ */
 @Composable
 private fun GameLogo(item: LibraryItem) {
     val logoUrl = if (item.gameSource == GameSource.STEAM && item.gameId != 0) {
-        "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/logo.png"
+        "https://shared.steamstatic.com/store_item_assets/steam/apps/${item.gameId}/logo.png"
     } else {
         ""
     }
-    var logoFailed by remember(item.appId) { mutableStateOf(logoUrl.isEmpty()) }
-    if (!logoFailed) {
-        CoilImage(
-            modifier = Modifier
-                .heightIn(max = 120.dp)
-                .widthIn(max = 420.dp)
-                .fillMaxHeight(0.5f),
-            imageModel = { logoUrl },
-            imageOptions = ImageOptions(
-                contentScale = ContentScale.Fit,
-                alignment = Alignment.BottomStart,
-                contentDescription = item.name,
-            ),
-            loading = {},
-            failure = { LaunchedEffect(Unit) { logoFailed = true } },
-        )
-    } else {
-        Text(
-            text = item.name.uppercase(),
-            color = RiftColors.OnSurface,
-            fontSize = 40.sp,
-            lineHeight = 44.sp,
-            fontWeight = FontWeight.ExtraBold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.widthIn(max = 640.dp),
-        )
+    Crossfade(targetState = item.appId to logoUrl, animationSpec = tween(250), label = "logo") { (appId, url) ->
+        var logoFailed by remember(appId) { mutableStateOf(url.isEmpty()) }
+        Box(modifier = Modifier.width(LogoWidth).height(LogoHeight), contentAlignment = Alignment.BottomStart) {
+            if (!logoFailed) {
+                CoilImage(
+                    modifier = Modifier.fillMaxSize(),
+                    imageModel = { url },
+                    imageOptions = ImageOptions(
+                        contentScale = ContentScale.Fit,
+                        alignment = Alignment.BottomStart,
+                        contentDescription = item.name,
+                    ),
+                    loading = {},
+                    failure = { LaunchedEffect(Unit) { logoFailed = true } },
+                )
+            } else {
+                Text(
+                    text = item.name,
+                    style = LogoTitleStyle,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }
 
@@ -765,18 +978,11 @@ private fun sourceLabel(source: GameSource): String = stringResource(
 private fun PlayButton(text: String, onClick: () -> Unit, focusRequester: FocusRequester? = null) {
     PillButton(
         onClick = onClick,
-        background = { RiftBrush.accent },
+        background = { RiftBrush.action },
         modifier = Modifier.widthIn(min = 160.dp),
         focusRequester = focusRequester,
     ) {
-        Text(text = text, color = RiftColors.OnPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun SecondaryButton(text: String, onClick: () -> Unit) {
-    PillButton(onClick = onClick, background = ::quietBackground) {
-        Text(text = text, color = RiftColors.OnSurface, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text(text = text, color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -815,7 +1021,7 @@ private fun EmptyState(message: String, onConnect: () -> Unit, modifier: Modifie
 }
 
 @Composable
-private fun HintsBar() {
+private fun HintsBar(showFilters: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -825,10 +1031,10 @@ private fun HintsBar() {
         horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.End),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Hint("SELECT", stringResource(R.string.rift_menu))
+        if (showFilters) Hint("SELECT", stringResource(R.string.rift_hint_filters))
+        Hint("START", stringResource(R.string.rift_hint_menu))
         Hint("A", stringResource(R.string.rift_hint_select))
         Hint("Y", stringResource(R.string.rift_hint_play))
-        Hint("X", stringResource(R.string.rift_hint_filter))
         Hint("LB RB", stringResource(R.string.rift_hint_sections))
         Hint("B", stringResource(R.string.rift_hint_back))
     }
@@ -852,98 +1058,6 @@ private fun Hint(glyph: String, label: String) {
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp,
             style = MaterialTheme.typography.labelLarge,
-        )
-    }
-}
-
-/**
- * Left navigation panel, Beacon style: opened with Select (or the menu button), closed with B.
- * Focus stays inside while it is open.
- */
-@OptIn(ExperimentalComposeUiApi::class)
-@Composable
-private fun LeftMenu(
-    visible: Boolean,
-    sections: List<RiftSection>,
-    selected: RiftSection?,
-    onSelectSection: (RiftSection) -> Unit,
-    onOpenStores: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onExit: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AnimatedVisibility(visible = visible, enter = fadeIn(tween(300)), exit = fadeOut(tween(300))) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(RiftColors.Background.copy(alpha = 0.6f))
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss),
-        )
-    }
-    AnimatedVisibility(
-        visible = visible,
-        enter = slideInHorizontally(RiftMotion.panelSpring()) { -it },
-        exit = slideOutHorizontally(RiftMotion.panelSpring()) { -it },
-    ) {
-        val firstItem = remember { FocusRequester() }
-        LaunchedEffect(Unit) { runCatching { firstItem.requestFocus() } }
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(RiftSizes.leftPanel)
-                .background(RiftColors.Surface.copy(alpha = 0.96f))
-                .focusProperties { exit = { FocusRequester.Cancel } }
-                .focusGroup()
-                .padding(horizontal = 24.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            RiftWordmark()
-            Spacer(modifier = Modifier.height(14.dp))
-            sections.forEachIndexed { index, section ->
-                MenuItem(
-                    title = stringResource(section.titleRes),
-                    selected = section == selected,
-                    focusRequester = if (index == 0) firstItem else null,
-                    onClick = { onSelectSection(section) },
-                )
-            }
-            MenuItem(
-                title = stringResource(R.string.rift_stores),
-                focusRequester = if (sections.isEmpty()) firstItem else null,
-                onClick = onOpenStores,
-            )
-            MenuItem(title = stringResource(R.string.rift_settings), onClick = onOpenSettings)
-            Spacer(modifier = Modifier.weight(1f))
-            MenuItem(title = stringResource(R.string.rift_exit), onClick = onExit)
-        }
-    }
-}
-
-@Composable
-private fun MenuItem(
-    title: String,
-    onClick: () -> Unit,
-    selected: Boolean = false,
-    focusRequester: FocusRequester? = null,
-) {
-    PillButton(
-        onClick = onClick,
-        background = { focused ->
-            when {
-                selected -> solid(RiftColors.Primary)
-                focused -> solid(RiftColors.SurfaceContainerHigh)
-                else -> solid(Color.Transparent)
-            }
-        },
-        modifier = Modifier.fillMaxWidth(),
-        focusRequester = focusRequester,
-    ) {
-        Text(
-            text = title,
-            color = if (selected) RiftColors.OnPrimary else RiftColors.OnSurface,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.fillMaxWidth(),
         )
     }
 }

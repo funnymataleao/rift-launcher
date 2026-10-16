@@ -2,11 +2,8 @@
 <!-- Rift Launcher strings. Kept apart from GameNative's strings.xml to avoid upstream merge conflicts. -->
 <resources>
     <string name="rift_section_pc_games">PC games</string>
-    <string name="rift_filter_all">All</string>
-    <string name="rift_filter_installed">Installed</string>
-    <string name="rift_filter_not_installed">Not installed</string>
     <string name="rift_filter_empty">Nothing here yet</string>
-    <string name="rift_hint_filter">Filter</string>
+    <string name="rift_hint_filters">Filters</string>
     <string name="rift_play">Play</string>
     <string name="rift_install">Install</string>
     <string name="rift_details">Details</string>
@@ -244,4 +241,8 @@
     <string name="rift_settings_sound_pack">Sounds folder</string>
     <string name="rift_settings_sound_pack_builtin">Built-in sounds</string>
     <string name="rift_settings_sound_pack_reset">Back to built-in sounds</string>
+    <string name="rift_section_android_games">Android games</string>
+    <string name="rift_hint_menu">Menu</string>
+    <string name="rift_source_android">Android</string>
+    <string name="rift_search">Search</string>
 </resources>

@@ -44,8 +44,16 @@ fun HomeScreen(
             onPlayWithDiagnostics = onPlayWithDiagnostics,
             onAiDebugRun = onAiDebugRun,
             onOpenStores = { showRiftHome = false },
-            onOpenSettings = { onNavigateRoute(PluviaScreen.Settings.route) },
+            onNavigateRoute = onNavigateRoute,
+            onDownloadsClick = {
+                showRiftHome = false
+                viewModel.onDestination(HomeDestination.Downloads)
+            },
+            onLogout = onLogout,
+            onGoOnline = onGoOnline,
             onExit = onClickExit,
+            isOffline = isOffline,
+            isSteamConnected = isSteamConnected,
         )
         return
     }

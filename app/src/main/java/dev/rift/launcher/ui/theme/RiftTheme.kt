@@ -3,7 +3,10 @@ package dev.rift.launcher.ui.theme
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
@@ -16,7 +19,10 @@ import androidx.compose.ui.unit.dp
  *
  * Kept in its own package so GameNative's ui/ tree stays untouched and upstream merges stay clean.
  */
-/** Black and lemon (Denis 2026-10-16): pure black for OLED, one lemon accent, black text on lemon. */
+/**
+ * Black first, lemon as a rare accent (Denis 2026-10-16): pure black for OLED, white and grey text,
+ * lemon only for focus details and the active tab mark, never for large fills.
+ */
 object RiftColors {
     val Background = Color(0xFF000000)
     val Surface = Color(0xFF0E0E0E)
@@ -38,7 +44,8 @@ object RiftColors {
 }
 
 object RiftBrush {
-    val accent = Brush.horizontalGradient(listOf(RiftColors.Primary, RiftColors.Secondary))
+    /** Primary action fill (Play): white, so lemon stays an accent. */
+    val action = Brush.linearGradient(listOf(Color.White, Color.White))
 }
 
 object RiftShapes {
@@ -83,12 +90,34 @@ private val RiftColorScheme = darkColorScheme(
     surfaceContainerHigh = RiftColors.SurfaceContainerHigh,
     outline = RiftColors.Outline,
     outlineVariant = RiftColors.OutlineVariant,
+    surfaceTint = Color.Transparent,
+)
+
+/** Side panels: translucent black over a blurred home screen, like frosted glass. */
+private val RiftGlassColorScheme = RiftColorScheme.copy(
+    surface = Color.Black.copy(alpha = 0.55f),
+    surfaceContainer = Color.Black.copy(alpha = 0.55f),
+    scrim = Color.Black.copy(alpha = 0.35f),
 )
 
 @Composable
-fun RiftTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = RiftColorScheme,
+fun RiftTheme(content: @Composable () -> Unit) = RiftMaterialTheme(RiftColorScheme, content)
+
+/** For GameNative's side panels shown over Rift; pair it with a blur on what is behind them. */
+@Composable
+fun RiftGlassTheme(content: @Composable () -> Unit) = RiftMaterialTheme(RiftGlassColorScheme, content)
+
+/**
+ * Material 3 Expressive (Denis 2026-10-16): expressive motion scheme (springs) and shapes, in Rift's
+ * black palette. material3 1.4.0 is the newest the fork's AGP 8.8 can build; there these APIs are
+ * still marked experimental.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun RiftMaterialTheme(colorScheme: ColorScheme, content: @Composable () -> Unit) {
+    MaterialExpressiveTheme(
+        colorScheme = colorScheme,
+        motionScheme = MotionScheme.expressive(),
         shapes = Shapes(
             small = RiftShapes.control,
             medium = RiftShapes.card,

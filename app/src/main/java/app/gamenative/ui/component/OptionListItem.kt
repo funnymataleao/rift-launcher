@@ -46,6 +46,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.theme.PluviaTheme
 
+// Rift: option rows are full pills, like every other Rift button.
+private val OptionItemShape = RoundedCornerShape(50)
+
 private data class OptionItemStyle(
     val scale: Float,
     val backgroundColor: Color,
@@ -133,11 +136,11 @@ fun OptionListItem(
     Box(
         modifier = modifier
             .scale(style.scale)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(OptionItemShape)
             .background(style.backgroundColor)
             .then(
                 if (isFocused) {
-                    Modifier.border(style.borderWidth, style.borderColor, RoundedCornerShape(12.dp))
+                    Modifier.border(style.borderWidth, style.borderColor, OptionItemShape)
                 } else Modifier
             )
             .focusRequester(focusRequester)
@@ -217,11 +220,11 @@ fun OptionRadioItem(
     Box(
         modifier = modifier
             .scale(style.scale)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(OptionItemShape)
             .background(style.backgroundColor)
             .then(
                 if (isFocused) {
-                    Modifier.border(style.borderWidth, style.borderColor, RoundedCornerShape(12.dp))
+                    Modifier.border(style.borderWidth, style.borderColor, OptionItemShape)
                 } else Modifier
             )
             .focusRequester(focusRequester)

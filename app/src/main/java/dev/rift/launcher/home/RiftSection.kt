@@ -24,13 +24,20 @@ sealed interface RiftSection {
         override val key = "pc"
         override val titleRes = R.string.rift_section_pc_games
     }
+
+    /** Android games the user added in Rift's settings. */
+    data object AndroidGames : RiftSection {
+        override val key = "android"
+        override val titleRes = R.string.rift_section_android_games
+    }
 }
 
 object RiftSections {
     /** Sections that are set up right now, in display order. */
-    fun configured(context: Context, pcLibrary: List<LibraryItem>): List<RiftSection> = buildList {
+    fun configured(context: Context, pcLibrary: List<LibraryItem>, androidGames: List<AndroidGame>): List<RiftSection> = buildList {
         if (PlatformAuthUtils.isSignedInToAnyPlatform(context) || pcLibrary.isNotEmpty()) {
             add(RiftSection.PcGames)
         }
+        if (androidGames.isNotEmpty()) add(RiftSection.AndroidGames)
     }
 }
