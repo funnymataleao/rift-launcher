@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_empty">Игр пока нет. Подключите ПК, магазин или эмулятор, чтобы наполнить библиотеку.</string>
+    <string name="home_refresh">Обновить</string>
+    <string name="home_play">Играть</string>
+    <string name="home_no_source">Эту игру пока нечем запустить</string>
+    <string name="launch_failed">Не удалось запустить: %1$s</string>
+</resources>
