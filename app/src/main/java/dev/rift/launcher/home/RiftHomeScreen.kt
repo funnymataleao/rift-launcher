@@ -273,15 +273,6 @@ fun RiftHomeScreen(
         openedAppId = item.appId
     }
 
-    fun playOrOpen(item: LibraryItem) {
-        if (item.isInstalled) {
-            sounds.play(RiftSound.Launch)
-            onClickPlay(item.appId, false)
-        } else {
-            openGame(item)
-        }
-    }
-
     /** Puts focus back on the cover this section had last. */
     fun focusSection(target: RiftSection?) {
         // The cover may be scrolled out of the row (a search changes it), so bring it into view first.
@@ -488,7 +479,11 @@ fun RiftHomeScreen(
                         return@onPreviewKeyEvent true
                     }
                     if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                    if (quickAccessKey != KeyEvent.KEYCODE_UNKNOWN && native.keyCode == quickAccessKey) {
+                    // Guide/Xbox opens quick access whenever the system lets it through to the app; a
+                    // button picked in settings does too.
+                    if (native.keyCode == KeyEvent.KEYCODE_BUTTON_MODE ||
+                        (quickAccessKey != KeyEvent.KEYCODE_UNKNOWN && native.keyCode == quickAccessKey)
+                    ) {
                         if (!panelOpen) systemMenuOpen = !systemMenuOpen
                         return@onPreviewKeyEvent true
                     }
@@ -502,8 +497,8 @@ fun RiftHomeScreen(
                             switchSection(1)
                             true
                         }
-                        // Start: the focused game's options (GameNative's panel on its game page), Steam Deck style.
-                        KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_MENU -> {
+                        // Y (and Start): the focused game's options, GameNative's panel alone over the home.
+                        KeyEvent.KEYCODE_BUTTON_Y, KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_MENU -> {
                             if (section == RiftSection.PcGames) {
                                 focusedItem?.let {
                                     optionsOnly.panelOpen = true
@@ -512,14 +507,6 @@ fun RiftHomeScreen(
                                 }
                             }
                             true
-                        }
-                        // A plays (or opens the page of a game that is not installed); Y opens the game page.
-                        KeyEvent.KEYCODE_BUTTON_Y -> when (section) {
-                            RiftSection.PcGames -> {
-                                focusedItem?.let(::openGame)
-                                focusedItem != null
-                            }
-                            else -> false
                         }
                         else -> false
                     }
@@ -626,7 +613,8 @@ fun RiftHomeScreen(
                                 pendingFocusKey = pendingFocusKey,
                                 onFocusConsumed = { pendingFocusKey = null },
                                 onFocused = { focusedAppId = it.appId },
-                                onOpen = ::playOrOpen,
+                                // A opens the game page; games never start straight from the home (Denis).
+                                onOpen = ::openGame,
                                 onNearEnd = {
                                     if (libraryState.currentPaginationPage < libraryState.lastPaginationPage) {
                                         viewModel.onPageChange(1)
@@ -1388,9 +1376,8 @@ private fun HintsBar(showFilters: Boolean, modifier: Modifier = Modifier) {
         if (showFilters) Hint(listOf(GamepadButton.SELECT.iconRes), stringResource(R.string.rift_hint_filters))
         Hint(listOf(GamepadButton.SELECT.iconRes), stringResource(R.string.rift_hint_menu))
         Spacer(modifier = Modifier.weight(1f))
-        if (showFilters) Hint(listOf(GamepadButton.START.iconRes), stringResource(R.string.rift_hint_options))
-        if (showFilters) Hint(listOf(face(GamepadButton.Y, GamepadButton.X)), stringResource(R.string.rift_details))
-        Hint(listOf(face(GamepadButton.A, GamepadButton.B)), stringResource(R.string.rift_hint_play))
+        if (showFilters) Hint(listOf(face(GamepadButton.Y, GamepadButton.X)), stringResource(R.string.rift_hint_options))
+        if (showFilters) Hint(listOf(face(GamepadButton.A, GamepadButton.B)), stringResource(R.string.rift_details))
         Hint(listOf(face(GamepadButton.B, GamepadButton.A)), stringResource(R.string.rift_hint_apps))
     }
 }

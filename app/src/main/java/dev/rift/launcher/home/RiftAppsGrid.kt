@@ -37,6 +37,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -83,29 +97,61 @@ private fun AppsGridContent(onDismiss: () -> Unit) {
         value = withContext(Dispatchers.IO) { runCatching { AndroidGames.launchable(context) }.getOrDefault(emptyList()) }
     }
     val firstFocus = remember { FocusRequester() }
+    val searchFocus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    // Search: A on the field starts typing; B (or Down) hides the keyboard and goes back to the
+    // grid, B again closes the grid.
+    var query by remember { mutableStateOf("") }
+    var typing by remember { mutableStateOf(false) }
+    fun stopTyping() {
+        typing = false
+        keyboard?.hide()
+        runCatching { firstFocus.requestFocus() }.onFailure { runCatching { searchFocus.requestFocus() } }
+    }
+    BackHandler(enabled = typing) { stopTyping() }
     LaunchedEffect(apps) { if (!apps.isNullOrEmpty()) runCatching { firstFocus.requestFocus() } }
+    val shown = remember(apps, query) {
+        apps?.let { all -> if (query.isBlank()) all else all.filter { it.label.contains(query.trim(), ignoreCase = true) } }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.55f))
             .onPreviewKeyEvent { event ->
-                // B closes; both halves of the press are consumed so focus never falls out.
-                if (event.nativeKeyEvent.keyCode != KeyEvent.KEYCODE_BUTTON_B) return@onPreviewKeyEvent false
-                if (event.type == KeyEventType.KeyUp) onDismiss()
+                val code = event.nativeKeyEvent.keyCode
+                val leaveField = typing && code == KeyEvent.KEYCODE_DPAD_DOWN
+                if (code != KeyEvent.KEYCODE_BUTTON_B && !leaveField) return@onPreviewKeyEvent false
+                // Both halves of the press are consumed so focus never falls out.
+                if (event.type == KeyEventType.KeyUp) {
+                    if (typing) stopTyping() else if (!leaveField) onDismiss()
+                }
                 true
             },
     ) {
         Column(modifier = Modifier.fillMaxSize().padding(top = 36.dp)) {
-            Text(
-                text = stringResource(R.string.rift_apps_title),
-                color = RiftColors.OnSurface,
-                fontSize = 30.sp,
-                fontWeight = FontWeight.Black,
-                modifier = Modifier.padding(horizontal = 48.dp),
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 48.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.rift_apps_title),
+                    color = RiftColors.OnSurface,
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.weight(1f),
+                )
+                AppSearchField(
+                    query = query,
+                    typing = typing,
+                    focusRequester = searchFocus,
+                    onStart = { typing = true },
+                    onQuery = { query = it },
+                    onDone = ::stopTyping,
+                )
+            }
             Spacer(modifier = Modifier.height(20.dp))
-            val list = apps
+            val list = shown
             if (list == null) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingIndicator(color = RiftColors.OnSurface) }
             } else {
@@ -125,6 +171,55 @@ private fun AppsGridContent(onDismiss: () -> Unit) {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AppSearchField(
+    query: String,
+    typing: Boolean,
+    focusRequester: FocusRequester,
+    onStart: () -> Unit,
+    onQuery: (String) -> Unit,
+    onDone: () -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val fieldFocus = remember { FocusRequester() }
+    LaunchedEffect(typing) { if (typing) runCatching { fieldFocus.requestFocus() } }
+    Row(
+        modifier = Modifier
+            .width(360.dp)
+            .height(52.dp)
+            .background(Color.White.copy(alpha = if (focused || typing) 0.14f else 0.08f), RiftShapes.full)
+            .border(1.dp, if (focused) Color.White.copy(alpha = 0.35f) else Color.Transparent, RiftShapes.full)
+            .focusRequester(focusRequester)
+            .then(if (typing) Modifier else Modifier.clickable(interactionSource = interaction, indication = null, onClick = onStart))
+            .padding(horizontal = 18.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(Icons.Outlined.Search, contentDescription = null, tint = RiftColors.OnSurfaceVariant, modifier = Modifier.size(20.dp))
+        if (typing) {
+            BasicTextField(
+                value = query,
+                onValueChange = onQuery,
+                singleLine = true,
+                textStyle = TextStyle(color = RiftColors.OnSurface, fontSize = 16.sp),
+                cursorBrush = SolidColor(RiftColors.OnSurface),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onDone() }),
+                modifier = Modifier.weight(1f).focusRequester(fieldFocus),
+            )
+        } else {
+            Text(
+                text = query.ifEmpty { stringResource(R.string.rift_search) },
+                color = if (query.isEmpty()) RiftColors.OnSurfaceVariant else RiftColors.OnSurface,
+                fontSize = 16.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
