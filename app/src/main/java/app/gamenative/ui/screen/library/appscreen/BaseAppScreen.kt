@@ -1816,7 +1816,14 @@ abstract class BaseAppScreen {
         var showReadiness by remember { mutableStateOf(false) }
 
         // Render the common UI
+        val gameStats = remember(libraryItem.gameSource, libraryItem.name) {
+            app.gamenative.ui.data.combineGameCardStats(
+                app.gamenative.utils.DeviceGameStatsCache.getAll()[libraryItem.gameSource]?.get(libraryItem.name),
+                app.gamenative.utils.GpuGameStatsCache.getAll()[libraryItem.gameSource]?.get(libraryItem.name),
+            )
+        }
         app.gamenative.ui.screen.library.AppScreenContent(
+            gameStats = gameStats,
             displayInfo = displayInfo,
             resetHeroOnFirstArtworkChange = libraryItem.gameSource == GameSource.AMAZON,
             downloadDisplayDetails = app.gamenative.ui.data.DownloadDisplayDetails(
