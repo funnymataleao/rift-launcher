@@ -242,7 +242,7 @@
     <string name="rift_settings_sound_pack_reset">Вернуть встроенные звуки</string>
     <string name="rift_section_android_games">Android-игры</string>
     <string name="rift_hint_options">Опции</string>
-    <string name="rift_hint_menu">Быстрый доступ</string>
+    <string name="rift_hint_menu">Удерживать: быстрый доступ</string>
     <string name="rift_source_android">Android</string>
     <string name="rift_search">Поиск</string>
     <string name="rift_settings_stream_vibration">Вибрация геймпада</string>

@@ -966,9 +966,12 @@ internal fun AppScreenContent(
         derivedStateOf { heroHeightPx > 0 && scrollState.value < heroHeightPx }
     }
 
-    // Rift: Start on the Rift home opens the game page with its options already out.
-    val openOptions = dev.rift.launcher.home.LocalRiftOpenGameOptions.current
-    var optionsMenuVisible by remember { mutableStateOf(openOptions) }
+    // Rift: Start on the Rift home shows only this game's options panel over the home.
+    val riftOptionsOnly = dev.rift.launcher.home.LocalRiftOptionsOnly.current
+    var optionsMenuVisible by remember { mutableStateOf(riftOptionsOnly != null) }
+    if (riftOptionsOnly != null) {
+        LaunchedEffect(optionsMenuVisible) { riftOptionsOnly.panelOpen = optionsMenuVisible }
+    }
 
     // Track the original progress bar bounds for ambient mode morph animation
     var progressBarBounds by remember { mutableStateOf<Rect?>(null) }
@@ -1130,7 +1133,8 @@ internal fun AppScreenContent(
 
                 // START button - primary action (play/download/pause)
                 KeyEvent.KEYCODE_BUTTON_START -> {
-                    if (!optionsMenuVisible && startActionEnabled) {
+                    // Rift: in options-only mode Start never plays or installs.
+                    if (riftOptionsOnly == null && !optionsMenuVisible && startActionEnabled) {
                         onStartAction()
                     }
                     true
@@ -1178,6 +1182,8 @@ internal fun AppScreenContent(
                 handleKeyEvent(it.nativeKeyEvent)
             },
     ) {
+        // Rift: options-only mode shows just the options panel over the Rift home, no page.
+        if (riftOptionsOnly == null) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -1787,6 +1793,7 @@ internal fun AppScreenContent(
 
             }
         }
+        }
 
         GamepadActionBar(
             actions = listOf(
@@ -1827,7 +1834,7 @@ internal fun AppScreenContent(
                 ),
             ),
             modifier = Modifier.align(Alignment.BottomCenter),
-            visible = !optionsMenuVisible,
+            visible = !optionsMenuVisible && riftOptionsOnly == null,
         )
 
         // Options panel - slides in from right
@@ -1839,7 +1846,7 @@ internal fun AppScreenContent(
         )
 
         // Ambient mode during downloads
-        if (isDownloading) {
+        if (isDownloading && riftOptionsOnly == null) {
             AmbientDownloadOverlay(
                 gameName = displayInfo.name,
                 downloadProgress = downloadProgress,
