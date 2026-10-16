@@ -1,0 +1,196 @@
+name: Sync upstream GameNative
+
+# Once a day (and on demand) checks GameNative for new commits. If there are any,
+# runs tools/rift/sync-upstream.sh (same history rewrite as our import, so the
+# proprietary blobs never enter this repository) and opens or refreshes the PR
+# "Sync upstream GameNative" from branch rift/sync-upstream. The APK is then built
+# with the Rift build workflow and the result is posted on the PR.
+#
+# Target branch: the `base` input, else the RIFT_SYNC_BASE repository variable,
+# else the default branch.
+#
+# Pushing upstream changes to .github/workflows needs a token with the
+# `workflow` scope, which GITHUB_TOKEN never has. Add a fine-grained token as the
+# RIFT_SYNC_TOKEN secret (contents, pull requests, workflows: read and write) for
+# those syncs; it also lets the PR trigger the usual pull_request checks.
+
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+    inputs:
+      base:
+        description: 'Branch to open the sync PR against (empty: RIFT_SYNC_BASE or the default branch)'
+        required: false
+        default: ''
+      upstream_ref:
+        description: 'GameNative branch to sync'
+        required: false
+        default: 'master'
+
+concurrency:
+  group: rift-sync-upstream
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  SYNC_BRANCH: rift/sync-upstream
+  UPSTREAM_URL: https://github.com/utkarshdalal/GameNative.git
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      pr: ${{ steps.pr.outputs.number }}
+      sha: ${{ steps.push.outputs.sha }}
+      clean: ${{ steps.merge.outputs.clean }}
+    env:
+      BASE: ${{ inputs.base || vars.RIFT_SYNC_BASE || github.event.repository.default_branch }}
+      UPSTREAM_REF: ${{ inputs.upstream_ref || 'master' }}
+      GH_TOKEN: ${{ secrets.RIFT_SYNC_TOKEN || github.token }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE }}
+          fetch-depth: 0
+          token: ${{ secrets.RIFT_SYNC_TOKEN || github.token }}
+
+      - name: Check for new upstream commits
+        id: check
+        run: |
+          latest="$(git ls-remote "$UPSTREAM_URL" "refs/heads/$UPSTREAM_REF" | cut -f1)"
+          current="$(cat tools/rift/UPSTREAM_COMMIT)"
+          echo "upstream $UPSTREAM_REF: $latest, $BASE has: $current"
+          if [ -z "$latest" ]; then echo "::error::upstream ref $UPSTREAM_REF not found"; exit 1; fi
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          if [ "$latest" = "$current" ]; then
+            echo "new=false" >> "$GITHUB_OUTPUT"
+            echo "Up to date with upstream." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install git-filter-repo
+        if: steps.check.outputs.new == 'true'
+        run: pip install git-filter-repo==2.47.0
+
+      - name: Filter upstream and merge
+        id: merge
+        if: steps.check.outputs.new == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          base_upstream="$(cat tools/rift/UPSTREAM_COMMIT)"
+          tools/rift/sync-upstream.sh "$UPSTREAM_REF"
+          upstream_commit="$(cat tools/rift/UPSTREAM_COMMIT)"
+          git checkout -- tools/rift/UPSTREAM_COMMIT
+          echo "upstream_commit=$upstream_commit" >> "$GITHUB_OUTPUT"
+          echo "base_upstream=$base_upstream" >> "$GITHUB_OUTPUT"
+
+          git checkout -B "$SYNC_BRANCH"
+          if git merge --no-ff --no-edit -m "Sync upstream GameNative ${upstream_commit:0:7}" upstream-gamenative; then
+            echo "$upstream_commit" > tools/rift/UPSTREAM_COMMIT
+            git add tools/rift/UPSTREAM_COMMIT
+            git commit -m "Record upstream GameNative ${upstream_commit:0:7}"
+            echo "clean=true" >> "$GITHUB_OUTPUT"
+          else
+            git diff --name-only --diff-filter=U | sort > "$RUNNER_TEMP/conflicts.txt"
+            git merge --abort
+            # Leave the merge to a person: the PR carries the filtered upstream as is,
+            # and GitHub shows the same conflicts.
+            git checkout -B "$SYNC_BRANCH" upstream-gamenative
+            echo "clean=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check that no proprietary blobs are in the branch
+        if: steps.check.outputs.new == 'true'
+        run: |
+          found=0
+          while read -r path; do
+            case "$path" in ''|'#'*) continue ;; esac
+            if git cat-file -e "HEAD:$path" 2>/dev/null; then
+              echo "::error file=$path::GameNative proprietary blob must not be committed"
+              found=1
+            fi
+          done < <(git show "origin/$BASE:tools/rift/proprietary-blobs.txt")
+          if git ls-tree -r --name-only HEAD | grep -E 'libredirect[^/]*\.so$|redirect\.tzst$|libkgslshim\.so$|libsteambootstrap\.so$'; then
+            found=1
+          fi
+          exit $found
+
+      - name: Push sync branch
+        id: push
+        if: steps.check.outputs.new == 'true'
+        run: |
+          git push --force origin "HEAD:refs/heads/$SYNC_BRANCH"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update the PR
+        id: pr
+        if: steps.check.outputs.new == 'true'
+        env:
+          CLEAN: ${{ steps.merge.outputs.clean }}
+          NEW: ${{ steps.merge.outputs.upstream_commit }}
+          OLD: ${{ steps.merge.outputs.base_upstream }}
+        run: |
+          {
+            echo "Before: \`$BASE\` is on GameNative \`${OLD:0:7}\`."
+            echo
+            echo "After: it gets GameNative up to \`${NEW:0:7}\` ([compare](https://github.com/utkarshdalal/GameNative/compare/$OLD...$NEW))."
+            echo
+            echo "Made by the \"Sync upstream GameNative\" workflow with \`tools/rift/sync-upstream.sh\`: the proprietary blobs are filtered out of every upstream commit."
+            echo
+            if [ "$CLEAN" = "true" ]; then
+              echo "The merge is clean. The APK build result is posted below."
+            else
+              echo "**Merge conflicts.** This branch is the filtered upstream as is. Resolve them by merging this branch into \`$BASE\` locally and set \`tools/rift/UPSTREAM_COMMIT\` to \`$NEW\`. Conflicting files:"
+              echo
+              sed 's/^/- `/; s/$/`/' "$RUNNER_TEMP/conflicts.txt"
+            fi
+          } > "$RUNNER_TEMP/body.md"
+
+          number="$(gh pr list --head "$SYNC_BRANCH" --base "$BASE" --state open --json number --jq '.[0].number')"
+          if [ -n "$number" ]; then
+            gh pr edit "$number" --title "Sync upstream GameNative" --body-file "$RUNNER_TEMP/body.md"
+          else
+            gh pr create --head "$SYNC_BRANCH" --base "$BASE" --title "Sync upstream GameNative" --body-file "$RUNNER_TEMP/body.md"
+            number="$(gh pr list --head "$SYNC_BRANCH" --base "$BASE" --state open --json number --jq '.[0].number')"
+          fi
+          gh label create sync-conflict --color B60205 --description "Upstream sync needs a manual merge" 2>/dev/null || true
+          if [ "$CLEAN" = "true" ]; then
+            gh pr edit "$number" --remove-label sync-conflict 2>/dev/null || true
+          else
+            gh pr edit "$number" --add-label sync-conflict
+          fi
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+          echo "Sync PR: #$number (clean merge: $CLEAN)" >> "$GITHUB_STEP_SUMMARY"
+
+  # A PR opened with GITHUB_TOKEN does not start other workflows, so build here.
+  build:
+    needs: sync
+    if: needs.sync.outputs.clean == 'true'
+    uses: ./.github/workflows/rift-build.yml
+    with:
+      ref: ${{ needs.sync.outputs.sha }}
+
+  report:
+    needs: [sync, build]
+    if: always() && needs.sync.outputs.clean == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post the build result on the PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RESULT: ${{ needs.build.result }}
+          PR: ${{ needs.sync.outputs.pr }}
+          SHA: ${{ needs.sync.outputs.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh pr comment "$PR" --body "APK build for ${SHA:0:7}: **$RESULT** ([run]($RUN_URL))."
+          [ "$RESULT" = "success" ]

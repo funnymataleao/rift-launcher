@@ -22,3 +22,11 @@ commit of this repository's history and must never be committed here.
 `upstream-gamenative` branch. The rewrite is deterministic, so commits we already
 have keep their ids and the branch merges like a normal upstream. Upstream commit
 in use: `UPSTREAM_COMMIT`.
+
+The "Sync upstream GameNative" workflow (`.github/workflows/rift-sync-upstream.yml`)
+does this every day: when GameNative has new commits it opens or refreshes the
+PR "Sync upstream GameNative" from `rift/sync-upstream`, builds the APK and posts the
+result there. A merge with conflicts gets the `sync-conflict` label and the list of
+conflicting files. It needs "Allow GitHub Actions to create and approve pull
+requests" in the repository settings, and a `RIFT_SYNC_TOKEN` secret with the
+`workflow` scope for upstream commits that change `.github/workflows`.
