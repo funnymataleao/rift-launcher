@@ -38,6 +38,11 @@
 
     <queries>
         <package android:name="com.android.vending" />
+        <!-- Rift: lists launchable apps so the user can pick Android games for the home screen. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:mimeType="application/vnd.android.package-archive" />

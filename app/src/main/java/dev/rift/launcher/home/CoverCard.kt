@@ -54,9 +54,12 @@ import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private val FrameWidth = 2.dp
+private val FrameWidth = 1.dp
 private const val FRAME_SWEEP_MS = 1400
-private const val REFLECTION_SHARE = 0.14f
+
+/** How far a focused cover grows on each side; less than the gap between covers. */
+private val FocusGrowth = 7.dp
+private const val REFLECTION_SHARE = 0.26f
 
 /** Neutral frame until the cover's own colours are known. */
 private val FallbackPalette = listOf(Color.White, Color(0xFF9E9E9E))
@@ -86,8 +89,10 @@ fun CoverCard(
 
     // Expressive spatial springs from the theme's motion scheme.
     val spatial = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
-    val scale by animateFloatAsState(if (focused) 1.07f else 1f, spatial, label = "cardScale")
-    val lift by animateDpAsState(if (focused) (-8).dp else 0.dp, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "cardLift")
+    // Grow by a fixed amount, not a share, so a wide tile never spills over its neighbours.
+    val focusScale = 1f + FocusGrowth.value * 2 / (height.value * aspectRatio)
+    val scale by animateFloatAsState(if (focused) focusScale else 1f, spatial, label = "cardScale")
+    val lift by animateDpAsState(if (focused) (-6).dp else 0.dp, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "cardLift")
 
     var loaded by remember(paletteKey) { mutableStateOf<List<Color>?>(null) }
     // Loaded up front (cached per image), so the frame already has the right colours when focus lands.
@@ -115,10 +120,10 @@ fun CoverCard(
                     translationY = lift.toPx()
                 }
                 .shadow(
-                    elevation = if (focused) 29.dp else 0.dp,
+                    elevation = if (focused) 20.dp else 0.dp,
                     shape = RiftShapes.card,
-                    ambientColor = palette.first().copy(alpha = 0.34f),
-                    spotColor = palette.first().copy(alpha = 0.34f),
+                    ambientColor = palette.first().copy(alpha = 0.22f),
+                    spotColor = palette.first().copy(alpha = 0.22f),
                 )
                 .clip(RiftShapes.card)
                 .background(RiftColors.SurfaceContainer)
@@ -182,7 +187,7 @@ private fun CoverReflection(
     scale: Float,
     cover: @Composable BoxScope.() -> Unit,
 ) {
-    val alpha by animateFloatAsState(if (focused) 0.36f else 0.14f, tween(300), label = "reflectionAlpha")
+    val alpha by animateFloatAsState(if (focused) 0.42f else 0.26f, tween(300), label = "reflectionAlpha")
     // One mask for everything: the card's own rounded shape, so the reflection has the same corners.
     // The coloured glow comes from the card's shadow; a separate glow layer here showed square edges.
     Box(
@@ -198,7 +203,10 @@ private fun CoverReflection(
             }
             .drawWithContent {
                 drawContent()
-                drawRect(Brush.verticalGradient(listOf(Color.Black, Color.Transparent)), blendMode = BlendMode.DstIn)
+                drawRect(
+                    Brush.verticalGradient(0f to Color.Black, 0.35f to Color.Black.copy(alpha = 0.45f), 1f to Color.Transparent),
+                    blendMode = BlendMode.DstIn,
+                )
             },
     ) {
         // The whole cover, flipped, with its bottom edge at the top of the reflection.
@@ -207,7 +215,9 @@ private fun CoverReflection(
                 .fillMaxWidth()
                 .wrapContentHeight(Alignment.Top, unbounded = true)
                 .height(coverHeight)
-                .graphicsLayer { scaleY = -1f },
+                .graphicsLayer { scaleY = -1f }
+                // Same base as the card, so a cover still loading (or a dark one) reflects too.
+                .background(RiftColors.SurfaceContainer),
             content = cover,
         )
     }

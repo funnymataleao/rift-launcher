@@ -62,6 +62,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import app.gamenative.ui.icons.InputIcons
+import app.gamenative.ui.component.GamepadButton
+import androidx.compose.ui.res.painterResource
+import androidx.annotation.DrawableRes
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.draw.drawWithContent
 import android.os.Build
 import androidx.compose.runtime.mutableFloatStateOf
@@ -121,6 +130,9 @@ import app.gamenative.ui.screen.library.components.LibraryOptionsPanel
 import app.gamenative.utils.SteamUtils
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
+import dev.rift.launcher.sound.RiftSound
+import dev.rift.launcher.sound.rememberRiftSoundPlayer
+import dev.rift.launcher.sound.riftKeySounds
 import dev.rift.launcher.stream.PcStreaming
 import dev.rift.launcher.stream.PcStreamingContent
 import dev.rift.launcher.stream.rememberPcStreamingTab
@@ -139,7 +151,7 @@ private val ScreenPadding = 48.dp
 private val CardGap = 18.dp
 
 /** Lifts the row off the hints bar (Denis: covers bigger and higher). */
-private val RowBottomGap = 20.dp
+private val RowBottomGap = 6.dp
 private const val LOAD_MORE_THRESHOLD = 6
 
 /**
@@ -169,6 +181,7 @@ fun RiftHomeScreen(
 ) {
     val context = LocalContext.current
     val homeScope = rememberCoroutineScope()
+    val sounds = rememberRiftSoundPlayer()
     val libraryState by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(libraryState.visibleLibraryTabs) {
@@ -221,13 +234,20 @@ fun RiftHomeScreen(
     val focusedItem = library.firstOrNull { it.appId == focusedAppId } ?: library.firstOrNull()
     val focusedAndroid = androidGames.firstOrNull { it.packageName == focusedPackage } ?: androidGames.firstOrNull()
 
-    fun openGame(item: LibraryItem) {
+    var openedWithOptions by rememberSaveable { mutableStateOf(false) }
+    fun openGame(item: LibraryItem, withOptions: Boolean = false) {
         lastOpenedItem = item
+        openedWithOptions = withOptions
         openedAppId = item.appId
     }
 
     fun playOrOpen(item: LibraryItem) {
-        if (item.isInstalled) onClickPlay(item.appId, false) else openGame(item)
+        if (item.isInstalled) {
+            sounds.play(RiftSound.Launch)
+            onClickPlay(item.appId, false)
+        } else {
+            openGame(item)
+        }
     }
 
     /** Puts focus back on the cover this section had last. */
@@ -260,9 +280,13 @@ fun RiftHomeScreen(
     val opened = openedAppId?.let { id -> library.firstOrNull { it.appId == id } ?: lastOpenedItem?.takeIf { it.appId == id } }
     if (opened != null) {
         BackHandler { openedAppId = null }
+        CompositionLocalProvider(LocalRiftOpenGameOptions provides openedWithOptions) {
         LibraryDetailPane(
             libraryItem = opened,
-            onClickPlay = { asContainer -> onClickPlay(opened.appId, asContainer) },
+            onClickPlay = { asContainer ->
+                sounds.play(RiftSound.Launch)
+                onClickPlay(opened.appId, asContainer)
+            },
             onTestGraphics = { onTestGraphics(opened.appId) },
             onPlayWithDiagnostics = { onPlayWithDiagnostics(opened.appId) },
             onAiDebugRun = { onAiDebugRun(opened.appId) },
@@ -271,6 +295,7 @@ fun RiftHomeScreen(
                 openedAppId = null
             },
         )
+        }
         return
     }
 
@@ -316,6 +341,7 @@ fun RiftHomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(RiftColors.Background)
+                .riftKeySounds(sidebarOpen = overlayOpen)
                 .onPreviewKeyEvent { event ->
                     val native = event.nativeKeyEvent
                     if (searchOpen) {
@@ -357,6 +383,11 @@ fun RiftHomeScreen(
                         }
                         KeyEvent.KEYCODE_BUTTON_R1 -> {
                             switchSection(1)
+                            true
+                        }
+                        // Start: the focused game's options (GameNative's panel on its game page), Steam Deck style.
+                        KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_MENU -> {
+                            if (section == RiftSection.PcGames) focusedItem?.let { openGame(it, withOptions = true) }
                             true
                         }
                         KeyEvent.KEYCODE_BUTTON_Y -> when (section) {
@@ -467,8 +498,9 @@ fun RiftHomeScreen(
                         }
                     }
 
-                    // The footer floats over the row's reflections (frosted glass), so only reserve its height.
-                    Spacer(modifier = Modifier.height(FooterHeight))
+                    // The footer is frosted glass over the lower part of the reflections, so the row sits low
+                    // and its reflections fade out under the glass.
+                    Spacer(modifier = Modifier.height(FooterHeight - 36.dp))
                 }
               }
                 Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(FooterHeight)) {
@@ -600,7 +632,7 @@ private fun HeroLogo(item: LibraryItem?, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = ScreenPadding, end = ScreenPadding, bottom = 4.dp),
+            .padding(start = ScreenPadding, end = ScreenPadding, bottom = 14.dp),
         contentAlignment = Alignment.BottomStart,
     ) {
         if (item != null) GameLogo(item = item)
@@ -649,7 +681,7 @@ private fun PcGamesShelf(
         }
         return
     }
-    LazyRow(
+    RiftRow(
         state = listState,
         contentPadding = PaddingValues(start = ScreenPadding, end = ScreenPadding, top = 18.dp, bottom = RowBottomGap),
         horizontalArrangement = Arrangement.spacedBy(CardGap),
@@ -672,8 +704,6 @@ private fun PcGamesShelf(
                 onFocusRequested = onFocusConsumed,
                 onFocused = {
                     onFocused(item)
-                    // Keep the focused cover near the left edge, Big Picture style.
-                    scope.launch { listState.animateScrollToItem((index - 1).coerceAtLeast(0)) }
                     if (index >= shown.size - LOAD_MORE_THRESHOLD) onNearEnd()
                 },
                 onClick = { onOpen(item) },
@@ -722,7 +752,7 @@ private fun AndroidShelf(
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    LazyRow(
+    RiftRow(
         state = listState,
         contentPadding = PaddingValues(start = ScreenPadding, end = ScreenPadding, top = 18.dp, bottom = RowBottomGap),
         horizontalArrangement = Arrangement.spacedBy(CardGap),
@@ -737,7 +767,6 @@ private fun AndroidShelf(
                 onFocusRequested = onFocusConsumed,
                 onFocused = {
                     onFocused(game)
-                    scope.launch { listState.animateScrollToItem((index - 1).coerceAtLeast(0)) }
                 },
                 onClick = { onOpen(game) },
                 cover = {
@@ -888,7 +917,7 @@ private fun TopBar(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        BumperButton("LB") { onStep(-1) }
+        BumperButton(GamepadButton.LB.iconRes, "LB") { onStep(-1) }
         sections.forEach { section ->
             SectionTab(
                 title = stringResource(section.titleRes),
@@ -896,7 +925,7 @@ private fun TopBar(
                 onClick = { onSelect(section) },
             )
         }
-        BumperButton("RB") { onStep(1) }
+        BumperButton(GamepadButton.RB.iconRes, "RB") { onStep(1) }
         Spacer(modifier = Modifier.weight(1f))
         if (search != null) SearchField(search)
     }
@@ -1032,9 +1061,9 @@ private fun SectionTab(title: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun BumperButton(glyph: String, onClick: () -> Unit) {
-    PillButton(onClick = onClick, background = ::quietBackground, square = true, focusable = false) {
-        Text(text = glyph, color = RiftColors.OnSurfaceVariant, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+private fun BumperButton(@DrawableRes icon: Int, label: String, onClick: () -> Unit) {
+    PillButton(onClick = onClick, background = { solid(Color.Transparent) }, square = true, focusable = false) {
+        Image(painter = painterResource(icon), contentDescription = label, modifier = Modifier.size(36.dp))
     }
 }
 
@@ -1183,25 +1212,24 @@ private fun HintsBar(showFilters: Boolean, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.End),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (showFilters) Hint("SELECT", stringResource(R.string.rift_hint_filters))
-        Hint("HOME", stringResource(R.string.rift_hint_menu))
-        Hint("A", stringResource(R.string.rift_hint_select))
-        Hint("Y", stringResource(R.string.rift_hint_play))
-        Hint("LB RB", stringResource(R.string.rift_hint_sections))
-        Hint("B", stringResource(R.string.rift_hint_back))
+        // GameNative's own Kenney prompts (coloured face buttons), with its A/B X/Y swap setting.
+        val swap = PrefManager.swapFaceButtons
+        fun face(button: GamepadButton, swapped: GamepadButton) = if (swap) swapped.iconRes else button.iconRes
+        if (showFilters) Hint(listOf(GamepadButton.SELECT.iconRes), stringResource(R.string.rift_hint_filters))
+        if (showFilters) Hint(listOf(GamepadButton.START.iconRes), stringResource(R.string.rift_hint_options))
+        Hint(listOf(InputIcons.Xbox.guide), stringResource(R.string.rift_hint_menu))
+        Hint(listOf(face(GamepadButton.A, GamepadButton.B)), stringResource(R.string.rift_hint_select))
+        Hint(listOf(face(GamepadButton.Y, GamepadButton.X)), stringResource(R.string.rift_hint_play))
+        Hint(listOf(GamepadButton.LB.iconRes, GamepadButton.RB.iconRes), stringResource(R.string.rift_hint_sections))
+        Hint(listOf(face(GamepadButton.B, GamepadButton.A)), stringResource(R.string.rift_hint_back))
     }
 }
 
 @Composable
-private fun Hint(glyph: String, label: String) {
+private fun Hint(icons: List<Int>, label: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Box(
-            modifier = Modifier
-                .clip(RiftShapes.full)
-                .background(RiftColors.SurfaceContainerHigh)
-                .padding(horizontal = 9.dp, vertical = 3.dp),
-        ) {
-            Text(text = glyph, color = RiftColors.OnSurface, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            icons.forEach { Image(painter = painterResource(it), contentDescription = null, modifier = Modifier.size(28.dp)) }
         }
         Text(
             text = label.uppercase(),
@@ -1211,5 +1239,37 @@ private fun Hint(glyph: String, label: String) {
             letterSpacing = 1.sp,
             style = MaterialTheme.typography.labelLarge,
         )
+    }
+}
+
+/**
+ * Scrolls the row only as far as needed to keep the focused cover (and its lift and glow) in view,
+ * Big Picture style, instead of jumping it to the edge.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+private class KeepInView(private val margin: Float) : BringIntoViewSpec {
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+        val start = margin
+        val end = containerSize - margin
+        return when {
+            size > end - start || offset < start -> offset - start
+            offset + size > end -> offset + size - end
+            else -> 0f
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun RiftRow(
+    state: LazyListState,
+    contentPadding: PaddingValues,
+    horizontalArrangement: Arrangement.Horizontal,
+    content: LazyListScope.() -> Unit,
+) {
+    val margin = with(LocalDensity.current) { (ScreenPadding + 16.dp).toPx() }
+    val spec = remember(margin) { KeepInView(margin) }
+    CompositionLocalProvider(LocalBringIntoViewSpec provides spec) {
+        LazyRow(state = state, contentPadding = contentPadding, horizontalArrangement = horizontalArrangement, content = content)
     }
 }
