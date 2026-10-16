@@ -4,7 +4,7 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.ExpandLess
@@ -120,7 +120,7 @@ private fun AppRow(app: InstalledApp, checked: Boolean, onCheckedChange: (Boolea
                 Image(
                     bitmap = it,
                     contentDescription = null,
-                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)),
+                    modifier = Modifier.size(44.dp).clip(CircleShape),
                 )
             } ?: androidx.compose.foundation.layout.Spacer(Modifier.size(44.dp))
         },

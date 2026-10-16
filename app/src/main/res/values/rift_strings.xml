@@ -28,11 +28,11 @@
     <string name="rift_exit">Exit</string>
 
     <!-- Settings -->
-    <string name="rift_settings_interface">Interface</string>
+    <string name="rift_settings_interface">Appearance</string>
     <string name="rift_settings_interface_summary">Language, app icon, library and achievement notifications</string>
-    <string name="rift_settings_controller">Controller</string>
+    <string name="rift_settings_controller">Controls</string>
     <string name="rift_settings_controller_summary">Gamepad behaviour and what new games use</string>
-    <string name="rift_settings_display">Display</string>
+    <string name="rift_settings_display">Screen</string>
     <string name="rift_settings_display_summary">Game resolution, renderer, sharpness and orientation</string>
     <string name="rift_settings_graphics">Driver and graphics</string>
     <string name="rift_settings_graphics_summary">Vulkan driver, DirectX layer and driver managers</string>
@@ -44,7 +44,7 @@
     <string name="rift_settings_streaming_summary">Artemis: picture, latency, sound, host and gamepads</string>
     <string name="rift_settings_downloads">Downloads and storage</string>
     <string name="rift_settings_downloads_summary">Network, speed, install location and Steam server</string>
-    <string name="rift_settings_accounts">PC game stores</string>
+    <string name="rift_settings_accounts">PC stores</string>
     <string name="rift_settings_accounts_summary">GameNative account, Steam, Epic, GOG and others</string>
     <string name="rift_settings_about">About</string>
     <string name="rift_settings_about_summary">Version, source code, privacy and support</string>
@@ -172,19 +172,13 @@
     <string name="rift_settings_stream_gamepads_summary">Auto uses as many as are connected</string>
     <string name="rift_settings_stream_keep_gamepads">Keep gamepads after disconnect</string>
     <string name="rift_settings_stream_keep_gamepads_summary">The PC keeps them when a controller drops out for a moment</string>
-    <string name="rift_settings_stores_note">Steam, GOG, Epic and Amazon sign-in lives in Stores.</string>
     <string name="rift_settings_stream_add_pc">Add PC</string>
     <string name="rift_settings_stream_add_pc_summary">Find a PC on your network and enter its PIN to stream games</string>
     <string name="rift_settings_group_sources">Sources</string>
     <string name="rift_settings_group_rift">Rift</string>
     <string name="rift_settings_group_windows">Windows games</string>
     <string name="rift_settings_group_system">System</string>
-    <string name="rift_settings_sources">Game sources</string>
-    <string name="rift_settings_sources_summary">Add where your games come from</string>
-    <string name="rift_settings_sources_note">A tab appears on the home screen as soon as its source is added here.</string>
-    <string name="rift_settings_group_your_sources">Where games come from</string>
-    <string name="rift_settings_source_not_added">Not added</string>
-    <string name="rift_settings_sound">Sound and music</string>
+    <string name="rift_settings_sound">Sounds</string>
     <string name="rift_settings_sound_summary">Click sounds and your own sound pack</string>
     <string name="rift_settings_home">Launcher mode</string>
     <string name="rift_settings_home_summary">Rift as an app or as the home screen</string>
@@ -257,4 +251,6 @@
     <string name="rift_settings_quick_access_press">Press the button on your gamepad</string>
     <string name="rift_settings_quick_access_reset">Guide button</string>
     <string name="rift_settings_cancel">Cancel</string>
+    <string name="rift_settings_group_pcs">Your PCs</string>
+    <string name="rift_settings_pc_paired">Paired</string>
 </resources>

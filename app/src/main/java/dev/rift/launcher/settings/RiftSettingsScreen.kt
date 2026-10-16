@@ -31,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.DisposableEffect
@@ -147,15 +148,10 @@ fun RiftSettingsScreen(onBack: () -> Unit, onOpenPcPairing: (() -> Unit)? = null
                     contentEntry = contentEntry,
                     returnTo = railItems[selectedIndex],
                     onOpenPcPairing = onOpenPcPairing,
-                    onOpenSection = { target ->
-                        selectedIndex = sections.indexOf(target)
-                        runCatching { railItems[selectedIndex].requestFocus() }
-                    },
                     onContentFocus = { contentHasFocus = it },
                     modifier = Modifier.weight(1f),
                 )
             }
-            SettingsHints(modifier = Modifier.align(Alignment.BottomEnd))
         }
     }
 
@@ -180,7 +176,7 @@ private fun SectionRail(
             .widthIn(min = RailWidth, max = RailWidth)
             .verticalScroll(rememberScrollState())
             .focusGroup()
-            .padding(top = 20.dp, bottom = 72.dp),
+            .padding(top = 20.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(
@@ -260,12 +256,20 @@ private fun RailItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Icon(
-            imageVector = section.icon,
-            contentDescription = null,
-            tint = if (selected) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
-            modifier = Modifier.size(26.dp),
-        )
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(section.accent.color.copy(alpha = 0.2f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = section.icon,
+                contentDescription = null,
+                tint = section.accent.color,
+                modifier = Modifier.size(22.dp),
+            )
+        }
         Text(
             text = stringResource(section.titleRes),
             color = if (selected) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
@@ -291,7 +295,6 @@ private fun SectionPane(
     contentEntry: FocusRequester,
     returnTo: FocusRequester,
     onOpenPcPairing: (() -> Unit)?,
-    onOpenSection: (RiftSettingsSection) -> Unit,
     onContentFocus: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -305,7 +308,7 @@ private fun SectionPane(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            SectionBadge(section.icon, size = 68.dp)
+            SectionBadge(section.icon, size = 68.dp, accent = section.accent)
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = stringResource(section.titleRes),
@@ -330,16 +333,16 @@ private fun SectionPane(
                     .onFocusChanged { onContentFocus(it.hasFocus) }
                     .focusGroup(),
             ) {
+                CompositionLocalProvider(LocalSettingsAccent provides section.accent) {
                 Column(
                     modifier = Modifier
                         .widthIn(max = ContentMaxWidth)
                         .fillMaxHeight()
                         .verticalScroll(rememberScrollState())
-                        .padding(top = 6.dp, bottom = 84.dp, start = 4.dp, end = 4.dp),
+                        .padding(top = 6.dp, bottom = 32.dp, start = 4.dp, end = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(34.dp),
                 ) {
                     when (section) {
-                        RiftSettingsSection.Sources -> SourcesSettings(onOpenSection)
                         RiftSettingsSection.Sound -> SoundSettings()
                         RiftSettingsSection.Home -> HomeSettings()
                         RiftSettingsSection.Interface -> InterfaceSettings()
@@ -356,47 +359,9 @@ private fun SectionPane(
                         RiftSettingsSection.Debug -> DebugSettings()
                     }
                 }
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun SettingsHints(modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(58.dp)
-            .background(Brush.verticalGradient(listOf(Color.Transparent, RiftColors.Background.copy(alpha = 0.92f))))
-            .padding(horizontal = 48.dp),
-        horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.End),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Hint("A", stringResource(R.string.rift_hint_select))
-        Hint("LB RB", stringResource(R.string.rift_hint_sections))
-        Hint("B", stringResource(R.string.rift_hint_back))
-    }
-}
-
-@Composable
-private fun Hint(glyph: String, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Box(
-            modifier = Modifier
-                .clip(RiftShapes.full)
-                .background(RiftColors.SurfaceContainerHigh)
-                .padding(horizontal = 9.dp, vertical = 3.dp),
-        ) {
-            Text(text = glyph, color = RiftColors.OnSurface, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        }
-        Text(
-            text = label.uppercase(),
-            color = RiftColors.OnSurfaceVariant,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp,
-            style = MaterialTheme.typography.labelLarge,
-        )
     }
 }
 

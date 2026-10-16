@@ -24,7 +24,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import dev.rift.launcher.stream.PcStreaming
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import app.gamenative.R
 
 /**
@@ -54,16 +66,40 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
     var keepGamepads by remember { mutableStateOf(prefs.streamKeepGamepads) }
     var vibration by remember { mutableStateOf(prefs.streamGamepadVibration) }
 
-    if (onOpenPcPairing != null) {
-        SettingsGroup {
-            LinkRow(
-                title = stringResource(R.string.rift_settings_stream_add_pc),
-                subtitle = stringResource(R.string.rift_settings_stream_add_pc_summary),
-                icon = Icons.Rounded.Computer,
-                onClick = onOpenPcPairing,
-            )
+    // Connecting a PC comes first: the paired PCs, then a big card to add one; the stream settings follow.
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var pairedPcs by remember { mutableStateOf<List<String>>(emptyList()) }
+    DisposableEffect(lifecycleOwner) {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                scope.launch { pairedPcs = withContext(Dispatchers.IO) { runCatching { PcStreaming.pairedHostNames(context) }.getOrDefault(emptyList()) } }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            scope.cancel()
         }
     }
+    if (pairedPcs.isNotEmpty()) {
+        SettingsGroup(title = stringResource(R.string.rift_settings_group_pcs)) {
+            pairedPcs.forEach { name ->
+                InfoRow(
+                    title = name,
+                    value = stringResource(R.string.rift_settings_pc_paired),
+                    icon = Icons.Rounded.Computer,
+                )
+            }
+        }
+    }
+    BigActionCard(
+        title = stringResource(R.string.rift_settings_stream_add_pc),
+        subtitle = stringResource(R.string.rift_settings_stream_add_pc_summary),
+        icon = Icons.Rounded.Computer,
+        onClick = { onOpenPcPairing?.invoke() ?: PcStreaming.openAddPc(context) },
+    )
 
     NoteText(stringResource(R.string.rift_settings_stream_note))
 
