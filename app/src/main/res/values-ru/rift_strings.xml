@@ -27,11 +27,11 @@
     <string name="rift_exit">Выход</string>
 
     <!-- Settings -->
-    <string name="rift_settings_interface">Интерфейс и библиотека</string>
+    <string name="rift_settings_interface">Внешний вид</string>
     <string name="rift_settings_interface_summary">Язык, значок, библиотека и уведомления о достижениях</string>
-    <string name="rift_settings_controller">Контроллер</string>
+    <string name="rift_settings_controller">Управление</string>
     <string name="rift_settings_controller_summary">Геймпад и как его используют новые игры</string>
-    <string name="rift_settings_display">Дисплей</string>
+    <string name="rift_settings_display">Экран</string>
     <string name="rift_settings_display_summary">Разрешение игры, рендерер, резкость и ориентация</string>
     <string name="rift_settings_graphics">Драйвер и графика</string>
     <string name="rift_settings_graphics_summary">Драйвер Vulkan, слой DirectX и менеджеры драйверов</string>
@@ -43,7 +43,7 @@
     <string name="rift_settings_streaming_summary">Artemis: картинка, задержка, звук, хост и геймпады</string>
     <string name="rift_settings_downloads">Загрузки и хранилище</string>
     <string name="rift_settings_downloads_summary">Сеть, скорость, место установки и сервер Steam</string>
-    <string name="rift_settings_accounts">Магазины PC-игр</string>
+    <string name="rift_settings_accounts">Магазины ПК</string>
     <string name="rift_settings_accounts_summary">Аккаунт GameNative, Steam, Epic, GOG и другие</string>
     <string name="rift_settings_about">О приложении</string>
     <string name="rift_settings_about_summary">Версия, исходный код, приватность и поддержка</string>
@@ -171,19 +171,13 @@
     <string name="rift_settings_stream_gamepads_summary">Авто: столько, сколько подключено</string>
     <string name="rift_settings_stream_keep_gamepads">Не отключать геймпады на ПК</string>
     <string name="rift_settings_stream_keep_gamepads_summary">ПК сохранит их, если контроллер ненадолго пропадёт</string>
-    <string name="rift_settings_stores_note">Вход в Steam, GOG, Epic и Amazon находится в разделе «Магазины».</string>
     <string name="rift_settings_stream_add_pc">Добавить ПК</string>
     <string name="rift_settings_stream_add_pc_summary">Найдите ПК в сети и введите PIN, чтобы стримить игры</string>
     <string name="rift_settings_group_sources">Источники</string>
     <string name="rift_settings_group_rift">Rift</string>
     <string name="rift_settings_group_windows">Игры на Windows</string>
     <string name="rift_settings_group_system">Система</string>
-    <string name="rift_settings_sources">Источники игр</string>
-    <string name="rift_settings_sources_summary">Добавьте, откуда берутся игры</string>
-    <string name="rift_settings_sources_note">Вкладка появляется на главной, как только вы добавите её источник здесь.</string>
-    <string name="rift_settings_group_your_sources">Откуда берутся игры</string>
-    <string name="rift_settings_source_not_added">Не добавлено</string>
-    <string name="rift_settings_sound">Звуки и музыка</string>
+    <string name="rift_settings_sound">Звуки</string>
     <string name="rift_settings_sound_summary">Звуки нажатий и свой набор звуков</string>
     <string name="rift_settings_home">Режим лаунчера</string>
     <string name="rift_settings_home_summary">Rift как приложение или как домашний экран</string>
@@ -253,4 +247,6 @@
     <string name="rift_settings_quick_access_press">Нажмите кнопку на геймпаде</string>
     <string name="rift_settings_quick_access_reset">Кнопка Guide</string>
     <string name="rift_settings_cancel">Отмена</string>
+    <string name="rift_settings_group_pcs">Ваши ПК</string>
+    <string name="rift_settings_pc_paired">Подключён</string>
 </resources>

@@ -191,7 +191,7 @@ private fun ChoiceOptionRow(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val shape = if (multi) RiftShapes.card else RiftShapes.full
+    val shape = RiftShapes.full
     Row(
         modifier = modifier
             .fillMaxWidth()

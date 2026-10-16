@@ -74,7 +74,6 @@ private fun StoreAccountsGroup() {
             },
         )
     }
-    NoteText(stringResource(R.string.rift_settings_stores_note))
 }
 
 @Composable

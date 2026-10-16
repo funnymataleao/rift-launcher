@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -69,6 +70,9 @@ import dev.rift.launcher.ui.theme.RiftSizes
  */
 
 private val RowShape = RiftShapes.sheet
+
+/** The row highlight inside a card: the card's corner radius minus the 8dp inset, so the two stay concentric. */
+private val CardInnerShape = RoundedCornerShape(18.dp)
 private val RowMinHeight = 84.dp
 private val RowIconSize = 44.dp
 
@@ -126,12 +130,12 @@ private fun Modifier.focusChrome(
 }
 
 @Composable
-private fun RowIcon(icon: ImageVector, focused: Boolean, tint: Color = RiftColors.OnSurface) {
+private fun RowIcon(icon: ImageVector, focused: Boolean, tint: Color = LocalSettingsAccent.current.color) {
     Box(
         modifier = Modifier
             .size(RowIconSize)
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = if (focused) 0.16f else 0.07f)),
+            .background(tint.copy(alpha = if (focused) 0.32f else 0.2f)),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -182,20 +186,22 @@ private fun RowChrome(
         modifier = modifier
             .fillMaxWidth()
             .alpha(if (enabled) 1f else 0.45f)
-            .background(if (focused) RiftColors.SurfaceContainerHigh else RiftColors.SurfaceContainer)
+            .background(RiftColors.SurfaceContainer)
             .then(interactive)
             .heightIn(min = RowMinHeight),
     ) {
-        // The focus ring sits inside the row, away from the card's rounded corners, so the card's mask never
-        // cuts it and it stays a thin, whole outline.
+        // The highlight (fill and thin ring) is its own rounded shape inside the row, away from the card's
+        // rounded corners, so the card's mask never cuts it, even on the first and last row.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 6.dp)
+                .clip(CardInnerShape)
+                .background(if (focused) RiftColors.SurfaceContainerHigh else Color.Transparent)
                 .border(
                     width = if (focused) 2.dp else 0.dp,
                     color = if (focused) Color.White.copy(alpha = 0.9f) else Color.Transparent,
-                    shape = RoundedCornerShape(18.dp),
+                    shape = CardInnerShape,
                 )
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -204,7 +210,7 @@ private fun RowChrome(
             if (leading != null) {
                 leading()
             } else if (icon != null) {
-                RowIcon(icon, focused, tint = if (danger) RiftColors.Error else RiftColors.OnSurface)
+                RowIcon(icon, focused, tint = if (danger) RiftColors.Error else LocalSettingsAccent.current.color)
             }
             RowTexts(title, subtitle, danger, Modifier.weight(1f))
             trailing()
@@ -437,9 +443,9 @@ internal fun RiftChip(
         onCheckedChange = { onClick() },
         enabled = enabled,
         shapes = ToggleButtonShapes(
-            shape = RoundedCornerShape(16.dp),
-            pressedShape = RoundedCornerShape(10.dp),
-            checkedShape = RoundedCornerShape(26.dp),
+            shape = RiftShapes.full,
+            pressedShape = RiftShapes.full,
+            checkedShape = RiftShapes.full,
         ),
         colors = ToggleButtonDefaults.outlinedToggleButtonColors(
             containerColor = RiftColors.Surface,
@@ -494,7 +500,7 @@ internal fun RiftPillButton(
         onClick = onClick,
         shapes = ButtonDefaults.shapes(
             shape = RiftShapes.full,
-            pressedShape = RoundedCornerShape(14.dp),
+            pressedShape = RiftShapes.full,
         ),
         colors = ButtonDefaults.buttonColors(
             containerColor = if (primary) Color.White else RiftColors.SurfaceContainerHigh,
@@ -544,23 +550,70 @@ internal fun RiftRoundButton(
     }
 }
 
-/** A circular badge for a section: a lemon glyph on a dark disc with a thin lemon ring. */
+/** A circular badge for a section: the section's soft colour on a tonal disc of the same colour. */
 @Composable
-internal fun SectionBadge(icon: ImageVector, size: Dp = RiftSizes.button) {
+internal fun SectionBadge(icon: ImageVector, size: Dp = RiftSizes.button, accent: SettingsAccent = LocalSettingsAccent.current) {
     Box(
         modifier = Modifier
             .size(size)
             .clip(CircleShape)
-            .background(RiftColors.SurfaceContainer)
-            .border(1.dp, RiftColors.OutlineVariant, CircleShape),
+            .background(accent.color.copy(alpha = 0.2f)),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = RiftColors.OnSurface,
+            tint = accent.color,
             modifier = Modifier.size(size * 0.5f),
         )
     }
 }
 
+/** A large card for the main action of a page, such as connecting a PC: big icon, big title, one press. */
+@Composable
+internal fun BigActionCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val accent = LocalSettingsAccent.current.color
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 120.dp)
+            .focusChrome(
+                focused = focused,
+                shape = RowShape,
+                restColor = accent.copy(alpha = 0.12f).compositeOver(RiftColors.SurfaceContainer),
+                focusedColor = accent.copy(alpha = 0.2f).compositeOver(RiftColors.SurfaceContainerHigh),
+            )
+            .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(20.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(accent.copy(alpha = 0.25f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = accent, modifier = Modifier.size(38.dp))
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(text = title, color = RiftColors.OnSurface, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+            Text(text = subtitle, color = RiftColors.OnSurfaceVariant, fontSize = 16.sp, lineHeight = 22.sp)
+        }
+        Icon(
+            imageVector = Icons.Rounded.ChevronRight,
+            contentDescription = null,
+            tint = RiftColors.OnSurfaceVariant,
+            modifier = Modifier.size(30.dp),
+        )
+    }
+}

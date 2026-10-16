@@ -15,7 +15,6 @@ import androidx.compose.material.icons.rounded.RocketLaunch
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.LibraryAdd
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.gamenative.R
@@ -42,23 +41,23 @@ enum class RiftSettingsSection(
     @get:StringRes val titleRes: Int,
     @get:StringRes val summaryRes: Int,
     val icon: ImageVector,
+    internal val accent: SettingsAccent,
 ) {
-    Sources(RiftSettingsGroup.Sources, R.string.rift_settings_sources, R.string.rift_settings_sources_summary, Icons.Rounded.LibraryAdd),
-    AndroidGames(RiftSettingsGroup.Sources, R.string.rift_settings_android_games, R.string.rift_settings_android_games_summary, Icons.Rounded.Android),
-    Accounts(RiftSettingsGroup.Sources, R.string.rift_settings_accounts, R.string.rift_settings_accounts_summary, Icons.Rounded.ManageAccounts),
-    Streaming(RiftSettingsGroup.Sources, R.string.rift_settings_streaming, R.string.rift_settings_streaming_summary, Icons.Rounded.Cast),
-    Emulators(RiftSettingsGroup.Sources, R.string.rift_settings_emulators, R.string.rift_settings_emulators_summary, Icons.Rounded.SportsEsports),
+    AndroidGames(RiftSettingsGroup.Sources, R.string.rift_settings_android_games, R.string.rift_settings_android_games_summary, Icons.Rounded.Android, SettingsAccent.Green),
+    Accounts(RiftSettingsGroup.Sources, R.string.rift_settings_accounts, R.string.rift_settings_accounts_summary, Icons.Rounded.ManageAccounts, SettingsAccent.Blue),
+    Streaming(RiftSettingsGroup.Sources, R.string.rift_settings_streaming, R.string.rift_settings_streaming_summary, Icons.Rounded.Cast, SettingsAccent.Teal),
+    Emulators(RiftSettingsGroup.Sources, R.string.rift_settings_emulators, R.string.rift_settings_emulators_summary, Icons.Rounded.SportsEsports, SettingsAccent.Peach),
 
-    Interface(RiftSettingsGroup.Rift, R.string.rift_settings_interface, R.string.rift_settings_interface_summary, Icons.Rounded.Palette),
-    Controller(RiftSettingsGroup.Rift, R.string.rift_settings_controller, R.string.rift_settings_controller_summary, Icons.Rounded.Gamepad),
-    Sound(RiftSettingsGroup.Rift, R.string.rift_settings_sound, R.string.rift_settings_sound_summary, Icons.Rounded.MusicNote),
-    Home(RiftSettingsGroup.Rift, R.string.rift_settings_home, R.string.rift_settings_home_summary, Icons.Rounded.Home),
+    Interface(RiftSettingsGroup.Rift, R.string.rift_settings_interface, R.string.rift_settings_interface_summary, Icons.Rounded.Palette, SettingsAccent.Sky),
+    Controller(RiftSettingsGroup.Rift, R.string.rift_settings_controller, R.string.rift_settings_controller_summary, Icons.Rounded.Gamepad, SettingsAccent.Sand),
+    Sound(RiftSettingsGroup.Rift, R.string.rift_settings_sound, R.string.rift_settings_sound_summary, Icons.Rounded.MusicNote, SettingsAccent.Yellow),
+    Home(RiftSettingsGroup.Rift, R.string.rift_settings_home, R.string.rift_settings_home_summary, Icons.Rounded.Home, SettingsAccent.Terracotta),
 
-    Graphics(RiftSettingsGroup.Windows, R.string.rift_settings_graphics, R.string.rift_settings_graphics_summary, Icons.Rounded.Videocam),
-    Display(RiftSettingsGroup.Windows, R.string.rift_settings_display, R.string.rift_settings_display_summary, Icons.Rounded.DesktopWindows),
-    Launch(RiftSettingsGroup.Windows, R.string.rift_settings_launch, R.string.rift_settings_launch_summary, Icons.Rounded.RocketLaunch),
-    Downloads(RiftSettingsGroup.Windows, R.string.rift_settings_downloads, R.string.rift_settings_downloads_summary, Icons.Rounded.CloudDownload),
+    Graphics(RiftSettingsGroup.Windows, R.string.rift_settings_graphics, R.string.rift_settings_graphics_summary, Icons.Rounded.Videocam, SettingsAccent.Blue),
+    Display(RiftSettingsGroup.Windows, R.string.rift_settings_display, R.string.rift_settings_display_summary, Icons.Rounded.DesktopWindows, SettingsAccent.Teal),
+    Launch(RiftSettingsGroup.Windows, R.string.rift_settings_launch, R.string.rift_settings_launch_summary, Icons.Rounded.RocketLaunch, SettingsAccent.Terracotta),
+    Downloads(RiftSettingsGroup.Windows, R.string.rift_settings_downloads, R.string.rift_settings_downloads_summary, Icons.Rounded.CloudDownload, SettingsAccent.Green),
 
-    About(RiftSettingsGroup.System, R.string.rift_settings_about, R.string.rift_settings_about_summary, Icons.Rounded.Info),
-    Debug(RiftSettingsGroup.System, R.string.rift_settings_debug, R.string.rift_settings_debug_summary, Icons.Rounded.BugReport),
+    About(RiftSettingsGroup.System, R.string.rift_settings_about, R.string.rift_settings_about_summary, Icons.Rounded.Info, SettingsAccent.Sand),
+    Debug(RiftSettingsGroup.System, R.string.rift_settings_debug, R.string.rift_settings_debug_summary, Icons.Rounded.BugReport, SettingsAccent.Yellow),
 }
