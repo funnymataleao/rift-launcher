@@ -71,9 +71,9 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
 
     // Connecting a PC comes first: the paired PCs, then a big card to add one; the stream settings follow.
     val context = LocalContext.current
-    val uriHandler = LocalUriHandler.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    var pairedPcs by remember { mutableStateOf<List<String>>(emptyList()) }
+    // Null until the first read, so the PC block appears once in its final shape instead of jumping.
+    var pairedPcs by remember { mutableStateOf<List<String>?>(null) }
     DisposableEffect(lifecycleOwner) {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         val observer = LifecycleEventObserver { _, event ->
@@ -87,52 +87,7 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
             scope.cancel()
         }
     }
-    if (pairedPcs.isNotEmpty()) {
-        SettingsGroup(title = stringResource(R.string.rift_settings_group_pcs)) {
-            pairedPcs.forEach { name ->
-                InfoRow(
-                    title = name,
-                    value = stringResource(R.string.rift_settings_pc_paired),
-                    icon = Icons.Rounded.Computer,
-                )
-            }
-        }
-    }
-    val streamTab = if (pairedPcs.isNotEmpty()) rememberPcStreamingTab() else null
-    // Host apps that are not games (Desktop, Steam, Playnite, Game Pass...): the home tab shows only games.
-    if (streamTab != null) {
-        val services = streamTab.services
-        if (services.isNotEmpty()) {
-            SettingsGroup(title = stringResource(R.string.rift_stream_group_pc_apps)) {
-                services.forEach { service ->
-                    LinkRow(
-                        title = service.app.appName.orEmpty(),
-                        subtitle = service.pc.name,
-                        icon = Icons.Rounded.Cast,
-                        onClick = { streamTab.launch(context, service) },
-                    )
-                }
-            }
-        }
-    }
-    BigActionCard(
-        title = stringResource(R.string.rift_settings_stream_add_pc),
-        subtitle = stringResource(R.string.rift_settings_stream_add_pc_summary),
-        icon = Icons.Rounded.Computer,
-        onClick = { onOpenPcPairing?.invoke() ?: PcStreaming.openAddPc(context) },
-    )
-    // No PC games yet, so the home has no PC streaming tab: how to get them there.
-    if (streamTab == null || streamTab.games.isEmpty()) {
-        SettingsGroup(title = stringResource(R.string.rift_stream_setup_title)) {
-            NoteText(stringResource(R.string.rift_stream_no_games))
-            LinkRow(
-                title = stringResource(R.string.rift_stream_get_vibepollo),
-                subtitle = stringResource(R.string.rift_stream_get_vibepollo_summary),
-                icon = Icons.Rounded.Download,
-                onClick = { uriHandler.openUri(VIBEPOLLO_DOWNLOAD_URL) },
-            )
-        }
-    }
+    pairedPcs?.let { pcs -> PcBlock(pcs, onOpenPcPairing) }
 
     NoteText(stringResource(R.string.rift_settings_stream_note))
 
@@ -357,3 +312,58 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
 
 /** Vibepollo's official releases (Windows installer and Linux packages). */
 private const val VIBEPOLLO_DOWNLOAD_URL = "https://github.com/Nonary/Vibepollo/releases"
+
+/**
+ * The paired PCs, the card to add one, how to get PC games when there are none yet, and the PCs'
+ * other host apps. Things that load from the network come last, so nothing above them moves.
+ */
+@Composable
+private fun PcBlock(pairedPcs: List<String>, onOpenPcPairing: (() -> Unit)?) {
+    val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
+    if (pairedPcs.isNotEmpty()) {
+        SettingsGroup(title = stringResource(R.string.rift_settings_group_pcs)) {
+            pairedPcs.forEach { name ->
+                InfoRow(
+                    title = name,
+                    value = stringResource(R.string.rift_settings_pc_paired),
+                    icon = Icons.Rounded.Computer,
+                )
+            }
+        }
+    }
+    BigActionCard(
+        title = stringResource(R.string.rift_settings_stream_add_pc),
+        subtitle = stringResource(R.string.rift_settings_stream_add_pc_summary),
+        icon = Icons.Rounded.Computer,
+        onClick = { onOpenPcPairing?.invoke() ?: PcStreaming.openAddPc(context) },
+    )
+    val streamTab = if (pairedPcs.isNotEmpty()) rememberPcStreamingTab() else null
+    // No PC games, so the home has no PC streaming tab: how to get them there. With PCs, only once
+    // their apps have loaded, so the hint does not flash while they load.
+    if (streamTab == null || (streamTab.apps.isNotEmpty() && streamTab.games.isEmpty())) {
+        SettingsGroup(title = stringResource(R.string.rift_stream_setup_title)) {
+            NoteText(stringResource(R.string.rift_stream_no_games))
+            LinkRow(
+                title = stringResource(R.string.rift_stream_get_vibepollo),
+                subtitle = stringResource(R.string.rift_stream_get_vibepollo_summary),
+                icon = Icons.Rounded.Download,
+                onClick = { uriHandler.openUri(VIBEPOLLO_DOWNLOAD_URL) },
+            )
+        }
+    }
+    // Host apps that are not games (Desktop, Steam, Playnite, Game Pass...): the home tab shows only games.
+    val services = streamTab?.services.orEmpty()
+    if (services.isNotEmpty()) {
+        SettingsGroup(title = stringResource(R.string.rift_stream_group_pc_apps)) {
+            services.forEach { service ->
+                LinkRow(
+                    title = service.app.appName.orEmpty(),
+                    subtitle = service.pc.name,
+                    icon = Icons.Rounded.Cast,
+                    onClick = { streamTab?.launch(context, service) },
+                )
+            }
+        }
+    }
+}
