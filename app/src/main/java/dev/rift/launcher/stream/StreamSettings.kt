@@ -24,7 +24,7 @@ class StreamSettings(context: Context) {
     /** "auto", "h264", "hevc" or "av1". */
     val codec: String get() = prefs.getString("stream_codec", "auto") ?: "auto"
     val hdr: Boolean get() = prefs.getBoolean("stream_hdr", false)
-    val fullRange: Boolean get() = prefs.getBoolean("stream_full_range", false)
+    val fullRange: Boolean get() = prefs.getBoolean("stream_full_range", true)
     val ultraLowLatency: Boolean get() = prefs.getBoolean("stream_ultra_low_latency", false)
 
     /** DecoderConfiguration.FRAME_PACING_*: 0 lowest latency, 1 balanced, 2 cap FPS, 3 smoothest. */

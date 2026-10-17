@@ -50,7 +50,7 @@ class RiftPrefs private constructor(
         set(value) = prefs.edit().putBoolean(STREAM_HDR, value).apply()
 
     var streamFullRange: Boolean
-        get() = prefs.getBoolean(STREAM_FULL_RANGE, false)
+        get() = prefs.getBoolean(STREAM_FULL_RANGE, true)
         set(value) = prefs.edit().putBoolean(STREAM_FULL_RANGE, value).apply()
 
     var streamUltraLowLatency: Boolean
