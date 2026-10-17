@@ -286,9 +286,6 @@
     <string name="rift_sort_name_desc">По имени (Я-А)</string>
     <string name="rift_sort_date_added">По дате добавления</string>
     <string name="rift_sort_last_played">По последней игре</string>
-    <string name="rift_scope_title">Показывать</string>
-    <string name="rift_scope_installed">Установленные на ПК</string>
-    <string name="rift_scope_all">Все игры</string>
     <string name="rift_settings_artwork">Обложки</string>
     <string name="rift_settings_artwork_summary">Ваш ключ SteamGridDB для смены картинок игр</string>
     <string name="rift_settings_art_key">API-ключ SteamGridDB</string>
@@ -341,10 +338,10 @@
     <string name="rift_settings_tab_grabbed">Двигай стрелками, A поставить</string>
     <string name="rift_settings_tab_drag">Переставить</string>
     <string name="rift_uninstalled_title">Неустановленные игры</string>
-    <string name="rift_uninstalled_summary">Как вкладка PC-игр показывает игры, которые у вас есть, но не установлены</string>
-    <string name="rift_uninstalled_dim">Полупрозрачные</string>
-    <string name="rift_uninstalled_hide">Не показывать</string>
-    <string name="rift_uninstalled_show">Как все</string>
+    <string name="rift_uninstalled_summary">Как на вкладке выглядят игры, которые у вас есть, но не установлены</string>
+    <string name="rift_uninstalled_dim">Затемнённые</string>
+    <string name="rift_uninstalled_hide">Скрытые</string>
+    <string name="rift_uninstalled_show">Обычные</string>
 
     <!-- Эмуляторы: выбор установленного приложения, скачивание, запуск игры -->
     <string name="rift_section_emulators">Эмуляторы</string>
