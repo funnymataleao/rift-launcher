@@ -33,11 +33,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Menu
+import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -45,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -79,6 +82,7 @@ internal class OverlayPanel(
     private val service: AccessibilityService,
     private val gamePackage: String,
     private val onBackToRift: () -> Unit,
+    private val onCloseGame: () -> Unit,
     private val onGameMenu: () -> Unit,
     private val onDismissed: () -> Unit,
 ) {
@@ -164,8 +168,23 @@ internal class OverlayPanel(
                 icon = Icons.Rounded.Menu,
                 onClick = onGameMenu,
             )
+            CloseGameRow()
             VolumeRow()
         }
+    }
+
+    /** Ends the game and its emulator. Closing loses unsaved progress, so the first press only asks and the second closes. */
+    @Composable
+    private fun CloseGameRow() {
+        var asked by remember { mutableStateOf(false) }
+        LinkRow(
+            title = stringResource(R.string.rift_overlay_close_game),
+            subtitle = stringResource(if (asked) R.string.rift_overlay_close_game_confirm else R.string.rift_overlay_close_game_summary),
+            icon = Icons.Rounded.PowerSettingsNew,
+            danger = asked,
+            onClick = { if (asked) onCloseGame() else asked = true },
+            modifier = Modifier.onFocusChanged { if (!it.isFocused) asked = false },
+        )
     }
 
     /** Media volume, changed with left and right like a Steam Deck slider; it applies at once. */

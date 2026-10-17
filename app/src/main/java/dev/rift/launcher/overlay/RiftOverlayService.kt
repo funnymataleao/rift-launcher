@@ -2,6 +2,8 @@ package dev.rift.launcher.overlay
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.app.ActivityManager
+import android.content.Context
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
@@ -64,9 +66,12 @@ class RiftOverlayService : AccessibilityService() {
             gamePackage = game,
             onBackToRift = {
                 hidePanel()
-                packageManager.getLaunchIntentForPackage(packageName)?.let {
-                    runCatching { startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                }
+                openRift()
+            },
+            onCloseGame = {
+                hidePanel()
+                openRift()
+                closeInBackground(game)
             },
             onGameMenu = {
                 hidePanel()
@@ -76,6 +81,25 @@ class RiftOverlayService : AccessibilityService() {
             },
             onDismissed = { panel = null },
         ).also { it.show() }
+    }
+
+    private fun openRift() {
+        packageManager.getLaunchIntentForPackage(packageName)?.let {
+            runCatching { startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        }
+    }
+
+    /**
+     * Ends the game's app once Rift is in front of it: Android only lets one app end another's process while that
+     * process is in the background, so this waits for Rift's screen and tries a second time in case the first
+     * came too early. The emulator's own menu is skipped, so the person lands in Rift and not in the emulator.
+     */
+    private fun closeInBackground(gamePackage: String) {
+        val activities = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val handler = Handler(Looper.getMainLooper())
+        for (delay in CLOSE_GAME_DELAYS_MS) {
+            handler.postDelayed({ runCatching { activities.killBackgroundProcesses(gamePackage) } }, delay)
+        }
     }
 
     private fun hidePanel() {
@@ -101,5 +125,6 @@ class RiftOverlayService : AccessibilityService() {
     private companion object {
         const val SYSTEM_UI = "com.android.systemui"
         const val GAME_MENU_DELAY_MS = 250L
+        val CLOSE_GAME_DELAYS_MS = longArrayOf(700L, 2000L)
     }
 }

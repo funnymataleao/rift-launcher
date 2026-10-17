@@ -412,6 +412,9 @@
     <string name="rift_overlay_service_description">Lets the gamepad\'s Home button open Rift\'s side panel over Android games and emulators you start from Rift. Rift only looks at gamepad buttons while such a game is on screen and reads nothing else.</string>
     <string name="rift_overlay_back_to_rift">Back to Rift</string>
     <string name="rift_overlay_back_to_rift_summary">The game stays open in the background</string>
+    <string name="rift_overlay_close_game">Close game</string>
+    <string name="rift_overlay_close_game_summary">Ends the game and its emulator and returns to Rift</string>
+    <string name="rift_overlay_close_game_confirm">Press again to close. Unsaved progress is lost</string>
     <string name="rift_overlay_volume">Volume</string>
     <string name="rift_overlay_game_menu">Game menu</string>
     <string name="rift_overlay_game_menu_summary">Like the Back gesture: emulators open their menu with Exit</string>
