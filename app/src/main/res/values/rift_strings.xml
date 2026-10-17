@@ -254,4 +254,6 @@
     <string name="rift_settings_quick_access_press">Press the button on your gamepad</string>
     <string name="rift_settings_quick_access_reset">Guide button</string>
     <string name="rift_settings_cancel">Cancel</string>
+    <string name="rift_filters_title">Filters</string>
+    <string name="rift_filter_any">Any</string>
 </resources>

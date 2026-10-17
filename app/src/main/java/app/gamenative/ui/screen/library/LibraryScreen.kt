@@ -1303,11 +1303,6 @@ private fun LibraryScreenContent(
                 onFilterChanged = onFilterChanged,
                 currentSortOption = state.currentSortOption,
                 onSortOptionChanged = onSortOptionChanged,
-                currentView = currentPaneType,
-                onViewChanged = { newPaneType ->
-                    PrefManager.libraryLayout = newPaneType
-                    currentPaneType = newPaneType
-                },
                 steamCollections = state.steamCollections,
                 selectedSteamCollectionIds = state.selectedSteamCollectionIds,
                 steamCollectionCounts = state.steamCollectionCounts,
