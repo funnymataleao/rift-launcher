@@ -50,6 +50,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -309,8 +310,15 @@ fun RiftHomeScreen(
     // to the front, so a new game, a new system or a newly installed emulator shows up without a restart.
     val emulatorGames by EmulatorLibrary.games.collectAsStateWithLifecycle()
     val homeLifecycle = LocalLifecycleOwner.current
+    // The SteamGridDB key, read again each time Rift comes back (it is entered in settings).
+    var artKey by remember { mutableStateOf(RiftPrefs.of(context).steamGridDbKey) }
     DisposableEffect(homeLifecycle) {
-        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) EmulatorLibrary.refresh(context) }
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                EmulatorLibrary.refresh(context)
+                artKey = RiftPrefs.of(context).steamGridDbKey
+            }
+        }
         homeLifecycle.lifecycle.addObserver(observer)
         onDispose { homeLifecycle.lifecycle.removeObserver(observer) }
     }
@@ -412,6 +420,25 @@ fun RiftHomeScreen(
             TabSort.DATE_ADDED -> androidGames.sortedWith(compareByDescending<AndroidGame> { it.installedAt }.thenBy { it.label.lowercase() })
             TabSort.LAST_PLAYED -> androidGames.sortedWith(compareByDescending<AndroidGame> { opened[it.packageName] ?: 0L }.thenBy { it.label.lowercase() })
         }
+    }
+    // Emulator and Android games have no store art: as soon as a tab has games, Rift finds each one's cover,
+    // wide picture, banner and logo on SteamGridDB (by name), the games on screen first, and they appear one by one.
+    LaunchedEffect(emulatorGames, androidGames, artKey) {
+        if (artKey.isBlank()) return@LaunchedEffect
+        val order = withContext(Dispatchers.Default) {
+            val emulators = EmulatorLibrary.arrange(context, emulatorGames, emulatorView).map { it.copy(isInstalled = true) }
+            val android = androidShown.map { it.toArtItem() }
+            (emulators + android).mapIndexed { index, item ->
+                // The wide picture is only the first tile's: the first few games of each tab, in case the order changes.
+                val kinds = if (index < WIDE_ART_GAMES || index >= emulators.size && index - emulators.size < WIDE_ART_GAMES) {
+                    listOf(ArtKind.Capsule, ArtKind.Wide, ArtKind.Hero, ArtKind.Logo)
+                } else {
+                    listOf(ArtKind.Capsule, ArtKind.Hero, ArtKind.Logo)
+                }
+                item to kinds
+            }
+        }
+        GameArtStore.autoFill(context, order, artKey)
     }
     val focusedAndroid = androidShown.firstOrNull { it.packageName == focusedPackage } ?: androidShown.firstOrNull()
     // Like PC games (Denis): the row has the latest games and ends in "Open library", not hundreds of covers.
@@ -1637,29 +1664,21 @@ private val LibraryCoverWidth = 150.dp
 private val StoreBadgeSize = 26.dp
 
 /**
- * A cover's picture. No title on the cover (Denis: the art already has it); the name shows only
- * for a game with no art at all. A game not installed is dimmed by black over the art, so nothing
+ * A cover's picture. Never a title on the cover (Denis: the art already has it); a game with none shows
+ * the card's plain dark surface until its art is found. A game not installed is dimmed by black over the art, so nothing
  * under it shows through and the card's rounded corners stay as they are while it grows.
  */
 @Composable
 private fun BoxScope.GameCoverArt(item: LibraryItem, urls: List<String>, dimmed: Boolean, wide: Boolean = false) {
-    if (urls.none { it.isNotBlank() }) {
-        Text(
-            text = item.name,
-            color = RiftColors.OnSurfaceVariant,
-            fontSize = 13.sp,
-            textAlign = TextAlign.Center,
-            maxLines = 4,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.align(Alignment.Center).padding(12.dp),
-        )
-    }
     CoverImage(urls = urls, contentDescription = item.name, modifier = Modifier.fillMaxSize(), lateUrls = remember(item.appId, wide) { storeCoverLookup(item, portrait = !wide) })
     if (dimmed) Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = UNINSTALLED_DIM)))
 }
 
 /** How much black covers a game that is not installed (the art keeps about 40 %). */
 private const val UNINSTALLED_DIM = 0.6f
+
+/** How many games at the top of a tab also get a wide picture (only the first tile is wide). */
+private const val WIDE_ART_GAMES = 12
 private const val LIBRARY_LOAD_MORE_THRESHOLD = 18
 private const val TAB_RELOAD_WAIT_MS = 1_500L
 
@@ -1904,11 +1923,21 @@ private fun AndroidShelf(
     ) {
         itemsIndexed(games, key = { _, game -> game.packageName }) { index, game ->
             val icon = rememberAppIcon(game.packageName)
+            // Like every tab: the first tile is wide, the rest are 2:3 covers.
+            val wide = index == 0
+            val version by GameArtStore.version.collectAsStateWithLifecycle()
+            val item = remember(game.packageName, version) { GameArtStore.apply(context, game.toArtItem()) }
+            val urls = if (wide) wideCoverUrls(item) else portraitCoverUrls(item)
+            val hasArt = urls.any { it.isNotBlank() }
             Box(modifier = Modifier.shelfEntry(entry, index, clock)) {
             CoverCard(
                 height = cardHeight,
-                paletteKey = "android:${game.packageName}",
-                loadPalette = { AndroidGames.icon(context, game.packageName)?.let(CoverColors::palette) },
+                aspectRatio = if (wide) WIDE_TILE_RATIO else 2f / 3f,
+                paletteKey = urls.firstOrNull { it.isNotEmpty() } ?: "android:${game.packageName}",
+                loadPalette = {
+                    val url = urls.firstOrNull { it.isNotEmpty() }
+                    if (url != null) CoverColors.palette(context, url) else AndroidGames.icon(context, game.packageName)?.let(CoverColors::palette)
+                },
                 requestFocus = pendingFocusKey == androidFocusKey(game),
                 onFocusRequested = onFocusConsumed,
                 onFocused = {
@@ -1916,12 +1945,9 @@ private fun AndroidShelf(
                 },
                 onClick = { onOpen(game) },
                 cover = {
-                    val art = rememberAndroidArt(game)
-                    if (art.isNotEmpty()) {
-                        CoverImage(urls = listOf(art), contentDescription = game.label, modifier = Modifier.fillMaxSize())
-                    }
+                    if (hasArt) CoverImage(urls = urls, contentDescription = game.label, modifier = Modifier.fillMaxSize())
                     // The app's icon until a cover is found (or when there is none): its own colours behind it, no name.
-                    if (art.isEmpty() && icon != null) {
+                    if (!hasArt && icon != null) {
                         Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
                             Image(
                                 bitmap = icon.asImageBitmap(),
@@ -1932,7 +1958,11 @@ private fun AndroidShelf(
                             Image(
                                 bitmap = icon.asImageBitmap(),
                                 contentDescription = game.label,
-                                modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.6f).clip(RiftShapes.card),
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .then(if (wide) Modifier.fillMaxHeight(0.6f) else Modifier.fillMaxWidth(0.6f))
+                                    .aspectRatio(1f)
+                                    .clip(RiftShapes.card),
                             )
                         }
                     }
@@ -1941,22 +1971,6 @@ private fun AndroidShelf(
             }
         }
     }
-}
-
-/** The cover of an Android game: the one picked in Change Art, else the first SteamGridDB finds for its name. Empty while there is none. */
-@Composable
-private fun rememberAndroidArt(game: AndroidGame): String {
-    val context = LocalContext.current
-    val version by GameArtStore.version.collectAsStateWithLifecycle()
-    val id = remember(game.packageName) { game.toArtItem().appId }
-    val picked = remember(id, version) { GameArtStore.get(context, id, ArtKind.Capsule) }
-    val found by produceState(GameArtStore.autoCached(context, id), id, picked) {
-        if (picked.isEmpty()) {
-            val key = RiftPrefs.of(context).steamGridDbKey
-            value = withContext(Dispatchers.IO) { GameArtStore.auto(context, id, game.label, key) }
-        }
-    }
-    return picked.ifEmpty { found }
 }
 
 @Composable
