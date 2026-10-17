@@ -45,7 +45,7 @@ import java.io.File
  * The caller handles Back by closing the page.
  */
 @Composable
-internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit) {
+internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit, hold: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var installed by remember { mutableStateOf(InstalledPacks.list(context).filter { it.music == music }) }
@@ -59,6 +59,9 @@ internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit) {
     var previewBusyId by remember { mutableStateOf<String?>(null) }
     var removing by remember { mutableStateOf<InstalledPack?>(null) }
     val previewing = PackPreview.playing
+    val first = remember { androidx.compose.ui.focus.FocusRequester() }
+    var refocus by remember { mutableStateOf(0) }
+    LaunchedEffect(refocus) { runCatching { first.requestFocus() } }
 
     DisposableEffect(Unit) { onDispose { PackPreview.stop(context) } }
 
@@ -112,8 +115,6 @@ internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit) {
     SettingsGroup(
         title = stringResource(if (music) R.string.rift_settings_packs_music_title else R.string.rift_settings_packs_sound_title),
     ) {
-        val first = remember { androidx.compose.ui.focus.FocusRequester() }
-        LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
         LinkRow(
             modifier = Modifier.focusRequester(first),
             title = stringResource(if (music) R.string.rift_settings_packs_none_music else R.string.rift_settings_packs_builtin),
@@ -151,8 +152,10 @@ internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit) {
                     scope.launch {
                         try {
                             DeckThemesClient.install(context, pack)
+                            hold()
                             installed = InstalledPacks.list(context).filter { it.music == music }
                             select(pack.id)
+                            refocus += 1
                             failed = false
                         } catch (e: PackError) {
                             failed = true
@@ -191,11 +194,13 @@ internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit) {
             confirmText = stringResource(R.string.rift_settings_packs_remove),
             dismissText = stringResource(R.string.rift_settings_cancel),
             onConfirm = {
+                hold()
                 if (pack.id == selected) select("")
                 if (PackPreview.playing == pack.id) PackPreview.stop(context)
                 InstalledPacks.remove(context, pack.id)
                 installed = InstalledPacks.list(context).filter { it.music == music }
                 removing = null
+                refocus += 1
             },
             onDismiss = { removing = null },
         )

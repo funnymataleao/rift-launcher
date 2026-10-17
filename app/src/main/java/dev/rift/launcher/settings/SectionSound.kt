@@ -10,7 +10,15 @@ import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.focus.focusProperties
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.getValue
@@ -31,6 +39,32 @@ import dev.rift.launcher.sound.RiftSoundSettings
  */
 @Composable
 internal fun SoundSettings() {
+    // A 1 dp focus anchor that outlives every page change. When the focused row leaves the composition (a link
+    // that opens a page, a pack that moves from the catalog to "on this device"), focus falls to the first thing
+    // in the screen, the section list, which would switch the section. The anchor catches it first.
+    val anchor = remember { FocusRequester() }
+    // Only focusable for the moment of the hand-over, so the D-pad never stops on it.
+    val open = remember { booleanArrayOf(false) }
+    val scope = rememberCoroutineScope()
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth()) {
+        androidx.compose.foundation.layout.Box(
+            Modifier.size(1.dp).focusRequester(anchor).focusProperties { canFocus = open[0] }.focusable(),
+        )
+        androidx.compose.foundation.layout.Column(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(34.dp)) {
+            SoundBody {
+                open[0] = true
+                runCatching { anchor.requestFocus() }
+                scope.launch {
+                    delay(500)
+                    open[0] = false
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SoundBody(holdFocus: () -> Unit) {
     val context = LocalContext.current
     var enabled by rememberSaveable { mutableStateOf(RiftSoundSettings.isEnabled(context)) }
     var volume by rememberSaveable { mutableStateOf(RiftSoundSettings.volume(context)) }
@@ -44,7 +78,11 @@ internal fun SoundSettings() {
     var cameFrom by rememberSaveable { mutableStateOf<String?>(null) }
     val soundLink = remember { FocusRequester() }
     val musicLink = remember { FocusRequester() }
-    BackHandler(enabled = page != null) { page = null }
+    fun hold() = holdFocus()
+    BackHandler(enabled = page != null) {
+        hold()
+        page = null
+    }
     LaunchedEffect(page) {
         if (page == null) {
             cameFrom?.let { runCatching { (if (it == "music") musicLink else soundLink).requestFocus() } }
@@ -65,6 +103,7 @@ internal fun SoundSettings() {
                 soundPackId = RiftSoundSettings.soundPackId(context)
                 musicPackId = RiftSoundSettings.musicPackId(context)
             },
+            hold = ::hold,
         )
         return
     }
@@ -100,7 +139,10 @@ internal fun SoundSettings() {
             subtitle = stringResource(R.string.rift_settings_packs_sound_summary),
             icon = Icons.Rounded.CloudDownload,
             value = packName(context, soundPackId) ?: stringResource(R.string.rift_settings_sound_pack_builtin),
-            onClick = { page = "sound" },
+            onClick = {
+                hold()
+                page = "sound"
+            },
         )
         SwitchRow(
             title = stringResource(R.string.rift_settings_music),
@@ -119,7 +161,10 @@ internal fun SoundSettings() {
             subtitle = stringResource(R.string.rift_settings_packs_music_summary),
             icon = Icons.Rounded.CloudDownload,
             value = packName(context, musicPackId) ?: stringResource(R.string.rift_settings_music_none),
-            onClick = { page = "music" },
+            onClick = {
+                hold()
+                page = "music"
+            },
         )
         val musicLevels = listOf(10, 25, 40, 60, 100)
         ChoiceChipsRow(
