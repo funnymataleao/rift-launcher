@@ -70,3 +70,14 @@ fun Modifier.riftKeySounds(
 }
 
 private fun isDpad(code: Int) = code in KeyEvent.KEYCODE_DPAD_UP..KeyEvent.KEYCODE_DPAD_RIGHT
+
+/** Plays the side-menu fly-in/out sound when a layer ([open]) opens or closes, however it was triggered (key, tap or code). */
+@Composable
+fun RiftLayerSound(open: Boolean) {
+    val player = rememberRiftSoundPlayer()
+    var previous by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(open) }
+    androidx.compose.runtime.LaunchedEffect(open) {
+        if (open != previous) player.play(if (open) RiftSound.SidebarOpen else RiftSound.SidebarClose)
+        previous = open
+    }
+}

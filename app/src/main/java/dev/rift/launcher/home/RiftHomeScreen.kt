@@ -197,6 +197,7 @@ import dev.rift.launcher.assistant.chat.AssistantChat
 import dev.rift.launcher.assistant.chat.ChatGame
 import dev.rift.launcher.assistant.chat.RIFT_ASSISTANT_ROUTE
 import app.gamenative.ui.screen.PluviaScreen
+import dev.rift.launcher.sound.RiftLayerSound
 import dev.rift.launcher.sound.RiftMusicEffect
 import dev.rift.launcher.sound.RiftSound
 import dev.rift.launcher.sound.rememberRiftSoundPlayer
@@ -711,6 +712,13 @@ fun RiftHomeScreen(
     var panelFocusAsk by remember { mutableIntStateOf(0) }
     LaunchedEffect(panelOpen) { if (!panelOpen) panelHasFocus = false }
     val overlayOpen = panelOpen || systemMenuOpen || gameOptionsOpen || startMenuItems != null || appsOpen || libraryOpen || artItem != null
+    RiftLayerSound(panelOpen)
+    RiftLayerSound(systemMenuOpen)
+    RiftLayerSound(gameOptionsOpen)
+    RiftLayerSound(startMenuItems != null)
+    RiftLayerSound(appsOpen)
+    RiftLayerSound(libraryOpen)
+    RiftLayerSound(artItem != null)
     var selectLongPressed by remember { mutableStateOf(false) }
     val quickAccessKey = remember { RiftControls.quickAccessKey(context) }
     // B / Back closes the open panel and never leaves the app.
@@ -889,7 +897,7 @@ fun RiftHomeScreen(
                 .fillMaxSize()
                 .graphicsLayer { alpha = if (homeCovered) 0f else 1f }
                 .background(RiftColors.Background)
-                .riftKeySounds(sidebarOpen = overlayOpen)
+                .riftKeySounds(panelKeys = false)
                 .onPreviewKeyEvent { event ->
                     val native = event.nativeKeyEvent
                     if (optionsItem != null && optionsOnly.panelOpen) return@onPreviewKeyEvent false
