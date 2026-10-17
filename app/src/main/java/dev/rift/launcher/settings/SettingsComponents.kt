@@ -1,7 +1,9 @@
 package dev.rift.launcher.settings
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Button
@@ -56,6 +58,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -97,8 +100,18 @@ internal fun plateSubtext(focused: Boolean): Color =
 /** The space between two groups on a page. */
 internal val GroupGap = 32.dp
 
-/** One size for every group name, on every page. */
-private val GroupTitleSize = 21.sp
+/** One size and weight for every group name: on the pages (Storage, Network) and in the sidebar (Sources, Rift). */
+internal val GroupTitleStyle = TextStyle(fontSize = 21.sp, fontWeight = FontWeight.ExtraBold)
+
+/**
+ * The last thing on a page, so a gamepad can always reach the bottom: rows that cannot take focus (a size, a
+ * note) after the last one that can would otherwise never scroll into view. It is invisible; Up goes back to
+ * the last row.
+ */
+@Composable
+internal fun PageEnd() {
+    Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).focusable())
+}
 
 /**
  * A group of settings rows: its name, then one plate per row.
@@ -114,8 +127,7 @@ internal fun SettingsGroup(
             Text(
                 text = title,
                 color = RiftColors.OnSurface,
-                fontSize = GroupTitleSize,
-                fontWeight = FontWeight.ExtraBold,
+                style = GroupTitleStyle,
                 modifier = Modifier.padding(start = 6.dp),
             )
         }

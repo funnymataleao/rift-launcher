@@ -25,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -179,6 +180,7 @@ internal fun RiftSidebarScreen(
                                         verticalArrangement = Arrangement.spacedBy(GroupGap),
                                     ) {
                                         content()
+                                        PageEnd()
                                     }
                                 }
                             }
@@ -205,9 +207,9 @@ private fun Rail(
     // As wide as the longest title, like the list in Settings.
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val rowStyle = TextStyle(fontSize = 18.5.sp, fontWeight = FontWeight.ExtraBold)
+    val rowStyle = LocalTextStyle.current.merge(TextStyle(fontSize = 18.5.sp, fontWeight = FontWeight.ExtraBold))
     val railWidth = with(density) {
-        val rows = entries.maxOf { measurer.measure(it.title, rowStyle, maxLines = 1).size.width.toDp() }
+        val rows = entries.maxOf { measurer.measure(it.title, rowStyle, maxLines = 1, softWrap = false).size.width.toDp() }
         RailInset + (RailItemHeight - RailInset * 2) + RailGap + rows + RailGap + RailDot + RailEndInset
     }
     Column(

@@ -36,6 +36,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -86,7 +87,7 @@ internal val RailItemHeight = 52.dp
 internal val RailGap = 14.dp
 internal val RailDot = 8.dp
 internal val RailEndInset = 14.dp
-private val CaptionInset = 18.dp
+private val CaptionInset = 14.dp
 internal val ContentMaxWidth = 860.dp
 
 /**
@@ -216,13 +217,15 @@ private fun SectionRail(
     // insets), so the sidebar takes no more room than it needs.
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val rowStyle = TextStyle(fontSize = 18.5.sp, fontWeight = FontWeight.ExtraBold)
-    val captionStyle = TextStyle(fontSize = 12.5.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
+    // Set in the style the rows are drawn in (the theme's font, not the default one), so the width is exact.
+    val base = LocalTextStyle.current
+    val rowStyle = base.merge(TextStyle(fontSize = 18.5.sp, fontWeight = FontWeight.ExtraBold))
+    val captionStyle = base.merge(GroupTitleStyle)
     val titles = sections.map { stringResource(it.titleRes) }
-    val captions = sections.map { stringResource(it.group.titleRes).uppercase() }
+    val captions = sections.map { stringResource(it.group.titleRes) }
     val railWidth = with(density) {
-        val rows = titles.maxOf { measurer.measure(it, rowStyle, maxLines = 1).size.width.toDp() }
-        val caption = captions.maxOf { measurer.measure(it, captionStyle, maxLines = 1).size.width.toDp() }
+        val rows = titles.maxOf { measurer.measure(it, rowStyle, maxLines = 1, softWrap = false).size.width.toDp() }
+        val caption = captions.maxOf { measurer.measure(it, captionStyle, maxLines = 1, softWrap = false).size.width.toDp() }
         maxOf(
             RailInset + (RailItemHeight - RailInset * 2) + RailGap + rows + RailGap + RailDot + RailEndInset,
             CaptionInset + caption + RailEndInset,
@@ -240,13 +243,14 @@ private fun SectionRail(
     ) {
         sections.forEachIndexed { index, section ->
             if (index == 0 || sections[index - 1].group != section.group) {
+                // The same size and weight as the group names on the pages (Storage, Network, Cache).
                 Text(
-                    text = stringResource(section.group.titleRes).uppercase(),
-                    color = RiftColors.OnSurfaceVariant,
-                    fontSize = 12.5.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 1.5.sp,
-                    modifier = Modifier.padding(start = CaptionInset, top = if (index == 0) 4.dp else 22.dp, bottom = 6.dp),
+                    text = stringResource(section.group.titleRes),
+                    color = RiftColors.OnSurface,
+                    style = GroupTitleStyle,
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier.padding(start = CaptionInset, top = if (index == 0) 4.dp else 22.dp, bottom = 8.dp),
                 )
             }
             RailItem(
@@ -317,6 +321,8 @@ internal fun RailItem(
             fontSize = 18.5.sp,
             fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
             maxLines = 1,
+            // Never wrapped onto a line that is then cut: the rail is as wide as the longest name.
+            softWrap = false,
             modifier = Modifier.weight(1f),
         )
         if (selected) {
@@ -366,30 +372,41 @@ private fun SectionPane(
                         .padding(top = 16.dp, bottom = 56.dp, start = 4.dp, end = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(GroupGap),
                 ) {
-                    when (section) {
-                        RiftSettingsSection.Sound -> SoundSettings()
-                        RiftSettingsSection.Home -> HomeSettings()
-                        RiftSettingsSection.Artwork -> ArtworkSettings()
-                        RiftSettingsSection.Interface -> InterfaceSettings()
-                        RiftSettingsSection.Controller -> ControllerSettings()
-                        RiftSettingsSection.Display -> DisplaySettings()
-                        RiftSettingsSection.Graphics -> GraphicsSettings()
-                        RiftSettingsSection.Launch -> LaunchSettings()
-                        RiftSettingsSection.AndroidGames -> AndroidGamesSettings()
-                        RiftSettingsSection.Emulators -> EmulatorsSettings()
-                        RiftSettingsSection.Streaming -> StreamingSettings(onOpenPcPairing)
-                        RiftSettingsSection.Cloud -> CloudSettings()
-                        RiftSettingsSection.Downloads -> DownloadsSettings()
-                        RiftSettingsSection.Tabs -> TabsSettings()
-                        RiftSettingsSection.HiddenGames -> HiddenGamesSettings()
-                        RiftSettingsSection.Accounts -> AccountsSettings(onSteamSignIn, onSteamSignOut)
-                        RiftSettingsSection.Assistant -> AssistantSettings()
-                        RiftSettingsSection.Device -> DeviceSettings()
-                        RiftSettingsSection.About -> AboutSettings()
-                        RiftSettingsSection.Debug -> DebugSettings()
-                    }
+                    PageContent(section, onOpenPcPairing, onSteamSignIn, onSteamSignOut)
+                    PageEnd()
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PageContent(
+    section: RiftSettingsSection,
+    onOpenPcPairing: (() -> Unit)?,
+    onSteamSignIn: (() -> Unit)?,
+    onSteamSignOut: (() -> Unit)?,
+) {
+    when (section) {
+        RiftSettingsSection.Sound -> SoundSettings()
+        RiftSettingsSection.Home -> HomeSettings()
+        RiftSettingsSection.Artwork -> ArtworkSettings()
+        RiftSettingsSection.Interface -> InterfaceSettings()
+        RiftSettingsSection.Controller -> ControllerSettings()
+        RiftSettingsSection.Display -> DisplaySettings()
+        RiftSettingsSection.Graphics -> GraphicsSettings()
+        RiftSettingsSection.Launch -> LaunchSettings()
+        RiftSettingsSection.AndroidGames -> AndroidGamesSettings()
+        RiftSettingsSection.Emulators -> EmulatorsSettings()
+        RiftSettingsSection.Streaming -> StreamingSettings(onOpenPcPairing)
+        RiftSettingsSection.Cloud -> CloudSettings()
+        RiftSettingsSection.Downloads -> DownloadsSettings()
+        RiftSettingsSection.Tabs -> TabsSettings()
+        RiftSettingsSection.HiddenGames -> HiddenGamesSettings()
+        RiftSettingsSection.Accounts -> AccountsSettings(onSteamSignIn, onSteamSignOut)
+        RiftSettingsSection.Assistant -> AssistantSettings()
+        RiftSettingsSection.Device -> DeviceSettings()
+        RiftSettingsSection.About -> AboutSettings()
+        RiftSettingsSection.Debug -> DebugSettings()
     }
 }
