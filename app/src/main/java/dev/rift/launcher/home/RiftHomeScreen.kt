@@ -774,7 +774,15 @@ fun RiftHomeScreen(
         searchOpen = true
         searchTyping = true
     }
-    BackHandler(enabled = searchOpen) { if (searchTyping) stopTyping() else closeSearch() }
+    // One back press closes the keyboard and the field together; the keyboard may eat the press itself, so its
+    // hiding while typing counts as the press too.
+    BackHandler(enabled = searchOpen) { closeSearch() }
+    val imeVisible = androidx.compose.foundation.layout.WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    var imeSeen by remember { mutableStateOf(false) }
+    LaunchedEffect(searchTyping, imeVisible) {
+        if (!searchTyping) { imeSeen = false; return@LaunchedEffect }
+        if (imeVisible) imeSeen = true else if (imeSeen) closeSearch()
+    }
 
     // Select: GameNative's library filter panel. Start: its system menu. Both over a blurred screen.
     val panelOpen = libraryState.isOptionsPanelOpen
@@ -1212,7 +1220,7 @@ fun RiftHomeScreen(
                         if (leave) {
                             // Handled on key up, after the whole press, so nothing else sees half of it.
                             if (event.type == KeyEventType.KeyUp) {
-                                if (searchTyping) stopTyping() else if (native.keyCode != KeyEvent.KEYCODE_DPAD_DOWN) closeSearch()
+                                if (native.keyCode == KeyEvent.KEYCODE_DPAD_DOWN) { if (searchTyping) stopTyping() } else closeSearch()
                             }
                             return@onPreviewKeyEvent true
                         }
