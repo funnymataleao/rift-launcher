@@ -13,6 +13,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.component.QuickMenuAdjustmentRow
+import app.gamenative.ui.component.QuickMenuChoiceChip
 import app.gamenative.ui.component.QuickMenuItem
 import app.gamenative.ui.component.QuickMenuItemRow
 import app.gamenative.ui.component.QuickMenuSectionHeader
@@ -259,9 +261,9 @@ private fun StreamQuickSettings(
             .plus("device" to "")
             .sortedBy { (value, _) -> (StreamSettings.sizeOf(value) ?: screenSize)?.let { it.first.toLong() * it.second } ?: 0L }
     }
-    StepRow(
+    ChoiceRow(
         title = stringResource(R.string.rift_settings_stream_resolution),
-        steps = resolutions.map { it.first },
+        choices = resolutions.map { it.first },
         value = resolution,
         label = { value -> resolutions.first { it.first == value }.second.ifEmpty { screenLabel } },
         onChange = {
@@ -302,9 +304,9 @@ private fun StreamQuickSettings(
         focusRequester = requester(StreamMenuRow.BITRATE),
     )
     val codecNames = mapOf("auto" to auto, "h264" to "H.264", "hevc" to "HEVC", "av1" to "AV1")
-    StepRow(
+    ChoiceRow(
         title = stringResource(R.string.rift_settings_stream_codec),
-        steps = codecNames.keys.toList(),
+        choices = codecNames.keys.toList(),
         value = codec,
         label = { codecNames.getValue(it) },
         onChange = {
@@ -349,6 +351,44 @@ internal fun <T> StepRow(
         accentColor = accent,
         focusRequester = focusRequester,
     )
+}
+
+/** A few fixed [choices] as pills in a row: the d-pad moves between them, A picks one. */
+@Composable
+private fun <T> ChoiceRow(
+    title: String,
+    choices: List<T>,
+    value: T,
+    label: (T) -> String,
+    onChange: (T) -> Unit,
+    accent: Color,
+    focusRequester: FocusRequester,
+) {
+    Column(
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(horizontal = 8.dp),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // The panel comes back to this row on the chosen pill.
+            val chosen = choices.indexOf(value).coerceAtLeast(0)
+            choices.forEachIndexed { index, choice ->
+                QuickMenuChoiceChip(
+                    text = label(choice),
+                    selected = index == chosen,
+                    accentColor = accent,
+                    onClick = { if (choice != value) onChange(choice) },
+                    modifier = Modifier.weight(1f),
+                    focusRequester = if (index == chosen) focusRequester else null,
+                )
+            }
+        }
+    }
 }
 
 private const val RELAUNCH = "relaunch"

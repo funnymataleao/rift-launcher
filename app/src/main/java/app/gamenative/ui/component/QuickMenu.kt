@@ -2258,7 +2258,7 @@ private fun QuickMenuRailActionButton(
 }
 
 @Composable
-private fun QuickMenuChoiceChip(
+internal fun QuickMenuChoiceChip(
     text: String,
     selected: Boolean,
     accentColor: Color,
