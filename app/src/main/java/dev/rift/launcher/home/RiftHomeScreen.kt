@@ -2732,7 +2732,8 @@ private fun SearchPill(search: SearchState, glass: GraphicsLayer, pillFocus: Foc
             .fillMaxSize()
             .scale(if (focused) 1.04f else 1f)
             .clip(shape)
-            .blackGlass(shape, backdrop = glass)
+            // Closed and unfocused it is a bare icon like battery and Wi-Fi; the glass exists only while the field is open.
+            .then(if (progress.value > 0.01f) Modifier.blackGlass(shape, backdrop = glass) else Modifier)
             .background(if (focused) RiftAccent.current.brush else solid(Color.Transparent))
             .focusRequester(pillFocus)
             .clickable(interactionSource = interaction, indication = null, onClick = search.onOpen),
