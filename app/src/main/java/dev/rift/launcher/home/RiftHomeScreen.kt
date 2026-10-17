@@ -249,7 +249,8 @@ fun RiftHomeScreen(
 
     // The pictures the user picked (art picker) replace the store's, everywhere the games show.
     val pickedArt by GameArtStore.version.collectAsStateWithLifecycle()
-    val uninstalledMode by rememberUninstalledMode()
+    val uninstalledMode by rememberUninstalledMode(RiftSection.PcGames)
+    val streamUninstalledMode by rememberUninstalledMode(RiftSection.PcStreaming)
     val loadedLibrary = remember(libraryState.appInfoList, pickedArt, uninstalledMode) {
         GameArtStore.apply(
             context,
@@ -282,7 +283,7 @@ fun RiftHomeScreen(
     // Each tab keeps its own sort and filter; the filters panel edits the tab that is open.
     var streamView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.PcStreaming)) }
     var androidView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.AndroidGames)) }
-    val streamItems by remember(streamTab, streamView, pickedArt) { derivedStateOf { GameArtStore.apply(context, streamTab?.arrange(context, streamView).orEmpty()) } }
+    val streamItems by remember(streamTab, streamView, streamUninstalledMode, pickedArt) { derivedStateOf { GameArtStore.apply(context, streamTab?.arrange(context, streamView.copy(showAll = streamUninstalledMode != UninstalledMode.HIDE)).orEmpty()) } }
     val hasStreamGames = streamTab?.items?.isNotEmpty() == true
     val cloudSignedIn by XcloudAccount.signedIn(context).collectAsStateWithLifecycle()
     // The cloud tab exists only while a cloud account is signed in and its catalog has games; the
@@ -353,7 +354,7 @@ fun RiftHomeScreen(
     val androidRowState = rememberLazyListState()
     val streamRowState = rememberLazyListState()
     val cloudRowState = rememberLazyListState()
-    val filterKey = listOf(libraryState.appInfoSortType.toList(), libraryState.currentSortOption, streamView, androidView, cloudView)
+    val filterKey = listOf(libraryState.appInfoSortType.toList(), libraryState.currentSortOption, streamView, streamUninstalledMode, uninstalledMode, androidView, cloudView)
     var lastFilterKey by remember { mutableStateOf(filterKey) }
     LaunchedEffect(filterKey) {
         if (filterKey != lastFilterKey) {
@@ -909,7 +910,7 @@ fun RiftHomeScreen(
                                 onOpen = { openGame(it, forStream = true) },
                                 onNearEnd = {},
                                 badges = false,
-                                dimUninstalled = true,
+                                dimUninstalled = streamUninstalledMode == UninstalledMode.DIM,
                             )
                         }
                         // The cloud tab: Game Pass cloud games, the ones played from Rift first; A opens the game page.
@@ -1053,15 +1054,17 @@ fun RiftHomeScreen(
                 )
             }
             val tabGroups = when (section) {
-                RiftSection.PcStreaming -> tabFilterGroups(streamView, withScope = true) {
+                RiftSection.PcStreaming -> tabFilterGroups(streamView) {
                     streamView = it
                     RiftTabFilters.set(context, RiftSection.PcStreaming, it)
+                } + uninstalledGroup(streamUninstalledMode) {
+                    RiftUninstalledMode.set(context, RiftSection.PcStreaming, it)
                 }
-                RiftSection.AndroidGames -> tabFilterGroups(androidView, withScope = false) {
+                RiftSection.AndroidGames -> tabFilterGroups(androidView) {
                     androidView = it
                     RiftTabFilters.set(context, RiftSection.AndroidGames, it)
                 }
-                RiftSection.CloudStreaming -> tabFilterGroups(cloudView, withScope = false) {
+                RiftSection.CloudStreaming -> tabFilterGroups(cloudView) {
                     cloudView = it
                     RiftTabFilters.set(context, RiftSection.CloudStreaming, it)
                 }
@@ -1090,9 +1093,12 @@ fun RiftHomeScreen(
                     onCuratedListToggle = viewModel::onCuratedListToggle,
                     onClearCuratedLists = viewModel::onClearCuratedLists,
                     tabGroups = tabGroups,
-                    extraGroup = if (section == RiftSection.PcGames) uninstalledGroup(uninstalledMode) {
-                        RiftUninstalledMode.set(context, it)
-                    } else null,
+                    extraGroup = when (section) {
+                        RiftSection.PcGames -> uninstalledGroup(uninstalledMode) {
+                            RiftUninstalledMode.set(context, RiftSection.PcGames, it)
+                        }
+                        else -> null
+                    },
                     panelShape = RectangleShape,
                     panelShadowElevation = 0.dp,
                     showCloseButton = false,
@@ -2297,7 +2303,7 @@ private suspend fun preloadFirstImages(context: android.content.Context, library
 
 /** The filters panel's groups for a tab other than PC games: its sort and, for streaming, the scope. */
 @Composable
-private fun tabFilterGroups(view: TabView, withScope: Boolean, onChange: (TabView) -> Unit): List<TabFilterGroup> = buildList {
+private fun tabFilterGroups(view: TabView, onChange: (TabView) -> Unit): List<TabFilterGroup> = buildList {
     add(
         TabFilterGroup(
             label = stringResource(R.string.options_sort_by),
@@ -2308,21 +2314,6 @@ private fun tabFilterGroups(view: TabView, withScope: Boolean, onChange: (TabVie
             },
         ),
     )
-    if (withScope) {
-        add(
-            TabFilterGroup(
-                label = stringResource(R.string.rift_scope_title),
-                value = stringResource(if (view.showAll) R.string.rift_scope_all else R.string.rift_scope_installed),
-                icon = Icons.Outlined.FilterList,
-                options = listOf(false, true).map { all ->
-                    TabFilterOption(
-                        stringResource(if (all) R.string.rift_scope_all else R.string.rift_scope_installed),
-                        view.showAll == all,
-                    ) { onChange(view.copy(showAll = all)) }
-                },
-            ),
-        )
-    }
 }
 
 /** The PC games filters group that picks how games that are not installed are shown. */

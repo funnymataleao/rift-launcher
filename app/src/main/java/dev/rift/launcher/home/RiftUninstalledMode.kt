@@ -28,22 +28,34 @@ object RiftUninstalledMode {
 
     private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
+    private fun sectionKey(section: RiftSection) = "${KEY}_${section.key}"
+
+    /** The default set in settings; a tab uses it until its own choice is made in the filters panel. */
     fun get(context: Context): UninstalledMode = UninstalledMode.fromKey(prefs(context).getString(KEY, null))
+
+    fun get(context: Context, section: RiftSection): UninstalledMode =
+        prefs(context).getString(sectionKey(section), null)?.let(UninstalledMode::fromKey) ?: get(context)
 
     fun set(context: Context, mode: UninstalledMode) {
         prefs(context).edit { putString(KEY, mode.key) }
     }
+
+    fun set(context: Context, section: RiftSection, mode: UninstalledMode) {
+        prefs(context).edit { putString(sectionKey(section), mode.key) }
+    }
+
+    fun isSectionKey(key: String?) = key == KEY || key?.startsWith("${KEY}_") == true
 }
 
-/** The current mode, following changes made in settings. */
+/** The tab's current mode, following changes made in settings and in the filters panel. */
 @Composable
-fun rememberUninstalledMode(): State<UninstalledMode> {
+fun rememberUninstalledMode(section: RiftSection): State<UninstalledMode> {
     val context = LocalContext.current
-    val state = remember { mutableStateOf(RiftUninstalledMode.get(context)) }
+    val state = remember { mutableStateOf(RiftUninstalledMode.get(context, section)) }
     DisposableEffect(context) {
         val prefs = context.applicationContext.getSharedPreferences("rift_prefs", Context.MODE_PRIVATE)
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == RiftUninstalledMode.KEY) state.value = RiftUninstalledMode.get(context)
+            if (RiftUninstalledMode.isSectionKey(key)) state.value = RiftUninstalledMode.get(context, section)
         }
         prefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
