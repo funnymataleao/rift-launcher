@@ -1907,6 +1907,8 @@ fun RiftHomeScreen(
                     },
                     onBack = { closePage() },
                     onChangeArt = { openArt(item) },
+                    onRefreshMeta = { refreshMeta(item, null) },
+                    onPickMeta = { openMetaPicker(item, null) },
                 )
             } else if (item.appId.startsWith("ANDROID_")) {
                 RiftGamePage(
@@ -1931,6 +1933,10 @@ fun RiftHomeScreen(
                         cloudTab.launch(context, item)
                     },
                     onBack = { closePage() },
+                    onChangeArt = { openArt(item) },
+                    onRename = { renameTarget = Triple(item.appId, item.name, RiftGameNames.original(context, item.appId, item.name)) },
+                    onRefreshMeta = { refreshMeta(item, null) },
+                    onPickMeta = { openMetaPicker(item, null) },
                 )
             } else {
             CompositionLocalProvider(LocalRiftStreamAction provides streamAction) {
