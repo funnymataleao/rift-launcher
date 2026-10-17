@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -131,6 +132,20 @@ private fun Modifier.focusChrome(
 
 @Composable
 private fun RowIcon(icon: ImageVector, focused: Boolean, tint: Color = LocalSettingsAccent.current.color) {
+    RowIconDisc(focused, tint) {
+        Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
+    }
+}
+
+@Composable
+private fun RowIcon(icon: Painter, focused: Boolean, tint: Color = LocalSettingsAccent.current.color) {
+    RowIconDisc(focused, tint) {
+        Icon(painter = icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
+    }
+}
+
+@Composable
+private fun RowIconDisc(focused: Boolean, tint: Color, content: @Composable () -> Unit) {
     Box(
         modifier = Modifier
             .size(RowIconSize)
@@ -138,12 +153,7 @@ private fun RowIcon(icon: ImageVector, focused: Boolean, tint: Color = LocalSett
             .background(tint.copy(alpha = if (focused) 0.32f else 0.2f)),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = tint,
-            modifier = Modifier.size(24.dp),
-        )
+        content()
     }
 }
 
@@ -180,6 +190,7 @@ private fun RowChrome(
     modifier: Modifier,
     interactive: Modifier,
     leading: (@Composable () -> Unit)? = null,
+    iconPainter: Painter? = null,
     trailing: @Composable RowScope.() -> Unit,
 ) {
     Box(
@@ -211,6 +222,8 @@ private fun RowChrome(
                 leading()
             } else if (icon != null) {
                 RowIcon(icon, focused, tint = if (danger) RiftColors.Error else LocalSettingsAccent.current.color)
+            } else if (iconPainter != null) {
+                RowIcon(iconPainter, focused, tint = LocalSettingsAccent.current.color)
             }
             RowTexts(title, subtitle, danger, Modifier.weight(1f))
             trailing()
@@ -295,6 +308,7 @@ internal fun LinkRow(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     icon: ImageVector? = null,
+    iconPainter: Painter? = null,
     value: String? = null,
     enabled: Boolean = true,
     danger: Boolean = false,
@@ -306,6 +320,7 @@ internal fun LinkRow(
         title = title,
         subtitle = subtitle,
         icon = icon,
+        iconPainter = iconPainter,
         focused = focused,
         enabled = enabled,
         danger = danger,

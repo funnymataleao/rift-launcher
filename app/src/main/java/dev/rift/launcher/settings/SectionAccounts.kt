@@ -27,8 +27,6 @@ import app.gamenative.api.AccountApi
 import app.gamenative.api.ApiResult
 import app.gamenative.api.DebugReportApi
 import app.gamenative.api.SupportApi
-import app.gamenative.service.ea.EaAuthManager
-import app.gamenative.service.rockstar.RockstarAuthManager
 import app.gamenative.ui.component.dialog.AccountSignInDialog
 import app.gamenative.ui.component.dialog.DiscordLinkDialog
 import app.gamenative.ui.component.dialog.openAccountUrl
@@ -37,43 +35,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Accounts: the GameNative account (plan, Discord) and the EA and Rockstar sign-ins. */
+/** Store sign-ins first, one card each, then the GameNative account (plan, Discord). */
 @Composable
-internal fun AccountsSettings() {
+internal fun AccountsSettings(onSteamSignIn: (() -> Unit)? = null, onSteamSignOut: (() -> Unit)? = null) {
+    StoreAccountsSettings(onSteamSignIn, onSteamSignOut)
     GameNativeAccountGroup()
-    StoreAccountsGroup()
-}
-
-@Composable
-private fun StoreAccountsGroup() {
-    val context = LocalContext.current
-    var eaName by remember { mutableStateOf(EaAuthManager.displayName(context)) }
-    var rockstarName by remember { mutableStateOf(RockstarAuthManager.nickname(context)) }
-
-    SettingsGroup(title = stringResource(R.string.rift_settings_group_stores)) {
-        LinkRow(
-            title = stringResource(R.string.settings_accounts_ea_title),
-            subtitle = eaName ?: stringResource(R.string.settings_accounts_signed_out),
-            icon = Icons.AutoMirrored.Rounded.Logout,
-            value = if (eaName != null) stringResource(R.string.rift_settings_sign_out) else null,
-            enabled = eaName != null,
-            onClick = {
-                EaAuthManager.logout(context)
-                eaName = null
-            },
-        )
-        LinkRow(
-            title = stringResource(R.string.settings_accounts_rockstar_title),
-            subtitle = rockstarName ?: stringResource(R.string.settings_accounts_signed_out),
-            icon = Icons.AutoMirrored.Rounded.Logout,
-            value = if (rockstarName != null) stringResource(R.string.rift_settings_sign_out) else null,
-            enabled = rockstarName != null,
-            onClick = {
-                RockstarAuthManager.logout(context)
-                rockstarName = null
-            },
-        )
-    }
 }
 
 @Composable

@@ -73,7 +73,6 @@
     <string name="rift_settings_group_stream_gamepad">Gamepads</string>
     <string name="rift_settings_group_network">Network</string>
     <string name="rift_settings_group_storage">Storage</string>
-    <string name="rift_settings_group_stores">Other stores</string>
     <string name="rift_settings_group_project">Project</string>
     <string name="rift_settings_group_privacy">Privacy</string>
     <string name="rift_settings_group_logs">Logs</string>
@@ -255,4 +254,13 @@
     <string name="rift_settings_pc_paired">Paired</string>
     <string name="rift_filters_title">Filters</string>
     <string name="rift_filter_any">Any</string>
+
+    <string name="rift_store_steam" translatable="false">Steam</string>
+    <string name="rift_store_epic" translatable="false">Epic Games</string>
+    <string name="rift_store_gog" translatable="false">GOG</string>
+    <string name="rift_store_amazon" translatable="false">Amazon Games</string>
+    <string name="rift_settings_sign_in">Sign in</string>
+    <string name="rift_settings_store_signed_in">Signed in</string>
+    <string name="rift_settings_sign_out_title">Sign out of %1$s?</string>
+    <string name="rift_settings_sign_out_message">You will need to sign in again to see its games.</string>
 </resources>
