@@ -28,5 +28,6 @@ enum class ArtKind(
     /** Transparent title logo shown over the banner. */
     Logo("logo", R.string.rift_art_logo, "logos", 16f / 9f, null, "image/png,image/webp"),
 
-    Icon("icon", R.string.rift_art_icon, "icons", 1f, null, "image/png,image/webp,image/jpeg"),
+    // SteamGridDB's icons come as PNG or ICO only; ICO cannot be shown, so PNG.
+    Icon("icon", R.string.rift_art_icon, "icons", 1f, null, "image/png"),
 }
