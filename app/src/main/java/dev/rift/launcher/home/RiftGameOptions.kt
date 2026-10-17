@@ -16,3 +16,11 @@ class RiftOptionsOnly {
 }
 
 val LocalRiftOptionsOnly = staticCompositionLocalOf<RiftOptionsOnly?> { null }
+
+/**
+ * A game page opened from the PC streaming tab: its main button streams the game from the PC
+ * instead of installing or playing it here, and the page's local-game actions are hidden.
+ */
+class RiftStreamAction(val onStream: () -> Unit)
+
+val LocalRiftStreamAction = staticCompositionLocalOf<RiftStreamAction?> { null }
