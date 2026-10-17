@@ -2663,7 +2663,7 @@ private fun TopBar(
     val open = search?.open == true
     val progress = animateFloatAsState(if (open) 1f else 0f, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "searchOpen")
     Layout(
-        modifier = modifier.fillMaxWidth().padding(top = ScreenPadding, bottom = 18.dp),
+        modifier = modifier.fillMaxWidth().padding(top = 20.dp, bottom = 18.dp),
         content = {
             BumperButton(GamepadButton.LB.iconRes, "LB") { onStep(-1) }
             Box { SectionTabs(glass = glass, sections = sections, selected = selected, onSelect = onSelect) }
@@ -2692,11 +2692,13 @@ private fun TopBar(
             // Everything hangs from the same top line, so the tabs, the search and the avatar share the inset.
             var x = pad - bumperInset
             val fade: androidx.compose.ui.graphics.GraphicsLayerScope.() -> Unit = { alpha = 1f - progress.value }
-            lb.placeRelativeWithLayer(x, 0, 0f, fade); x += lb.width + gap
-            tabs.placeRelativeWithLayer(x, 0, 0f, fade); x += tabs.width + gap
-            rb.placeRelativeWithLayer(x, 0, 0f, fade)
-            searchBox.placeRelative(searchRight - searchWidth, 0)
-            icons.placeRelative(iconsX, 0)
+            // Every piece is centred on the row's middle line, so the bumper icons sit level with the tab text.
+            fun mid(h: Int) = (height - h) / 2
+            lb.placeRelativeWithLayer(x, mid(lb.height), 0f, fade); x += lb.width + gap
+            tabs.placeRelativeWithLayer(x, mid(tabs.height), 0f, fade); x += tabs.width + gap
+            rb.placeRelativeWithLayer(x, mid(rb.height), 0f, fade)
+            searchBox.placeRelative(searchRight - searchWidth, mid(searchBox.height))
+            icons.placeRelative(iconsX, mid(icons.height))
         }
     }
 }
