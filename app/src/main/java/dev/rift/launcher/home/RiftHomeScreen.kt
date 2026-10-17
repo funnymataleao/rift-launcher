@@ -1090,6 +1090,9 @@ fun RiftHomeScreen(
                     onCuratedListToggle = viewModel::onCuratedListToggle,
                     onClearCuratedLists = viewModel::onClearCuratedLists,
                     tabGroups = tabGroups,
+                    extraGroup = if (section == RiftSection.PcGames) uninstalledGroup(uninstalledMode) {
+                        RiftUninstalledMode.set(context, it)
+                    } else null,
                     panelShape = RectangleShape,
                     panelShadowElevation = 0.dp,
                     showCloseButton = false,
@@ -2320,4 +2323,22 @@ private fun tabFilterGroups(view: TabView, withScope: Boolean, onChange: (TabVie
             ),
         )
     }
+}
+
+/** The PC games filters group that picks how games that are not installed are shown. */
+@Composable
+private fun uninstalledGroup(mode: UninstalledMode, onChange: (UninstalledMode) -> Unit): TabFilterGroup {
+    fun titleRes(m: UninstalledMode) = when (m) {
+        UninstalledMode.DIM -> R.string.rift_uninstalled_dim
+        UninstalledMode.HIDE -> R.string.rift_uninstalled_hide
+        UninstalledMode.SHOW -> R.string.rift_uninstalled_show
+    }
+    return TabFilterGroup(
+        label = stringResource(R.string.rift_uninstalled_title),
+        value = stringResource(titleRes(mode)),
+        icon = Icons.Outlined.FilterList,
+        options = UninstalledMode.entries.map { m ->
+            TabFilterOption(stringResource(titleRes(m)), mode == m) { onChange(m) }
+        },
+    )
 }

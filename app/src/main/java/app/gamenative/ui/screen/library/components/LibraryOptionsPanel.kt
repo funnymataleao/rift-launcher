@@ -124,6 +124,7 @@ fun LibraryOptionsPanel(
     showCloseButton: Boolean = true,
     // Rift: a tab other than PC games has its own short list of groups instead of GameNative's.
     tabGroups: List<TabFilterGroup>? = null,
+    extraGroup: TabFilterGroup? = null,
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
     // Accordion: only one group is open at a time. B closes the open group first, then the panel.
@@ -327,6 +328,29 @@ fun LibraryOptionsPanel(
                                         icon = f.icon,
                                         modifier = Modifier.fillMaxWidth(),
                                     )
+                                }
+                            }
+                            if (extraGroup != null) {
+                                FilterAccordion(
+                                    label = extraGroup.label,
+                                    valueText = extraGroup.value,
+                                    icon = extraGroup.icon,
+                                    expanded = openGroup == "extra",
+                                    onToggle = { toggleGroup("extra") },
+                                    headerFocus = headerRequester("extra"),
+                                ) {
+                                    extraGroup.options.forEach { option ->
+                                        OptionListItem(
+                                            text = option.text,
+                                            selected = option.selected,
+                                            onClick = {
+                                                option.onPick()
+                                                openGroup = null
+                                                onDismiss()
+                                            },
+                                            modifier = Modifier.fillMaxWidth(),
+                                        )
+                                    }
                                 }
                             }
 
