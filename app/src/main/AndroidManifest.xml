@@ -22,6 +22,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.READ_LOGS" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Rift: sees every installed app, so any emulator on the device can be picked for a system (Android 11+ hides apps otherwise). -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
 
     <!-- Bluetooth LE for the Steam Controller direct-BLE path (no Puck dongle). CONNECT only: the transport
          talks exclusively to a BONDED controller and never scans, so neither BLUETOOTH_SCAN nor location is

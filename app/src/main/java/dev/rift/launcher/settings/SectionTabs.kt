@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Icon
+import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -390,5 +391,6 @@ private fun RiftSection.icon(): ImageVector = when (this) {
     RiftSection.PcGames -> Icons.Rounded.DesktopWindows
     RiftSection.AndroidGames -> Icons.Rounded.Android
     RiftSection.PcStreaming -> Icons.Rounded.Cast
+    RiftSection.Emulators -> Icons.Rounded.SportsEsports
     RiftSection.CloudStreaming -> Icons.Rounded.Cloud
 }

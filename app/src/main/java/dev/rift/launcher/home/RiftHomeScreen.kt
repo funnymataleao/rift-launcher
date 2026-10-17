@@ -181,6 +181,7 @@ import dev.rift.launcher.cloud.CloudGamePage
 import dev.rift.launcher.cloud.CloudLibrary
 import dev.rift.launcher.cloud.XcloudAccount
 import dev.rift.launcher.cloud.rememberCloudStreamingTab
+import dev.rift.launcher.emulators.EmulatorLibrary
 import dev.rift.launcher.art.GameArtStore
 import dev.rift.launcher.ui.BlackGlass
 import dev.rift.launcher.ui.LocalGlassBackdrop
@@ -300,8 +301,23 @@ fun RiftHomeScreen(
     var cloudView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.CloudStreaming, TabSort.LAST_PLAYED)) }
     val cloudItems = remember(cloudTab, cloudView) { cloudTab?.arrange(cloudView).orEmpty() }
     val hasCloudGames = cloudTab?.items?.isNotEmpty() == true
-    val sections = remember(library, androidGames, hasStreamGames, hasCloudGames) {
-        RiftSections.configured(context, library, androidGames, hasStreamGames, hasCloudGames)
+    // The Emulators tab exists only while the systems set up in settings have games; the systems, their
+    // emulator apps and folders live in settings. The folders are scanned again each time Rift comes back
+    // to the front, so a new game, a new system or a newly installed emulator shows up without a restart.
+    val emulatorGames by EmulatorLibrary.games.collectAsStateWithLifecycle()
+    val homeLifecycle = LocalLifecycleOwner.current
+    DisposableEffect(homeLifecycle) {
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) EmulatorLibrary.refresh(context) }
+        homeLifecycle.lifecycle.addObserver(observer)
+        onDispose { homeLifecycle.lifecycle.removeObserver(observer) }
+    }
+    var emulatorView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.Emulators, TabSort.LAST_PLAYED)) }
+    val emulatorItems by remember(emulatorGames, emulatorView, pickedArt) {
+        derivedStateOf { GameArtStore.apply(context, EmulatorLibrary.arrange(context, emulatorGames, emulatorView)) }
+    }
+    val hasEmulatorGames = emulatorGames.isNotEmpty()
+    val sections = remember(library, androidGames, hasStreamGames, hasCloudGames, hasEmulatorGames) {
+        RiftSections.configured(context, library, androidGames, hasStreamGames, hasCloudGames, hasEmulatorGames)
     }
 
     // Start-up: pure black until there is something to show (or, with nothing set up, until the
@@ -312,7 +328,7 @@ fun RiftHomeScreen(
         delay(STARTUP_SETTLE_MS)
         settled = true
     }
-    val ready = library.isNotEmpty() || androidGames.isNotEmpty() || hasStreamGames || hasCloudGames || (settled && !libraryState.isLoading)
+    val ready = library.isNotEmpty() || androidGames.isNotEmpty() || hasStreamGames || hasCloudGames || hasEmulatorGames || (settled && !libraryState.isLoading)
     var introPlayed by rememberSaveable { mutableStateOf(false) }
     val intro = remember { Animatable(if (introPlayed) 1f else 0f) }
     // The covers roll in together with the backdrop's entrance, after the curtain, never behind it.
@@ -342,6 +358,10 @@ fun RiftHomeScreen(
     var focusedPackage by rememberSaveable { mutableStateOf<String?>(null) }
     var focusedStreamId by rememberSaveable { mutableStateOf<String?>(null) }
     var focusedCloudId by rememberSaveable { mutableStateOf<String?>(null) }
+    var focusedEmulatorId by rememberSaveable { mutableStateOf<String?>(null) }
+    var emulatorCardFocused by rememberSaveable { mutableStateOf(false) }
+    // The Emulators library shows all games or one system's; null is all.
+    var emulatorLibraryTab by rememberSaveable { mutableStateOf<String?>(null) }
     var cloudCardFocused by rememberSaveable { mutableStateOf(false) }
     var streamCardFocused by rememberSaveable { mutableStateOf(false) }
     // The home streaming library's tab: all games, the ones on the PC, the ones not on it.
@@ -362,7 +382,8 @@ fun RiftHomeScreen(
     val androidRowState = rememberLazyListState()
     val streamRowState = rememberLazyListState()
     val cloudRowState = rememberLazyListState()
-    val filterKey = listOf(libraryState.appInfoSortType.toList(), libraryState.currentSortOption, streamView, streamUninstalledMode, uninstalledMode, androidView, cloudView)
+    val emulatorRowState = rememberLazyListState()
+    val filterKey = listOf(libraryState.appInfoSortType.toList(), libraryState.currentSortOption, streamView, streamUninstalledMode, uninstalledMode, androidView, cloudView, emulatorView)
     var lastFilterKey by remember { mutableStateOf(filterKey) }
     LaunchedEffect(filterKey) {
         if (filterKey != lastFilterKey) {
@@ -400,6 +421,18 @@ fun RiftHomeScreen(
     val focusedStream = streamHomeRow.firstOrNull { it.appId == focusedStreamId } ?: streamHomeRow.firstOrNull()
     val cloudHomeRow = cloudItems.take(HOME_ROW_COUNT)
     val focusedCloud = cloudHomeRow.firstOrNull { it.appId == focusedCloudId } ?: cloudHomeRow.firstOrNull()
+    val emulatorHomeRow = emulatorItems.take(HOME_ROW_COUNT)
+    val focusedEmulator = emulatorHomeRow.firstOrNull { it.appId == focusedEmulatorId } ?: emulatorHomeRow.firstOrNull()
+    // The library's games: every system, or the one picked with LB/RB.
+    val emulatorLibraryItems = remember(emulatorItems, emulatorGames, emulatorLibraryTab) {
+        val tab = emulatorLibraryTab
+        if (tab == null) {
+            emulatorItems
+        } else {
+            val ids = emulatorGames.filter { it.platformId == tab }.map { it.appId }.toSet()
+            emulatorItems.filter { it.appId in ids }
+        }
+    }
 
     fun openGame(item: LibraryItem, forStream: Boolean = false) {
         lastOpenedItem = item
@@ -417,6 +450,7 @@ fun RiftHomeScreen(
             val items = when (target) {
                 RiftSection.CloudStreaming -> cloudItems
                 RiftSection.PcStreaming -> streamLibraryItems
+                RiftSection.Emulators -> emulatorLibraryItems
                 else -> library
             }
             libraryPending = (libraryFocusedId?.takeIf { id -> items.any { it.appId == id } } ?: items.firstOrNull()?.appId)
@@ -436,6 +470,12 @@ fun RiftHomeScreen(
                 homeScope.launch { cloudRowState.scrollToItem((index - 1).coerceAtLeast(0)) }
             }
         }
+        if (target == RiftSection.Emulators) {
+            val index = if (emulatorCardFocused) emulatorHomeRow.size else focusedEmulator?.let(emulatorHomeRow::indexOf) ?: -1
+            if (index >= 0 && emulatorRowState.layoutInfo.visibleItemsInfo.none { it.index == index }) {
+                homeScope.launch { emulatorRowState.scrollToItem((index - 1).coerceAtLeast(0)) }
+            }
+        }
         if (target == RiftSection.PcStreaming) {
             val index = if (streamCardFocused) streamHomeRow.size else focusedStream?.let(streamHomeRow::indexOf) ?: -1
             if (index >= 0 && streamRowState.layoutInfo.visibleItemsInfo.none { it.index == index }) {
@@ -453,6 +493,7 @@ fun RiftHomeScreen(
             RiftSection.AndroidGames -> focusedAndroid?.let(::androidFocusKey)
             RiftSection.PcStreaming -> if (streamCardFocused && streamHomeRow.isNotEmpty()) LIBRARY_CARD_KEY else focusedStream?.let(::focusKeyFor)
             RiftSection.CloudStreaming -> if (cloudCardFocused && cloudHomeRow.isNotEmpty()) LIBRARY_CARD_KEY else focusedCloud?.let(::focusKeyFor)
+            RiftSection.Emulators -> if (emulatorCardFocused && emulatorHomeRow.isNotEmpty()) LIBRARY_CARD_KEY else focusedEmulator?.let(::focusKeyFor)
             null -> null
         }
     }
@@ -524,6 +565,13 @@ fun RiftHomeScreen(
     // The home streaming library opens on all games too.
     fun openStreamLibrary() {
         streamLibraryTab = STREAM_TAB_ALL
+        libraryFocusedId = null
+        libraryOpen = true
+        libraryTabSwitch++
+    }
+    // The Emulators tab's library: every game of every system, one tab per system.
+    fun openEmulatorLibrary() {
+        emulatorLibraryTab = null
         libraryFocusedId = null
         libraryOpen = true
         libraryTabSwitch++
@@ -858,6 +906,9 @@ fun RiftHomeScreen(
                             } else if (section == RiftSection.PcStreaming) {
                                 // Streamed games have no options panel; Y goes straight to their art.
                                 focusedStream?.let(::openArt)
+                            } else if (section == RiftSection.Emulators) {
+                                // Emulator games the same: Y picks their art.
+                                focusedEmulator?.let(::openArt)
                             }
                             true
                         }
@@ -908,6 +959,7 @@ fun RiftHomeScreen(
                         item = when (section) {
                             RiftSection.PcStreaming -> focusedStream
                             RiftSection.CloudStreaming -> focusedCloud
+                            RiftSection.Emulators -> focusedEmulator
                             else -> focusedItem.takeIf { section == RiftSection.PcGames }
                         },
                     )
@@ -985,6 +1037,30 @@ fun RiftHomeScreen(
                                 dimUninstalled = streamUninstalledMode == UninstalledMode.DIM,
                             )
                         }
+                        // The Emulators tab: the games of the systems set up in settings, the ones played last first;
+                        // A starts the game in the emulator picked for its system.
+                        section == RiftSection.Emulators -> {
+                            HeroLogo(item = focusedEmulator, modifier = Modifier.weight(1f).graphicsLayer { alpha = intro.value })
+                            PcGamesShelf(
+                                shown = emulatorHomeRow,
+                                entry = if (!introPlayed) ShelfEntry.Intro else switchEntry,
+                                entryStarted = introPlayed || introRunning,
+                                onOpenLibrary = ::openEmulatorLibrary,
+                                onLibraryFocused = { emulatorCardFocused = true },
+                                libraryState = libraryState,
+                                listState = emulatorRowState,
+                                cardHeight = cardHeight,
+                                pendingFocusKey = pendingFocusKey,
+                                onFocusConsumed = { pendingFocusKey = null },
+                                onFocused = {
+                                    focusedEmulatorId = it.appId
+                                    emulatorCardFocused = false
+                                },
+                                onOpen = { item -> EmulatorLibrary.game(item.appId)?.let { EmulatorLibrary.launch(context, it) } },
+                                onNearEnd = {},
+                                badges = false,
+                            )
+                        }
                         // The cloud tab: Game Pass cloud games, the ones played from Rift first; A opens the game page.
                         section == RiftSection.CloudStreaming -> {
                             HeroLogo(item = focusedCloud, modifier = Modifier.weight(1f).graphicsLayer { alpha = intro.value })
@@ -1055,7 +1131,7 @@ fun RiftHomeScreen(
             // Big Picture's library: all the PC games in a grid, one tab per store with games.
             val libraryTabs = pcLibraryTabs(libraryState)
             RiftLibraryScreen(
-                isOpen = libraryOpen && section != RiftSection.CloudStreaming && section != RiftSection.PcStreaming,
+                isOpen = libraryOpen && section != RiftSection.CloudStreaming && section != RiftSection.PcStreaming && section != RiftSection.Emulators,
                 glass = heroLayer,
                 tabs = libraryTabs,
                 selectedKey = libraryState.currentTab.name,
@@ -1173,6 +1249,45 @@ fun RiftHomeScreen(
                     waitForReload = false,
                 )
             }
+            // The Emulators tab's library: one tab per system with games, after "All games" (LB/RB switch them).
+            val emulatorLibraryTabs = emulatorLibraryTabs(emulatorGames)
+            RiftLibraryScreen(
+                isOpen = libraryOpen && section == RiftSection.Emulators,
+                glass = heroLayer,
+                tabs = emulatorLibraryTabs,
+                selectedKey = emulatorLibraryTab ?: EMULATOR_ALL_TAB,
+                onSelectTab = { key ->
+                    emulatorLibraryTab = key.takeIf { it != EMULATOR_ALL_TAB }
+                    libraryTabSwitch++
+                },
+                onDismiss = ::closeLibrary,
+                keepFocusInside = { openedAppId == null },
+                onKeyDown = { code ->
+                    // Y (and Start): the focused game's art, as on the home.
+                    val item = emulatorItems.firstOrNull { it.appId == libraryFocusedId }
+                    if (item != null && (code == KeyEvent.KEYCODE_BUTTON_Y || code == KeyEvent.KEYCODE_BUTTON_START || code == KeyEvent.KEYCODE_MENU)) {
+                        openArt(item)
+                        true
+                    } else {
+                        false
+                    }
+                },
+            ) {
+                PcLibraryGrid(
+                    items = emulatorLibraryItems,
+                    loading = false,
+                    tabSwitch = libraryTabSwitch,
+                    libraryState = libraryState,
+                    pendingFocusKey = libraryPending,
+                    onFocusConsumed = { libraryPending = null },
+                    onWantFocus = { libraryPending = it },
+                    onFocused = { libraryFocusedId = it.appId },
+                    onOpen = { item -> EmulatorLibrary.game(item.appId)?.let { EmulatorLibrary.launch(context, it) } },
+                    onNearEnd = {},
+                    badges = false,
+                    waitForReload = false,
+                )
+            }
             val tabGroups = when (section) {
                 RiftSection.PcStreaming -> tabFilterGroups(streamView) {
                     streamView = it
@@ -1183,6 +1298,10 @@ fun RiftHomeScreen(
                 RiftSection.AndroidGames -> tabFilterGroups(androidView) {
                     androidView = it
                     RiftTabFilters.set(context, RiftSection.AndroidGames, it)
+                }
+                RiftSection.Emulators -> tabFilterGroups(emulatorView) {
+                    emulatorView = it
+                    RiftTabFilters.set(context, RiftSection.Emulators, it)
                 }
                 RiftSection.CloudStreaming -> tabFilterGroups(cloudView) {
                     cloudView = it
@@ -1364,7 +1483,7 @@ fun RiftHomeScreen(
     }
 
     // Focus a cover once the section has something to show, so a gamepad works without touching the screen.
-    LaunchedEffect(section, library.isNotEmpty(), androidGames.isNotEmpty(), streamItems.isNotEmpty(), cloudItems.isNotEmpty()) {
+    LaunchedEffect(section, library.isNotEmpty(), androidGames.isNotEmpty(), streamItems.isNotEmpty(), cloudItems.isNotEmpty(), emulatorItems.isNotEmpty()) {
         if (pendingFocusKey == null) focusSection(section)
     }
 }
@@ -1384,6 +1503,17 @@ private const val CLOUD_XCLOUD_TAB = "xcloud"
 private const val STREAM_TAB_ALL = "all"
 private const val STREAM_TAB_INSTALLED = "installed"
 private const val STREAM_TAB_NOT_INSTALLED = "not_installed"
+private const val EMULATOR_ALL_TAB = "all"
+
+/** The Emulators library's tabs: all games first, then each system that has games. */
+@Composable
+private fun emulatorLibraryTabs(games: List<dev.rift.launcher.emulators.EmulatorGame>): List<LibraryTabSpec> {
+    val all = LibraryTabSpec(EMULATOR_ALL_TAB, stringResource(R.string.rift_library_all))
+    val systems = games.map { it.platformId }.distinct().mapNotNull { id ->
+        dev.rift.launcher.settings.EmulatorCatalog.platform(id)?.let { LibraryTabSpec(id, stringResource(it.nameRes)) }
+    }
+    return listOf(all) + systems
+}
 private const val RECENT_SORT_DEFAULT_KEY = "home_recent_sort_default_v1"
 
 /** The library's tabs for PC games: all games first, then each store that has games. */

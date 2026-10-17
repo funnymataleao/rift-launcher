@@ -12,8 +12,11 @@ import android.content.SharedPreferences
  * DecoderConfiguration in the artemis-core module): resolution, frame rate, bitrate, video format, HDR,
  * colour range, frame pacing, audio layout and the gamepad options.
  */
-/** One configured emulator platform: [platformId] is an [EmulatorCatalog] id, [emulatorPackage] the app that plays it. */
-data class EmulatorPlatform(val platformId: String, val emulatorPackage: String, val folderUri: String)
+/**
+ * One configured emulator platform: [platformId] is an [EmulatorCatalog] id, [emulatorPackage] the app that
+ * plays it (any installed app), [folderUri] the games folder and [core] the libretro core when the app is RetroArch.
+ */
+data class EmulatorPlatform(val platformId: String, val emulatorPackage: String, val folderUri: String, val core: String = "")
 
 class RiftPrefs private constructor(
     private val prefs: SharedPreferences,
@@ -127,7 +130,7 @@ class RiftPrefs private constructor(
             val array = org.json.JSONArray(prefs.getString(EMULATOR_PLATFORMS, "[]"))
             List(array.length()) { i ->
                 val o = array.getJSONObject(i)
-                EmulatorPlatform(o.getString("platform"), o.optString("emulator"), o.optString("folder"))
+                EmulatorPlatform(o.getString("platform"), o.optString("emulator"), o.optString("folder"), o.optString("core"))
             }
         }.getOrDefault(emptyList())
         set(value) {
@@ -137,7 +140,8 @@ class RiftPrefs private constructor(
                     org.json.JSONObject()
                         .put("platform", it.platformId)
                         .put("emulator", it.emulatorPackage)
-                        .put("folder", it.folderUri),
+                        .put("folder", it.folderUri)
+                        .put("core", it.core),
                 )
             }
             prefs.edit().putString(EMULATOR_PLATFORMS, array.toString()).apply()
@@ -191,7 +195,7 @@ class RiftPrefs private constructor(
         set(value) = prefs.edit().putString(ESDE_URI, value).apply()
 
     companion object {
-        private const val FILE = "rift_settings"
+        internal const val FILE = "rift_settings"
 
         private const val STREAM_RESOLUTION = "stream_resolution"
         private const val STREAM_FPS = "stream_fps"
@@ -214,7 +218,7 @@ class RiftPrefs private constructor(
 
         private const val HOME_FILE = "rift_prefs"
         private const val ANDROID_GAMES = "android_games_packages"
-        private const val EMULATOR_PLATFORMS = "emulator_platforms"
+        internal const val EMULATOR_PLATFORMS = "emulator_platforms"
         private const val CLOCK_24H = "clock_24h"
         private const val SHOW_BATTERY = "show_battery"
         private const val SHOW_NETWORK = "show_network"
