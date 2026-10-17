@@ -263,4 +263,6 @@
     <string name="rift_settings_store_signed_in">Signed in</string>
     <string name="rift_settings_sign_out_title">Sign out of %1$s?</string>
     <string name="rift_settings_sign_out_message">You will need to sign in again to see its games.</string>
+    <string name="rift_library_all">All games</string>
+    <string name="rift_library_open">Open library</string>
 </resources>

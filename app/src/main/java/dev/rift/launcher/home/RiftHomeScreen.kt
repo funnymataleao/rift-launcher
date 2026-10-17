@@ -5,6 +5,16 @@ import android.graphics.Bitmap
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.first
+import app.gamenative.ui.enums.SortOption
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
@@ -298,7 +308,15 @@ fun RiftHomeScreen(
         }
     }
 
-    val focusedItem = library.firstOrNull { it.appId == focusedAppId } ?: library.firstOrNull()
+    // Big Picture: the home row has only the latest games and ends in a card that opens the whole
+    // library, a grid with the tab's sources (the stores) as tabs.
+    val homeRow = library.take(HOME_ROW_COUNT)
+    var libraryOpen by rememberSaveable { mutableStateOf(false) }
+    var libraryCardFocused by rememberSaveable { mutableStateOf(false) }
+    var libraryFocusedId by rememberSaveable { mutableStateOf<String?>(null) }
+    var libraryPending by remember { mutableStateOf<String?>(null) }
+    var libraryTabSwitch by remember { mutableIntStateOf(0) }
+    val focusedItem = homeRow.firstOrNull { it.appId == focusedAppId } ?: homeRow.firstOrNull()
     val focusedAndroid = androidGames.firstOrNull { it.packageName == focusedPackage } ?: androidGames.firstOrNull()
     val streamItems = streamTab?.items.orEmpty()
     val focusedStream = streamItems.firstOrNull { it.appId == focusedStreamId } ?: streamItems.firstOrNull()
@@ -312,15 +330,20 @@ fun RiftHomeScreen(
     fun focusSection(target: RiftSection?) {
         // The game page has its own focus; the home picks its cover again when the page closes.
         if (openedAppId != null) return
+        // In the library, the grid takes it back on the game it had last.
+        if (libraryOpen) {
+            libraryPending = (libraryFocusedId?.takeIf { id -> library.any { it.appId == id } } ?: library.firstOrNull()?.appId)
+            return
+        }
         // The cover may be scrolled out of the row (a search changes it), so bring it into view first.
         if (target == RiftSection.PcGames) {
-            val index = focusedItem?.let(library::indexOf) ?: -1
+            val index = if (libraryCardFocused) homeRow.size else focusedItem?.let(homeRow::indexOf) ?: -1
             if (index >= 0 && pcRowState.layoutInfo.visibleItemsInfo.none { it.index == index }) {
                 homeScope.launch { pcRowState.scrollToItem((index - 1).coerceAtLeast(0)) }
             }
         }
         pendingFocusKey = when (target) {
-            RiftSection.PcGames -> focusedItem?.let(::focusKeyFor)
+            RiftSection.PcGames -> if (libraryCardFocused && homeRow.isNotEmpty()) LIBRARY_CARD_KEY else focusedItem?.let(::focusKeyFor)
             RiftSection.AndroidGames -> focusedAndroid?.let(::androidFocusKey)
             RiftSection.PcStreaming -> focusedStream?.let(::focusKeyFor)
             null -> null
@@ -362,10 +385,44 @@ fun RiftHomeScreen(
     pageState.targetState = opened != null
     // Once the page fully covers the home, the home is not drawn at all.
     val homeCovered = pageState.currentState && pageState.isIdle
+    val pageFocus = remember { FocusRequester() }
+    var pageFocused by remember { mutableStateOf(false) }
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    // The page takes focus itself (its Play button); if that did not happen, focus goes into it.
+    LaunchedEffect(opened != null) {
+        if (opened != null) {
+            delay(PAGE_FOCUS_CHECK_MS)
+            if (!pageFocused) runCatching { pageFocus.requestFocus() }
+        }
+    }
     fun closePage() {
         val item = opened ?: return
         openedAppId = null
-        pendingFocusKey = focusKeyFor(item)
+        if (libraryOpen) libraryPending = item.appId else pendingFocusKey = focusKeyFor(item)
+    }
+
+    // The library always opens on "All games" and the home row is always all of them.
+    fun openLibrary() {
+        if (libraryState.currentTab != LibraryTab.ALL) viewModel.onTabChanged(LibraryTab.ALL)
+        libraryFocusedId = null
+        libraryOpen = true
+        libraryTabSwitch++
+    }
+    fun closeLibrary() {
+        libraryOpen = false
+        if (viewModel.state.value.currentTab != LibraryTab.ALL) viewModel.onTabChanged(LibraryTab.ALL)
+    }
+
+    // Rift's home row shows the latest games: GameNative's "recently played" order (installed first,
+    // then last played) becomes the default once; a sort picked later in the filters is kept.
+    LaunchedEffect(Unit) {
+        val prefs = context.getSharedPreferences("rift_prefs", android.content.Context.MODE_PRIVATE)
+        if (!prefs.getBoolean(RECENT_SORT_DEFAULT_KEY, false)) {
+            if (viewModel.state.value.currentSortOption == SortOption.INSTALLED_FIRST) {
+                viewModel.onSortOptionChanged(SortOption.RECENTLY_PLAYED)
+            }
+            prefs.edit().putBoolean(RECENT_SORT_DEFAULT_KEY, true).apply()
+        }
     }
 
     // B on the home does nothing, like Big Picture (and a HOME launcher has nowhere to go back to).
@@ -408,7 +465,7 @@ fun RiftHomeScreen(
         withContext(Dispatchers.IO) { runCatching { AndroidGames.launchable(context) } }
     }
     var backDownHere by remember { mutableStateOf(false) }
-    val overlayOpen = panelOpen || systemMenuOpen || gameOptionsOpen || appsOpen
+    val overlayOpen = panelOpen || systemMenuOpen || gameOptionsOpen || appsOpen || libraryOpen
     var selectLongPressed by remember { mutableStateOf(false) }
     val quickAccessKey = remember { RiftControls.quickAccessKey(context) }
     // B / Back closes the open panel and never leaves the app.
@@ -435,6 +492,7 @@ fun RiftHomeScreen(
         if (appsOpen || openedAppId != null) return
         // Across a frame, so the cover sees its focus request change even if it was the last one.
         pendingFocusKey = null
+        libraryPending = null
         homeScope.launch {
             withFrameNanos { }
             focusSection(section)
@@ -443,11 +501,29 @@ fun RiftHomeScreen(
     LaunchedEffect(Unit) { if (openedAppId == null) runCatching { rootFocus.requestFocus() } }
     // Safety net at the activity level (GameNative's key event bus sees every key first): any press
     // while nothing in this screen has focus puts focus back on a cover and is not passed on.
+    // The listener lives across recompositions: it calls the latest versions of these.
+    val latestClosePage = rememberUpdatedState<() -> Unit> { closePage() }
+    val latestRefocus = rememberUpdatedState<() -> Unit> { refocusCover() }
     DisposableEffect(composeView) {
         val listener: (AndroidEvent.KeyEvent) -> Boolean = { androidEvent ->
             val ev = androidEvent.event
-            if (ev.action == KeyEvent.ACTION_DOWN && !composeView.hasFocus() && composeView.hasWindowFocus()) {
-                refocusCover()
+            val isBackKey = ev.keyCode == KeyEvent.KEYCODE_BUTTON_B || ev.keyCode == KeyEvent.KEYCODE_BACK ||
+                ev.keyCode == KeyEvent.KEYCODE_ESCAPE
+            if (ev.keyCode == KeyEvent.KEYCODE_BACK) {
+                // System Back (the edge swipe without predictive back, or a Back key): every layer
+                // closes through its BackHandler. GameNative's activity swallows BACK while Steam
+                // stays alive, so it is sent to the back dispatcher from here.
+                if (ev.action == KeyEvent.ACTION_UP && !ev.isCanceled) backDispatcher?.onBackPressed()
+                true
+            } else if (openedAppId != null && !pageFocused && isBackKey) {
+                // B on the game page with focus somewhere else: still back to the home.
+                if (ev.action == KeyEvent.ACTION_UP) latestClosePage.value()
+                true
+            } else if (openedAppId != null && !pageFocused && ev.action == KeyEvent.ACTION_DOWN) {
+                runCatching { pageFocus.requestFocus() }
+                true
+            } else if (ev.action == KeyEvent.ACTION_DOWN && !composeView.hasFocus() && composeView.hasWindowFocus()) {
+                latestRefocus.value()
                 true
             } else {
                 false
@@ -459,7 +535,7 @@ fun RiftHomeScreen(
     // Coming back to the app: focus a cover again.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, e -> if (e == Lifecycle.Event.ON_RESUME) refocusCover() }
+        val observer = LifecycleEventObserver { _, e -> if (e == Lifecycle.Event.ON_RESUME) latestRefocus.value() }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
@@ -488,7 +564,7 @@ fun RiftHomeScreen(
                     val native = event.nativeKeyEvent
                     if (optionsItem != null && optionsOnly.panelOpen) return@onPreviewKeyEvent false
                     if (optionsItem != null && event.type == KeyEventType.KeyDown) optionsItem = null
-                    if (appsOpen) return@onPreviewKeyEvent false
+                    if (appsOpen || libraryOpen) return@onPreviewKeyEvent false
                     // Never stranded: a direction press with nothing but the screen focused goes to a cover.
                     if (rootFocused && event.type == KeyEventType.KeyDown && native.keyCode in KeyEvent.KEYCODE_DPAD_UP..KeyEvent.KEYCODE_DPAD_RIGHT) {
                         refocusCover()
@@ -691,14 +767,19 @@ fun RiftHomeScreen(
                             // Big Picture style: only the big logo of the focused game over its art.
                             HeroLogo(item = focusedItem, modifier = Modifier.weight(1f).graphicsLayer { alpha = intro.value })
                             PcGamesShelf(
-                                shown = library,
+                                shown = homeRow,
                                 entry = if (!introPlayed) ShelfEntry.Intro else switchEntry,
+                                onOpenLibrary = ::openLibrary,
+                                onLibraryFocused = { libraryCardFocused = true },
                                 libraryState = libraryState,
                                 listState = pcRowState,
                                 cardHeight = cardHeight,
                                 pendingFocusKey = pendingFocusKey,
                                 onFocusConsumed = { pendingFocusKey = null },
-                                onFocused = { focusedAppId = it.appId },
+                                onFocused = {
+                                    focusedAppId = it.appId
+                                    libraryCardFocused = false
+                                },
                                 // A opens the game page; games never start straight from the home (Denis).
                                 onOpen = ::openGame,
                                 onNearEnd = {
@@ -721,6 +802,53 @@ fun RiftHomeScreen(
                 }
             }
 
+            // Big Picture's library: all the PC games in a grid, one tab per store with games.
+            val libraryTabs = pcLibraryTabs(libraryState)
+            RiftLibraryScreen(
+                isOpen = libraryOpen,
+                glass = heroLayer,
+                tabs = libraryTabs,
+                selectedKey = libraryState.currentTab.name,
+                onSelectTab = { key ->
+                    LibraryTab.entries.firstOrNull { it.name == key }?.let {
+                        if (it != viewModel.state.value.currentTab) {
+                            viewModel.onTabChanged(it)
+                            libraryTabSwitch++
+                        }
+                    }
+                },
+                onDismiss = ::closeLibrary,
+                keepFocusInside = { openedAppId == null && optionsItem == null },
+                onKeyDown = { code ->
+                    // Y (and Start): the focused game's options, as on the home.
+                    val item = library.firstOrNull { it.appId == libraryFocusedId }
+                    if (item != null && (code == KeyEvent.KEYCODE_BUTTON_Y || code == KeyEvent.KEYCODE_BUTTON_START || code == KeyEvent.KEYCODE_MENU)) {
+                        optionsOnly.panelOpen = true
+                        optionsToken++
+                        optionsItem = item
+                        true
+                    } else {
+                        false
+                    }
+                },
+            ) {
+                PcLibraryGrid(
+                    items = library,
+                    loading = libraryState.isLoading,
+                    tabSwitch = libraryTabSwitch,
+                    libraryState = libraryState,
+                    pendingFocusKey = libraryPending,
+                    onFocusConsumed = { libraryPending = null },
+                    onWantFocus = { libraryPending = it },
+                    onFocused = { libraryFocusedId = it.appId },
+                    onOpen = ::openGame,
+                    onNearEnd = {
+                        if (libraryState.currentPaginationPage < libraryState.lastPaginationPage) {
+                            viewModel.onPageChange(1)
+                        }
+                    },
+                )
+            }
             RiftGlassTheme {
                 LibraryOptionsPanel(
                     isOpen = panelOpen,
@@ -794,8 +922,21 @@ fun RiftHomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 // Focus stays on the page while it is open; on the way out the home takes it back.
+                .focusRequester(pageFocus)
+                .onFocusChanged { pageFocused = it.hasFocus }
                 .focusProperties { this.onExit = { if (openedAppId != null) cancelFocusChange() } }
-                .focusGroup(),
+                .focusGroup()
+                // Last resort: a B the page itself did not take still goes back to the home.
+                .onKeyEvent { event ->
+                    val code = event.nativeKeyEvent.keyCode
+                    val back = code == KeyEvent.KEYCODE_BUTTON_B || code == KeyEvent.KEYCODE_ESCAPE
+                    if (back && event.type == KeyEventType.KeyDown && openedAppId != null) {
+                        closePage()
+                        true
+                    } else {
+                        false
+                    }
+                },
         ) {
             BackHandler(enabled = openedAppId != null) { closePage() }
             LibraryDetailPane(
@@ -823,6 +964,113 @@ private fun focusKeyFor(item: LibraryItem): String = item.appId
 
 /** The game page grows from slightly smaller than the screen and shrinks back to it. */
 private const val PAGE_START_SCALE = 0.94f
+private const val PAGE_FOCUS_CHECK_MS = 250L
+private const val PRELOAD_DECODE_PX = 64
+
+/** Games in the home row before the "Open library" card, like Big Picture. */
+private const val HOME_ROW_COUNT = 20
+private const val LIBRARY_CARD_KEY = "rift:library"
+private const val RECENT_SORT_DEFAULT_KEY = "home_recent_sort_default_v1"
+
+/** The library's tabs for PC games: all games first, then each store that has games. */
+@Composable
+private fun pcLibraryTabs(state: LibraryState): List<LibraryTabSpec> {
+    val counts = mapOf(
+        LibraryTab.STEAM to state.steamCount,
+        LibraryTab.GOG to state.gogCount,
+        LibraryTab.EPIC to state.epicCount,
+        LibraryTab.AMAZON to state.amazonCount,
+        LibraryTab.LOCAL to state.localCount,
+    )
+    val all = LibraryTabSpec(LibraryTab.ALL.name, stringResource(R.string.rift_library_all))
+    val stores = counts.filter { (tab, count) -> count > 0 && tab in state.visibleLibraryTabs }
+        .map { (tab, _) -> LibraryTabSpec(tab.name, stringResource(tab.labelResId)) }
+    return listOf(all) + stores
+}
+
+/** The library grid of PC games: the home's covers without reflections, focus kept across tab switches. */
+@Composable
+private fun PcLibraryGrid(
+    items: List<LibraryItem>,
+    loading: Boolean,
+    tabSwitch: Int,
+    libraryState: LibraryState,
+    pendingFocusKey: String?,
+    onFocusConsumed: () -> Unit,
+    onWantFocus: (String) -> Unit,
+    onFocused: (LibraryItem) -> Unit,
+    onOpen: (LibraryItem) -> Unit,
+    onNearEnd: () -> Unit,
+) {
+    val gridState = rememberLazyGridState()
+    val currentItems by rememberUpdatedState(items)
+    val currentLoading by rememberUpdatedState(loading)
+    // On opening and after a tab switch: wait for the new list, then focus its first game.
+    LaunchedEffect(tabSwitch) {
+        withTimeoutOrNull(TAB_RELOAD_WAIT_MS) { snapshotFlow { currentLoading }.first { it } }
+        snapshotFlow { currentLoading }.first { !it }
+        val first = currentItems.firstOrNull() ?: return@LaunchedEffect
+        gridState.scrollToItem(0)
+        onWantFocus(first.appId)
+    }
+    if (items.isEmpty()) {
+        if (!loading) {
+            Text(
+                text = stringResource(R.string.rift_filter_empty),
+                color = RiftColors.OnSurfaceVariant,
+                fontSize = 16.sp,
+                modifier = Modifier.padding(horizontal = ScreenPadding, vertical = 24.dp),
+            )
+        }
+        return
+    }
+    val context = LocalContext.current
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(LibraryCoverWidth),
+        state = gridState,
+        contentPadding = PaddingValues(start = ScreenPadding, end = ScreenPadding, top = 16.dp, bottom = 120.dp),
+        horizontalArrangement = Arrangement.spacedBy(28.dp),
+        verticalArrangement = Arrangement.spacedBy(30.dp),
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        itemsIndexed(items, key = { _, item -> item.appId }) { index, item ->
+            val urls = listOf(item.capsuleImageUrl, item.headerImageUrl, item.heroImageUrl)
+            val url = urls.firstOrNull { it.isNotEmpty() }.orEmpty()
+            BoxWithConstraints {
+                CoverCard(
+                    height = maxWidth * 1.5f,
+                    paletteKey = url,
+                    loadPalette = { CoverColors.palette(context, url) },
+                    requestFocus = pendingFocusKey == item.appId,
+                    onFocusRequested = onFocusConsumed,
+                    onFocused = {
+                        onFocused(item)
+                        if (index >= items.size - LIBRARY_LOAD_MORE_THRESHOLD) onNearEnd()
+                    },
+                    onClick = { onOpen(item) },
+                    cover = {
+                        Text(
+                            text = item.name,
+                            color = RiftColors.OnSurfaceVariant,
+                            fontSize = 13.sp,
+                            textAlign = TextAlign.Center,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.align(Alignment.Center).padding(12.dp),
+                        )
+                        CoverImage(urls = urls, contentDescription = item.name)
+                    },
+                    badge = { CoverBadges(item, libraryState) },
+                    reflection = false,
+                )
+            }
+        }
+    }
+}
+
+private val LibraryCoverWidth = 150.dp
+private const val LIBRARY_LOAD_MORE_THRESHOLD = 18
+private const val TAB_RELOAD_WAIT_MS = 1_500L
 
 /** How long a tab switch counts as one, for the new shelf's entrance. */
 private const val SWITCH_ENTRY_MS = 700L
@@ -835,7 +1083,7 @@ private const val WIDE_TILE_RATIO = 460f / 215f
  * per-device stats (engine, runs, FPS) along the bottom.
  */
 @Composable
-private fun BoxScope.CoverBadges(item: LibraryItem, libraryState: LibraryState) {
+internal fun BoxScope.CoverBadges(item: LibraryItem, libraryState: LibraryState) {
     val community = libraryState.communityCompatibilityFor(item)
     val status = libraryState.compatibilityMap[item.name]
     val badgeModifier = Modifier.align(Alignment.TopStart).padding(8.dp)
@@ -914,7 +1162,11 @@ private fun PcGamesShelf(
     onNearEnd: () -> Unit,
     badges: Boolean = true,
     emptyMessage: String = stringResource(R.string.rift_filter_empty),
+    onOpenLibrary: (() -> Unit)? = null,
+    onLibraryFocused: () -> Unit = {},
 ) {
+    // One entrance clock for the shelf (app start, tab switch).
+    val clock = rememberShelfClock(entry)
     val scope = rememberCoroutineScope()
     if (shown.isEmpty()) {
         Box(
@@ -950,7 +1202,7 @@ private fun PcGamesShelf(
             val url = urls.firstOrNull { it.isNotEmpty() }.orEmpty()
             val context = LocalContext.current
             // Entrance: the covers on screen roll in one after another (app start, tab switch).
-            Box(modifier = Modifier.shelfEntry(entry, index)) {
+            Box(modifier = Modifier.shelfEntry(entry, index, clock)) {
             CoverCard(
                 height = cardHeight,
                 aspectRatio = if (wide) WIDE_TILE_RATIO else 2f / 3f,
@@ -979,7 +1231,65 @@ private fun PcGamesShelf(
             )
             }
         }
+        if (onOpenLibrary != null) {
+            item(key = LIBRARY_CARD_KEY) {
+                Box(modifier = Modifier.shelfEntry(entry, shown.size, clock)) {
+                    LibraryCard(
+                        height = cardHeight,
+                        requestFocus = pendingFocusKey == LIBRARY_CARD_KEY,
+                        onFocusRequested = onFocusConsumed,
+                        onFocused = onLibraryFocused,
+                        onClick = onOpenLibrary,
+                    )
+                }
+            }
+        }
     }
+}
+
+/** The last tile of the home row: opens the whole library (Big Picture's "Open library"). */
+@Composable
+private fun LibraryCard(
+    height: Dp,
+    requestFocus: Boolean,
+    onFocusRequested: () -> Unit,
+    onFocused: () -> Unit,
+    onClick: () -> Unit,
+) {
+    CoverCard(
+        height = height,
+        paletteKey = LIBRARY_CARD_KEY,
+        loadPalette = { null },
+        requestFocus = requestFocus,
+        onFocusRequested = onFocusRequested,
+        onFocused = onFocused,
+        onClick = onClick,
+        cover = {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.12f), Color.White.copy(alpha = 0.05f))))
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.GridView,
+                    contentDescription = null,
+                    tint = RiftColors.OnSurface,
+                    modifier = Modifier.size(40.dp),
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = stringResource(R.string.rift_library_open),
+                    color = RiftColors.OnSurface,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        },
+    )
 }
 
 @Composable
@@ -1002,6 +1312,8 @@ private fun AndroidShelf(
     onOpen: (AndroidGame) -> Unit,
     entry: ShelfEntry?,
 ) {
+    // One entrance clock for the shelf (app start, tab switch).
+    val clock = rememberShelfClock(entry)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     RiftRow(
@@ -1011,7 +1323,7 @@ private fun AndroidShelf(
     ) {
         itemsIndexed(games, key = { _, game -> game.packageName }) { index, game ->
             val icon = rememberAppIcon(game.packageName)
-            Box(modifier = Modifier.shelfEntry(entry, index)) {
+            Box(modifier = Modifier.shelfEntry(entry, index, clock)) {
             CoverCard(
                 height = cardHeight,
                 paletteKey = "android:${game.packageName}",
@@ -1298,7 +1610,19 @@ private fun SectionTabs(
     selected: RiftSection?,
     onSelect: (RiftSection) -> Unit,
 ) {
-    val places = remember { mutableStateMapOf<RiftSection, TabPlace>() }
+    GlassTabs(glass = glass, tabs = sections, selected = selected, title = { stringResource(it.titleRes) }, onSelect = onSelect)
+}
+
+/** Tabs with the sliding glass capsule and lemon line; the home's sections and the library's sources. */
+@Composable
+internal fun <T> GlassTabs(
+    glass: GraphicsLayer,
+    tabs: List<T>,
+    selected: T?,
+    title: @Composable (T) -> String,
+    onSelect: (T) -> Unit,
+) {
+    val places = remember { mutableStateMapOf<T, TabPlace>() }
     var origin by remember { mutableStateOf<Offset?>(null) }
     val capsuleX = remember { Animatable(0f) }
     val capsuleW = remember { Animatable(0f) }
@@ -1369,12 +1693,12 @@ private fun SectionTabs(
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            sections.forEach { section ->
+            tabs.forEach { tab ->
                 SectionTab(
-                    title = stringResource(section.titleRes),
-                    selected = section == selected,
-                    onClick = { onSelect(section) },
-                    onPlaced = { places[section] = it },
+                    title = title(tab),
+                    selected = tab == selected,
+                    onClick = { onSelect(tab) },
+                    onPlaced = { places[tab] = it },
                 )
             }
         }
@@ -1424,7 +1748,7 @@ private fun SectionTab(title: String, selected: Boolean, onClick: () -> Unit, on
 private val TabHeight = 42.dp
 
 @Composable
-private fun BumperButton(@DrawableRes icon: Int, label: String, onClick: () -> Unit) {
+internal fun BumperButton(@DrawableRes icon: Int, label: String, onClick: () -> Unit) {
     PillButton(onClick = onClick, background = { solid(Color.Transparent) }, square = true, focusable = false) {
         Image(painter = painterResource(icon), contentDescription = label, modifier = Modifier.size(36.dp))
     }
@@ -1652,6 +1976,14 @@ private suspend fun preloadFirstImages(context: android.content.Context, library
         }
     }.filter { it.isNotEmpty() }.distinct()
     urls.map { url ->
-        async(Dispatchers.IO) { runCatching { context.imageLoader.execute(ImageRequest.Builder(context).data(url).build()) } }
+        // Only to have the files on disk: decoded tiny and kept out of the memory cache, so no full-size
+        // bitmaps pile up at start.
+        async(Dispatchers.IO) {
+            runCatching {
+                context.imageLoader.execute(
+                    ImageRequest.Builder(context).data(url).size(PRELOAD_DECODE_PX).memoryCachePolicy(coil.request.CachePolicy.DISABLED).build(),
+                )
+            }
+        }
     }.awaitAll()
 }
