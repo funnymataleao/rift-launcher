@@ -109,7 +109,7 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
 
     SettingsGroup(title = stringResource(R.string.rift_settings_group_stream_video)) {
         val resolutions = listOf("1280x720", "1920x1080", "2560x1440", "3840x2160", "device")
-        ChoiceChipsRow(
+        StepSliderRow(
             title = stringResource(R.string.rift_settings_stream_resolution),
             subtitle = stringResource(R.string.rift_settings_stream_resolution_summary),
             icon = Icons.Rounded.AspectRatio,
@@ -120,10 +120,10 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
                 prefs.streamResolution = resolution
             },
         )
-        // 0: the screen's own rate, the highest the tablet shows.
-        val rates = listOf(0, 30, 60, 90, 120, 144, 165)
+        // 0: the screen's own rate, the highest the tablet shows, so it ends the scale.
+        val rates = listOf(30, 60, 90, 120, 144, 165, 0)
         val screen = stringResource(R.string.rift_settings_stream_device_screen)
-        ChoiceChipsRow(
+        StepSliderRow(
             title = stringResource(R.string.rift_settings_stream_fps),
             icon = Icons.Rounded.Speed,
             options = rates.map { if (it == 0) screen else "$it" },
@@ -134,7 +134,7 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
             },
         )
         val bitrates = listOf(0, 20, 50, 100, 150, 200, 300, 500)
-        ChoiceChipsRow(
+        StepSliderRow(
             title = stringResource(R.string.rift_settings_stream_bitrate),
             subtitle = stringResource(R.string.rift_settings_stream_bitrate_summary),
             icon = Icons.Rounded.HighQuality,
@@ -149,7 +149,7 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
 
     SettingsGroup(title = stringResource(R.string.rift_settings_group_stream_audio)) {
         val layouts = listOf("stereo", "5.1", "7.1")
-        ChoiceChipsRow(
+        StepSliderRow(
             title = stringResource(R.string.rift_settings_stream_audio),
             icon = Icons.Rounded.GraphicEq,
             options = listOf(stringResource(R.string.rift_settings_stream_stereo), "5.1", "7.1"),
@@ -163,7 +163,7 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
 
     SettingsGroup(title = stringResource(R.string.rift_settings_group_stream_gamepad)) {
         val counts = listOf(0, 1, 2, 3, 4)
-        ChoiceChipsRow(
+        StepSliderRow(
             title = stringResource(R.string.rift_settings_stream_gamepads),
             subtitle = stringResource(R.string.rift_settings_stream_gamepads_summary),
             icon = Icons.Rounded.Gamepad,

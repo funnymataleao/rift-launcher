@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -42,12 +40,13 @@ import dev.rift.launcher.settings.PlateGap
 import dev.rift.launcher.settings.RiftChip
 import dev.rift.launcher.settings.RiftSwitch
 import dev.rift.launcher.settings.RowMinHeight
+import dev.rift.launcher.settings.StepSliderPlate
 import dev.rift.launcher.settings.plateFill
 import dev.rift.launcher.settings.plateSubtext
 import dev.rift.launcher.settings.plateText
-import dev.rift.launcher.ui.theme.RiftAccent
 import dev.rift.launcher.ui.theme.RiftColors
 import dev.rift.launcher.ui.theme.RiftMotion
+import kotlin.math.roundToInt
 
 /*
  * Rift's look for the rows of GameNative's settings screens (the game container): the same plates as Rift's
@@ -198,15 +197,28 @@ fun SettingsMenuLink(
     )
 }
 
-/**
- * A list of a few short answers: they sit as pills under the title, as in Rift's own Settings, and left and
- * right move between them. Longer lists stay a dropdown.
- */
-internal fun fitsAsPills(items: List<String>, hasMuted: Boolean, hasAction: Boolean): Boolean =
-    !hasMuted && !hasAction && items.size in 2..MAX_PILLS && items.all { it.length <= MAX_PILL_TEXT }
+/** How a list of answers is shown in a settings tile. */
+internal enum class ChoiceLook { Slider, Pills, Dropdown }
 
-private const val MAX_PILLS = 5
+/**
+ * Answers that go from less to more (numbers, with their unit: 60 Hz, 1080p, 50 %, 512 MB, 1280x720; words like
+ * Auto or Off may stand among them) are a slider with a stop at each. A few short answers with no order are pills
+ * under the title, as in Rift's own Settings. A longer list stays a dropdown.
+ */
+internal fun choiceLook(items: List<String>, hasMuted: Boolean, hasAction: Boolean): ChoiceLook {
+    if (hasMuted || hasAction) return ChoiceLook.Dropdown
+    val numeric = items.count { NUMERIC.matches(it.trim()) }
+    val neutral = items.count { it.trim().lowercase() in NEUTRAL }
+    if (items.size in 3..MAX_STOPS && numeric >= 2 && numeric + neutral == items.size) return ChoiceLook.Slider
+    if (items.size in 2..MAX_PILLS && items.all { it.length <= MAX_PILL_TEXT }) return ChoiceLook.Pills
+    return ChoiceLook.Dropdown
+}
+
+private val NUMERIC = Regex("""[<>~≈]?\s?\d+([.,]\d+)?\s?([%a-zA-Zµ/]{0,6}|x\s?\d+([.,]\d+)?.*)""")
+private val NEUTRAL = setOf("auto", "default", "off", "none", "unlimited", "disabled", "automatic")
+private const val MAX_PILLS = 4
 private const val MAX_PILL_TEXT = 14
+private const val MAX_STOPS = 24
 
 @Composable
 internal fun RiftChoiceTile(
@@ -256,9 +268,48 @@ internal fun RiftChoiceTile(
     }
 }
 
+/** The dropdown's answers in order, as the shared slider: the title, subtitle and icon are the tile's own. */
+@Composable
+internal fun RiftStepTile(
+    items: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    title: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    subtitle: (@Composable () -> Unit)? = null,
+    icon: (@Composable () -> Unit)? = null,
+) {
+    StepSliderPlate(
+        header = { focused ->
+            if (icon != null) {
+                CompositionLocalProvider(LocalContentColor provides plateText(focused)) { icon() }
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                CompositionLocalProvider(LocalContentColor provides plateText(focused)) {
+                    ProvideTextStyle(TextStyle(fontSize = 18.5.sp, fontWeight = FontWeight.SemiBold)) { title() }
+                }
+                if (subtitle != null) {
+                    CompositionLocalProvider(LocalContentColor provides plateSubtext(focused)) {
+                        ProvideTextStyle(TextStyle(fontSize = 15.sp, lineHeight = 20.sp)) { subtitle() }
+                    }
+                }
+            }
+        },
+        valueText = items.getOrElse(selectedIndex) { "" },
+        startText = items.firstOrNull().orEmpty(),
+        endText = items.lastOrNull().orEmpty(),
+        count = items.size,
+        index = selectedIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0)),
+        onIndex = onSelect,
+        enabled = enabled,
+        modifier = modifier,
+    )
+}
+
 /**
- * A row with a slider under its title and the value at its end. Two states like every plate: with focus it is
- * filled with the accent and the slider turns dark.
+ * A number on a slider with a stop every [step] (the shared [StepSliderPlate]), the value at the title's end.
+ * [valueText] is what the value is called.
  */
 @Composable
 fun RiftSliderTile(
@@ -269,19 +320,14 @@ fun RiftSliderTile(
     valueRange: ClosedFloatingPointRange<Float>,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    step: Float = defaultStep(valueRange),
+    startText: String = "",
+    endText: String = "",
 ) {
-    var focused by remember { mutableStateOf(false) }
-    val accent = RiftAccent.current
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .alpha(if (enabled) 1f else 0.45f)
-            .plateFill(focused)
-            .onFocusChanged { focused = it.hasFocus }
-            .padding(horizontal = 18.dp, vertical = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    val count = ((valueRange.endInclusive - valueRange.start) / step).roundToInt() + 1
+    val index = ((value - valueRange.start) / step).roundToInt().coerceIn(0, count - 1)
+    StepSliderPlate(
+        header = { focused ->
             Text(
                 text = title,
                 color = plateText(focused),
@@ -289,18 +335,19 @@ fun RiftSliderTile(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
             )
-            Text(text = valueText, color = plateSubtext(focused), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-        }
-        Slider(
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = valueRange,
-            enabled = enabled,
-            colors = SliderDefaults.colors(
-                thumbColor = if (focused) accent.onAccent else accent.main,
-                activeTrackColor = if (focused) accent.onAccent else accent.main,
-                inactiveTrackColor = if (focused) accent.onAccent.copy(alpha = 0.25f) else RiftColors.SurfaceContainerHigh,
-            ),
-        )
-    }
+        },
+        valueText = valueText,
+        startText = startText,
+        endText = endText,
+        count = count,
+        index = index,
+        onIndex = { onValueChange(valueRange.start + it * step) },
+        enabled = enabled,
+        modifier = modifier,
+    )
+}
+
+private fun defaultStep(range: ClosedFloatingPointRange<Float>): Float {
+    val span = range.endInclusive - range.start
+    return if (span >= 100f) 10f else if (span >= 20f) 5f else 1f
 }

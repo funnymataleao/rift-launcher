@@ -342,9 +342,9 @@ private fun PictureSettings(
             .plus("device" to "")
             .sortedBy { (value, _) -> (StreamSettings.sizeOf(value) ?: screenSize)?.let { it.first.toLong() * it.second } ?: 0L }
     }
-    ChoiceRow(
+    StepRow(
         title = stringResource(R.string.rift_settings_stream_resolution),
-        choices = resolutions.map { it.first },
+        steps = resolutions.map { it.first },
         value = resolution,
         label = { value -> resolutions.first { it.first == value }.second.ifEmpty { screenLabel } },
         onChange = {
@@ -429,6 +429,7 @@ internal fun <T> StepRow(
         title = "$title · ${label(steps[index])}",
         valueText = "",
         progress = if (steps.size > 1) index / (steps.size - 1f) else 1f,
+        stops = steps.size,
         onDecrease = { if (index > 0) onChange(steps[index - 1]) },
         onIncrease = { if (index < steps.lastIndex) onChange(steps[index + 1]) },
         accentColor = accent,

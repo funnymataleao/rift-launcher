@@ -166,7 +166,7 @@ internal fun AssistantSettings() {
 
     SettingsGroup(title = stringResource(R.string.rift_assistant_group_limits)) {
         val outputIndex = OUTPUT_TOKEN_OPTIONS.indexOf(settings.maxOutputTokens).coerceAtLeast(0)
-        ChoiceChipsRow(
+        StepSliderRow(
             title = stringResource(R.string.rift_assistant_max_output),
             subtitle = stringResource(R.string.rift_assistant_max_output_hint),
             options = OUTPUT_TOKEN_OPTIONS.map { tokensLabel(it.toLong()) },
@@ -177,7 +177,7 @@ internal fun AssistantSettings() {
             },
         )
         val noLimit = stringResource(R.string.rift_assistant_no_limit)
-        ChoiceChipsRow(
+        StepSliderRow(
             title = stringResource(R.string.rift_assistant_monthly_limit),
             options = MONTHLY_LIMIT_OPTIONS.map { if (it == 0L) noLimit else tokensLabel(it) },
             selectedIndex = MONTHLY_LIMIT_OPTIONS.indexOf(settings.monthlyTokenLimit).coerceAtLeast(0),

@@ -120,7 +120,7 @@ private fun SoundBody(holdFocus: () -> Unit) {
             },
         )
         val levels = listOf(15, 35, 60, 80, 100)
-        ChoiceChipsRow(
+        StepSliderRow(
             title = stringResource(R.string.rift_settings_sound_volume),
             icon = Icons.Rounded.GraphicEq,
             options = levels.map { "$it%" },
@@ -167,7 +167,7 @@ private fun SoundBody(holdFocus: () -> Unit) {
             },
         )
         val musicLevels = listOf(10, 25, 40, 60, 100)
-        ChoiceChipsRow(
+        StepSliderRow(
             title = stringResource(R.string.rift_settings_music_volume),
             icon = Icons.Rounded.GraphicEq,
             options = musicLevels.map { "$it%" },

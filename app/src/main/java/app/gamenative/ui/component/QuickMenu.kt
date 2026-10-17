@@ -78,12 +78,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -2274,6 +2276,8 @@ internal fun QuickMenuAdjustmentRow(
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
     subtitle: String? = null,
+    /** How many answers the track has: it shows a dot at each. 0 is a track without stops. */
+    stops: Int = 0,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -2409,12 +2413,31 @@ internal fun QuickMenuAdjustmentRow(
                 contentAlignment = Alignment.Center,
             ) {
                 // Rift: a thin track, filled with the accent (dark on the focused plate).
+                val accent = RiftAccent.current
+                val shownProgress = progress.coerceIn(0f, 1f)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(6.dp)
+                        .height(if (stops > 1) 10.dp else 6.dp)
                         .clip(CircleShape)
-                        .background(if (isFocused) plateText(true).copy(alpha = 0.18f) else Color.White.copy(alpha = 0.12f)),
+                        .background(if (isFocused) plateText(true).copy(alpha = 0.18f) else Color.White.copy(alpha = 0.12f))
+                        .drawWithContent {
+                            drawContent()
+                            if (stops in 2..24) {
+                                val inset = size.height / 2
+                                for (stop in 0 until stops) {
+                                    val fraction = stop / (stops - 1f)
+                                    val passed = fraction <= shownProgress + 0.001f
+                                    val dot = when {
+                                        passed && isFocused -> accent.main
+                                        passed -> accent.onAccent.copy(alpha = 0.6f)
+                                        isFocused -> accent.onAccent.copy(alpha = 0.55f)
+                                        else -> Color.White.copy(alpha = 0.4f)
+                                    }
+                                    drawCircle(dot, 1.8.dp.toPx(), Offset((size.width * fraction).coerceIn(inset, size.width - inset), size.height / 2))
+                                }
+                            }
+                        },
                 ) {
                     Box(
                         modifier = Modifier

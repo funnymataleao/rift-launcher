@@ -81,7 +81,10 @@ sealed class CloudSetting(
     class Toggle(key: String, store: CloudStore, title: Int, icon: ImageVector, val default: Boolean, summary: Int = 0) :
         CloudSetting(key, store, title, summary, icon)
 
-    /** One of [options]; a short list shows as chips, a long one opens a list. */
+    /**
+     * One of [options]. [ordered] answers go from less to more (a size, a rate, a level, a percentage) and are a
+     * slider with a stop at each; the others are pills when there are two to four, else a list.
+     */
     class Choice(
         key: String,
         store: CloudStore,
@@ -90,8 +93,11 @@ sealed class CloudSetting(
         val options: List<CloudOpt>,
         val default: Any,
         summary: Int = 0,
-        val chips: Boolean = options.size <= 4,
-    ) : CloudSetting(key, store, title, summary, icon)
+        val ordered: Boolean = false,
+    ) : CloudSetting(key, store, title, summary, icon) {
+        val slider: Boolean get() = ordered && options.size >= 3
+        val chips: Boolean get() = !slider && options.size in 2..4
+    }
 
     /** Any number of [options]. */
     class Multi(key: String, store: CloudStore, title: Int, icon: ImageVector, val options: List<CloudOpt>, val default: List<String>, summary: Int = 0) :
@@ -136,15 +142,15 @@ object CloudPlaySettings {
     val maxFps = CloudSetting.Choice(
         "video.maxFps", S, R.string.rift_cloud_set_max_fps, Icons.Rounded.Speed,
         (10..50 step 10).map { CloudOpt(it, text = "$it") } + CloudOpt(60, R.string.rift_cloud_opt_unlimited),
-        60, chips = true,
+        60, ordered = true,
     )
     val sharpness = CloudSetting.Choice(
         "video.processing.sharpness", S, R.string.rift_cloud_set_sharpness, Icons.Rounded.CenterFocusStrong,
-        listOf(CloudOpt(0, R.string.rift_settings_off)) + (1..10).map { CloudOpt(it, text = "$it") }, 0,
+        listOf(CloudOpt(0, R.string.rift_settings_off)) + (1..10).map { CloudOpt(it, text = "$it") }, 0, ordered = true,
     )
-    val brightness = CloudSetting.Choice("video.brightness", S, R.string.rift_cloud_set_brightness, Icons.Rounded.BrightnessMedium, percent(50, 150, 10), 100)
-    val contrast = CloudSetting.Choice("video.contrast", S, R.string.rift_cloud_set_contrast, Icons.Rounded.Contrast, percent(50, 150, 10), 100)
-    val saturation = CloudSetting.Choice("video.saturation", S, R.string.rift_cloud_set_saturation, Icons.Rounded.InvertColors, percent(50, 150, 10), 100)
+    val brightness = CloudSetting.Choice("video.brightness", S, R.string.rift_cloud_set_brightness, Icons.Rounded.BrightnessMedium, percent(50, 150, 10), 100, ordered = true)
+    val contrast = CloudSetting.Choice("video.contrast", S, R.string.rift_cloud_set_contrast, Icons.Rounded.Contrast, percent(50, 150, 10), 100, ordered = true)
+    val saturation = CloudSetting.Choice("video.saturation", S, R.string.rift_cloud_set_saturation, Icons.Rounded.InvertColors, percent(50, 150, 10), 100, ordered = true)
     val ratio = CloudSetting.Choice(
         "video.ratio", S, R.string.rift_cloud_set_ratio, Icons.Rounded.AspectRatio,
         listOf("16:9", "16:10", "18:9", "20:9", "21:9", "3:2", "4:3", "5:4").map { CloudOpt(it, text = it) } +
@@ -157,7 +163,7 @@ object CloudPlaySettings {
     )
     val volume = CloudSetting.Choice(
         "audio.volume", S, R.string.rift_cloud_set_volume, Icons.Rounded.VolumeUp,
-        listOf(0, 25, 50, 75, 100, 125, 150, 200, 300, 400, 500, 600).map { CloudOpt(it, text = "$it%") }, 100,
+        listOf(0, 25, 50, 75, 100, 125, 150, 200, 300, 400, 500, 600).map { CloudOpt(it, text = "$it%") }, 100, ordered = true,
     )
 
     val renderer = CloudSetting.Choice(
@@ -186,18 +192,18 @@ object CloudPlaySettings {
             CloudOpt("bottom-half", R.string.rift_cloud_opt_bottom_half),
             CloudOpt("bottom", R.string.rift_cloud_opt_bottom),
         ),
-        "center",
+        "center", ordered = true,
     )
     val deviceVibration = CloudSetting.Choice(
         "deviceVibration.mode", S, R.string.rift_cloud_set_device_vibration, Icons.Rounded.Vibration,
         listOf(off, CloudOpt("on", R.string.rift_settings_on), CloudOpt("auto", R.string.rift_cloud_opt_no_gamepad)), "off",
         summary = R.string.rift_cloud_set_device_vibration_summary,
     )
-    val vibrationStrength = CloudSetting.Choice("deviceVibration.intensity", S, R.string.rift_cloud_set_vibration_strength, Icons.Rounded.Vibration, percent(10, 100, 10), 50)
+    val vibrationStrength = CloudSetting.Choice("deviceVibration.intensity", S, R.string.rift_cloud_set_vibration_strength, Icons.Rounded.Vibration, percent(10, 100, 10), 50, ordered = true)
     val pollingRate = CloudSetting.Choice(
         "controller.pollingRate", S, R.string.rift_cloud_set_polling, Icons.Rounded.Gamepad,
         (4..60 step 4).map { CloudOpt(it, R.string.rift_cloud_opt_hz, "%.0f".format(1000f / it)) }, 4,
-        summary = R.string.rift_cloud_set_polling_summary,
+        summary = R.string.rift_cloud_set_polling_summary, ordered = true,
     )
     val localCoop = CloudSetting.Toggle("localCoOp.enabled", S, R.string.rift_cloud_set_local_coop, Icons.Rounded.Groups, false)
     val statsPosition = CloudSetting.Choice(
@@ -214,18 +220,18 @@ object CloudPlaySettings {
                 CloudSetting.Choice(
                     "stream.video.resolution", P, R.string.rift_cloud_set_resolution, Icons.Rounded.Videocam,
                     listOf(CloudOpt("auto", R.string.rift_settings_auto), CloudOpt("720p", text = "720p"), CloudOpt("1080p", text = "1080p"), CloudOpt("1080p-hq", text = "1080p HQ")),
-                    "auto",
+                    "auto", ordered = true,
                 ),
                 CloudSetting.Choice(
                     "stream.video.codecProfile", P, R.string.rift_cloud_set_codec, Icons.Rounded.HighQuality,
                     listOf(default, CloudOpt("low", R.string.rift_cloud_opt_low), CloudOpt("normal", R.string.rift_cloud_opt_normal), CloudOpt("high", R.string.rift_cloud_opt_high)),
-                    "default", summary = R.string.rift_cloud_set_codec_summary,
+                    "default", summary = R.string.rift_cloud_set_codec_summary, ordered = true,
                 ),
                 CloudSetting.Choice(
                     "stream.video.maxBitrate", P, R.string.rift_cloud_set_bitrate, Icons.Rounded.Speed,
                     // The page's own scale ends at 15: that is its "no limit", the most Xbox's server sends.
                     listOf(3, 5, 8, 10, 12, 14).map { CloudOpt(it * MEGABIT, text = "$it") } + CloudOpt(0, R.string.rift_cloud_opt_server_max),
-                    0, summary = R.string.rift_cloud_set_bitrate_summary, chips = true,
+                    0, summary = R.string.rift_cloud_set_bitrate_summary, ordered = true,
                 ),
                 CloudSetting.Toggle("stream.video.preventResolutionDrops", P, R.string.rift_cloud_set_prevent_drops, Icons.Rounded.Layers, false),
                 CloudSetting.Toggle(
@@ -316,10 +322,10 @@ object CloudPlaySettings {
                 CloudSetting.Choice(
                     "stats.textSize", S, R.string.rift_cloud_set_stats_text, Icons.Rounded.FormatSize,
                     listOf(CloudOpt("0.9rem", R.string.rift_cloud_opt_small), CloudOpt("1.0rem", R.string.rift_cloud_opt_normal_size), CloudOpt("1.1rem", R.string.rift_cloud_opt_large)),
-                    "0.9rem",
+                    "0.9rem", ordered = true,
                 ),
-                CloudSetting.Choice("stats.opacity.all", S, R.string.rift_cloud_set_stats_opacity, Icons.Rounded.Opacity, percent(50, 100, 10), 80, chips = true),
-                CloudSetting.Choice("stats.opacity.background", S, R.string.rift_cloud_set_stats_background, Icons.Rounded.Opacity, percent(0, 100, 10), 100),
+                CloudSetting.Choice("stats.opacity.all", S, R.string.rift_cloud_set_stats_opacity, Icons.Rounded.Opacity, percent(50, 100, 10), 80, ordered = true),
+                CloudSetting.Choice("stats.opacity.background", S, R.string.rift_cloud_set_stats_background, Icons.Rounded.Opacity, percent(0, 100, 10), 100, ordered = true),
                 CloudSetting.Toggle(
                     "stats.colors", S, R.string.rift_cloud_set_stats_colors, Icons.Rounded.InvertColors, false,
                     summary = R.string.rift_cloud_set_stats_colors_summary,
