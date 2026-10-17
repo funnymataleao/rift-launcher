@@ -123,16 +123,22 @@ interface StreamLibraryEntryPoint {
 
 private fun steamAppId(app: SteamApp) = "${GameSource.STEAM.name}_${app.id}"
 
-/** The same fields the library builds for a Steam game, so the home's covers, art and logo work as is. */
+/**
+ * The same fields the library builds for a Steam game, so the home's covers, art and logo work as is.
+ * Games Rift has no library art for yet fall back to Steam's standard 600x900 cover and hero, so the
+ * shelf never stretches the wide header into a cover.
+ */
 private fun SteamApp.toLibraryItem() = LibraryItem(
     appId = steamAppId(this),
     name = name,
     iconHash = clientIconHash,
-    capsuleImageUrl = getCapsuleUrl(),
+    capsuleImageUrl = getCapsuleUrl().ifEmpty { steamAsset(id, "library_600x900.jpg") },
     headerImageUrl = headerUrl,
-    heroImageUrl = getHeroUrl(),
+    heroImageUrl = getHeroUrl().ifEmpty { steamAsset(id, "library_hero.jpg") },
     gameSource = GameSource.STEAM,
 )
+
+private fun steamAsset(appId: Int, file: String) = "https://shared.steamstatic.com/store_item_assets/steam/apps/$appId/$file"
 
 /** Title key shared by Steam and the host: case, accents, ™/® and punctuation do not matter. */
 private fun normalizedTitle(title: String?): String =
