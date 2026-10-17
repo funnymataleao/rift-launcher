@@ -65,6 +65,8 @@ import app.gamenative.ui.screen.settings.FrontendSyncDialog
 import app.gamenative.utils.IconSwitcher
 import app.gamenative.utils.LocaleHelper
 import com.posthog.PostHog
+import dev.rift.launcher.home.RiftUninstalledMode
+import dev.rift.launcher.home.UninstalledMode
 import dev.rift.launcher.ui.theme.RiftColors
 import dev.rift.launcher.ui.theme.RiftShapes
 
@@ -205,7 +207,24 @@ private fun LibraryGroup() {
     val tabLabels = configurableTabs.map { stringResource(it.labelResId) }
     val selectedTabs = configurableTabs.indices.filter { configurableTabs[it] in libraryTabs }.toSet()
 
+    val context = LocalContext.current
+    var uninstalledMode by remember { mutableStateOf(RiftUninstalledMode.get(context)) }
     SettingsGroup(title = stringResource(R.string.rift_settings_group_library)) {
+        ChoiceChipsRow(
+            title = stringResource(R.string.rift_uninstalled_title),
+            subtitle = stringResource(R.string.rift_uninstalled_summary),
+            icon = Icons.Rounded.VisibilityOff,
+            options = listOf(
+                stringResource(R.string.rift_uninstalled_dim),
+                stringResource(R.string.rift_uninstalled_hide),
+                stringResource(R.string.rift_uninstalled_show),
+            ),
+            selectedIndex = UninstalledMode.entries.indexOf(uninstalledMode),
+            onSelect = {
+                uninstalledMode = UninstalledMode.entries[it]
+                RiftUninstalledMode.set(context, uninstalledMode)
+            },
+        )
         LinkRow(
             title = stringResource(R.string.settings_interface_library_tabs_title),
             subtitle = stringResource(R.string.settings_interface_library_tabs_subtitle),
