@@ -64,8 +64,16 @@ internal fun EmulatorsSettings() {
         }
     }
     BackHandler(enabled = page != null) { back() }
+    // Back from a page returns focus to the row that opened it. Not when the section has just been opened:
+    // then the person is still moving through the section list, and focus must stay there.
+    var wasOnPage by remember { mutableStateOf(false) }
     LaunchedEffect(page) {
-        if (page == null) runCatching { requester(focusKey).requestFocus() }
+        if (page != null) {
+            wasOnPage = true
+        } else if (wasOnPage) {
+            wasOnPage = false
+            runCatching { requester(focusKey).requestFocus() }
+        }
     }
 
     val picker = rememberFolderPicker { uri -> onFolderPicked?.invoke(uri) }
