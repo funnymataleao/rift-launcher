@@ -2826,8 +2826,14 @@ internal fun <T> GlassTabs(
         // The d-pad enters the row on the chosen tab; Left/Right then choose the next one at once, so exactly
         // one tab is ever lit (the chosen one) and no A press is needed.
         val requesters = remember(tabs) { tabs.associateWith { FocusRequester() } }
+        var tabsFocused by remember { mutableStateOf(false) }
+        // A choice made elsewhere (the bumpers) takes the focus along, so the lit tab is always the focused one.
+        LaunchedEffect(selected) {
+            if (tabsFocused) selected?.let { runCatching { requesters[it]?.requestFocus() } }
+        }
         Row(
             modifier = Modifier
+                .onFocusChanged { tabsFocused = it.hasFocus }
                 .focusProperties { enter = { selected?.let { requesters[it] } ?: FocusRequester.Default } }
                 .focusGroup(),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
