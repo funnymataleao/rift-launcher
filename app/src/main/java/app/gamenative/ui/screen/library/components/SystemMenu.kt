@@ -404,17 +404,11 @@ fun SystemMenu(
             visible = isOpen,
             enter = slideInHorizontally(
                 initialOffsetX = { fullWidth -> fullWidth },
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = Spring.StiffnessMediumLow,
-                ),
+                animationSpec = dev.rift.launcher.ui.RiftDrawer.SlideIn,
             ),
             exit = slideOutHorizontally(
                 targetOffsetX = { fullWidth -> fullWidth },
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMedium,
-                ),
+                animationSpec = dev.rift.launcher.ui.RiftDrawer.SlideOut,
             ),
             modifier = Modifier.align(Alignment.CenterEnd),
         ) {

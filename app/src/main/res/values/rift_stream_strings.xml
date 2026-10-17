@@ -45,7 +45,7 @@
     <string name="rift_stream_group_pc_apps">PC apps</string>
     <string name="rift_stream_end">End stream</string>
     <string name="rift_stream_end_failed">Couldn\'t close the game on the PC.</string>
-    <string name="rift_stream_menu_hint">Select + Start: stream menu</string>
+    <string name="rift_stream_menu_hint">Home: stream menu</string>
     <string name="rift_stream_setup_title">PC games</string>
     <string name="rift_stream_get_vibepollo">Download Vibepollo for your PC</string>
     <string name="rift_stream_get_vibepollo_summary">Free streaming host that adds your Steam games by itself</string>

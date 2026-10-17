@@ -45,7 +45,7 @@
     <string name="rift_stream_group_pc_apps">Приложения ПК</string>
     <string name="rift_stream_end">Закончить стрим</string>
     <string name="rift_stream_end_failed">Не удалось закрыть игру на ПК.</string>
-    <string name="rift_stream_menu_hint">Select + Start — меню стрима</string>
+    <string name="rift_stream_menu_hint">Home — меню стрима</string>
     <string name="rift_stream_setup_title">Игры с ПК</string>
     <string name="rift_stream_get_vibepollo">Скачать Vibepollo для ПК</string>
     <string name="rift_stream_get_vibepollo_summary">Бесплатный хост для стриминга, сам добавляет игры Steam</string>

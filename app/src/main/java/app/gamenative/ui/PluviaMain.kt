@@ -983,11 +983,12 @@ fun PluviaMain(
         )
     }
 
-    // Rift as the home app: Home from Settings or Support goes back to the main screen.
-    // A running game and the sign-in screen are left alone.
+    // Rift as the home app: Home from Settings or Support goes back to the main screen, which opens its right
+    // panel (Home always opens it). A running game opens its own panel; the sign-in screen is left alone.
     val onHomePressed: (AndroidEvent.HomePressed) -> Unit = {
         val route = navController.currentDestination?.route
         if (route == PluviaScreen.Settings.route || route == PluviaScreen.Support.route || route == RIFT_ASSISTANT_ROUTE) {
+            dev.rift.launcher.ui.RiftHomeKey.panelPending = true
             navController.popBackStack(PluviaScreen.Home.route + "?offline={offline}", inclusive = false)
         }
     }

@@ -56,6 +56,7 @@ import kotlin.concurrent.thread
 import kotlin.math.abs
 import kotlin.math.max
 import dev.rift.launcher.ui.LocalWindowBlur
+import dev.rift.launcher.ui.RiftHomeKey
 import dev.rift.launcher.ui.layOutAsDrawer
 import dev.rift.launcher.ui.rememberSurfaceBackdrop
 import kotlin.math.min
@@ -64,7 +65,7 @@ import kotlin.math.roundToInt
 /**
  * Full-screen stream on top of the Artemis core, configured from [StreamSettings].
  * Input: one gamepad (with vibration) and touch as an absolute mouse.
- * Leave: Select + Start (or Back, or the button set in [RiftControls.streamMenuKey]) opens the side
+ * Leave: Home (or Back, or the button set in [RiftControls.streamMenuKey]) opens the side
  * panel with "End stream".
  */
 class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnectionListener, PerfOverlayListener {
@@ -103,10 +104,6 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         /** The panel's copy of the stream is this many times smaller than the screen, and this fresh. */
 
         private const val TAG = "RiftStream"
-        private const val MENU_COMBO = ControllerPacket.BACK_FLAG or ControllerPacket.PLAY_FLAG
-
-        /** How long Select or Start waits for the other one before it goes to the PC. */
-        private const val COMBO_WINDOW_MS = 150L
         private const val SUPPORTED_BUTTONS = ControllerPacket.A_FLAG or ControllerPacket.B_FLAG or
             ControllerPacket.X_FLAG or ControllerPacket.Y_FLAG or ControllerPacket.LB_FLAG or ControllerPacket.RB_FLAG or
             ControllerPacket.PLAY_FLAG or ControllerPacket.BACK_FLAG or ControllerPacket.LS_CLK_FLAG or
@@ -155,16 +152,6 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
     /** Why the stream broke, shown in the panel; null while it runs. */
     private var streamError by mutableStateOf<String?>(null)
     private var menuKey = KeyEvent.KEYCODE_UNKNOWN
-
-    /** Select or Start held back from the PC while the other half of the combo may still come. */
-    private var pendingFlags = 0
-    private val sendPending = Runnable {
-        if (pendingFlags != 0) {
-            buttons = buttons or pendingFlags
-            pendingFlags = 0
-            sendController()
-        }
-    }
     private lateinit var host: String
     private lateinit var uniqueId: String
     private var serverCert: X509Certificate? = null
@@ -181,6 +168,8 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         super.onCreate(savedInstanceState)
         settings = StreamSettings(this)
         menuKey = RiftControls.streamMenuKey(this)
+        // Android's Home over the stream: the panel instead.
+        RiftHomeKey.onHomeKey(this, ::togglePanel)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         hideSystemBars()
 
@@ -485,8 +474,6 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
 
     /** Opens the side panel; the host gets a released pad so nothing stays held in the game. */
     private fun openMenu() {
-        surfaceView.removeCallbacks(sendPending)
-        pendingFlags = 0
         buttons = 0
         leftTrigger = 0
         rightTrigger = 0
@@ -646,7 +633,6 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         // Some pads (and some Android builds) send Menu for Start and Back for Select.
         KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_MENU -> ControllerPacket.PLAY_FLAG
         KeyEvent.KEYCODE_BUTTON_SELECT, KeyEvent.KEYCODE_BACK -> ControllerPacket.BACK_FLAG
-        KeyEvent.KEYCODE_BUTTON_MODE -> ControllerPacket.SPECIAL_BUTTON_FLAG
         KeyEvent.KEYCODE_DPAD_UP -> ControllerPacket.UP_FLAG
         KeyEvent.KEYCODE_DPAD_DOWN -> ControllerPacket.DOWN_FLAG
         KeyEvent.KEYCODE_DPAD_LEFT -> ControllerPacket.LEFT_FLAG
@@ -657,8 +643,9 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         // Any button on the pad lifts the splash and still reaches the PC (a launcher may ask for a press).
         if (splashShown && event.action == KeyEvent.ACTION_DOWN && isGamepad(event.source)) hideSplash("button")
-        // The panel's own button opens and closes it and never reaches the PC.
-        if (menuKey != KeyEvent.KEYCODE_UNKNOWN && event.keyCode == menuKey) {
+        // Home (and a button picked in settings) opens and closes the panel and never reaches the PC. Select
+        // and Start are the game's.
+        if (isPanelKey(event.keyCode)) {
             if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
                 if (menuOpen) menuOpen = false else openMenu()
             }
@@ -669,28 +656,8 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         if (flag == 0) return super.dispatchKeyEvent(event)
         if (event.repeatCount > 0) return true
         when (event.action) {
-            KeyEvent.ACTION_DOWN -> {
-                if (flag and MENU_COMBO != 0) {
-                    // Select + Start opens the panel; neither button reaches the game when pressed together.
-                    if ((pendingFlags or (buttons and MENU_COMBO) or flag) == MENU_COMBO) {
-                        openMenu()
-                        return true
-                    }
-                    pendingFlags = pendingFlags or flag
-                    surfaceView.removeCallbacks(sendPending)
-                    surfaceView.postDelayed(sendPending, COMBO_WINDOW_MS)
-                    return true
-                }
-                buttons = buttons or flag
-            }
-            KeyEvent.ACTION_UP -> {
-                // A quick tap of Select or Start still reaches the PC as a press and a release.
-                if (pendingFlags and flag != 0) {
-                    surfaceView.removeCallbacks(sendPending)
-                    sendPending.run()
-                }
-                buttons = buttons and flag.inv()
-            }
+            KeyEvent.ACTION_DOWN -> buttons = buttons or flag
+            KeyEvent.ACTION_UP -> buttons = buttons and flag.inv()
         }
         sendController()
         return true
@@ -701,7 +668,7 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
      * Compose through [dispatch].
      */
     private fun panelKey(event: KeyEvent, dispatch: (KeyEvent) -> Boolean): Boolean {
-        if (menuKey != KeyEvent.KEYCODE_UNKNOWN && event.keyCode == menuKey) {
+        if (isPanelKey(event.keyCode)) {
             if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) menuOpen = false
             return true
         }
@@ -719,6 +686,15 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
                 dispatch(KeyEvent(event.downTime, event.eventTime, event.action, KeyEvent.KEYCODE_DPAD_CENTER, event.repeatCount, event.metaState, event.deviceId, event.scanCode, event.flags, event.source))
         }
         return dispatch(event)
+    }
+
+    /** Home or Guide, when the pad sends it to the app, and the button picked in settings. */
+    private fun isPanelKey(code: Int) =
+        code == KeyEvent.KEYCODE_BUTTON_MODE || (menuKey != KeyEvent.KEYCODE_UNKNOWN && code == menuKey)
+
+    /** Home opens the panel, and closes it again. */
+    private fun togglePanel() {
+        if (menuOpen) closePanel() else openMenu()
     }
 
     /** After an error there is no stream to go back to: closing the panel leaves. */

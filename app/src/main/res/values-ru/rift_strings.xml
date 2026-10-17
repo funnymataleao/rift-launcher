@@ -240,7 +240,7 @@
     <string name="rift_settings_sound_pack_reset">Вернуть встроенные звуки</string>
     <string name="rift_section_android_games">Android-игры</string>
     <string name="rift_hint_options">Опции</string>
-    <string name="rift_settings_quick_access_hold_select">Удерживать Select</string>
+    <string name="rift_settings_quick_access_home">Home</string>
     <string name="rift_apps_title">Приложения</string>
     <string name="rift_hint_apps">Приложения</string>
     <string name="rift_apps_sort_recent">Недавние</string>
@@ -256,7 +256,7 @@
     <string name="rift_settings_quick_access">Кнопка правой панели</string>
     <string name="rift_settings_quick_access_summary">Кнопка геймпада, которая открывает панель с настройками игры</string>
     <string name="rift_settings_quick_access_press">Нажмите кнопку на геймпаде</string>
-    <string name="rift_settings_quick_access_reset">Кнопка Guide</string>
+    <string name="rift_settings_quick_access_reset">Только Home</string>
     <string name="rift_settings_cancel">Отмена</string>
     <string name="rift_settings_group_pcs">Ваши ПК</string>
     <string name="rift_settings_pc_paired">Подключён</string>
