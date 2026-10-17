@@ -197,7 +197,7 @@ public class ComputerManagerService extends Service {
             }
         };
         t.setName("Polling thread for " + tuple.computer.name);
-        return t;
+        return guarded(t);
     }
 
     public class ComputerManagerBinder extends Binder {
@@ -582,7 +582,17 @@ public class ComputerManagerService extends Service {
             return null;
         } catch (IOException e) {
             return null;
+        } catch (RuntimeException e) {
+            // Rift: a failed poll must never take the app down.
+            LimeLog.warning("Polling " + address + " failed: " + e);
+            return null;
         }
+    }
+
+    /** Rift: background PC polling logs unexpected errors instead of crashing the app. */
+    private static Thread guarded(Thread thread) {
+        thread.setUncaughtExceptionHandler((t, e) -> LimeLog.severe(t.getName() + " stopped: " + e));
+        return thread;
     }
 
     private static class ParallelPollTuple {
@@ -628,6 +638,7 @@ public class ComputerManagerService extends Service {
             }
         };
         tuple.pollingThread.setName("Parallel Poll - "+tuple.address+" - "+tuple.existingDetails.name);
+        guarded(tuple.pollingThread);
         tuple.pollingThread.start();
     }
 
@@ -937,6 +948,7 @@ public class ComputerManagerService extends Service {
                 }
             };
             thread.setName("App list polling thread for " + computer.name);
+            guarded(thread);
             thread.start();
         }
 
