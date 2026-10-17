@@ -641,6 +641,42 @@ fun RiftHomeScreen(
     }
     val latestOpenArt = rememberUpdatedState<(LibraryItem) -> Unit> { openArt(it) }
     val artOpener = remember<(LibraryItem) -> Unit> { { item -> latestOpenArt.value(item) } }
+    // Start on the other tabs: the short menu of that tab (null = closed); the last list stays for the fade-out.
+    var startMenuItems by remember { mutableStateOf<List<RiftStartMenuItem>?>(null) }
+    var lastStartMenuItems by remember { mutableStateOf<List<RiftStartMenuItem>>(emptyList()) }
+    if (startMenuItems != null) lastStartMenuItems = startMenuItems!!
+    fun otherTabMenu(): List<RiftStartMenuItem>? {
+        fun line(@androidx.annotation.StringRes label: Int, action: () -> Unit) =
+            RiftStartMenuItem(context.getString(label)) { startMenuItems = null; action() }
+        val cancel = line(R.string.rift_menu_cancel) {}
+        return when (section) {
+            RiftSection.AndroidGames -> focusedAndroid?.let { game ->
+                listOf(line(R.string.rift_menu_play) { AndroidGames.launch(context, game) }, cancel)
+            }
+            RiftSection.PcStreaming -> focusedStream?.let { item ->
+                listOf(
+                    line(R.string.rift_menu_stream) { openGame(item, forStream = true) },
+                    line(R.string.rift_option_change_art) { openArt(item) },
+                    cancel,
+                )
+            }
+            RiftSection.Emulators -> focusedEmulator?.let { item ->
+                listOf(
+                    line(R.string.rift_menu_play) { EmulatorLibrary.game(item.appId)?.let { EmulatorLibrary.launch(context, it) } },
+                    line(R.string.rift_option_change_art) { openArt(item) },
+                    cancel,
+                )
+            }
+            RiftSection.CloudStreaming -> focusedCloud?.let { item ->
+                listOf(
+                    line(R.string.rift_menu_play) { openGame(item) },
+                    line(R.string.rift_option_change_art) { openArt(item) },
+                    cancel,
+                )
+            }
+            else -> null
+        }
+    }
     // B on the home: every installed Android app in a grid, Beacon style.
     var appsOpen by rememberSaveable { mutableStateOf(false) }
     val appsFocus = remember { FocusRequester() }
@@ -654,7 +690,7 @@ fun RiftHomeScreen(
     var panelHasFocus by remember { mutableStateOf(false) }
     var panelFocusAsk by remember { mutableIntStateOf(0) }
     LaunchedEffect(panelOpen) { if (!panelOpen) panelHasFocus = false }
-    val overlayOpen = panelOpen || systemMenuOpen || gameOptionsOpen || appsOpen || libraryOpen || artItem != null
+    val overlayOpen = panelOpen || systemMenuOpen || gameOptionsOpen || startMenuItems != null || appsOpen || libraryOpen || artItem != null
     var selectLongPressed by remember { mutableStateOf(false) }
     val quickAccessKey = remember { RiftControls.quickAccessKey(context) }
     // B / Back closes the open panel and never leaves the app.
@@ -908,20 +944,23 @@ fun RiftHomeScreen(
                             switchSection(1)
                             true
                         }
-                        // Y (and Start): the focused game's options, GameNative's panel alone over the home.
+                        // Start: a small menu in the middle, its own lines on every tab. On PC games it is
+                        // GameNative's options logic behind the menu; Y does the same there, and elsewhere
+                        // goes straight to the art.
                         KeyEvent.KEYCODE_BUTTON_Y, KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_MENU -> {
+                            val start = event.nativeKeyEvent.keyCode != KeyEvent.KEYCODE_BUTTON_Y
                             if (section == RiftSection.PcGames) {
                                 focusedItem?.let {
                                     optionsOnly.panelOpen = true
                                     optionsToken++
                                     optionsItem = it
                                 }
-                            } else if (section == RiftSection.PcStreaming) {
-                                // Streamed games have no options panel; Y goes straight to their art.
+                            } else if (!start && section == RiftSection.PcStreaming) {
                                 focusedStream?.let(::openArt)
-                            } else if (section == RiftSection.Emulators) {
-                                // Emulator games the same: Y picks their art.
+                            } else if (!start && section == RiftSection.Emulators) {
                                 focusedEmulator?.let(::openArt)
+                            } else if (start) {
+                                startMenuItems = otherTabMenu()
                             }
                             true
                         }
@@ -1381,6 +1420,11 @@ fun RiftHomeScreen(
                     onFocusChanged = { appsFocused = it },
                 )
                 dev.rift.launcher.assistant.optimize.RiftOptimizeHost()
+                RiftStartMenu(
+                    isOpen = startMenuItems != null,
+                    items = lastStartMenuItems,
+                    onDismiss = { startMenuItems = null },
+                )
                 RiftSystemMenu(
                     isOpen = systemMenuOpen,
                     onDismiss = { systemMenuOpen = false },

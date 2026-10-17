@@ -1891,6 +1891,7 @@ internal fun AppScreenContent(
             onDismiss = { optionsMenuVisible = false },
             options = optionsMenu.toList(),
             modifier = Modifier.align(Alignment.CenterEnd),
+            onPlay = if (isInstalled) onStartAction else null,
         )
 
         // Ambient mode during downloads

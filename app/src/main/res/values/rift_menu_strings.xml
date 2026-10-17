@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rift_menu_play">Play</string>
+    <string name="rift_menu_properties">Properties…</string>
+    <string name="rift_menu_cancel">Cancel</string>
+    <string name="rift_menu_properties_title">Properties</string>
+    <string name="rift_menu_stream">Stream from PC</string>
+</resources>
