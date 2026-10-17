@@ -432,10 +432,16 @@ class EpicService : Service() {
         }
 
         fun downloadGame(context: Context, appId: Int, dlcGameIds: List<Int>, installPath: String, containerLanguage: String): Result<DownloadInfo> {
-            val instance = getInstance() ?: return Result.failure(Exception("Service not available"))
+            Timber.tag("Epic").i("downloadGame: appId=$appId, dlcs=$dlcGameIds, path=$installPath")
+            val instance = getInstance() ?: run {
+                Timber.tag("Epic").w("downloadGame: EpicService not running")
+                return Result.failure(Exception("Service not available"))
+            }
 
-            val game = runBlocking { instance.epicManager.getGameById(appId) }
-                ?: return Result.failure(Exception("Game not found for appId: $appId"))
+            val game = runBlocking { instance.epicManager.getGameById(appId) } ?: run {
+                Timber.tag("Epic").w("downloadGame: no game in database for appId=$appId")
+                return Result.failure(Exception("Game not found for appId: $appId"))
+            }
             val gameId = game.id ?: return Result.failure(Exception("Game ID not found for appId: $appId"))
 
             // Check if already downloading
@@ -491,7 +497,7 @@ class EpicService : Service() {
                         commonRedistDir,
                     )
 
-                    Timber.tag("Epic").d("Download result: ${if (result.isSuccess) "SUCCESS" else "FAILURE: ${result.exceptionOrNull()?.message}"}")
+                    Timber.tag("Epic").i("Download result: ${if (result.isSuccess) "SUCCESS" else "FAILURE: ${result.exceptionOrNull()?.message}"}")
 
                     if (result.isSuccess) {
                         Timber.i("[Download] Completed successfully for game $gameId")

@@ -194,7 +194,7 @@ class EpicDownloadManager @Inject constructor(
                 preferredCdnUrls.ifEmpty { manifestData.cdnUrls },
             )
 
-            Timber.tag("Epic").d("Manifest fetched with ${cdnUrls.size} CDN URLs, parsing...")
+            Timber.tag("Epic").i("Manifest fetched with ${cdnUrls.size} CDN URLs, parsing...")
 
             // Parse manifest binary to get chunks and files
             val manifest = EpicManifest.readAll(manifestData.manifestBytes)
@@ -321,7 +321,7 @@ class EpicDownloadManager @Inject constructor(
                 !fileExistsWithCorrectHash(File(installDir, file.filename), file.fileSize, file.hash)
             }
             downloadInfo.updateStatusMessage(null)
-            Timber.tag("Epic").d("Skipping ${files.size - pendingFiles.size} existing file(s), downloading ${pendingFiles.size}")
+            Timber.tag("Epic").i("Skipping ${files.size - pendingFiles.size} existing file(s), downloading ${pendingFiles.size}")
 
             val fileChunkIds = pendingFiles.map { f -> f.chunkParts.map { it.guidStr } }
             val chunkQueue = buildFileOrderedChunkQueue(manifest, fileChunkIds)

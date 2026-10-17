@@ -834,6 +834,7 @@ class EpicManager @Inject constructor(
             // Get credentials
             val credentials = EpicAuthManager.getStoredCredentials(context)
             if (credentials.isFailure) {
+                Timber.tag("Epic").w("Manifest: no stored credentials (${credentials.exceptionOrNull()?.message})")
                 return@withContext Result.failure(credentials.exceptionOrNull() ?: Exception("No credentials"))
             }
 
@@ -857,6 +858,7 @@ class EpicManager @Inject constructor(
                 .build()
 
             val manifestJson = httpClient.newCall(request).execute().use { response ->
+                Timber.tag("Epic").i("Manifest: API HTTP ${response.code} for $appName")
                 if (!response.isSuccessful) {
                     return@withContext Result.failure(Exception("Manifest API request failed: ${response.code}"))
                 }
@@ -963,6 +965,7 @@ class EpicManager @Inject constructor(
                 .build()
 
             val manifestBytes = getCdnClient().newCall(manifestRequest).execute().use { manifestResponse ->
+                Timber.tag("Epic").i("Manifest: CDN HTTP ${manifestResponse.code} for $appName")
                 if (!manifestResponse.isSuccessful) {
                     return@withContext Result.failure(Exception("Failed to download manifest binary: ${manifestResponse.code}"))
                 }
@@ -975,7 +978,7 @@ class EpicManager @Inject constructor(
                 bytes
             }
 
-            Timber.tag("Epic").d("Manifest fetched with ${cdnUrls.size} CDN URLs")
+            Timber.tag("Epic").i("Manifest: fetched ${manifestBytes.size} bytes, ${cdnUrls.size} CDN URLs")
             Result.success(ManifestResult(manifestBytes, cdnUrls))
         } catch (e: Exception) {
             Timber.tag("Epic").e(e, "Exception fetching manifest")
