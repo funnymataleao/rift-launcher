@@ -29,6 +29,18 @@ internal enum class LaunchKind {
 
     /** Vita3K: the game is a .psvita file holding the title ID. */
     VITA3K,
+
+    /** aPS3e: its own action and the disc image's URI in the iso_uri extra. */
+    APS3E,
+
+    /** ARMSX3: the game goes in the path extra of its main activity. */
+    ARMSX3,
+
+    /** EmuCoreC: the game goes in the gamePath extra of its PS3 activity. */
+    EMUCOREC,
+
+    /** BachataS4 (PS4): starts an installed game by its CUSA code, taken from the file name. */
+    BACHATAS4,
 }
 
 /** Where to get an emulator from: only its own official page or its Google Play listing. */
@@ -66,6 +78,8 @@ internal data class PlatformDef(
     val emulators: List<KnownEmulator>,
     /** Cores to offer when the chosen emulator is RetroArch; the first one is the default. */
     val cores: List<RetroCore> = emptyList(),
+    /** A note shown on the emulator page, for limits the person should know before choosing. */
+    @StringRes val noteRes: Int = 0,
 )
 
 /**
@@ -128,6 +142,40 @@ internal object EmulatorCatalog {
                 ),
                 KnownEmulator("Play!", listOf("com.virtualapplications.play"), LaunchKind.VIEW, activity = "com.virtualapplications.play.MainActivity"),
             ),
+        ),
+        PlatformDef(
+            "ps3", R.string.rift_platform_ps3, setOf("iso"),
+            listOf(
+                KnownEmulator(
+                    "aPS3e",
+                    listOf("aenu.aps3e", "aenu.aps3e.premium"),
+                    LaunchKind.APS3E,
+                    hints = listOf("aps3e"),
+                    download = EmulatorDownload(playId = "aenu.aps3e"),
+                ),
+                KnownEmulator(
+                    "ARMSX3",
+                    listOf("com.armsx3"),
+                    LaunchKind.ARMSX3,
+                    hints = listOf("armsx3"),
+                    download = EmulatorDownload(url = "https://github.com/ARMSX2/ARMSX3/releases"),
+                ),
+                KnownEmulator("EmuCoreC", listOf("com.sbro.emucorec"), LaunchKind.EMUCOREC, hints = listOf("emucorec")),
+            ),
+            noteRes = R.string.rift_platform_ps3_note,
+        ),
+        PlatformDef(
+            "ps4", R.string.rift_platform_ps4, setOf("pkg", "ps4"),
+            listOf(
+                KnownEmulator(
+                    "Bachata S4",
+                    listOf("com.bachatas4.android", "com.bachatas4.android.github"),
+                    LaunchKind.BACHATAS4,
+                    hints = listOf("bachatas4"),
+                    download = EmulatorDownload(url = "https://github.com/JICA98/Bachata-S4/releases"),
+                ),
+            ),
+            noteRes = R.string.rift_platform_ps4_note,
         ),
         PlatformDef(
             "ps1", R.string.rift_platform_ps1, setOf("bin", "cue", "chd", "iso", "img", "pbp", "m3u", "mdf"),

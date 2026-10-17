@@ -305,6 +305,7 @@ internal fun LinkRow(
     enabled: Boolean = true,
     danger: Boolean = false,
     onLongClick: (() -> Unit)? = null,
+    leading: (@Composable () -> Unit)? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
@@ -313,6 +314,7 @@ internal fun LinkRow(
         subtitle = subtitle,
         icon = icon,
         iconPainter = iconPainter,
+        leading = leading,
         focused = focused,
         enabled = enabled,
         danger = danger,

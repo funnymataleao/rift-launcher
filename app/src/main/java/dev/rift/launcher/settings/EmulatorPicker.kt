@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -234,6 +235,119 @@ internal fun EmulatorPickerDialog(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * The emulator choice as a page of the Emulators section (not a pop-up): the same lists as [EmulatorPickerDialog]
+ * (installed for this system, downloads, every other app), on the settings plates with the app icons. The
+ * caller handles Back by closing the page.
+ */
+@Composable
+internal fun EmulatorPickerPage(platform: PlatformDef, onPick: (packageName: String) -> Unit) {
+    val context = LocalContext.current
+    val apps = rememberInstalledApps()
+    var query by remember { mutableStateOf("") }
+    val rows by remember(apps, query, platform) {
+        derivedStateOf { pickerRows(context, platform, apps, query.trim()) }
+    }
+    val playLabel = stringResource(R.string.rift_emulator_download_play)
+    val siteLabel = stringResource(R.string.rift_emulator_download_site)
+    val firstRow = remember { FocusRequester() }
+    val firstKey = rows.firstOrNull { it !is PickerRow.Header }
+    LaunchedEffect(firstKey == null) {
+        if (firstKey != null) runCatching { firstRow.requestFocus() }
+    }
+
+    SettingsGroup {
+        PickerSearchField(query = query, onChange = { query = it })
+        if (platform.noteRes != 0) NoteText(stringResource(platform.noteRes))
+    }
+    if (rows.isEmpty()) NoteText(stringResource(R.string.rift_emulator_nothing_found))
+
+    // The flat list is cut at its headers: each header opens a group of plates.
+    val sections = ArrayList<Pair<PickerRow.Header, MutableList<PickerRow>>>()
+    for (row in rows) {
+        if (row is PickerRow.Header) sections += row to ArrayList() else sections.lastOrNull()?.second?.add(row)
+    }
+    for ((header, items) in sections) {
+        SettingsGroup(
+            title = stringResource(
+                when (header.title) {
+                    HEADER_INSTALLED -> R.string.rift_emulator_group_installed
+                    HEADER_DOWNLOAD -> R.string.rift_emulator_group_download
+                    else -> R.string.rift_emulator_group_all
+                },
+            ),
+        ) {
+            items.forEach { row ->
+                val mod = if (row == firstKey) Modifier.focusRequester(firstRow) else Modifier
+                when (row) {
+                    is PickerRow.Installed -> LinkRow(
+                        modifier = mod,
+                        title = row.label,
+                        leading = { PickerIcon(row.packageName) },
+                        onClick = { onPick(row.packageName) },
+                    )
+                    is PickerRow.Download -> LinkRow(
+                        modifier = mod,
+                        title = row.label,
+                        leading = { PickerIcon(null) },
+                        value = if (row.download.playId != null) playLabel else siteLabel,
+                        onClick = { openEmulatorDownload(context, row.download) },
+                    )
+                    is PickerRow.Header -> Unit
+                }
+            }
+            if (header.title == HEADER_DOWNLOAD) NoteText(stringResource(R.string.rift_emulator_download_hint))
+        }
+    }
+}
+
+/** The search field, on a plate like the settings rows. */
+@Composable
+private fun PickerSearchField(query: String, onChange: (String) -> Unit) {
+    var focused by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .plateFill(focused)
+            .heightIn(min = RiftSizes.button)
+            .padding(horizontal = 18.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(Icons.Rounded.Search, contentDescription = null, tint = plateSubtext(focused), modifier = Modifier.size(22.dp))
+        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            if (query.isEmpty()) {
+                Text(stringResource(R.string.rift_emulator_search_hint), color = plateSubtext(focused), fontSize = 16.sp)
+            }
+            BasicTextField(
+                value = query,
+                onValueChange = { onChange(it.take(40)) },
+                singleLine = true,
+                textStyle = TextStyle(color = plateText(focused), fontSize = 16.sp),
+                cursorBrush = SolidColor(plateText(focused)),
+                modifier = Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused },
+            )
+        }
+    }
+}
+
+/** An app's icon at the start of a plate; a download arrow for an emulator that is not installed yet. */
+@Composable
+private fun PickerIcon(packageName: String?) {
+    val context = LocalContext.current
+    val icon by produceState<Bitmap?>(packageName?.let { AndroidGames.iconCached(it) }, packageName) {
+        if (packageName != null && value == null) value = withContext(Dispatchers.IO) { AndroidGames.icon(context, packageName) }
+    }
+    Box(modifier = Modifier.size(40.dp).clip(RiftShapes.control), contentAlignment = Alignment.Center) {
+        val bitmap = icon
+        if (bitmap != null) {
+            Image(bitmap = bitmap.asImageBitmap(), contentDescription = null, modifier = Modifier.size(40.dp))
+        } else if (packageName == null) {
+            Icon(Icons.Rounded.Download, contentDescription = null, tint = RiftColors.OnSurfaceVariant, modifier = Modifier.size(26.dp))
         }
     }
 }
