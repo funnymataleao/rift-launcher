@@ -86,6 +86,7 @@ object AndroidGames {
     fun launch(context: Context, game: AndroidGame) {
         val intent = context.packageManager.getLaunchIntentForPackage(game.packageName) ?: return
         context.getSharedPreferences(USAGE_PREFS, Context.MODE_PRIVATE).edit { putLong(game.packageName, System.currentTimeMillis()) }
+        dev.rift.launcher.overlay.ExternalGameSession.started(context, game.packageName)
         context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 }
