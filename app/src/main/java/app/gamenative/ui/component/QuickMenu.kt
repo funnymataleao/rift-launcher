@@ -17,7 +17,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
@@ -45,7 +44,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Gamepad
@@ -2035,21 +2033,7 @@ private fun ImmersiveQuickMenuTab(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp, vertical = 2.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(
-                        if (resetIsFocused) {
-                            accentColor.copy(alpha = 0.16f)
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f)
-                        },
-                    )
-                    .then(
-                        if (resetIsFocused) {
-                            Modifier.border(width = 2.dp, color = accentColor.copy(alpha = 0.7f), shape = RoundedCornerShape(14.dp))
-                        } else {
-                            Modifier
-                        }
-                    )
+                    .plateFill(focused = resetIsFocused, shape = PlateShape, rest = Color.Transparent)
                     .selectable(
                         selected = false,
                         interactionSource = resetInteractionSource,
@@ -2063,12 +2047,12 @@ private fun ImmersiveQuickMenuTab(
                     text = stringResource(R.string.immersive_reset_effects_button),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = plateText(resetIsFocused),
                 )
                 Text(
                     text = stringResource(R.string.immersive_reset_effects_desc),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = plateSubtext(resetIsFocused),
                 )
             }
         }
@@ -2100,54 +2084,6 @@ internal fun QuickMenuSectionHeader(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-    }
-}
-
-@Composable
-private fun QuickMenuCloseButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    // Flat mode keeps master's explicit focusable(); the immersive path drops it to
-    // avoid a second focus target on the same element (see LocalImmersiveInputBypass).
-    val inputBypass = LocalImmersiveInputBypass.current
-    val isFocused by interactionSource.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(14.dp)
-
-    Box(
-        modifier = modifier
-            .size(44.dp)
-            .clip(shape)
-            .background(
-                if (isFocused) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                } else {
-                    Color.Transparent
-                },
-            )
-            .focusRing(interactionSource, shape, width = 2.dp)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-            )
-            .then(
-                // Flat mode keeps master's second focus target; immersive drops it.
-                if (inputBypass.active) Modifier else Modifier.focusable(interactionSource = interactionSource),
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Default.Close,
-            contentDescription = stringResource(R.string.quick_menu_back),
-            tint = if (isFocused) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            modifier = Modifier.size(24.dp),
-        )
     }
 }
 
