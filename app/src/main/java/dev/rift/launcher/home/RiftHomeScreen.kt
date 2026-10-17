@@ -2051,23 +2051,24 @@ private fun TopBar(
         BumperButton(GamepadButton.LB.iconRes, "LB") { onStep(-1) }
         SectionTabs(glass = glass, sections = sections, selected = selected, onSelect = onSelect)
         BumperButton(GamepadButton.RB.iconRes, "RB") { onStep(1) }
-        Spacer(modifier = Modifier.weight(1f))
-        if (search != null) SearchField(search)
+        // The search sits in the middle of what is left, the status icons in the right corner (Steam Big Picture).
+        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            if (search != null) SearchField(search)
+        }
+        StatusIcons()
     }
 }
 
-/** Light, half transparent search: an icon until used, then a slim pill with the query. */
+/** Search in the middle of the top bar: a black glass pill, an icon and the query (or "Search"). */
 @Composable
 private fun SearchField(search: SearchState) {
-    if (!search.open) {
-        PillButton(onClick = search.onOpen, background = { focused -> solid(if (focused) RiftColors.SurfaceContainerHigh else Color.Transparent) }, square = true) {
-            Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.rift_search), tint = RiftColors.OnSurfaceVariant.copy(alpha = 0.7f))
-        }
-        return
-    }
     if (!search.typing) {
         // Not typing: a plain pill with the query; A opens the keyboard again.
-        PillButton(onClick = search.onOpen, background = { focused -> solid(Color.White.copy(alpha = if (focused) 0.16f else 0.08f)) }, modifier = Modifier.width(320.dp)) {
+        PillButton(
+            onClick = search.onOpen,
+            background = { focused -> solid(if (focused) RiftColors.SurfaceContainerHigh else Color.Transparent) },
+            modifier = Modifier.width(320.dp).blackGlass(RiftShapes.full),
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -2092,7 +2093,7 @@ private fun SearchField(search: SearchState) {
             .height(RiftSizes.button)
             .width(320.dp)
             .clip(RiftShapes.full)
-            .background(Color.White.copy(alpha = 0.08f))
+            .blackGlass(RiftShapes.full)
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
