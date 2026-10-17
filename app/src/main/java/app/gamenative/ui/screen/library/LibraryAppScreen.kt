@@ -667,13 +667,13 @@ private data class StoreMediaItem(
     val poster: String? = null,
 )
 
-/** Rift: frames grabbed from trailers that came without a preview, kept for the session. */
-private val trailerFrames = java.util.concurrent.ConcurrentHashMap<String, androidx.compose.ui.graphics.ImageBitmap>()
+/** Rift: frames grabbed from trailers that came without a preview; the most recent few are kept. */
+private val trailerFrames = android.util.LruCache<String, androidx.compose.ui.graphics.ImageBitmap>(16)
 
 /** Rift: a still from the trailer itself (2 s in), for a trailer whose source gives no preview. Null until ready or when it can't be read. */
 @Composable
 private fun rememberTrailerFrame(url: String, enabled: Boolean): androidx.compose.ui.graphics.ImageBitmap? {
-    val frame by androidx.compose.runtime.produceState(trailerFrames[url], url, enabled) {
+    val frame by androidx.compose.runtime.produceState(trailerFrames.get(url), url, enabled) {
         if (!enabled || value != null || url.contains(".m3u8", ignoreCase = true)) return@produceState
         value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             runCatching {
@@ -693,7 +693,7 @@ private fun rememberTrailerFrame(url: String, enabled: Boolean): androidx.compos
                 }
                 scaled.asImageBitmap()
             }
-        }?.also { trailerFrames[url] = it }
+        }?.also { trailerFrames.put(url, it) }
     }
     return frame
 }
@@ -714,8 +714,8 @@ private fun StoreMediaPage(
     if (item.isVideo) {
         VideoHero(
             videoUrl = item.url,
-            // Rift: opened from Media, a trailer shows its own preview while it loads, not the game's background.
-            fallbackImageUrl = if (fullscreen) item.poster ?: videoFallback else videoFallback,
+            // Rift: opened from Media, a trailer shows its own preview while it loads (black without one), never the game's background.
+            fallbackImageUrl = if (fullscreen) item.poster.orEmpty() else videoFallback,
             contentDescription = gameName,
             active = active,
             muted = muted,
