@@ -202,6 +202,84 @@ private fun StatusOption(
     }
 }
 
+/** The colour of a Steam status dot: green Online, yellow Away, grey Invisible/Offline. */
+@Composable
+internal fun statusDotColor(state: EPersonaState): Color = when (state) {
+    EPersonaState.Away -> PluviaTheme.colors.statusAway
+    EPersonaState.Invisible, EPersonaState.Offline -> PluviaTheme.colors.statusOffline
+    else -> PluviaTheme.colors.statusInstalled
+}
+
+/**
+ * The status dropdown (Online / Away / Invisible) of the System menu's profile plate; the home's avatar
+ * opens the same one. Picking a status sets it on Steam through [onSelect].
+ */
+@Composable
+internal fun StatusPickerMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    selected: EPersonaState,
+    onSelect: (EPersonaState) -> Unit,
+    width: androidx.compose.ui.unit.Dp,
+    focusRequester: FocusRequester,
+    modifier: Modifier = Modifier,
+) {
+    // As wide as the profile plate, near-opaque black glass, accent focus like the rows.
+    androidx.compose.material3.DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+        modifier = modifier.width(width),
+        shape = PlateShape,
+        containerColor = BlackGlass.Solid.copy(alpha = 0.96f),
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .focusGroup(),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.status),
+                style = MaterialTheme.typography.labelLarge,
+                color = RiftColors.OnSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
+            )
+            listOf(
+                EPersonaState.Online to R.string.status_online,
+                EPersonaState.Away to R.string.status_away,
+                EPersonaState.Invisible to R.string.status_invisible,
+            ).forEach { (state, label) ->
+                StatusOption(
+                    text = stringResource(label),
+                    statusColor = statusDotColor(state),
+                    isSelected = selected == state,
+                    focusRequester = if (selected == state) focusRequester else null,
+                    onClick = { onSelect(state) },
+                )
+            }
+        }
+    }
+}
+
+/** The signed-in user's Steam status, kept live from the persona events (Online until Steam says otherwise). */
+@Composable
+internal fun rememberPersonaStatus(): EPersonaState {
+    var status by remember { mutableStateOf(SteamService.instance?.localPersona?.value?.state ?: EPersonaState.Online) }
+    DisposableEffect(true) {
+        val onPersona: (SteamEvent.PersonaStateReceived) -> Unit = { event -> status = event.persona.state }
+        val onLoggedOut: (SteamEvent.LoggedOut) -> Unit = { status = EPersonaState.Offline }
+        PluviaApp.events.on<SteamEvent.PersonaStateReceived, Unit>(onPersona)
+        PluviaApp.events.on<SteamEvent.LoggedOut, Unit>(onLoggedOut)
+        onDispose {
+            PluviaApp.events.off<SteamEvent.PersonaStateReceived, Unit>(onPersona)
+            PluviaApp.events.off<SteamEvent.LoggedOut, Unit>(onLoggedOut)
+        }
+    }
+    return status
+}
+
 /**
  * Full-screen System Menu
  * Opens with START button, shows profile and system settings
@@ -469,48 +547,20 @@ fun SystemMenu(
 
                         // Status picker dropdown
                         // As wide as the profile plate, near-opaque black glass, accent focus like the rows.
-                        androidx.compose.material3.DropdownMenu(
+                        StatusPickerMenu(
                             expanded = showStatusPicker,
-                            onDismissRequest = { showStatusPicker = false },
-                            modifier = Modifier.width(profileWidth.coerceAtLeast(280.dp)),
-                            shape = PlateShape,
-                            containerColor = BlackGlass.Solid.copy(alpha = 0.96f),
-                            tonalElevation = 0.dp,
-                            shadowElevation = 0.dp,
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                                    .focusGroup(),
-                                verticalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.status),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = RiftColors.OnSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
-                                )
-                                listOf(
-                                    Triple(EPersonaState.Online, stringResource(R.string.status_online), PluviaTheme.colors.statusInstalled),
-                                    Triple(EPersonaState.Away, stringResource(R.string.status_away), PluviaTheme.colors.statusAway),
-                                    Triple(EPersonaState.Invisible, stringResource(R.string.status_invisible), PluviaTheme.colors.statusOffline),
-                                ).forEach { (state, label, color) ->
-                                    StatusOption(
-                                        text = label,
-                                        statusColor = color,
-                                        isSelected = selectedStatus == state,
-                                        focusRequester = if (selectedStatus == state) statusFocusRequester else null,
-                                        onClick = {
-                                            selectedStatus = state
-                                            showStatusPicker = false
-                                            scope.launch {
-                                                SteamService.setPersonaState(state)
-                                            }
-                                        },
-                                    )
+                            onDismiss = { showStatusPicker = false },
+                            selected = selectedStatus,
+                            width = profileWidth.coerceAtLeast(280.dp),
+                            focusRequester = statusFocusRequester,
+                            onSelect = { state ->
+                                selectedStatus = state
+                                showStatusPicker = false
+                                scope.launch {
+                                    SteamService.setPersonaState(state)
                                 }
-                            }
-                        }
+                            },
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))

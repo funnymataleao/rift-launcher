@@ -40,6 +40,22 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import app.gamenative.service.SteamService
+import app.gamenative.ui.screen.library.components.StatusPickerMenu
+import app.gamenative.ui.screen.library.components.rememberPersonaStatus
+import app.gamenative.ui.screen.library.components.statusDotColor
+import dev.rift.launcher.ui.theme.RiftAccent
+import dev.rift.launcher.ui.theme.RiftMotion
+import kotlinx.coroutines.launch
 import app.gamenative.NetworkMonitor
 import app.gamenative.PrefManager
 import app.gamenative.utils.getAvatarURL
@@ -53,7 +69,7 @@ import dev.rift.launcher.ui.theme.RiftColors
  * and the network when "Show battery" / "Show network" are on in Settings → Appearance.
  */
 @Composable
-internal fun StatusIcons() {
+internal fun StatusIcons(avatarFocus: FocusRequester) {
     val context = LocalContext.current
     var showBattery by remember { mutableStateOf(RiftPrefs.of(context).showBattery) }
     var showNetwork by remember { mutableStateOf(RiftPrefs.of(context).showNetwork) }
@@ -76,30 +92,81 @@ internal fun StatusIcons() {
         if (showBattery) BatteryStatus()
         // The avatar sits a little apart from the status icons.
         Spacer(modifier = Modifier.width(6.dp))
-        ProfileIcon()
+        ProfileIcon(avatarFocus)
     }
 }
 
+/**
+ * The round avatar with the status dot (green Online, yellow Away, grey Invisible, like Steam). A on it opens
+ * the same status dropdown as the System panel's profile plate. Two states: focused is filled with the accent
+ * behind a slightly larger avatar, not focused is plain.
+ */
 @Composable
-private fun ProfileIcon() {
+private fun ProfileIcon(focusRequester: FocusRequester) {
     val avatarHash = PrefManager.steamUserAvatarHash
-    // A round avatar of one fixed size, whatever room the bar leaves (never squeezed into a sliver).
-    Box(
-        modifier = Modifier
-            .requiredSize(44.dp)
-            .clip(CircleShape)
-            .background(Color.Black.copy(alpha = 0.55f)),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (avatarHash.isNotEmpty()) {
-            CoilImage(
-                modifier = Modifier.fillMaxSize(),
-                imageModel = { avatarHash.getAvatarURL() },
-                imageOptions = ImageOptions(contentScale = ContentScale.Crop),
-            )
-        } else {
-            Icon(Icons.Rounded.Person, contentDescription = null, tint = RiftColors.OnSurface, modifier = Modifier.size(26.dp))
+    val status = rememberPersonaStatus()
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val scale by animateFloatAsState(if (focused) 1.12f else 1f, RiftMotion.focusSpring(), label = "avatarScale")
+    var pickerOpen by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val pickerFocus = remember { FocusRequester() }
+    Box {
+        Box(
+            modifier = Modifier
+                .requiredSize(48.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .clip(CircleShape)
+                .background(if (focused) RiftAccent.current.brush else SolidColor(Color.Transparent))
+                .focusRequester(focusRequester)
+                .clickable(interactionSource = interaction, indication = null) {
+                    if (SteamService.isLoggedIn) pickerOpen = true
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            // A round avatar of one fixed size, whatever room the bar leaves (never squeezed into a sliver).
+            Box(
+                modifier = Modifier
+                    .requiredSize(if (focused) 38.dp else 44.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.55f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (avatarHash.isNotEmpty()) {
+                    CoilImage(
+                        modifier = Modifier.fillMaxSize(),
+                        imageModel = { avatarHash.getAvatarURL() },
+                        imageOptions = ImageOptions(contentScale = ContentScale.Crop),
+                    )
+                } else {
+                    Icon(Icons.Rounded.Person, contentDescription = null, tint = RiftColors.OnSurface, modifier = Modifier.size(26.dp))
+                }
+            }
+            if (SteamService.isLoggedIn) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(14.dp)
+                        .background(RiftColors.Background, CircleShape)
+                        .padding(2.dp)
+                        .background(statusDotColor(status), CircleShape),
+                )
+            }
         }
+        StatusPickerMenu(
+            expanded = pickerOpen,
+            onDismiss = { pickerOpen = false },
+            selected = status,
+            width = 280.dp,
+            focusRequester = pickerFocus,
+            onSelect = { state ->
+                pickerOpen = false
+                scope.launch { SteamService.setPersonaState(state) }
+            },
+        )
     }
 }
 

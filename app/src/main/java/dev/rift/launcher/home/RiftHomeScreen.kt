@@ -724,6 +724,10 @@ fun RiftHomeScreen(
     // row with the results, B again closes the search. The field only takes focus while typing.
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var searchTyping by remember { mutableStateOf(false) }
+    // Up from the row reaches the search and the avatar only; the tabs are LB/RB's.
+    val searchFocus = remember { FocusRequester() }
+    val avatarFocus = remember { FocusRequester() }
+    var topFocused by remember { mutableStateOf(false) }
     val keyboard = LocalSoftwareKeyboardController.current
     fun stopTyping() {
         searchTyping = false
@@ -1187,8 +1191,18 @@ fun RiftHomeScreen(
                         return@onPreviewKeyEvent true
                     }
                     if (overlayOpen) return@onPreviewKeyEvent false
-                    // Up from the row does nothing: the top bar and the tabs are reached with LB/RB only (Denis).
-                    if (native.keyCode == KeyEvent.KEYCODE_DPAD_UP && section != null && !searchOpen) return@onPreviewKeyEvent true
+                    // Up from the row goes to the search or the avatar (the tabs are LB/RB's); Down comes back.
+                    if (native.keyCode == KeyEvent.KEYCODE_DPAD_UP && section != null && !searchTyping) {
+                        if (!topFocused) {
+                            val target = if (section == RiftSection.PcGames || RiftSection.PcGames in sections) searchFocus else avatarFocus
+                            runCatching { target.requestFocus() }
+                        }
+                        return@onPreviewKeyEvent true
+                    }
+                    if (native.keyCode == KeyEvent.KEYCODE_DPAD_DOWN && topFocused && !searchTyping) {
+                        refocusCover()
+                        return@onPreviewKeyEvent true
+                    }
                     when (event.nativeKeyEvent.keyCode) {
                         KeyEvent.KEYCODE_BUTTON_L1 -> {
                             switchSection(-1)
@@ -1298,6 +1312,9 @@ fun RiftHomeScreen(
                         selected = section,
                         onSelect = ::selectSection,
                         onStep = ::switchSection,
+                        searchFocus = searchFocus,
+                        avatarFocus = avatarFocus,
+                        modifier = Modifier.onFocusChanged { topFocused = it.hasFocus },
                         search = if (section == RiftSection.PcGames) {
                             SearchState(
                                 open = searchOpen,
@@ -1310,6 +1327,21 @@ fun RiftHomeScreen(
                                 },
                                 onQuery = viewModel::onSearchQuery,
                                 onDone = ::stopTyping,
+                            )
+                        } else if (RiftSection.PcGames in sections) {
+                            // On another tab the search belongs to the PC games: it takes you there and opens.
+                            SearchState(
+                                open = false,
+                                typing = false,
+                                query = "",
+                                onOpen = {
+                                    selectSection(RiftSection.PcGames)
+                                    viewModel.onIsSearching(true)
+                                    searchOpen = true
+                                    searchTyping = true
+                                },
+                                onQuery = {},
+                                onDone = {},
                             )
                         } else {
                             null
@@ -2517,10 +2549,13 @@ private fun TopBar(
     onSelect: (RiftSection) -> Unit,
     onStep: (Int) -> Unit,
     search: SearchState?,
+    searchFocus: FocusRequester,
+    avatarFocus: FocusRequester,
+    modifier: Modifier = Modifier,
 ) {
     // Big Picture style: only the section tabs, between the bumpers that switch them.
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = ScreenPadding, vertical = 18.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -2531,21 +2566,22 @@ private fun TopBar(
         BumperButton(GamepadButton.RB.iconRes, "RB") { onStep(1) }
         // The search sits in the middle of what is left, the status icons in the right corner (Steam Big Picture).
         Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-            if (search != null) SearchField(search)
+            if (search != null) SearchField(search, searchFocus)
         }
-        StatusIcons()
+        StatusIcons(avatarFocus)
     }
 }
 
 /** Search in the middle of the top bar: a black glass pill, an icon and the query (or "Search"). */
 @Composable
-private fun SearchField(search: SearchState) {
+private fun SearchField(search: SearchState, pillFocus: FocusRequester) {
     if (!search.typing) {
         // Not typing: a plain pill with the query; A opens the keyboard again.
         PillButton(
             onClick = search.onOpen,
             background = { focused -> solid(if (focused) RiftAccent.current.main else Color.Transparent) },
             modifier = Modifier.widthIn(max = 320.dp).height(RiftSizes.button).clip(RiftShapes.full).blackGlass(RiftShapes.full),
+            focusRequester = pillFocus,
         ) { focused ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -2654,13 +2690,16 @@ private fun SectionTabs(
 ) {
     val context = LocalContext.current
     val customNames = remember { RiftTabPrefs.names(context) }
-    GlassTabs(
-        glass = glass,
-        tabs = sections,
-        selected = selected,
-        title = { customNames[it.key] ?: stringResource(it.titleRes) },
-        onSelect = onSelect,
-    )
+    // The tabs switch with LB/RB (or touch); the d-pad never lands on them.
+    Box(modifier = Modifier.focusProperties { canFocus = false }) {
+        GlassTabs(
+            glass = glass,
+            tabs = sections,
+            selected = selected,
+            title = { customNames[it.key] ?: stringResource(it.titleRes) },
+            onSelect = onSelect,
+        )
+    }
 }
 
 /** Tabs with the sliding glass capsule; the home's sections and the library's sources. */
