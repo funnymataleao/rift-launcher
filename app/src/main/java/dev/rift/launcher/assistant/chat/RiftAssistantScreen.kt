@@ -8,7 +8,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -97,6 +96,9 @@ import dev.rift.launcher.settings.RiftChip
 import dev.rift.launcher.settings.RiftChoiceDialog
 import dev.rift.launcher.settings.RiftPillButton
 import dev.rift.launcher.settings.RiftRoundButton
+import dev.rift.launcher.settings.plateFill
+import dev.rift.launcher.settings.plateSubtext
+import dev.rift.launcher.settings.plateText
 import dev.rift.launcher.ui.theme.RiftColors
 import dev.rift.launcher.ui.theme.RiftShapes
 import dev.rift.launcher.ui.theme.RiftTheme
@@ -275,7 +277,7 @@ private fun Header(
         if (inChat) {
             RiftChip(
                 text = game?.let { stringResource(R.string.rift_chat_game, it.name) } ?: stringResource(R.string.rift_chat_game_none),
-                selected = game != null,
+                selected = false,
                 onClick = onPickGame,
                 modifier = Modifier.widthIn(max = 360.dp),
             )
@@ -301,7 +303,7 @@ private fun SetupPane(ready: Boolean, onDone: () -> Unit, modifier: Modifier = M
         if (!ready) NoteText(stringResource(R.string.rift_chat_setup_intro))
         AssistantSettings()
         if (ready) {
-            RiftPillButton(text = stringResource(R.string.rift_chat_to_chat), onClick = onDone, primary = true)
+            RiftPillButton(text = stringResource(R.string.rift_chat_to_chat), onClick = onDone)
         }
     }
 }
@@ -410,7 +412,8 @@ private fun Composer(
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     val imeVisible = WindowInsets.isImeVisible
-    val accent = MaterialTheme.colorScheme.primary
+    val fieldInteraction = remember { MutableInteractionSource() }
+    val fieldFocused by fieldInteraction.collectIsFocusedAsState()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -432,17 +435,22 @@ private fun Composer(
             // The page opens on this field; the keyboard comes up on A or a tap, not on focus.
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send, showKeyboardOnFocus = false),
             keyboardActions = KeyboardActions(onSend = { onSend() }),
+            // Two states only, as every Rift plate: grey, or filled with the accent and dark text while focused.
+            interactionSource = fieldInteraction,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = accent,
-                unfocusedBorderColor = RiftColors.OutlineVariant,
-                cursorColor = accent,
-                focusedTextColor = RiftColors.OnSurface,
-                unfocusedTextColor = RiftColors.OnSurface,
-                focusedContainerColor = RiftColors.Surface,
-                unfocusedContainerColor = RiftColors.Surface,
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                cursorColor = plateText(true),
+                focusedTextColor = plateText(true),
+                unfocusedTextColor = plateText(false),
+                focusedPlaceholderColor = plateSubtext(true),
+                unfocusedPlaceholderColor = plateSubtext(false),
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
             ),
             modifier = Modifier
                 .weight(1f)
+                .plateFill(fieldFocused, RiftShapes.sheet, RiftColors.SurfaceContainer)
                 .focusRequester(field)
                 .onPreviewKeyEvent { event ->
                     // With the keyboard closed the gamepad moves on; A opens the keyboard (as in GameNative's chat).
@@ -502,15 +510,14 @@ private fun ChatBubble(entry: ChatEntry) {
         Box(
             modifier = Modifier
                 .widthIn(max = 720.dp)
-                .background(if (mine) RiftColors.SurfaceContainerHigh else RiftColors.SurfaceContainer, RiftShapes.card)
-                .border(if (focused) 2.dp else 0.dp, if (focused) Color.White.copy(alpha = 0.9f) else Color.Transparent, RiftShapes.card)
+                .plateFill(focused, RiftShapes.card, if (mine) RiftColors.SurfaceContainerHigh else RiftColors.SurfaceContainer)
                 .focusable(interactionSource = interaction)
                 .padding(horizontal = 18.dp, vertical = 14.dp),
         ) {
             when {
-                entry.notice -> Text(text = entry.text, color = RiftColors.Warning, fontSize = 16.sp, lineHeight = 22.sp)
-                mine -> Text(text = entry.text, color = RiftColors.OnSurface, fontSize = 17.sp, lineHeight = 23.sp)
-                else -> MarkdownText(document = rememberMarkdown(entry.text), color = RiftColors.OnSurface)
+                entry.notice -> Text(text = entry.text, color = if (focused) plateText(true) else RiftColors.Warning, fontSize = 16.sp, lineHeight = 22.sp)
+                mine -> Text(text = entry.text, color = plateText(focused), fontSize = 17.sp, lineHeight = 23.sp)
+                else -> MarkdownText(document = rememberMarkdown(entry.text), color = plateText(focused))
             }
         }
         if (entry.truncated) Small(stringResource(R.string.rift_chat_truncated))
