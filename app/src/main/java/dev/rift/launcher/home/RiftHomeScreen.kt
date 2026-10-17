@@ -2040,6 +2040,30 @@ fun RiftHomeScreen(
         RiftSection.Emulators -> emulatorSaved
         null -> true
     }
+    // Cold start: the lists arrive and reorder in batches. While nothing has been chosen yet (no remembered cover)
+    // the row stays at its start and the first cover keeps the focus, whatever slides in front of it.
+    var coldStart by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) { delay(COLD_START_SETTLE_MS); coldStart = false }
+    val firstKey = when (section) {
+        RiftSection.PcGames -> homeRow.firstOrNull()?.appId.takeIf { focusedAppId == null && !libraryCardFocused }
+        RiftSection.AndroidGames -> androidShown.firstOrNull()?.packageName.takeIf { focusedPackage == null }
+        RiftSection.PcStreaming -> streamHomeRow.firstOrNull()?.appId.takeIf { focusedStreamId == null && !streamCardFocused }
+        RiftSection.CloudStreaming -> cloudHomeRow.firstOrNull()?.appId.takeIf { focusedCloudId == null && !cloudCardFocused }
+        RiftSection.Emulators -> emulatorHomeRow.firstOrNull()?.appId.takeIf { focusedEmulatorId == null && !emulatorCardFocused }
+        null -> null
+    }
+    LaunchedEffect(section, firstKey) {
+        if (!coldStart || firstKey == null || openedAppId != null || libraryOpen) return@LaunchedEffect
+        when (section) {
+            RiftSection.PcGames -> pcRowState.scrollToItem(0)
+            RiftSection.AndroidGames -> androidRowState.scrollToItem(0)
+            RiftSection.PcStreaming -> streamRowState.scrollToItem(0)
+            RiftSection.CloudStreaming -> cloudRowState.scrollToItem(0)
+            RiftSection.Emulators -> emulatorRowState.scrollToItem(0)
+            null -> Unit
+        }
+        focusSection(section)
+    }
     LaunchedEffect(section, currentSaved) {
         if (currentSaved) return@LaunchedEffect
         delay(SOURCES_GRACE_MS)
@@ -3319,3 +3343,4 @@ private object RiftTabsMemory {
 }
 
 private const val SOURCES_GRACE_MS = 2500L
+private const val COLD_START_SETTLE_MS = 4000L
