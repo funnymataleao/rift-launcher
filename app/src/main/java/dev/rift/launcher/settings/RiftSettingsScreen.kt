@@ -1,5 +1,6 @@
 package dev.rift.launcher.settings
 
+import dev.rift.launcher.sound.riftKeySounds
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
@@ -151,6 +152,7 @@ fun RiftSettingsScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .displayCutoutPadding()
+                .riftKeySounds(panelKeys = false, touch = true)
                 .onPreviewKeyEvent { event ->
                     if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                     val step = when (event.key.nativeKeyCode) {
