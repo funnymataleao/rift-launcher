@@ -32,6 +32,7 @@ import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -78,6 +79,7 @@ internal class OverlayPanel(
     private val service: AccessibilityService,
     private val gamePackage: String,
     private val onBackToRift: () -> Unit,
+    private val onGameMenu: () -> Unit,
     private val onDismissed: () -> Unit,
 ) {
     private val dialog = ComponentDialog(service, android.R.style.Theme_Material_NoActionBar)
@@ -155,6 +157,12 @@ internal class OverlayPanel(
                 icon = Icons.Rounded.Home,
                 onClick = onBackToRift,
                 modifier = Modifier.focusRequester(first),
+            )
+            LinkRow(
+                title = stringResource(R.string.rift_overlay_game_menu),
+                subtitle = stringResource(R.string.rift_overlay_game_menu_summary),
+                icon = Icons.Rounded.Menu,
+                onClick = onGameMenu,
             )
             VolumeRow()
         }
