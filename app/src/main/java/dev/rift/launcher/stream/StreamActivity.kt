@@ -1,7 +1,9 @@
 package dev.rift.launcher.stream
 
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.graphics.Point
 import android.os.Build
 import android.os.Bundle
@@ -15,11 +17,13 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import android.view.ViewGroup
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
+import androidx.activity.ComponentDialog
 import androidx.activity.addCallback
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +47,7 @@ import com.limelight.nvstream.input.ControllerPacket
 import com.limelight.nvstream.input.MouseButtonPacket
 import com.limelight.nvstream.jni.MoonBridge
 import dev.rift.launcher.home.RiftControls
+import dev.rift.launcher.overlay.OverlayPanel
 import java.io.ByteArrayInputStream
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
@@ -96,7 +101,7 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
     }
 
     private lateinit var surfaceView: SurfaceView
-    private lateinit var menuView: ComposeView
+    private lateinit var panel: PanelWindow
     private lateinit var statusText: TextView
     private lateinit var messageText: TextView
     private val hideMessage = Runnable { messageText.visibility = View.GONE }
@@ -109,7 +114,15 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
     private var stopped = false
     private var streamWidth = 1920
     private var streamHeight = 1080
-    private var menuOpen by mutableStateOf(false)
+    private var panelOpen by mutableStateOf(false)
+
+    /** The side panel; opening and closing it shows and hides its window. */
+    private var menuOpen: Boolean
+        get() = panelOpen
+        set(value) {
+            panelOpen = value
+            if (value) panel.show() else panel.dismiss()
+        }
     private var panelRow by mutableStateOf(StreamMenuRow.END)
     private var maxFps by mutableStateOf(60)
     private var screenSize by mutableStateOf<Pair<Int, Int>?>(null)
@@ -168,28 +181,6 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
                 setBackgroundColor(Color.BLACK)
                 addView(surfaceView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT, Gravity.CENTER))
                 addView(statusText, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.START))
-                menuView = ComposeView(context).apply {
-                    isFocusable = true
-                    isFocusableInTouchMode = true
-                    setContent {
-                        StreamMenu(
-                            isOpen = menuOpen,
-                            appName = intent.getStringExtra(EXTRA_APP_NAME).orEmpty(),
-                            pcName = intent.getStringExtra(EXTRA_PC_NAME).orEmpty(),
-                            // After an error there is no stream to go back to: closing the panel leaves.
-                            onDismiss = { if (streamError != null) finish() else menuOpen = false },
-                            onEndStream = ::endStream,
-                            onPerfOverlayChange = ::showPerfOverlay,
-                            onPictureChange = ::pictureChanged,
-                            error = streamError,
-                            onRelaunch = ::relaunchStream,
-                            focusRow = panelRow,
-                            maxFps = maxFps,
-                            screenSize = screenSize,
-                        )
-                    }
-                }
-                addView(menuView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
                 addView(
                     messageText,
                     FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
@@ -197,6 +188,7 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
                 )
             },
         )
+        panel = PanelWindow()
         onBackPressedDispatcher.addCallback(this) {
             if (streamError != null) {
                 finish()
@@ -452,12 +444,11 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         rsX = 0
         rsY = 0
         sendController()
-        // The panel's buttons live in the Compose layer; it takes the focus so the d-pad and A work there.
-        // Touches on the stream leave the window in touch mode, where Compose buttons take no focus, so
-        // the panel leaves it first.
-        menuView.requestFocusFromTouch()
+        // The panel's window takes the focus so the d-pad and A work there. Touches on the stream leave
+        // touch mode on, where Compose buttons take no focus, so the panel leaves it first.
         menuOpen = true
-        Log.i(TAG, "panel opened, touch mode=${menuView.isInTouchMode} focus=${menuView.hasFocus()}")
+        panel.content.requestFocusFromTouch()
+        Log.i(TAG, "panel opened, touch mode=${panel.content.isInTouchMode} focus=${panel.content.hasFocus()}")
     }
 
     // NvConnectionListener
@@ -548,7 +539,12 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
     }
 
     override fun rumbleTriggers(controllerNumber: Short, leftTrigger: Short, rightTrigger: Short) = Unit
-    override fun setHdrMode(enabled: Boolean, hdrMetadata: ByteArray?) = decoder.setHdrMode(enabled, hdrMetadata)
+    override fun setHdrMode(enabled: Boolean, hdrMetadata: ByteArray?) {
+        Log.i(TAG, "host HDR ${if (enabled) "on" else "off"}")
+        decoder.setHdrMode(enabled, hdrMetadata)
+        // The window asks the screen for its HDR mode while the PC sends HDR.
+        runOnUiThread { window.colorMode = if (enabled) ActivityInfo.COLOR_MODE_HDR else ActivityInfo.COLOR_MODE_DEFAULT }
+    }
     override fun setMotionEventState(controllerNumber: Short, motionType: Byte, reportRateHz: Short) = Unit
     override fun setControllerLED(controllerNumber: Short, r: Byte, g: Byte, b: Byte) = Unit
 
@@ -613,25 +609,7 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
             }
             return true
         }
-        // With the panel open the pad drives the panel: B closes it, A and the d-pad reach Compose.
-        if (menuOpen) {
-            Log.i(TAG, "panel key ${KeyEvent.keyCodeToString(event.keyCode)} action=${event.action} focus=${menuView.hasFocus()}")
-            if (event.keyCode == KeyEvent.KEYCODE_BUTTON_B) {
-                // A slider that holds the pad lets go on B first; only a free B closes the panel.
-                if (event.action == KeyEvent.ACTION_DOWN) bTaken = super.dispatchKeyEvent(event)
-                if (event.action == KeyEvent.ACTION_UP && !bTaken) {
-                    if (streamError != null) finish() else menuOpen = false
-                }
-                return true
-            }
-            // The panel's rows take the pad's A themselves (sliders grab with it); what they leave goes
-            // on as d-pad center, which Compose clicks on.
-            if (event.keyCode == KeyEvent.KEYCODE_BUTTON_A) {
-                return super.dispatchKeyEvent(event) ||
-                    super.dispatchKeyEvent(KeyEvent(event.downTime, event.eventTime, event.action, KeyEvent.KEYCODE_DPAD_CENTER, event.repeatCount, event.metaState, event.deviceId, event.scanCode, event.flags, event.source))
-            }
-            return super.dispatchKeyEvent(event)
-        }
+        if (menuOpen) return true
         val flag = if (isGamepad(event.source)) buttonFlag(event.keyCode) else 0
         if (flag == 0) return super.dispatchKeyEvent(event)
         if (event.repeatCount > 0) return true
@@ -661,6 +639,93 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         }
         sendController()
         return true
+    }
+
+    /**
+     * A key in the panel's window: the pad drives the panel there. B closes it, A and the d-pad reach
+     * Compose through [dispatch].
+     */
+    private fun panelKey(event: KeyEvent, dispatch: (KeyEvent) -> Boolean): Boolean {
+        if (menuKey != KeyEvent.KEYCODE_UNKNOWN && event.keyCode == menuKey) {
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) menuOpen = false
+            return true
+        }
+        Log.i(TAG, "panel key ${KeyEvent.keyCodeToString(event.keyCode)} action=${event.action} focus=${panel.content.hasFocus()}")
+        if (event.keyCode == KeyEvent.KEYCODE_BUTTON_B) {
+            // A slider that holds the pad lets go on B first; only a free B closes the panel.
+            if (event.action == KeyEvent.ACTION_DOWN) bTaken = dispatch(event)
+            if (event.action == KeyEvent.ACTION_UP && !bTaken) closePanel()
+            return true
+        }
+        // The panel's rows take the pad's A themselves (sliders grab with it); what they leave goes on as
+        // d-pad center, which Compose clicks on.
+        if (event.keyCode == KeyEvent.KEYCODE_BUTTON_A) {
+            return dispatch(event) ||
+                dispatch(KeyEvent(event.downTime, event.eventTime, event.action, KeyEvent.KEYCODE_DPAD_CENTER, event.repeatCount, event.metaState, event.deviceId, event.scanCode, event.flags, event.source))
+        }
+        return dispatch(event)
+    }
+
+    /** After an error there is no stream to go back to: closing the panel leaves. */
+    private fun closePanel() {
+        if (streamError != null) finish() else menuOpen = false
+    }
+
+    /**
+     * The side panel in a window of its own over the stream, so the system blurs the video behind its
+     * glass where the device allows it, as Rift's panel over Android games does.
+     */
+    private inner class PanelWindow : ComponentDialog(this@StreamActivity, android.R.style.Theme_Material_NoActionBar) {
+        val content = ComposeView(this@StreamActivity).apply {
+            isFocusable = true
+            isFocusableInTouchMode = true
+            setContent {
+                StreamMenu(
+                    isOpen = panelOpen,
+                    appName = intent.getStringExtra(EXTRA_APP_NAME).orEmpty(),
+                    pcName = intent.getStringExtra(EXTRA_PC_NAME).orEmpty(),
+                    onDismiss = ::closePanel,
+                    onEndStream = ::endStream,
+                    onPerfOverlayChange = ::showPerfOverlay,
+                    onPictureChange = ::pictureChanged,
+                    error = streamError,
+                    onRelaunch = ::relaunchStream,
+                    focusRow = panelRow,
+                    maxFps = maxFps,
+                    screenSize = screenSize,
+                    ownWindow = true,
+                )
+            }
+        }
+
+        init {
+            setContentView(content, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            setCanceledOnTouchOutside(true)
+            setOnCancelListener { closePanel() }
+            onBackPressedDispatcher.addCallback(this@PanelWindow) { closePanel() }
+            window?.apply {
+                val density = resources.displayMetrics.density
+                val blur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && windowManager.isCrossWindowBlurEnabled
+                setBackgroundDrawable(ColorDrawable(if (blur) OverlayPanel.GLASS_OVER_BLUR else OverlayPanel.GLASS_SOLID))
+                if (blur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) setBackgroundBlurRadius((48 * density).toInt())
+                setDimAmount(0f)
+                setWindowAnimations(R.style.RiftOverlayPanelAnimation)
+                addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+                val screenDp = resources.displayMetrics.widthPixels / density
+                setLayout((min(OverlayPanel.PANEL_WIDTH_DP.toFloat(), screenDp * 0.85f) * density).toInt(), ViewGroup.LayoutParams.MATCH_PARENT)
+                setGravity(Gravity.END or Gravity.TOP)
+                // The panel's window holds the focus, and the focused window decides the system bars.
+                @Suppress("DEPRECATION")
+                decorView.systemUiVisibility = this@StreamActivity.window.decorView.systemUiVisibility
+            }
+        }
+
+        override fun dispatchKeyEvent(event: KeyEvent) = panelKey(event) { super.dispatchKeyEvent(it) }
+    }
+
+    override fun onDestroy() {
+        if (::panel.isInitialized) panel.dismiss()
+        super.onDestroy()
     }
 
     override fun onGenericMotionEvent(event: MotionEvent): Boolean {

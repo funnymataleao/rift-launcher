@@ -227,7 +227,7 @@ internal class OverlayPanel(
         }
     }
 
-    private companion object {
+    internal companion object {
         const val PANEL_WIDTH_DP = 440
         val GLASS_OVER_BLUR = AndroidColor.argb(158, 8, 8, 8)
         val GLASS_SOLID = AndroidColor.argb(235, 8, 8, 8)

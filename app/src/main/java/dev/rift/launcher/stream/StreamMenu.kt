@@ -2,6 +2,8 @@ package dev.rift.launcher.stream
 
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -91,10 +93,12 @@ fun StreamMenu(
     focusRow: String = StreamMenuRow.END,
     maxFps: Int = 60,
     screenSize: Pair<Int, Int>? = null,
+    ownWindow: Boolean = false,
 ) = RiftGlassTheme {
     Box(modifier = Modifier.fillMaxSize()) {
+        // In a window of its own the window is the glass, slides in and closes on a tap outside.
         AnimatedVisibility(
-            visible = isOpen,
+            visible = isOpen && !ownWindow,
             enter = fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec()),
             exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()),
         ) {
@@ -106,8 +110,8 @@ fun StreamMenu(
         }
         AnimatedVisibility(
             visible = isOpen,
-            enter = slideInHorizontally(MaterialTheme.motionScheme.defaultSpatialSpec()) { it },
-            exit = slideOutHorizontally(MaterialTheme.motionScheme.fastSpatialSpec()) { it },
+            enter = if (ownWindow) EnterTransition.None else slideInHorizontally(MaterialTheme.motionScheme.defaultSpatialSpec()) { it },
+            exit = if (ownWindow) ExitTransition.None else slideOutHorizontally(MaterialTheme.motionScheme.fastSpatialSpec()) { it },
             modifier = Modifier.align(Alignment.CenterEnd),
         ) {
             val requesters = remember { mutableMapOf<String, FocusRequester>() }
@@ -118,9 +122,7 @@ fun StreamMenu(
             val first = if (relaunch) RELAUNCH else focusRow
             Surface(
                 modifier = Modifier
-                    .width(adaptivePanelWidth(440.dp))
-                    .fillMaxHeight()
-                    .blackGlass()
+                    .then(if (ownWindow) Modifier.fillMaxSize() else Modifier.width(adaptivePanelWidth(440.dp)).fillMaxHeight().blackGlass())
                     .onFocusChanged {
                         focused = it.hasFocus
                         Log.i("RiftStream", "panel focus=${it.hasFocus}")
