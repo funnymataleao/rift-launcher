@@ -149,6 +149,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
@@ -481,8 +482,11 @@ private fun HeroFactChip(text: String, accent: String? = null) {
         if (accent != null) {
             Text(
                 text = accent,
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold, fontFeatureSettings = "tnum"),
-                color = dev.rift.launcher.ui.theme.RiftColors.Primary,
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontWeight = FontWeight.ExtraBold,
+                    fontFeatureSettings = "tnum",
+                    brush = dev.rift.launcher.ui.theme.RiftAccent.current.brush,
+                ),
             )
         }
         Text(
@@ -964,6 +968,36 @@ private fun GamePageSectionTabs(
  * the achievement cards, the compatibility cards), not just the focused tile's top edge (Denis 17.10).
  * Moving within the block (left/right in the media row) does not re-trigger it.
  */
+/**
+ * A progress ring painted with the accent: a gradient accent runs along the filled arc from its start to its
+ * end, so even a short arc shows the whole gradient. A plain arc with flat ends, no gap in the track.
+ */
+@Composable
+private fun AccentRing(progress: Float, trackColor: Color, strokeWidth: androidx.compose.ui.unit.Dp, modifier: Modifier = Modifier) {
+    val accent = dev.rift.launcher.ui.theme.RiftAccent.current
+    val sweep = 360f * progress.coerceIn(0f, 1f)
+    androidx.compose.foundation.Canvas(modifier) {
+        val stroke = strokeWidth.toPx()
+        val inset = stroke / 2f
+        val arcSize = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke)
+        val topLeft = androidx.compose.ui.geometry.Offset(inset, inset)
+        val style = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke, cap = androidx.compose.ui.graphics.StrokeCap.Butt)
+        drawArc(trackColor, startAngle = 0f, sweepAngle = 360f, useCenter = false, topLeft = topLeft, size = arcSize, style = style)
+        if (sweep <= 0f) return@Canvas
+        val brush = if (accent.isGradient) {
+            // A sweep gradient starts at three o'clock; turn it so it starts at twelve with the arc.
+            val last = accent.stops.lastIndex
+            val stops = accent.stops.mapIndexed { i, c -> (sweep / 360f) * i / last to c }.toTypedArray()
+            androidx.compose.ui.graphics.Brush.sweepGradient(*stops, center = center)
+        } else {
+            androidx.compose.ui.graphics.SolidColor(accent.main)
+        }
+        rotate(-90f) {
+            drawArc(brush, startAngle = 0f, sweepAngle = sweep, useCenter = false, topLeft = topLeft, size = arcSize, style = style)
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun Modifier.keepWholeOnFocus(): Modifier {
@@ -1176,12 +1210,11 @@ private fun GamePageInfoCard(info: GameDisplayInfo, facts: List<Pair<String, Str
     ) {
         if (percent != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Box(modifier = Modifier.size(80.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(
-                    progress = { percent / 100f },
-                    modifier = Modifier.fillMaxSize(),
-                    color = dev.rift.launcher.ui.theme.RiftColors.Primary,
+                AccentRing(
+                    progress = percent / 100f,
                     trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     strokeWidth = 6.dp,
+                    modifier = Modifier.fillMaxSize(),
                 )
                 Text(
                     text = if (steamReviewVerdict(details.reviewSummary) != null) "$percent%" else percent.toString(),
@@ -2470,8 +2503,7 @@ internal fun AppScreenContent(
                             }
                             Text(
                                 text = stringResource(R.string.change_preferred_copy),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelLarge.copy(brush = dev.rift.launcher.ui.theme.RiftAccent.current.brush),
                                 modifier = Modifier.clickable(
                                     role = Role.Button,
                                     onClick = displayInfo.onChangePreferredCopy,
@@ -2530,8 +2562,11 @@ internal fun AppScreenContent(
                             Button(
                                 onClick = onUpdateClick,
                                 shape = RoundedCornerShape(50),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(dev.rift.launcher.ui.theme.RiftAccent.current.brush),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = dev.rift.launcher.ui.theme.RiftColors.Primary,
+                                    containerColor = Color.Transparent,
                                     contentColor = dev.rift.launcher.ui.theme.RiftColors.OnPrimary,
                                 ),
                             ) {
@@ -3035,14 +3070,11 @@ private fun GamePageAchievements(achievements: List<Achievement>, wide: Boolean)
             Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                 Box(modifier = Modifier.size(150.dp), contentAlignment = Alignment.Center) {
                     // A plain arc: with round caps and the track gap a few percent looked like a lone drop.
-                    CircularProgressIndicator(
-                        progress = { if (total > 0) unlocked.size / total.toFloat() else 0f },
-                        modifier = Modifier.fillMaxSize(),
-                        color = dev.rift.launcher.ui.theme.RiftColors.Primary,
+                    AccentRing(
+                        progress = if (total > 0) unlocked.size / total.toFloat() else 0f,
                         trackColor = dev.rift.launcher.ui.theme.RiftColors.SurfaceContainerHigh,
                         strokeWidth = 12.dp,
-                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Butt,
-                        gapSize = 0.dp,
+                        modifier = Modifier.fillMaxSize(),
                     )
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(

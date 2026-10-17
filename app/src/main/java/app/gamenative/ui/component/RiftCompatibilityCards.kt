@@ -329,8 +329,10 @@ private fun BestProfileCard(
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
                     text = run.rating.toString(),
-                    style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
-                    color = RiftColors.Primary,
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        brush = dev.rift.launcher.ui.theme.RiftAccent.current.brush,
+                    ),
                 )
                 Text(
                     text = listOfNotNull(
