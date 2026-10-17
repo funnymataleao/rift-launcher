@@ -24,7 +24,7 @@ class RiftPrefs private constructor(
 
     /** "device" for the tablet's own screen size, otherwise "WIDTHxHEIGHT" such as "1920x1080". */
     var streamResolution: String
-        get() = prefs.getString(STREAM_RESOLUTION, "1920x1080") ?: "1920x1080"
+        get() = prefs.getString(STREAM_RESOLUTION, "device") ?: "device"
         set(value) = prefs.edit().putString(STREAM_RESOLUTION, value).apply()
 
     var streamFps: Int
