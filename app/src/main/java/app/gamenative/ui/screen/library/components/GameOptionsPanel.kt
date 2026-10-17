@@ -36,6 +36,7 @@ import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AltRoute
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.BugReport
@@ -355,6 +356,7 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.PlayWithDiagnostics -> Icons.Default.BugReport
         AppOptionMenuType.ShareDiagnostics -> Icons.Default.Share
         AppOptionMenuType.AiDebugRun -> Icons.Default.SmartToy
+        AppOptionMenuType.RiftOptimize -> Icons.Default.AutoAwesome
         AppOptionMenuType.ImportConfig -> Icons.Default.ArrowDownward
         AppOptionMenuType.ExportConfig -> Icons.Default.ArrowUpward
         AppOptionMenuType.ImportSaves -> Icons.Default.ArrowDownward
@@ -384,6 +386,7 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             AppOptionMenuType.EditContainer,
             AppOptionMenuType.RunContainer,
             AppOptionMenuType.AiDebugRun,
+            AppOptionMenuType.RiftOptimize,
             AppOptionMenuType.CreateShortcut,
             AppOptionMenuType.ExportFrontend,
             AppOptionMenuType.CopyLaunchLink,

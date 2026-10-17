@@ -107,22 +107,17 @@ object Optimizer {
         context: Context,
         proposal: OptimizeProposal,
         onProgress: (Float, String) -> Unit,
-    ): SupportSuggestionApplier.Result {
-        val result = SupportSuggestionApplier.apply(context, proposal.appId, proposal.id, CONVERSATION_ID, proposal.suggestion, onProgress)
-        if (result == SupportSuggestionApplier.Result.Done) History.record(context, proposal)
-        return result
-    }
+    ): SupportSuggestionApplier.Result =
+        SupportSuggestionApplier.apply(context, proposal.appId, proposal.id, CONVERSATION_ID, proposal.suggestion, onProgress)
 
     /** Puts back the settings the proposal replaced, from the snapshot GameNative took when it was applied. */
-    suspend fun restore(context: Context, proposal: OptimizeProposal, onProgress: (Float, String) -> Unit): SupportSuggestionApplier.Result {
-        val result = SupportSuggestionApplier.restore(context, proposal.appId, proposal.id, CONVERSATION_ID, onProgress)
-        if (result == SupportSuggestionApplier.Result.Done) History.markRestored(context, proposal)
-        return result
-    }
+    suspend fun restore(context: Context, proposal: OptimizeProposal, onProgress: (Float, String) -> Unit): SupportSuggestionApplier.Result =
+        SupportSuggestionApplier.restore(context, proposal.appId, proposal.id, CONVERSATION_ID, onProgress)
 
     /**
-     * Rift's own list of applied suggestions per game, in `<container>/.rift/assistant`, for "settings history"
-     * and for comparing runs before and after. GameNative keeps only the rollback snapshot.
+     * Rift's own list of the suggestions made for each game, in `<container>/.rift/assistant`, for a later
+     * "settings history". Whether one is applied right now is GameNative's snapshot
+     * ([SupportSuggestionApplier.hasSnapshot] with the same id).
      */
     object History {
 
@@ -132,7 +127,6 @@ object Optimizer {
             val summary: String,
             val model: String,
             val changes: List<SupportSuggestion.Change>,
-            val restored: Boolean,
         )
 
         private fun dir(context: Context, appId: String): File? =
@@ -145,15 +139,6 @@ object Optimizer {
                 File(dir, "${proposal.id}.json").writeText(toJson(proposal).toString())
             } catch (e: Exception) {
                 Timber.w(e, "Optimizer: saving history failed")
-            }
-        }
-
-        suspend fun markRestored(context: Context, proposal: OptimizeProposal) = withContext(Dispatchers.IO) {
-            try {
-                val file = dir(context, proposal.appId)?.let { File(it, "${proposal.id}.json") } ?: return@withContext
-                if (file.exists()) file.writeText(JSONObject(file.readText()).put("restored", true).toString())
-            } catch (e: Exception) {
-                Timber.w(e, "Optimizer: updating history failed")
             }
         }
 
@@ -174,7 +159,6 @@ object Optimizer {
             put("goal", proposal.goal.id)
             put("summary", proposal.summary)
             put("model", proposal.model)
-            put("restored", false)
             put(
                 "changes",
                 JSONArray().apply {
@@ -205,7 +189,6 @@ object Optimizer {
                     fun text(key: String) = if (c.has(key) && !c.isNull(key)) c.getString(key) else null
                     SupportSuggestion.Change(c.getString("key"), text("name"), text("op"), null, text("to"), text("why"))
                 },
-                restored = json.optBoolean("restored", false),
             )
         }
     }

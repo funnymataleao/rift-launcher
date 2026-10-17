@@ -108,4 +108,17 @@
     <string name="rift_assistant_group_permissions">Permissions</string>
     <string name="rift_assistant_allow_env">Environment variables and launch arguments</string>
     <string name="rift_assistant_allow_env_hint">Let suggestions change them too. They can break a game more easily.</string>
+    <string name="rift_option_optimize">Optimize with AI</string>
+    <string name="rift_optimize_title">Optimize: %1$s</string>
+    <string name="rift_optimize_close">Close</string>
+    <string name="rift_optimize_working">Looking at the device, the last runs and community configs…</string>
+    <string name="rift_optimize_model">Suggested by %1$s · risk: %2$s</string>
+    <string name="rift_optimize_risk_low">low</string>
+    <string name="rift_optimize_risk_medium">medium</string>
+    <string name="rift_optimize_risk_high">high</string>
+    <string name="rift_optimize_nothing">The assistant suggests keeping the current settings.</string>
+    <string name="rift_optimize_not_configured">Connect an AI provider first: Settings › AI assistant.</string>
+    <string name="rift_optimize_limit">This month\'s token limit is reached. You can change it in Settings › AI assistant.</string>
+    <string name="rift_optimize_no_container">The game has no container yet. Start it once, then try again.</string>
+    <string name="rift_optimize_invalid">The model answered twice with settings Rift can\'t apply. Try again or pick another model.</string>
 </resources>

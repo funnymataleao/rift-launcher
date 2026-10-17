@@ -107,4 +107,17 @@
     <string name="rift_assistant_group_permissions">Разрешения</string>
     <string name="rift_assistant_allow_env">Переменные окружения и аргументы запуска</string>
     <string name="rift_assistant_allow_env_hint">Разрешить помощнику менять и их. Ими проще сломать игру.</string>
+    <string name="rift_option_optimize">Оптимизировать (AI)</string>
+    <string name="rift_optimize_title">Оптимизация: %1$s</string>
+    <string name="rift_optimize_close">Закрыть</string>
+    <string name="rift_optimize_working">Смотрю на устройство, последние запуски и конфиги сообщества…</string>
+    <string name="rift_optimize_model">Предложила модель %1$s · риск: %2$s</string>
+    <string name="rift_optimize_risk_low">низкий</string>
+    <string name="rift_optimize_risk_medium">средний</string>
+    <string name="rift_optimize_risk_high">высокий</string>
+    <string name="rift_optimize_nothing">Помощник советует оставить текущие настройки.</string>
+    <string name="rift_optimize_not_configured">Сначала подключите AI-провайдера: Настройки › AI-помощник.</string>
+    <string name="rift_optimize_limit">Лимит токенов на этот месяц исчерпан. Его можно поменять в Настройки › AI-помощник.</string>
+    <string name="rift_optimize_no_container">У игры ещё нет контейнера. Запустите её один раз и попробуйте снова.</string>
+    <string name="rift_optimize_invalid">Модель дважды предложила настройки, которые Rift не может применить. Попробуйте ещё раз или выберите другую модель.</string>
 </resources>

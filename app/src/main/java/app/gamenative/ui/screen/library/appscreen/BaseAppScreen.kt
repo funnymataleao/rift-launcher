@@ -1219,6 +1219,8 @@ abstract class BaseAppScreen {
             getTestGraphicsOption(context, libraryItem, onTestGraphics)?.let { menuOptions.add(it) }
             getPlayWithDiagnosticsOption(context, libraryItem, onPlayWithDiagnostics)?.let { menuOptions.add(it) }
             getAiDebugRunOption(context, libraryItem, onAiDebugRun)?.let { menuOptions.add(it) }
+            dev.rift.launcher.assistant.optimize.RiftOptimizeRequest.option(getGameName(context, libraryItem), libraryItem.appId)
+                ?.let { menuOptions.add(it) }
             getShareDiagnosticsOption(context, libraryItem)?.let { menuOptions.add(it) }
             getResetContainerOption(context, libraryItem)?.let { menuOptions.add(it) }
             getCreateShortcutOption(context, libraryItem)?.let { menuOptions.add(it) }
