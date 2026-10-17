@@ -15,7 +15,6 @@ import app.gamenative.R
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
-import com.alorma.compose.settings.ui.base.internal.SettingsTileScaffold
 
 @Composable
 fun SettingsCPUList(
@@ -30,7 +29,7 @@ fun SettingsCPUList(
     shadowElevation: Dp = ListItemDefaults.Elevation,
     action: @Composable (() -> Unit)? = null,
 ) {
-    SettingsTileScaffold(
+    RiftTile(
         modifier = modifier,
         enabled = enabled,
         title = title,

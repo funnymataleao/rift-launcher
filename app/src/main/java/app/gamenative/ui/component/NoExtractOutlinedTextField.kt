@@ -1,17 +1,22 @@
 package app.gamenative.ui.component
 
 import android.view.inputmethod.EditorInfo
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.TextFieldColors
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -24,6 +29,9 @@ import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.VisualTransformation
+import dev.rift.launcher.ui.theme.RiftAccent
+import dev.rift.launcher.ui.theme.RiftColors
+import dev.rift.launcher.ui.theme.RiftShapes
 
 /**
  * OutlinedTextField wrapper that sets IME_FLAG_NO_EXTRACT_UI on the EditorInfo.
@@ -54,10 +62,19 @@ fun NoExtractOutlinedTextField(
     maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
     minLines: Int = 1,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    shape: Shape = OutlinedTextFieldDefaults.shape,
-    colors: TextFieldColors = OutlinedTextFieldDefaults.colors(),
+    shape: Shape? = null,
+    colors: TextFieldColors? = null,
 ) {
     val focusManager = LocalFocusManager.current
+
+    // Rift: a plate without an outline, grey at rest and filled with the accent while it has focus.
+    val focused by interactionSource.collectIsFocusedAsState()
+    val accent = RiftAccent.current
+    val fieldShape = shape ?: if (singleLine) RiftShapes.full else RiftShapes.card
+    val fieldColors = colors ?: riftTextFieldColors(focused)
+    val fieldModifier = modifier
+        .clip(fieldShape)
+        .then(if (focused) Modifier.background(accent.brush) else Modifier)
 
     val resolvedOptions = if (keyboardOptions.imeAction == ImeAction.Default && singleLine) {
         keyboardOptions.copy(imeAction = ImeAction.Done)
@@ -75,7 +92,7 @@ fun NoExtractOutlinedTextField(
     // focus moves, letting a gamepad navigate past the field. Left/right (cursor) and
     // typing are untouched.
     val gamepadModifier = if (singleLine) {
-        modifier.onPreviewKeyEvent { event ->
+        fieldModifier.onPreviewKeyEvent { event ->
             if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
             when (event.key) {
                 Key.DirectionUp -> {
@@ -90,7 +107,7 @@ fun NoExtractOutlinedTextField(
             }
         }
     } else {
-        modifier
+        fieldModifier
     }
 
     InterceptPlatformTextInput(
@@ -126,8 +143,38 @@ fun NoExtractOutlinedTextField(
             maxLines = maxLines,
             minLines = minLines,
             interactionSource = interactionSource,
-            shape = shape,
-            colors = colors,
+            shape = fieldShape,
+            colors = fieldColors,
         )
     }
+}
+
+/** Colours of a Rift text plate: grey at rest, dark on the accent fill (drawn behind it) while focused. */
+@Composable
+private fun riftTextFieldColors(focused: Boolean): TextFieldColors {
+    val accent = RiftAccent.current
+    val text = if (focused) accent.onAccent else RiftColors.OnSurface
+    val hint = if (focused) accent.onAccent.copy(alpha = 0.6f) else RiftColors.OnSurfaceVariant
+    val container = if (focused) Color.Transparent else RiftColors.SurfaceContainerHigh
+    return OutlinedTextFieldDefaults.colors(
+        focusedTextColor = text,
+        unfocusedTextColor = text,
+        disabledTextColor = text.copy(alpha = 0.5f),
+        focusedContainerColor = container,
+        unfocusedContainerColor = container,
+        disabledContainerColor = container,
+        cursorColor = text,
+        focusedBorderColor = Color.Transparent,
+        unfocusedBorderColor = Color.Transparent,
+        disabledBorderColor = Color.Transparent,
+        errorBorderColor = RiftColors.Error,
+        focusedLabelColor = hint,
+        unfocusedLabelColor = hint,
+        focusedPlaceholderColor = hint,
+        unfocusedPlaceholderColor = hint,
+        focusedLeadingIconColor = text,
+        unfocusedLeadingIconColor = hint,
+        focusedTrailingIconColor = text,
+        unfocusedTrailingIconColor = hint,
+    )
 }

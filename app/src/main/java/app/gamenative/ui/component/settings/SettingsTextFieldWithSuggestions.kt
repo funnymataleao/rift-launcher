@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.Dp
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
-import com.alorma.compose.settings.ui.base.internal.SettingsTileScaffold
 
 /**
  * A text field that also offers a dropdown of preset suggestions.
@@ -50,7 +49,7 @@ fun SettingsTextFieldWithSuggestions(
     val focusRequester = remember { FocusRequester() }
     var suggestionsExpanded by remember { mutableStateOf(false) }
 
-    SettingsTileScaffold(
+    RiftTile(
         modifier = Modifier
             .clickable(enabled = enabled, onClick = { focusRequester.requestFocus() })
             .then(modifier),

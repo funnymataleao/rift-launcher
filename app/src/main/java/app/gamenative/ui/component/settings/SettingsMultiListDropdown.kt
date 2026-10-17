@@ -14,6 +14,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -39,7 +40,6 @@ import androidx.compose.ui.unit.sp
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
-import com.alorma.compose.settings.ui.base.internal.SettingsTileScaffold
 
 @Composable
 fun SettingsMultiListDropdown(
@@ -69,7 +69,7 @@ fun SettingsMultiListDropdown(
     // controller navigation has nowhere to go.
     val focusRequester = remember { FocusRequester() }
 
-    SettingsTileScaffold(
+    RiftTile(
         modifier = Modifier
             .focusRequester(focusRequester)
             .clickable(
@@ -146,7 +146,7 @@ fun SettingsMultiListDropdown(
                     Icons.Filled.ArrowDropDown
                 },
                 contentDescription = "Dropdown arrow",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = LocalContentColor.current,
             )
             if (action != null) {
                 Spacer(modifier.width(16.dp))

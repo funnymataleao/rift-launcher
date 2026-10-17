@@ -165,7 +165,6 @@ internal fun DefaultConfigDialog(visible: Boolean, defaults: ContainerDefaults, 
         initialConfig = ContainerUtils.getDefaultContainerData(),
         onDismissRequest = onDismiss,
         onSave = {
-            onDismiss()
             ContainerUtils.setDefaultContainerData(it)
             defaults.reload()
         },

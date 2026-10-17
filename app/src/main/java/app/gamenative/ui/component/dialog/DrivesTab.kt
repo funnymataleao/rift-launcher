@@ -29,8 +29,8 @@ import app.gamenative.R
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
 import app.gamenative.ui.theme.settingsTileColors
-import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsMenuLink
+import app.gamenative.ui.component.settings.SettingsGroup
+import app.gamenative.ui.component.settings.SettingsMenuLink
 import com.winlator.container.Container
 
 @Composable

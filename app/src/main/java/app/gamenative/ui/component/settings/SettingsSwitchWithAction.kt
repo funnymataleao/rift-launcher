@@ -2,11 +2,10 @@ package app.gamenative.ui.component.settings
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.Switch
+import dev.rift.launcher.settings.RiftSwitch
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
-import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
@@ -33,11 +32,7 @@ fun SettingsSwitchWithAction(
         subtitle = subtitle,
         action = {
             Row {
-                Switch(
-                    enabled = enabled,
-                    checked = state,
-                    onCheckedChange = onCheckedChange,
-                )
+                RiftSwitch(checked = state, focused = LocalTileFocused.current)
                 action?.invoke()
             }
         },

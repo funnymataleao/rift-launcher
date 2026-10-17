@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -37,7 +38,6 @@ import androidx.compose.ui.unit.sp
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
-import com.alorma.compose.settings.ui.base.internal.SettingsTileScaffold
 
 @Composable
 fun SettingsListDropdown(
@@ -56,6 +56,21 @@ fun SettingsListDropdown(
     shadowElevation: Dp = ListItemDefaults.Elevation,
     action: @Composable (() -> Unit)? = null,
 ) {
+    // A few short answers are pills under the title, like in Rift's own Settings.
+    if (fitsAsPills(items, hasMuted = itemMuted != null, hasAction = action != null)) {
+        RiftChoiceTile(
+            items = items,
+            selectedIndex = value,
+            onSelect = onItemSelected,
+            title = title,
+            subtitle = subtitle,
+            icon = icon,
+            enabled = enabled,
+            modifier = modifier,
+        )
+        return
+    }
+
     var isDropdownExpanded by remember { mutableStateOf(false) }
     val selectedText = if (value >= 0 && value < items.size) items[value] else fallbackDisplay
 
@@ -64,7 +79,7 @@ fun SettingsListDropdown(
     // controller navigation has nowhere to go.
     val focusRequester = remember { FocusRequester() }
 
-    SettingsTileScaffold(
+    RiftTile(
         modifier = Modifier
             .focusRequester(focusRequester)
             .clickable(
@@ -134,7 +149,7 @@ fun SettingsListDropdown(
                     Icons.Filled.ArrowDropDown
                 },
                 contentDescription = "Dropdown arrow",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = LocalContentColor.current,
             )
             if (action != null) {
                 Spacer(modifier.width(16.dp))

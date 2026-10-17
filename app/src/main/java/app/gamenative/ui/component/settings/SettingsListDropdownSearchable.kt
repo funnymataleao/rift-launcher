@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -42,7 +43,6 @@ import androidx.compose.ui.unit.dp
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
-import com.alorma.compose.settings.ui.base.internal.SettingsTileScaffold
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -91,7 +91,7 @@ fun SettingsListDropdownSearchable(
     val selectedText =
         if (value >= 0 && value < items.size) items[value] else fallbackDisplay
 
-    SettingsTileScaffold(
+    RiftTile(
         modifier = Modifier
             .focusRequester(focusRequester)
             .clickable(
@@ -171,7 +171,7 @@ fun SettingsListDropdownSearchable(
                     Icon(
                         imageVector = Icons.Filled.Search,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = LocalContentColor.current,
                     )
                 },
                 singleLine = true,
@@ -213,7 +213,7 @@ fun SettingsListDropdownSearchable(
                     Icons.Filled.ArrowDropDown
                 },
                 contentDescription = "Dropdown arrow",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = LocalContentColor.current,
             )
             if (action != null) {
                 Spacer(modifier.width(16.dp))

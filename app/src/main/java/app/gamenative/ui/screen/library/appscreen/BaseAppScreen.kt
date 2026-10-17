@@ -2025,10 +2025,7 @@ abstract class BaseAppScreen {
                 title = "${displayInfo.name} Config",
                 initialConfig = containerData,
                 onDismissRequest = { showConfigDialog = false },
-                onSave = {
-                    saveContainerConfig(context, libraryItem, it)
-                    showConfigDialog = false
-                },
+                onSave = { saveContainerConfig(context, libraryItem, it) },
             )
         }
 
