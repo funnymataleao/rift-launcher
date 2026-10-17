@@ -72,6 +72,15 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         const val EXTRA_APP_UUID = "appUuid"
         const val EXTRA_APP_HDR = "appHdr"
 
+        /** The host can make a virtual screen of the stream's own size and rate (Apollo/Vibepollo). */
+        const val EXTRA_VIRTUAL_DISPLAY_READY = "virtualDisplayReady"
+
+        /** Set by a reconnect from the panel: it opens again on this row once the stream is back. */
+        private const val EXTRA_PANEL_ROW = "panelRow"
+
+        /** How long the panel waits after the last change of a picture setting before reconnecting. */
+        private const val APPLY_DELAY_MS = 1200L
+
         private const val TAG = "RiftStream"
         private const val MENU_COMBO = ControllerPacket.BACK_FLAG or ControllerPacket.PLAY_FLAG
 
@@ -101,6 +110,12 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
     private var streamWidth = 1920
     private var streamHeight = 1080
     private var menuOpen by mutableStateOf(false)
+    private var panelRow by mutableStateOf(StreamMenuRow.END)
+    private var maxFps by mutableStateOf(60)
+    private var screenSize by mutableStateOf<Pair<Int, Int>?>(null)
+    private var changedRow = StreamMenuRow.END
+    private var bTaken = false
+    private val applyPicture = Runnable { restartStream(changedRow) }
 
     /** Why the stream broke, shown in the panel; null while it runs. */
     private var streamError by mutableStateOf<String?>(null)
@@ -165,9 +180,12 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
                             onDismiss = { if (streamError != null) finish() else menuOpen = false },
                             onEndStream = ::endStream,
                             onPerfOverlayChange = ::showPerfOverlay,
-                            onRestart = ::restartStream,
+                            onPictureChange = ::pictureChanged,
                             error = streamError,
                             onRelaunch = ::relaunchStream,
+                            focusRow = panelRow,
+                            maxFps = maxFps,
+                            screenSize = screenSize,
                         )
                     }
                 }
@@ -210,6 +228,7 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         display.getRealSize(size)
         val nativeWidth = max(size.x, size.y) and 1.inv()
         val nativeHeight = min(size.x, size.y) and 1.inv()
+        screenSize = nativeWidth to nativeHeight
         val fixedSize = StreamSettings.sizeOf(settings.resolution)
         if (fixedSize == null) {
             streamWidth = nativeWidth
@@ -218,9 +237,19 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
             streamWidth = fixedSize.first
             streamHeight = fixedSize.second
         }
-        val refreshRate = display.mode.refreshRate
-        val fps = if (settings.fps > 0) settings.fps else min(refreshRate.roundToInt(), 120)
+        // The screen runs at its highest rate for the stream (Android keeps it at 60 Hz otherwise), and
+        // the stream's frame rate is the screen's unless one is set.
+        val current = display.mode
+        val modes = display.supportedModes.filter { it.physicalWidth == current.physicalWidth && it.physicalHeight == current.physicalHeight }
+        val fastest = modes.maxByOrNull { it.refreshRate } ?: current
+        maxFps = fastest.refreshRate.roundToInt()
+        val fps = if (settings.fps > 0) settings.fps else maxFps
+        val mode = modes.firstOrNull { abs(it.refreshRate - fps) < 1f } ?: fastest
+        window.attributes = window.attributes.apply { preferredDisplayModeId = mode.modeId }
+        val refreshRate = mode.refreshRate
         val bitrate = settings.bitrateMbps.takeIf { it > 0 }?.times(1000) ?: StreamSettings.autoBitrateKbps(streamWidth, streamHeight, fps)
+        val virtualDisplay = settings.virtualDisplay && intent.getBooleanExtra(EXTRA_VIRTUAL_DISPLAY_READY, false)
+        Log.i(TAG, "stream ${streamWidth}x$streamHeight@$fps (screen ${refreshRate}Hz), ${bitrate}kbps, codec=${settings.codec}, hdr=${settings.hdr}, virtual display=$virtualDisplay")
 
         val decoderConfig = DecoderConfiguration().apply {
             this.fps = fps.toFloat()
@@ -270,7 +299,7 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
             .setApp(app)
             .setBitrate(bitrate)
             .setEnableSops(settings.optimizeGameSettings)
-            .setVirtualDisplay(settings.virtualDisplay)
+            .setVirtualDisplay(virtualDisplay)
             .enableAdaptiveResolution(settings.adaptiveResolution)
             .setEnableUltraLowLatency(settings.ultraLowLatency)
             .enableLocalAudioPlayback(settings.playLocalAudio)
@@ -374,7 +403,7 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         val port = intent.getIntExtra(EXTRA_PORT, 47989)
         val httpsPort = intent.getIntExtra(EXTRA_HTTPS_PORT, 0)
         val crypto = PlatformBinding.getCryptoProvider(applicationContext)
-        val relaunch = Intent(intent)
+        val relaunch = Intent(intent).apply { removeExtra(EXTRA_PANEL_ROW) }
         thread {
             runCatching { NvHTTP(ComputerDetails.AddressTuple(host, port), httpsPort, uniqueId, serverCert, crypto).quitApp() }
                 .onFailure { Log.w(TAG, "quit before relaunch failed", it) }
@@ -390,15 +419,25 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         if (connected) statusText.visibility = if (show) View.VISIBLE else View.GONE
     }
 
+    /** A picture setting changed in the panel: the stream reconnects with it after the last change. */
+    private fun pictureChanged(row: String) {
+        changedRow = row
+        surfaceView.removeCallbacks(applyPicture)
+        surfaceView.postDelayed(applyPicture, APPLY_DELAY_MS)
+    }
+
     /**
-     * "Apply and restart stream": a new connection with the new picture settings. The game keeps
-     * running on the PC, and the same app is resumed.
+     * A new connection with the new picture settings. The game keeps running on the PC, the same app
+     * is resumed, and the panel, if still open, opens again on [row].
      */
-    private fun restartStream() {
-        menuOpen = false
+    private fun restartStream(row: String) {
+        if (isFinishing) return
+        Log.i(TAG, "reconnecting with new picture settings from $row")
         stopStream()
-        startActivity(Intent(intent))
+        startActivity(Intent(intent).apply { if (menuOpen) putExtra(EXTRA_PANEL_ROW, row) else removeExtra(EXTRA_PANEL_ROW) })
         finish()
+        @Suppress("DEPRECATION")
+        overridePendingTransition(0, 0)
     }
 
     /** Opens the side panel; the host gets a released pad so nothing stays held in the game. */
@@ -448,7 +487,13 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         runOnUiThread {
             connected = true
             if (!settings.perfOverlay) statusText.visibility = View.GONE
-            showMessage(getString(R.string.rift_stream_menu_hint), 4000)
+            val row = intent.getStringExtra(EXTRA_PANEL_ROW)
+            if (row != null) {
+                panelRow = row
+                openMenu()
+            } else {
+                showMessage(getString(R.string.rift_stream_menu_hint), 4000)
+            }
         }
     }
 
@@ -572,14 +617,18 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         if (menuOpen) {
             Log.i(TAG, "panel key ${KeyEvent.keyCodeToString(event.keyCode)} action=${event.action} focus=${menuView.hasFocus()}")
             if (event.keyCode == KeyEvent.KEYCODE_BUTTON_B) {
-                if (event.action == KeyEvent.ACTION_UP) {
+                // A slider that holds the pad lets go on B first; only a free B closes the panel.
+                if (event.action == KeyEvent.ACTION_DOWN) bTaken = super.dispatchKeyEvent(event)
+                if (event.action == KeyEvent.ACTION_UP && !bTaken) {
                     if (streamError != null) finish() else menuOpen = false
                 }
                 return true
             }
-            // Compose clicks on Enter / d-pad center, not on the pad's A.
+            // The panel's rows take the pad's A themselves (sliders grab with it); what they leave goes
+            // on as d-pad center, which Compose clicks on.
             if (event.keyCode == KeyEvent.KEYCODE_BUTTON_A) {
-                return super.dispatchKeyEvent(KeyEvent(event.downTime, event.eventTime, event.action, KeyEvent.KEYCODE_DPAD_CENTER, event.repeatCount, event.metaState, event.deviceId, event.scanCode, event.flags, event.source))
+                return super.dispatchKeyEvent(event) ||
+                    super.dispatchKeyEvent(KeyEvent(event.downTime, event.eventTime, event.action, KeyEvent.KEYCODE_DPAD_CENTER, event.repeatCount, event.metaState, event.deviceId, event.scanCode, event.flags, event.source))
             }
             return super.dispatchKeyEvent(event)
         }

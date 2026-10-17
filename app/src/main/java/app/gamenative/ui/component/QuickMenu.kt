@@ -2078,7 +2078,7 @@ private fun ImmersiveQuickMenuTab(
 }
 
 @Composable
-private fun QuickMenuSectionHeader(
+internal fun QuickMenuSectionHeader(
     title: String,
     subtitle: String? = null,
     modifier: Modifier = Modifier,
@@ -2720,7 +2720,7 @@ private fun QuickMenuDetailRow(
 }
 
 @Composable
-private fun QuickMenuItemRow(
+internal fun QuickMenuItemRow(
     item: QuickMenuItem,
     isActive: Boolean = false,
     onClick: () -> Unit,
