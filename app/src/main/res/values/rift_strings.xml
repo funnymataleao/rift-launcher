@@ -392,6 +392,10 @@
     <string name="rift_settings_packs_remove_hint">Hold a downloaded pack to delete it.</string>
     <string name="rift_settings_packs_remove_title">Delete %1$s?</string>
     <string name="rift_settings_packs_remove_message">The pack is removed from this device. You can download it again later.</string>
+    <string name="rift_settings_packs_catalog">DeckThemes catalog</string>
+    <string name="rift_settings_packs_preview">Listen</string>
+    <string name="rift_settings_packs_preview_stop">Stop</string>
+    <string name="rift_settings_packs_preview_hint">The play button on the right plays a pack before you keep it. A pack you have not downloaded yet is fetched for listening and removed again.</string>
     <string name="rift_settings_packs_remove">Delete</string>
     <string name="rift_community_source_rift">Rift database</string>
     <string name="rift_community_source_gamenative">GameNative database</string>
