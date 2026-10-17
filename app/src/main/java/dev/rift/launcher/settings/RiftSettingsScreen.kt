@@ -327,9 +327,11 @@ private fun SectionPane(
                     .weight(1f)
                     .fillMaxWidth()
                     .focusRequester(contentEntry)
-                    .focusProperties { left = returnTo }
                     .onFocusChanged { onContentFocus(it.hasFocus) }
-                    .focusGroup(),
+                    .focusGroup()
+                    // After the group, so it reaches the rows inside: Left always goes back to the
+                    // selected section in the list, like B, not to whatever sits across from the row.
+                    .focusProperties { left = returnTo },
             ) {
                 CompositionLocalProvider(LocalSettingsAccent provides section.accent) {
                 Column(
