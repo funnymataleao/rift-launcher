@@ -61,6 +61,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import coil.request.ImageRequest
+import coil.imageLoader
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeoutOrNull
 import dev.rift.launcher.ui.RiftStartup
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.lifecycle.Lifecycle
@@ -240,8 +246,10 @@ fun RiftHomeScreen(
     val introSpec = MaterialTheme.motionScheme.slowEffectsSpec<Float>()
     LaunchedEffect(ready) {
         if (ready && !introPlayed) {
-            // Let the start-up curtain fade first, then play the entrance.
+            // The curtain stays until the first covers and the backdrop are in the image cache, so the
+            // entrance never shows grey placeholders; then it fades and the entrance plays.
             if (!RiftStartup.homeReady) {
+                withTimeoutOrNull(FIRST_IMAGES_TIMEOUT_MS) { preloadFirstImages(context, library) }
                 RiftStartup.homeReady = true
                 delay(RiftStartup.CURTAIN_FADE_MS.toLong())
             }
@@ -1359,6 +1367,8 @@ private fun EmptyState(message: String, onConnect: () -> Unit, modifier: Modifie
 
 private val FooterHeight = 58.dp
 private const val STARTUP_SETTLE_MS = 2500L
+private const val FIRST_IMAGES_TIMEOUT_MS = 3500L
+private const val FIRST_IMAGES_COUNT = 7
 private const val APPS_PRELOAD_DELAY_MS = 4000L
 private const val ROLL_IN_START_MS = 120L
 private const val ROLL_IN_STEP_MS = 55L
@@ -1460,4 +1470,18 @@ private fun RiftRow(
     CompositionLocalProvider(LocalBringIntoViewSpec provides spec) {
         LazyRow(state = state, contentPadding = contentPadding, horizontalArrangement = horizontalArrangement, content = content)
     }
+}
+
+/** Loads what the home shows first (backdrop, the first covers) into Coil's cache, in parallel. */
+private suspend fun preloadFirstImages(context: android.content.Context, library: List<LibraryItem>) = coroutineScope {
+    val first = library.take(FIRST_IMAGES_COUNT)
+    val urls = buildList {
+        first.firstOrNull()?.let { add(it.heroImageUrl.ifEmpty { it.headerImageUrl.ifEmpty { it.capsuleImageUrl } }) }
+        first.forEachIndexed { index, item ->
+            add(if (index == 0) item.headerImageUrl.ifEmpty { item.heroImageUrl.ifEmpty { item.capsuleImageUrl } } else item.capsuleImageUrl.ifEmpty { item.headerImageUrl })
+        }
+    }.filter { it.isNotEmpty() }.distinct()
+    urls.map { url ->
+        async(Dispatchers.IO) { runCatching { context.imageLoader.execute(ImageRequest.Builder(context).data(url).build()) } }
+    }.awaitAll()
 }

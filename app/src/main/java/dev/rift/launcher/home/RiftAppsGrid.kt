@@ -190,7 +190,8 @@ private fun AppsGridContent(onDismiss: () -> Unit) {
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 132.dp),
-                    contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 8.dp, bottom = 48.dp),
+                    // Room above and below, so the first and last rows (and a focused, slightly larger tile) show whole.
+                    contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 16.dp, bottom = 120.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxSize(),
