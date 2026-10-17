@@ -20,7 +20,6 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.geometry.CornerRadius
 import kotlin.math.roundToInt
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -1313,15 +1312,6 @@ private fun PcLibraryGrid(
                     },
                     onClick = { onOpen(item) },
                     cover = {
-                        Text(
-                            text = item.name,
-                            color = RiftColors.OnSurfaceVariant,
-                            fontSize = 13.sp,
-                            textAlign = TextAlign.Center,
-                            maxLines = 4,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.align(Alignment.Center).padding(12.dp),
-                        )
                         CoverImage(urls = urls, contentDescription = item.name)
                     },
                     badge = { if (badges) CoverBadges(item, libraryState) },
@@ -1482,15 +1472,6 @@ private fun PcGamesShelf(
                 },
                 onClick = { onOpen(item) },
                 cover = {
-                    Text(
-                        text = item.name,
-                        color = RiftColors.OnSurfaceVariant,
-                        fontSize = 13.sp,
-                        textAlign = TextAlign.Center,
-                        maxLines = 4,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.align(Alignment.Center).padding(12.dp),
-                    )
                     // Dimmed on the art itself: a layer on the whole card would clip its corners while it grows.
                     CoverImage(
                         urls = urls,
@@ -1896,7 +1877,7 @@ private fun SectionTabs(
     )
 }
 
-/** Tabs with the sliding glass capsule and lemon line; the home's sections and the library's sources. */
+/** Tabs with the sliding glass capsule; the home's sections and the library's sources. */
 @Composable
 internal fun <T> GlassTabs(
     glass: GraphicsLayer,
@@ -1909,8 +1890,6 @@ internal fun <T> GlassTabs(
     var origin by remember { mutableStateOf<Offset?>(null) }
     val capsuleX = remember { Animatable(0f) }
     val capsuleW = remember { Animatable(0f) }
-    val lineX = remember { Animatable(0f) }
-    val lineW = remember { Animatable(0f) }
     var placed by remember { mutableStateOf(false) }
     val spec = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
     val target = selected?.let { places[it] }
@@ -1918,29 +1897,18 @@ internal fun <T> GlassTabs(
     LaunchedEffect(target, base) {
         if (target == null || base == null) return@LaunchedEffect
         val cx = target.tab.x - base.x
-        val tx = target.text.x - base.x
         if (!placed) {
             capsuleX.snapTo(cx); capsuleW.snapTo(target.tabSize.width)
-            lineX.snapTo(tx); lineW.snapTo(target.textSize.width)
             placed = true
             return@LaunchedEffect
         }
         launch { capsuleX.animateTo(cx, spec) }
         launch { capsuleW.animateTo(target.tabSize.width, spec) }
-        launch { lineX.animateTo(tx, spec) }
-        launch { lineW.animateTo(target.textSize.width, spec) }
     }
     val show = placed && target != null && base != null
     Box(
         modifier = Modifier
-            .onGloballyPositioned { origin = it.positionInRoot() }
-            .drawWithContent {
-                drawContent()
-                if (!show) return@drawWithContent
-                val h = 3.dp.toPx()
-                val y = target!!.text.y - base!!.y + target.textSize.height + 2.dp.toPx()
-                drawRoundRect(RiftColors.Primary, Offset(lineX.value, y), Size(lineW.value, h), CornerRadius(h / 2))
-            },
+            .onGloballyPositioned { origin = it.positionInRoot() },
     ) {
         if (show) {
             val top = target!!.tab.y - base!!.y
