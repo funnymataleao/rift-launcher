@@ -150,7 +150,8 @@ class PcStreamingTab internal constructor(internal val hosts: PcHosts) {
 
         /** Host entries that start a launcher or the desktop rather than a game, by [normalizedTitle]. */
         private val HOST_ENTRIES = setOf(
-            "desktop", "steam", "steambigpicture", "bigpicture", "playnite", "playnitefullscreen",
+            "desktop", "steam", "steambigpicture", "steambigpicturemode", "bigpicture", "bigpicturemode",
+            "playnite", "playnitefullscreen", "playnitefullscreenmode",
             "xbox", "gamepass", "xboxgamepass", "epicgames", "epicgameslauncher", "eaapp", "origin",
             "ubisoftconnect", "goggalaxy", "battlenet", "virtualdisplay", "remoteinput",
         )
