@@ -65,6 +65,8 @@ import dev.rift.launcher.settings.NoteText
 import dev.rift.launcher.settings.RiftDialog
 import dev.rift.launcher.settings.RiftInputPlate
 import dev.rift.launcher.settings.RiftPillButton
+import dev.rift.launcher.sound.RiftSound
+import dev.rift.launcher.sound.RiftSounds
 import dev.rift.launcher.settings.plateSubtext
 import dev.rift.launcher.settings.plateText
 import dev.rift.launcher.ui.blackGlass
@@ -242,6 +244,7 @@ fun RiftMetaPicker(
                                             RiftAutoMeta.pin(context, current.appId, meta)
                                             timber.log.Timber.tag("RiftMeta").i("%s: chosen by hand: %s \"%s\"", current.name, candidate.source, candidate.title)
                                             savingRef = null
+                                            RiftSounds.play(context, RiftSound.Apply)
                                             onChosen()
                                         }
                                     },

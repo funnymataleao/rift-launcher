@@ -66,6 +66,8 @@ import dev.rift.launcher.home.CoverImage
 import dev.rift.launcher.home.LibraryTabSpec
 import dev.rift.launcher.home.RiftLibraryScreen
 import dev.rift.launcher.settings.RiftPillButton
+import dev.rift.launcher.sound.RiftSound
+import dev.rift.launcher.sound.RiftSounds
 import dev.rift.launcher.ui.theme.RiftColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -316,6 +318,7 @@ private fun ArtGrid(
                                     onFocusConsumed = { pendingFocus = null },
                                     onClick = {
                                         GameArtStore.reset(context, appId, kind)
+                                        RiftSounds.play(context, RiftSound.Apply)
                                     },
                                 ) {
                                     Column(
@@ -356,6 +359,8 @@ private fun ArtGrid(
                                     scope.launch {
                                         job.join()
                                         savingId = null
+                                        // The check mark shows it too, but while going through the tabs it is the chime that tells.
+                                        RiftSounds.play(context, RiftSound.Apply)
                                     }
                                 },
                                 badge = {
