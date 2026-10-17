@@ -10,6 +10,7 @@ import androidx.compose.material.icons.rounded.DesktopWindows
 import androidx.compose.material.icons.rounded.Gamepad
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.ManageAccounts
+import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.RocketLaunch
 import androidx.compose.material.icons.rounded.SportsEsports
@@ -60,6 +61,7 @@ enum class RiftSettingsSection(
     Launch(RiftSettingsGroup.Windows, R.string.rift_settings_launch, R.string.rift_settings_launch_summary, Icons.Rounded.RocketLaunch, SettingsAccent.Terracotta),
     Downloads(RiftSettingsGroup.Windows, R.string.rift_settings_downloads, R.string.rift_settings_downloads_summary, Icons.Rounded.CloudDownload, SettingsAccent.Green),
 
+    Device(RiftSettingsGroup.System, R.string.rift_settings_device, R.string.rift_settings_device_summary, Icons.Rounded.Memory, SettingsAccent.Sky),
     About(RiftSettingsGroup.System, R.string.rift_settings_about, R.string.rift_settings_about_summary, Icons.Rounded.Info, SettingsAccent.Sand),
     Debug(RiftSettingsGroup.System, R.string.rift_settings_debug, R.string.rift_settings_debug_summary, Icons.Rounded.BugReport, SettingsAccent.Yellow),
 }

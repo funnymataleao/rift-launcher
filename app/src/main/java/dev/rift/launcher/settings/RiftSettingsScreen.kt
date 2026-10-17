@@ -354,6 +354,7 @@ private fun SectionPane(
                         RiftSettingsSection.Downloads -> DownloadsSettings()
                         RiftSettingsSection.Tabs -> TabsSettings()
                         RiftSettingsSection.Accounts -> AccountsSettings(onSteamSignIn, onSteamSignOut)
+                        RiftSettingsSection.Device -> DeviceSettings()
                         RiftSettingsSection.About -> AboutSettings()
                         RiftSettingsSection.Debug -> DebugSettings()
                     }
