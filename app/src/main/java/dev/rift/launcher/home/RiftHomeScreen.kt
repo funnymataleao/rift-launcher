@@ -143,6 +143,9 @@ import android.os.SystemClock
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.BlurEffect
@@ -2874,6 +2877,16 @@ internal fun <T> GlassTabs(
         launch { capsuleW.animateTo(target.tabSize.width, spec) }
     }
     val show = placed && target != null && base != null
+    // Tabs that do not fit scroll sideways (no second row); the chosen one is kept in view, centred when it can be.
+    val scroll = rememberScrollState()
+    var viewport by remember { mutableStateOf(0) }
+    LaunchedEffect(target, base, viewport) {
+        if (target == null || base == null || viewport == 0) return@LaunchedEffect
+        val left = target.tab.x - base.x
+        val want = (left - (viewport - target.tabSize.width) / 2f).roundToInt().coerceIn(0, scroll.maxValue)
+        if (scroll.value != want) scroll.animateScrollTo(want, tween(250))
+    }
+    Box(modifier = Modifier.onSizeChanged { viewport = it.width }.horizontalScroll(scroll)) {
     Box(
         modifier = Modifier.onGloballyPositioned { origin = it.positionInRoot() },
     ) {
@@ -2937,6 +2950,7 @@ internal fun <T> GlassTabs(
                 )
             }
         }
+    }
     }
 }
 
