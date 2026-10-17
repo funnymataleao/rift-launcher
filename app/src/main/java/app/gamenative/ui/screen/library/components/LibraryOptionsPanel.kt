@@ -122,6 +122,8 @@ fun LibraryOptionsPanel(
     panelShape: Shape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp),
     panelShadowElevation: Dp = 24.dp,
     showCloseButton: Boolean = true,
+    // Rift: a tab other than PC games has its own short list of groups instead of GameNative's.
+    tabGroups: List<TabFilterGroup>? = null,
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
     // Accordion: only one group is open at a time. B closes the open group first, then the panel.
@@ -227,6 +229,42 @@ fun LibraryOptionsPanel(
                             .verticalScroll(rememberScrollState())
                             .padding(vertical = 12.dp)
                     ) {
+                        if (tabGroups != null) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .focusGroup()
+                                    .padding(horizontal = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                tabGroups.forEachIndexed { index, group ->
+                                    val key = "tab$index"
+                                    FilterAccordion(
+                                        label = group.label,
+                                        valueText = group.value,
+                                        icon = group.icon,
+                                        expanded = openGroup == key,
+                                        onToggle = { toggleGroup(key) },
+                                        headerFocus = if (index == 0) firstItemFocusRequester else headerRequester(key),
+                                    ) {
+                                        group.options.forEach { option ->
+                                            OptionListItem(
+                                                text = option.text,
+                                                selected = option.selected,
+                                                onClick = {
+                                                    option.onPick()
+                                                    openGroup = null
+                                                    runCatching {
+                                                        (if (index == 0) firstItemFocusRequester else headerRequester(key)).requestFocus()
+                                                    }
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -339,6 +377,7 @@ fun LibraryOptionsPanel(
                                 onToggle = onCuratedListToggle,
                                 onClear = onClearCuratedLists,
                             )
+                        }
                         }
                         }
 
@@ -466,6 +505,11 @@ private val STATUS_FILTERS = listOf(
     AppFilter.PROVEN_GPU,
     AppFilter.VR,
 )
+
+/** One group of a non-PC tab's filters: its current value and the options (single choice). */
+class TabFilterGroup(val label: String, val value: String, val icon: ImageVector, val options: List<TabFilterOption>)
+
+class TabFilterOption(val text: String, val selected: Boolean, val onPick: () -> Unit)
 
 @Composable
 private fun summarize(options: List<AppFilter>, selected: EnumSet<AppFilter>): String {

@@ -68,7 +68,9 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -170,6 +172,8 @@ import app.gamenative.ui.model.LibraryViewModel
 import app.gamenative.ui.screen.library.components.GameSourceIcon
 import app.gamenative.ui.screen.library.components.LibraryDetailPane
 import app.gamenative.ui.screen.library.components.LibraryOptionsPanel
+import app.gamenative.ui.screen.library.components.TabFilterGroup
+import app.gamenative.ui.screen.library.components.TabFilterOption
 import app.gamenative.utils.SteamUtils
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
@@ -255,8 +259,11 @@ fun RiftHomeScreen(
     val pairedPcs by PcStreaming.pairedHosts(context).collectAsStateWithLifecycle()
     // The PC streaming tab exists only while it has games to show; setup hints live in settings.
     val streamTab = if (pairedPcs.isNotEmpty()) rememberPcStreamingTab() else null
-    val streamItems = streamTab?.items.orEmpty()
-    val hasStreamGames = streamItems.isNotEmpty()
+    // Each tab keeps its own sort and filter; the filters panel edits the tab that is open.
+    var streamView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.PcStreaming)) }
+    var androidView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.AndroidGames)) }
+    val streamItems by remember(streamTab, streamView) { derivedStateOf { streamTab?.arrange(context, streamView).orEmpty() } }
+    val hasStreamGames = streamTab?.items?.isNotEmpty() == true
     val sections = remember(library, androidGames, hasStreamGames) { RiftSections.configured(context, library, androidGames, hasStreamGames) }
 
     // Start-up: pure black until there is something to show (or, with nothing set up, until the
@@ -304,7 +311,7 @@ fun RiftHomeScreen(
     val pcRowState = rememberLazyListState()
     val androidRowState = rememberLazyListState()
     val streamRowState = rememberLazyListState()
-    val filterKey = listOf(libraryState.appInfoSortType.toList(), libraryState.currentSortOption)
+    val filterKey = listOf(libraryState.appInfoSortType.toList(), libraryState.currentSortOption, streamView, androidView)
     var lastFilterKey by remember { mutableStateOf(filterKey) }
     LaunchedEffect(filterKey) {
         if (filterKey != lastFilterKey) {
@@ -322,7 +329,16 @@ fun RiftHomeScreen(
     var libraryPending by remember { mutableStateOf<String?>(null) }
     var libraryTabSwitch by remember { mutableIntStateOf(0) }
     val focusedItem = homeRow.firstOrNull { it.appId == focusedAppId } ?: homeRow.firstOrNull()
-    val focusedAndroid = androidGames.firstOrNull { it.packageName == focusedPackage } ?: androidGames.firstOrNull()
+    val androidShown = remember(androidGames, androidView) {
+        val opened = AndroidGames.lastOpened(context)
+        when (androidView.sort) {
+            TabSort.NAME_ASC -> androidGames.sortedBy { it.label.lowercase() }
+            TabSort.NAME_DESC -> androidGames.sortedByDescending { it.label.lowercase() }
+            TabSort.DATE_ADDED -> androidGames.sortedWith(compareByDescending<AndroidGame> { it.installedAt }.thenBy { it.label.lowercase() })
+            TabSort.LAST_PLAYED -> androidGames.sortedWith(compareByDescending<AndroidGame> { opened[it.packageName] ?: 0L }.thenBy { it.label.lowercase() })
+        }
+    }
+    val focusedAndroid = androidShown.firstOrNull { it.packageName == focusedPackage } ?: androidShown.firstOrNull()
     val focusedStream = streamItems.firstOrNull { it.appId == focusedStreamId } ?: streamItems.firstOrNull()
 
     fun openGame(item: LibraryItem) {
@@ -617,7 +633,7 @@ fun RiftHomeScreen(
                             }
                             event.type == KeyEventType.KeyUp -> {
                                 selectHold[0]?.cancel()
-                                if (!selectLongPressed && !systemMenuOpen && section == RiftSection.PcGames) {
+                                if (!selectLongPressed && !systemMenuOpen && section != null) {
                                     viewModel.onOptionsPanelToggle(!viewModel.state.value.isOptionsPanelOpen)
                                 }
                             }
@@ -737,7 +753,7 @@ fun RiftHomeScreen(
                         section == RiftSection.AndroidGames -> {
                             AndroidHero(game = focusedAndroid, modifier = Modifier.weight(1f))
                             AndroidShelf(
-                                games = androidGames,
+                                games = androidShown,
                                 listState = androidRowState,
                                 cardHeight = cardHeight,
                                 pendingFocusKey = pendingFocusKey,
@@ -759,9 +775,10 @@ fun RiftHomeScreen(
                                 pendingFocusKey = pendingFocusKey,
                                 onFocusConsumed = { pendingFocusKey = null },
                                 onFocused = { focusedStreamId = it.appId },
-                                onOpen = { streamTab.launch(context, it) },
+                                onOpen = { if (it.isInstalled) streamTab.launch(context, it) },
                                 onNearEnd = {},
                                 badges = false,
+                                dimUninstalled = true,
                             )
                         }
                         // Still loading with nothing cached: stay black rather than show a spinner.
@@ -802,7 +819,7 @@ fun RiftHomeScreen(
               }
                 Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(FooterHeight).graphicsLayer { alpha = intro.value }) {
                     FrostedGlass(backdrop = backdrop, modifier = Modifier.matchParentSize())
-                    HintsBar(showFilters = section == RiftSection.PcGames)
+                    HintsBar(showFilters = section != null)
                 }
             }
 
@@ -853,6 +870,17 @@ fun RiftHomeScreen(
                     },
                 )
             }
+            val tabGroups = when (section) {
+                RiftSection.PcStreaming -> tabFilterGroups(streamView, withScope = true) {
+                    streamView = it
+                    RiftTabFilters.set(context, RiftSection.PcStreaming, it)
+                }
+                RiftSection.AndroidGames -> tabFilterGroups(androidView, withScope = false) {
+                    androidView = it
+                    RiftTabFilters.set(context, RiftSection.AndroidGames, it)
+                }
+                else -> null
+            }
             RiftGlassTheme {
                 LibraryOptionsPanel(
                     isOpen = panelOpen,
@@ -875,6 +903,7 @@ fun RiftHomeScreen(
                     curatedListCounts = libraryState.curatedListCounts,
                     onCuratedListToggle = viewModel::onCuratedListToggle,
                     onClearCuratedLists = viewModel::onClearCuratedLists,
+                    tabGroups = tabGroups,
                     panelShape = RectangleShape,
                     panelShadowElevation = 0.dp,
                     showCloseButton = false,
@@ -1166,6 +1195,7 @@ private fun PcGamesShelf(
     onOpen: (LibraryItem) -> Unit,
     onNearEnd: () -> Unit,
     badges: Boolean = true,
+    dimUninstalled: Boolean = false,
     emptyMessage: String = stringResource(R.string.rift_filter_empty),
     onOpenLibrary: (() -> Unit)? = null,
     onLibraryFocused: () -> Unit = {},
@@ -1208,7 +1238,7 @@ private fun PcGamesShelf(
             val url = urls.firstOrNull { it.isNotEmpty() }.orEmpty()
             val context = LocalContext.current
             // Entrance: the covers on screen roll in one after another (app start, tab switch).
-            Box(modifier = Modifier.shelfEntry(entry, index, clock)) {
+            Box(modifier = Modifier.shelfEntry(entry, index, clock).graphicsLayer { alpha = if (dimUninstalled && !item.isInstalled) 0.4f else 1f }) {
             CoverCard(
                 height = cardHeight,
                 aspectRatio = if (wide) WIDE_TILE_RATIO else 2f / 3f,
@@ -1996,4 +2026,34 @@ private suspend fun preloadFirstImages(context: android.content.Context, library
             runCatching { context.imageLoader.execute(ImageRequest.Builder(context).data(url).size(px).build()) }
         }
     }.awaitAll()
+}
+
+/** The filters panel's groups for a tab other than PC games: its sort and, for streaming, the scope. */
+@Composable
+private fun tabFilterGroups(view: TabView, withScope: Boolean, onChange: (TabView) -> Unit): List<TabFilterGroup> = buildList {
+    add(
+        TabFilterGroup(
+            label = stringResource(R.string.options_sort_by),
+            value = stringResource(view.sort.titleRes),
+            icon = Icons.Outlined.SwapVert,
+            options = TabSort.entries.map { sort ->
+                TabFilterOption(stringResource(sort.titleRes), view.sort == sort) { onChange(view.copy(sort = sort)) }
+            },
+        ),
+    )
+    if (withScope) {
+        add(
+            TabFilterGroup(
+                label = stringResource(R.string.rift_scope_title),
+                value = stringResource(if (view.showAll) R.string.rift_scope_all else R.string.rift_scope_installed),
+                icon = Icons.Outlined.FilterList,
+                options = listOf(false, true).map { all ->
+                    TabFilterOption(
+                        stringResource(if (all) R.string.rift_scope_all else R.string.rift_scope_installed),
+                        view.showAll == all,
+                    ) { onChange(view.copy(showAll = all)) }
+                },
+            ),
+        )
+    }
 }

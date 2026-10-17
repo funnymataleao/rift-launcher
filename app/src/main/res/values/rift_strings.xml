@@ -280,4 +280,11 @@
     <string name="rift_settings_tab_rename_hint">Up to 24 characters. An empty name brings the original back.</string>
     <string name="rift_library_all">All games</string>
     <string name="rift_library_open">Open library</string>
+    <string name="rift_sort_name_asc">Name (A-Z)</string>
+    <string name="rift_sort_name_desc">Name (Z-A)</string>
+    <string name="rift_sort_date_added">Date added</string>
+    <string name="rift_sort_last_played">Last played</string>
+    <string name="rift_scope_title">Show</string>
+    <string name="rift_scope_installed">Installed on the PC</string>
+    <string name="rift_scope_all">All games</string>
 </resources>

@@ -275,4 +275,11 @@
     <string name="rift_settings_tab_rename_hint">Не длиннее 24 символов. Пустое название вернёт прежнее.</string>
     <string name="rift_library_all">Все игры</string>
     <string name="rift_library_open">Открыть библиотеку</string>
+    <string name="rift_sort_name_asc">По имени (А-Я)</string>
+    <string name="rift_sort_name_desc">По имени (Я-А)</string>
+    <string name="rift_sort_date_added">По дате добавления</string>
+    <string name="rift_sort_last_played">По последней игре</string>
+    <string name="rift_scope_title">Показывать</string>
+    <string name="rift_scope_installed">Установленные на ПК</string>
+    <string name="rift_scope_all">Все игры</string>
 </resources>
