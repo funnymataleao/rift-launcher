@@ -10,8 +10,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.gamenative.ui.model.HomeViewModel
-import app.gamenative.ui.screen.downloads.HomeDownloadsScreen
 import app.gamenative.ui.theme.PluviaTheme
+import dev.rift.launcher.home.RiftDownloadsScreen
 import dev.rift.launcher.home.RiftHomeScreen
 import dev.rift.launcher.settings.RiftSettingsSection
 
@@ -35,13 +35,7 @@ fun HomeScreen(
     var showDownloads by rememberSaveable { mutableStateOf(false) }
     if (showDownloads) {
         BackHandler { showDownloads = false }
-        HomeDownloadsScreen(
-            onBack = { showDownloads = false },
-            onClickPlay = onClickPlay,
-            onTestGraphics = onTestGraphics,
-            onPlayWithDiagnostics = onPlayWithDiagnostics,
-            onAiDebugRun = onAiDebugRun,
-        )
+        RiftDownloadsScreen(onBack = { showDownloads = false })
         return
     }
 
