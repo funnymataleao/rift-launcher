@@ -31,6 +31,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.rift.launcher.stream.PcStreaming
+import dev.rift.launcher.stream.rememberPcStreamingTab
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -91,6 +92,23 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
                     value = stringResource(R.string.rift_settings_pc_paired),
                     icon = Icons.Rounded.Computer,
                 )
+            }
+        }
+    }
+    // Host apps that are not games (Desktop, Steam, Playnite, Game Pass...): the home tab shows only games.
+    if (pairedPcs.isNotEmpty()) {
+        val streamTab = rememberPcStreamingTab()
+        val services = streamTab.services
+        if (services.isNotEmpty()) {
+            SettingsGroup(title = stringResource(R.string.rift_stream_group_pc_apps)) {
+                services.forEach { service ->
+                    LinkRow(
+                        title = service.app.appName.orEmpty(),
+                        subtitle = service.pc.name,
+                        icon = Icons.Rounded.Cast,
+                        onClick = { streamTab.launch(context, service) },
+                    )
+                }
             }
         }
     }
