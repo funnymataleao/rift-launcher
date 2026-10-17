@@ -274,6 +274,8 @@ fun SystemMenu(
     panelShape: Shape = RoundedCornerShape(topStart = 32.dp, bottomStart = 32.dp),
     panelShadowElevation: Dp = 24.dp,
     showCloseButton: Boolean = true,
+    // Rift is its own app: no GameNative Discord link and no GameNative supporters list.
+    showCommunityItems: Boolean = true,
 ) {
     val scope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
@@ -617,19 +619,21 @@ fun SystemMenu(
                             focusRequester = firstItemFocusRequester,
                         )
 
-                        SystemMenuItem(
-                            text = stringResource(R.string.help_and_support),
-                            icon = Icons.AutoMirrored.Filled.Help,
-                            onClick = {
-                                uriHandler.openUri("https://discord.gg/2hKv4VfZfE")
-                            },
-                        )
+                        if (showCommunityItems) {
+                            SystemMenuItem(
+                                text = stringResource(R.string.help_and_support),
+                                icon = Icons.AutoMirrored.Filled.Help,
+                                onClick = {
+                                    uriHandler.openUri("https://discord.gg/2hKv4VfZfE")
+                                },
+                            )
 
-                        SystemMenuItem(
-                            text = stringResource(R.string.hall_of_fame),
-                            icon = Icons.AutoMirrored.Filled.StarHalf,
-                            onClick = { showSupporters = true },
-                        )
+                            SystemMenuItem(
+                                text = stringResource(R.string.hall_of_fame),
+                                icon = Icons.AutoMirrored.Filled.StarHalf,
+                                onClick = { showSupporters = true },
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(16.dp))
 
