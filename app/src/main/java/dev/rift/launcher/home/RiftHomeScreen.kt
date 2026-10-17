@@ -2601,11 +2601,6 @@ internal fun <T> GlassTabs(
                         layout(0, 0) { p.place(capsuleX.value.roundToInt(), top.roundToInt()) }
                     }
                     .clip(RiftShapes.full)
-                    .border(
-                        1.dp,
-                        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.42f), Color.White.copy(alpha = 0.10f))),
-                        RiftShapes.full,
-                    )
                     .drawWithContent {
                         drawContent()
                         // The glass's soft highlight on its upper half.
