@@ -8,9 +8,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -30,9 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.gamenative.PluviaApp
 import app.gamenative.events.AndroidEvent
 import app.gamenative.ui.screen.library.components.ambient.AmbientModeConstants.BAR_HEIGHT_DP
@@ -47,16 +43,22 @@ import app.gamenative.ui.screen.library.components.ambient.AmbientModeConstants.
 import app.gamenative.ui.screen.library.components.ambient.AmbientModeConstants.SHIMMER_WIDTH_FRACTION
 import app.gamenative.ui.theme.BrandGradient
 import app.gamenative.utils.ShakeDetector
+import dev.rift.launcher.home.GameBackdrop
 import kotlinx.coroutines.delay
 
 /**
  * Only compose while a download is active. Brightness is restored on disposal.
+ * Rift: the game's [GameBackdrop] (art, slow zoom, logo in the middle) instead of a black screen (Denis);
+ * the percent and the bar stay at the bottom.
  */
 @Composable
 internal fun AmbientDownloadOverlay(
     gameName: String,
     downloadProgress: Float,
     iconUrl: String? = null,
+    heroUrl: String = "",
+    logoUrl: String = "",
+    steamAppId: Int = 0,
     originBounds: Rect? = null,
     userInteractionCounter: Int = 0,
 ) {
@@ -166,16 +168,23 @@ internal fun AmbientDownloadOverlay(
                             }
                         }
                     }
-                }
-                .background(Color.Black.copy(alpha = ambientAlpha)),
+                },
         ) {
             if (isDvdMode && ambientAlpha == 1f) {
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black))
                 DvdBouncingOverlay(
                     gameName = gameName,
                     downloadProgress = downloadProgress,
                     iconUrl = iconUrl,
                 )
             } else {
+                GameBackdrop(
+                    heroUrl = heroUrl,
+                    logoUrl = logoUrl,
+                    steamAppId = steamAppId,
+                    name = gameName,
+                    modifier = Modifier.alpha(ambientAlpha),
+                )
                 val textAlpha =
                     ((ambientAlpha - 0.7f) / 0.3f).coerceIn(0f, 1f) * AmbientModeConstants.TEXT_MAX_ALPHA
 
@@ -190,16 +199,7 @@ internal fun AmbientDownloadOverlay(
                             }
                             .alpha(textAlpha),
                     ) {
-                        Text(
-                            text = gameName,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontWeight = FontWeight.Medium,
-                                letterSpacing = 0.5.sp,
-                            ),
-                            color = Color.White,
-                            maxLines = 1,
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        // The name is the logo in the middle now; only the percent stays here.
                         Text(
                             text = "${(downloadProgress * 100).toInt()}%",
                             style = MaterialTheme.typography.bodySmall,

@@ -2789,10 +2789,22 @@ internal fun AppScreenContent(
 
         // Ambient mode during downloads
         if (isDownloading && riftOptionsOnly == null) {
+            val artContext = LocalContext.current
+            val art = remember(displayInfo.appId, displayInfo.heroImageUrl, displayInfo.logoUrl) {
+                dev.rift.launcher.art.LaunchArt.of(
+                    artContext,
+                    displayInfo.appId,
+                    storeHero = displayInfo.heroImageUrl.orEmpty().ifEmpty { displayInfo.headerUrl.orEmpty() },
+                    storeLogo = displayInfo.logoUrl.orEmpty(),
+                )
+            }
             AmbientDownloadOverlay(
                 gameName = displayInfo.name,
                 downloadProgress = downloadProgress,
                 iconUrl = displayInfo.iconUrl,
+                heroUrl = art.heroUrl,
+                logoUrl = art.logoUrl,
+                steamAppId = art.steamAppId,
                 originBounds = progressBarBounds,
                 userInteractionCounter = ambientInteractionCounter,
             )

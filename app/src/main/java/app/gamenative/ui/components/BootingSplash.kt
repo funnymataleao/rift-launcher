@@ -100,6 +100,7 @@ import app.gamenative.ui.theme.BrandGradient
 import app.gamenative.ui.theme.PluviaTheme
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
+import dev.rift.launcher.home.GameBackdrop
 import java.io.File
 import kotlin.math.sin
 import kotlin.random.Random
@@ -110,6 +111,9 @@ fun BootingSplash(
     text: String = "Initializing...",
     progress: Float = -1f, // -1 for indeterminate, 0-1 for determinate
     heroImageUrl: String = "",
+    logoUrl: String = "",
+    steamAppId: Int = 0,
+    gameName: String = "",
     bootAd: BootAdItem? = null,
     onAbort: (() -> Unit)? = null,
     onDismissAd: ((optOut: Boolean) -> Unit)? = null,
@@ -187,7 +191,6 @@ fun BootingSplash(
         // Animations only run while visible (inside AnimatedVisibility scope)
         val infiniteTransition = rememberInfiniteTransition(label = "bootSplash")
         val scrimColor = MaterialTheme.colorScheme.scrim
-        var heroImageFailed by remember(heroImageUrl) { mutableStateOf(false) }
         var adImageFailed by remember(bootAd?.campaignId) { mutableStateOf(false) }
         val activeAd = if (adImageFailed) null else bootAd
 
@@ -231,7 +234,8 @@ fun BootingSplash(
             label = "particlePhase",
         )
 
-        val useHeroBackdrop = heroImageUrl.isNotEmpty() && !heroImageFailed
+        // Rift: the game's own backdrop (art, slow zoom, logo in the middle), as on the stream and download screens.
+        val useHeroBackdrop = heroImageUrl.isNotEmpty() || logoUrl.isNotEmpty() || steamAppId != 0
 
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -306,47 +310,7 @@ fun BootingSplash(
                         ),
                 )
             } else if (useHeroBackdrop) {
-                val desaturate = remember {
-                    ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
-                }
-
-                CoilImage(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            scaleX = 1.06f
-                            scaleY = 1.06f
-                        }
-                        .alpha(0.38f)
-                        .blur(7.dp),
-                    imageModel = { heroImageUrl },
-                    imageOptions = ImageOptions(
-                        contentScale = ContentScale.Crop,
-                        contentDescription = null,
-                        colorFilter = desaturate,
-                    ),
-                    loading = {},
-                    failure = {
-                        heroImageFailed = true
-                    },
-                    previewPlaceholder = painterResource(R.drawable.ic_logo_color),
-                )
-
-                // Single soft legibility scrim: light at the top, building toward the
-                // bottom where the status/tips text sits. No heavy top/bottom bands.
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colorStops = arrayOf(
-                                    0.0f to scrimColor.copy(alpha = 0.48f),
-                                    0.4f to scrimColor.copy(alpha = 0.48f),
-                                    1.0f to scrimColor.copy(alpha = 0.62f),
-                                ),
-                            ),
-                        ),
-                )
+                GameBackdrop(heroUrl = heroImageUrl, logoUrl = logoUrl, steamAppId = steamAppId, name = gameName)
             }
 
             // Main content
@@ -368,10 +332,11 @@ fun BootingSplash(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(horizontal = 32.dp),
             ) {
-                Spacer(modifier = Modifier.weight(0.4f))
+                // Over the game's backdrop its logo is in the middle; the bar, status and tips sit below it.
+                Spacer(modifier = Modifier.weight(if (useHeroBackdrop) 1f else 0.4f))
 
                 // Logo with glow effect
-                Box(
+                if (!useHeroBackdrop) Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.scale(logoScale),
                 ) {
@@ -409,7 +374,7 @@ fun BootingSplash(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(28.dp))
+                if (!useHeroBackdrop) Spacer(modifier = Modifier.height(28.dp))
 
                 ProgressBar(
                     progress = progress,
@@ -442,7 +407,7 @@ fun BootingSplash(
                 )
 
                 Spacer(modifier = Modifier.height(15.dp))
-                Spacer(modifier = Modifier.weight(0.3f))
+                if (!useHeroBackdrop) Spacer(modifier = Modifier.weight(0.3f))
 
                 // Tips section
                 if (tips.isNotEmpty()) {

@@ -50,6 +50,10 @@ object GameArtStore {
     fun get(context: Context, appId: String, kind: ArtKind): String =
         prefs(context).getString(key(appId, kind), "").orEmpty()
 
+    /** The picture shown for [appId] and [kind] in place of the store's: picked, else found; empty when neither. */
+    fun shown(context: Context, appId: String, kind: ArtKind): String =
+        get(context, appId, kind).ifEmpty { autoValue(autoPrefs(context), appId, kind) }
+
     /** [item] with the pictures the user picked in place of the store's; for games with none, the ones [autoFill] found. */
     fun apply(context: Context, item: LibraryItem): LibraryItem {
         val p = prefs(context)

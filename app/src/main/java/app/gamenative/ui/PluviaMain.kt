@@ -1925,10 +1925,17 @@ fun PluviaMain(
             }
 
             Box(modifier = Modifier.zIndex(10f)) {
+                // Rift: the art the user picked (or Rift found) first, and the logo, as on the game's own page.
+                val splashContext = LocalContext.current
+                val splashArt = remember(state.launchedAppId, state.bootingSplashHeroImageUrl) {
+                    dev.rift.launcher.art.LaunchArt.of(splashContext, state.launchedAppId, state.bootingSplashHeroImageUrl)
+                }
                 BootingSplash(
                     visible = state.showBootingSplash,
                     text = state.bootingSplashText,
-                    heroImageUrl = state.bootingSplashHeroImageUrl,
+                    heroImageUrl = splashArt.heroUrl,
+                    logoUrl = splashArt.logoUrl,
+                    steamAppId = splashArt.steamAppId,
                     bootAd = state.bootAd,
                     onAbort = { viewModel.abortBoot() },
                     onDismissAd = { optOut -> viewModel.dismissBootAd(optOut) },
