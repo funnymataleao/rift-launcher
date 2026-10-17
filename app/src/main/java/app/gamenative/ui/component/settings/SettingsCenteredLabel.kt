@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
-import com.alorma.compose.settings.ui.base.internal.SettingsTileScaffold
 
 @Composable
 fun SettingsCenteredLabel(
@@ -46,7 +45,7 @@ fun SettingsCenteredLabel(
             }
         }
 
-    SettingsTileScaffold(
+    RiftTile(
         title = {},
         modifier = modifier,
         enabled = false,

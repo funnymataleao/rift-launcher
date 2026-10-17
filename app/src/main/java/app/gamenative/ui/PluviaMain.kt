@@ -1551,7 +1551,6 @@ fun PluviaMain(
                                 withContext(Dispatchers.IO) {
                                     ContainerUtils.applyToContainer(context, appId, newConfig)
                                 }
-                                openContainerConfigForAppId = null
                             }
                         },
                     )

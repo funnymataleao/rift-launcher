@@ -3,7 +3,6 @@ package app.gamenative.ui.component.dialog
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -20,8 +19,9 @@ import app.gamenative.ui.component.settings.SettingsMultiListDropdown
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.LsfgVkManager
-import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.component.settings.RiftSliderTile
+import app.gamenative.ui.component.settings.SettingsGroup
+import app.gamenative.ui.component.settings.SettingsSwitch
 import com.winlator.contents.ContentProfile
 import com.winlator.container.Container
 import com.winlator.core.KeyValueSet
@@ -183,18 +183,16 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                         state.config.value = config.copy(xrRefreshRate = xrRates[idx])
                     },
                 )
-                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    Text(text = stringResource(R.string.xr_render_scale))
-                    Slider(
-                        value = config.xrRenderScale.toFloat(),
-                        onValueChange = { newValue ->
-                            val stepped = ((newValue.roundToInt() + 2) / 5 * 5).coerceIn(25, 100)
-                            state.config.value = config.copy(xrRenderScale = stepped)
-                        },
-                        valueRange = 25f..100f,
-                    )
-                    Text(text = "${config.xrRenderScale}%")
-                }
+                RiftSliderTile(
+                    title = stringResource(R.string.xr_render_scale),
+                    valueText = "${config.xrRenderScale}%",
+                    value = config.xrRenderScale.toFloat(),
+                    onValueChange = { newValue ->
+                        val stepped = ((newValue.roundToInt() + 2) / 5 * 5).coerceIn(25, 100)
+                        state.config.value = config.copy(xrRenderScale = stepped)
+                    },
+                    valueRange = 25f..100f,
+                )
                 if (config.windowsVrEnabled) {
                     SettingsSwitch(
                         colors = settingsTileColorsAlt(),
@@ -269,32 +267,28 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                 ?.equals("None", ignoreCase = true)
                 ?.not() ?: false
             if (selectedBoost) {
-                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    Text(text = stringResource(R.string.sharpness_level))
-                    Slider(
-                        value = state.sharpnessLevel.value.toFloat(),
-                        onValueChange = { newValue ->
-                            val clamped = newValue.roundToInt().coerceIn(0, 100)
-                            state.sharpnessLevel.value = clamped
-                            state.config.value = config.copy(sharpnessLevel = clamped)
-                        },
-                        valueRange = 0f..100f,
-                    )
-                    Text(text = "${state.sharpnessLevel.value}%")
-                }
-                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    Text(text = stringResource(R.string.sharpness_denoise))
-                    Slider(
-                        value = state.sharpnessDenoise.value.toFloat(),
-                        onValueChange = { newValue ->
-                            val clamped = newValue.roundToInt().coerceIn(0, 100)
-                            state.sharpnessDenoise.value = clamped
-                            state.config.value = config.copy(sharpnessDenoise = clamped)
-                        },
-                        valueRange = 0f..100f,
-                    )
-                    Text(text = "${state.sharpnessDenoise.value}%")
-                }
+                RiftSliderTile(
+                    title = stringResource(R.string.sharpness_level),
+                    valueText = "${state.sharpnessLevel.value}%",
+                    value = state.sharpnessLevel.value.toFloat(),
+                    onValueChange = { newValue ->
+                        val clamped = newValue.roundToInt().coerceIn(0, 100)
+                        state.sharpnessLevel.value = clamped
+                        state.config.value = config.copy(sharpnessLevel = clamped)
+                    },
+                    valueRange = 0f..100f,
+                )
+                RiftSliderTile(
+                    title = stringResource(R.string.sharpness_denoise),
+                    valueText = "${state.sharpnessDenoise.value}%",
+                    value = state.sharpnessDenoise.value.toFloat(),
+                    onValueChange = { newValue ->
+                        val clamped = newValue.roundToInt().coerceIn(0, 100)
+                        state.sharpnessDenoise.value = clamped
+                        state.config.value = config.copy(sharpnessDenoise = clamped)
+                    },
+                    valueRange = 0f..100f,
+                )
             }
         }
         else {

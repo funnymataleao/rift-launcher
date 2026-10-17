@@ -12,7 +12,6 @@ import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.border
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -315,19 +314,13 @@ internal fun SectionTabs(tabs: List<String>, selectedIndex: Int, onSelect: (Int)
 
 /**
  * Switch in the Material 3 Expressive shape: the thumb grows and carries a check mark when on. The track is
- * filled with the accent brush (a gradient accent shows as a gradient), a grey outline when off. The
- * stock Material switch takes only flat colours, so it is drawn here.
+ * filled with the accent brush (a gradient accent shows as a gradient), a grey fill when off; there is no
+ * outline. The stock Material switch takes only flat colours, so it is drawn here.
  */
 @Composable
 internal fun RiftSwitch(checked: Boolean, focused: Boolean) {
     val accent = RiftAccent.current
     // On the accent plate the switch turns dark, so it still reads.
-    val border = when {
-        checked && focused -> accent.onAccent
-        checked -> Color.Transparent
-        focused -> accent.onAccent.copy(alpha = 0.6f)
-        else -> RiftColors.Outline
-    }
     val thumb = when {
         checked -> accent.onAccent
         focused -> accent.onAccent.copy(alpha = 0.6f)
@@ -343,11 +336,10 @@ internal fun RiftSwitch(checked: Boolean, focused: Boolean) {
                 when {
                     checked && focused -> Modifier.background(accent.onAccent.copy(alpha = 0.22f))
                     checked -> Modifier.background(accent.brush)
-                    focused -> Modifier
-                    else -> Modifier.background(RiftColors.SurfaceContainerHigh)
+                    focused -> Modifier.background(accent.onAccent.copy(alpha = 0.18f))
+                    else -> Modifier.background(RiftColors.Outline.copy(alpha = 0.35f))
                 },
-            )
-            .border(2.dp, border, CircleShape),
+            ),
         contentAlignment = Alignment.CenterStart,
     ) {
         Box(
@@ -368,7 +360,7 @@ internal fun RiftSwitch(checked: Boolean, focused: Boolean) {
     }
 }
 
-/** The box of a [CheckRow]: filled with the accent brush when ticked, a grey outline when not. */
+/** The box of a [CheckRow]: filled with the accent brush when ticked, a grey fill when not. */
 @Composable
 private fun RiftCheckMark(checked: Boolean, focused: Boolean) {
     val accent = RiftAccent.current
@@ -381,7 +373,8 @@ private fun RiftCheckMark(checked: Boolean, focused: Boolean) {
                 when {
                     checked && focused -> Modifier.background(accent.onAccent)
                     checked -> Modifier.background(accent.brush)
-                    else -> Modifier.border(2.dp, if (focused) accent.onAccent.copy(alpha = 0.6f) else RiftColors.Outline, shape)
+                    focused -> Modifier.background(accent.onAccent.copy(alpha = 0.18f))
+                    else -> Modifier.background(RiftColors.Outline.copy(alpha = 0.35f))
                 },
             ),
         contentAlignment = Alignment.Center,

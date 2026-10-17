@@ -25,12 +25,18 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ViewList
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material.icons.rounded.Build
+import androidx.compose.material.icons.rounded.DataObject
+import androidx.compose.material.icons.rounded.DesktopWindows
+import androidx.compose.material.icons.rounded.Extension
+import androidx.compose.material.icons.rounded.Gamepad
+import androidx.compose.material.icons.rounded.Memory
+import androidx.compose.material.icons.rounded.Storage
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.WineBar
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,10 +48,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import app.gamenative.ui.component.NoExtractOutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,6 +61,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -84,7 +89,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.BuildConfig
 import app.gamenative.R
 import app.gamenative.ui.util.SnackbarManager
-import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.component.settings.SettingsCPUList
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
 import app.gamenative.ui.component.settings.SettingsListDropdown
@@ -105,10 +109,9 @@ import app.gamenative.service.download.SteamDownloadMode
 import app.gamenative.utils.ManifestComponentHelper.VersionOptionList
 import app.gamenative.utils.ManifestRepository
 import app.gamenative.utils.PaddingUtils
+import dev.rift.launcher.settings.RiftSidebarScreen
+import dev.rift.launcher.settings.SidebarEntry
 import com.winlator.contents.ContentProfile
-import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsMenuLink
-import com.alorma.compose.settings.ui.SettingsSwitch
 import com.winlator.box86_64.Box86_64Preset
 import com.winlator.box86_64.Box86_64PresetManager
 import com.winlator.container.Container
@@ -128,6 +131,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -279,6 +283,9 @@ private fun rememberContainerConfigDialogStaticData(): ContainerConfigDialogStat
         ),
     )
 }
+
+/** How long the container settings wait after the last change before they are saved. */
+private const val AUTOSAVE_DELAY_MS = 500L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -974,9 +981,6 @@ fun ContainerConfigDialog(
         }
         var languageIndex by languageIndexRef
 
-        var dismissDialogState by rememberSaveable(stateSaver = MessageDialogState.Saver) {
-            mutableStateOf(MessageDialogState(visible = false))
-        }
         val showEnvVarCreateDialogRef = rememberSaveable { mutableStateOf(false) }
         var showEnvVarCreateDialog by showEnvVarCreateDialogRef
         val showAddDriveDialogRef = rememberSaveable { mutableStateOf(false) }
@@ -1055,18 +1059,27 @@ fun ContainerConfigDialog(
             config = config.copy(screenSize = screenSize)
         }
 
-        val onDismissCheck: () -> Unit = {
-            if (initialConfig != config) {
-                dismissDialogState = MessageDialogState(
-                    visible = true,
-                    title = context.getString(R.string.container_config_unsaved_changes_title),
-                    message = context.getString(R.string.container_config_unsaved_changes_message),
-                    confirmBtnText = context.getString(R.string.discard),
-                    dismissBtnText = context.getString(R.string.cancel),
-                )
-            } else {
-                onDismissRequest()
+        // Every change is saved as it is made, so the screen has no save button: a moment after the last
+        // change, and once more on the way out.
+        var savedConfig by remember { mutableStateOf(initialConfig) }
+        val latestConfig by rememberUpdatedState(config)
+        val latestOnSave by rememberUpdatedState(onSave)
+        val saveNow: () -> Unit = {
+            if (latestConfig != savedConfig) {
+                savedConfig = latestConfig
+                latestOnSave(latestConfig)
             }
+        }
+        LaunchedEffect(config) {
+            if (config != savedConfig) {
+                delay(AUTOSAVE_DELAY_MS)
+                saveNow()
+            }
+        }
+        DisposableEffect(Unit) { onDispose { saveNow() } }
+        val onBack: () -> Unit = {
+            saveNow()
+            onDismissRequest()
         }
 
         val nonzeroResolutionError = stringResource(
@@ -1217,131 +1230,46 @@ fun ContainerConfigDialog(
             message = manifestDownloadMessage,
         )
 
-        MessageDialog(
-            visible = dismissDialogState.visible,
-            title = dismissDialogState.title,
-            message = dismissDialogState.message,
-            confirmBtnText = dismissDialogState.confirmBtnText,
-            dismissBtnText = dismissDialogState.dismissBtnText,
-            onDismissRequest = { dismissDialogState = MessageDialogState(visible = false) },
-            onDismissClick = { dismissDialogState = MessageDialogState(visible = false) },
-            onConfirmClick = onDismissRequest,
-        )
-
         Dialog(
-            onDismissRequest = onDismissCheck,
+            onDismissRequest = onBack,
             properties = DialogProperties(
                 usePlatformDefaultWidth = false,
                 dismissOnClickOutside = false,
             ),
             content = {
-                val scrollState = rememberScrollState()
-
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    topBar = {
-                        CenterAlignedTopAppBar(
-                            title = {
-                                Text(
-                                    text = "$title${if (initialConfig != config) "*" else ""}",
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            },
-                            navigationIcon = {
-                                IconButton(
-                                    onClick = onDismissCheck,
-                                    content = { Icon(Icons.Default.Close, null) },
-                                )
-                            },
-                            actions = {
-                                IconButton(
-                                    onClick = { onSave(config) },
-                                    content = { Icon(Icons.Default.Save, null) },
-                                )
-                            },
-                        )
-                    },
-                ) { paddingValues ->
-                    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
-                    val tabs = listOf(
-                        stringResource(R.string.container_config_tab_general),
-                        stringResource(R.string.container_config_tab_graphics),
-                        stringResource(R.string.container_config_tab_emulation),
-                        stringResource(R.string.container_config_tab_controller),
-                        stringResource(R.string.container_config_tab_wine),
-                        stringResource(R.string.container_config_tab_win_components),
-                        stringResource(R.string.container_config_tab_environment),
-                        stringResource(R.string.container_config_tab_drives),
-                        stringResource(R.string.container_config_tab_advanced)
-                    )
-
-                    // Let controller shoulder buttons cycle through the tabs: R1/R2
-                    // forward, L1/L2 back (both wrap). The handler lives on the content
-                    // container (not a focusable wrapper, which would break up/down
-                    // traversal), so it fires whenever focus is anywhere in the tabs or
-                    // content below.
-                    val firstTabFocusRequester = remember { FocusRequester() }
-                    // Seed focus onto the first tab when the dialog opens so the gamepad
-                    // can navigate immediately instead of needing a button press first.
-                    LaunchedEffect(Unit) { runCatching { firstTabFocusRequester.requestFocus() } }
-
-                    Column(
-                        modifier = Modifier
-                            .onPreviewKeyEvent { event ->
-                                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                                when (event.key) {
-                                    Key.ButtonR1, Key.ButtonR2 -> {
-                                        selectedTab = (selectedTab + 1) % tabs.size
-                                        true
-                                    }
-                                    Key.ButtonL1, Key.ButtonL2 -> {
-                                        selectedTab = (selectedTab - 1 + tabs.size) % tabs.size
-                                        true
-                                    }
-                                    else -> false
-                                }
-                            }
-                            .padding(
-                                top = PaddingUtils.statusBarAwarePadding().calculateTopPadding() + paddingValues.calculateTopPadding(),
-                                bottom = 32.dp + paddingValues.calculateBottomPadding(),
-                                start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
-                                end = paddingValues.calculateEndPadding(LayoutDirection.Ltr),
-                            )
-                            .fillMaxSize(),
-                    ) {
-                        ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 0.dp) {
-                            tabs.forEachIndexed { index, label ->
-                                Tab(
-                                    selected = selectedTab == index,
-                                    onClick = { selectedTab = index },
-                                    text = { Text(text = label) },
-                                    modifier = if (index == 0) {
-                                        Modifier.focusRequester(firstTabFocusRequester)
-                                    } else {
-                                        Modifier
-                                    },
-                                )
-                            }
-                        }
-                        Column(
-                            modifier = Modifier
-                                .verticalScroll(scrollState)
-                                .weight(1f),
-                        ) {
-                            if (selectedTab == 0) GeneralTabContent(state, nonzeroResolutionError)
-                            if (selectedTab == 1) GraphicsTabContent(state, default)
-                            if (selectedTab == 2) EmulationTabContent(state)
-                            if (selectedTab == 3) ControllerTabContent(state, default)
-                            if (selectedTab == 4) WineTabContent(state)
-                            if (selectedTab == 5) WinComponentsTabContent(state)
-                            if (selectedTab == 6) EnvironmentTabContent(state)
-                            if (selectedTab == 7) DrivesTabContent(state)
-                            if (selectedTab == 8) AdvancedTabContent(state)
-                        }
+                var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+                val entries = listOf(
+                    SidebarEntry(stringResource(R.string.container_config_tab_general), Icons.Rounded.Tune),
+                    SidebarEntry(stringResource(R.string.container_config_tab_graphics), Icons.Rounded.DesktopWindows),
+                    SidebarEntry(stringResource(R.string.container_config_tab_emulation), Icons.Rounded.Memory),
+                    SidebarEntry(stringResource(R.string.container_config_tab_controller), Icons.Rounded.Gamepad),
+                    SidebarEntry(stringResource(R.string.container_config_tab_wine), Icons.Rounded.WineBar),
+                    SidebarEntry(stringResource(R.string.container_config_tab_win_components), Icons.Rounded.Extension),
+                    SidebarEntry(stringResource(R.string.container_config_tab_environment), Icons.Rounded.DataObject),
+                    SidebarEntry(stringResource(R.string.container_config_tab_drives), Icons.Rounded.Storage),
+                    SidebarEntry(stringResource(R.string.container_config_tab_advanced), Icons.Rounded.Build),
+                )
+                // The same screen as Rift's Settings: the sections in a list on the left, the page on the right.
+                RiftSidebarScreen(
+                    title = title,
+                    entries = entries,
+                    selectedIndex = selectedTab,
+                    onSelect = { selectedTab = it },
+                    onBack = onBack,
+                ) {
+                    when (selectedTab) {
+                        0 -> GeneralTabContent(state, nonzeroResolutionError)
+                        1 -> GraphicsTabContent(state, default)
+                        2 -> EmulationTabContent(state)
+                        3 -> ControllerTabContent(state, default)
+                        4 -> WineTabContent(state)
+                        5 -> WinComponentsTabContent(state)
+                        6 -> EnvironmentTabContent(state)
+                        7 -> DrivesTabContent(state)
+                        8 -> AdvancedTabContent(state)
                     }
                 }
-            }
+            },
         )
     }
 }

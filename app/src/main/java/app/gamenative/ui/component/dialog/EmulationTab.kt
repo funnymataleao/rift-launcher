@@ -7,7 +7,7 @@ import androidx.compose.ui.res.stringResource
 import app.gamenative.R
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.theme.settingsTileColors
-import com.alorma.compose.settings.ui.SettingsGroup
+import app.gamenative.ui.component.settings.SettingsGroup
 import com.winlator.contents.ContentProfile
 import com.winlator.container.Container
 import com.winlator.core.StringUtils

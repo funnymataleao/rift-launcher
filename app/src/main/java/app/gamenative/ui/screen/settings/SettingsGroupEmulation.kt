@@ -44,10 +44,7 @@ fun SettingsGroupEmulation() {
             default = true,
             initialConfig = ContainerUtils.getDefaultContainerData(),
             onDismissRequest = { showConfigDialog = false },
-            onSave = {
-                showConfigDialog = false
-                ContainerUtils.setDefaultContainerData(it)
-            },
+            onSave = { ContainerUtils.setDefaultContainerData(it) },
         )
 
         Box64PresetsDialog(

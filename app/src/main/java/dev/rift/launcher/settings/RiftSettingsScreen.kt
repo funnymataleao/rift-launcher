@@ -3,6 +3,7 @@ package dev.rift.launcher.settings
 import dev.rift.launcher.sound.riftKeySounds
 import dev.rift.launcher.ui.theme.RiftAccent
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
@@ -80,13 +81,13 @@ import dev.rift.launcher.ui.theme.RiftShapes
 import dev.rift.launcher.ui.theme.RiftSizes
 import dev.rift.launcher.ui.theme.RiftTheme
 
-private val RailInset = 8.dp
-private val RailItemHeight = 52.dp
-private val RailGap = 14.dp
-private val RailDot = 8.dp
-private val RailEndInset = 14.dp
+internal val RailInset = 8.dp
+internal val RailItemHeight = 52.dp
+internal val RailGap = 14.dp
+internal val RailDot = 8.dp
+internal val RailEndInset = 14.dp
 private val CaptionInset = 18.dp
-private val ContentMaxWidth = 860.dp
+internal val ContentMaxWidth = 860.dp
 
 /**
  * Rift's settings: a section list on the left (icon + name) and the rows of the chosen section on
@@ -249,7 +250,8 @@ private fun SectionRail(
                 )
             }
             RailItem(
-                section = section,
+                title = stringResource(section.titleRes),
+                icon = section.icon,
                 selected = index == selectedIndex,
                 modifier = Modifier
                     .focusRequester(railItems[index])
@@ -262,8 +264,9 @@ private fun SectionRail(
 }
 
 @Composable
-private fun RailItem(
-    section: RiftSettingsSection,
+internal fun RailItem(
+    title: String,
+    icon: ImageVector,
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -302,14 +305,14 @@ private fun RailItem(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                imageVector = section.icon,
+                imageVector = icon,
                 contentDescription = null,
                 tint = colors.symbol,
                 modifier = Modifier.size(22.dp),
             )
         }
         Text(
-            text = stringResource(section.titleRes),
+            text = title,
             color = if (focused) plateText(true) else if (selected) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
             fontSize = 18.5.sp,
             fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,

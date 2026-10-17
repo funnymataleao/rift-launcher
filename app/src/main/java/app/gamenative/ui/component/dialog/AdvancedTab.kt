@@ -7,7 +7,7 @@ import app.gamenative.R
 import app.gamenative.ui.component.settings.SettingsCPUList
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.theme.settingsTileColors
-import com.alorma.compose.settings.ui.SettingsGroup
+import app.gamenative.ui.component.settings.SettingsGroup
 
 @Composable
 fun AdvancedTabContent(state: ContainerConfigState) {
