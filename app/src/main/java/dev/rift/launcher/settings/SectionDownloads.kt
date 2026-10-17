@@ -1,9 +1,13 @@
 package dev.rift.launcher.settings
 
 import android.os.Environment
+import android.text.format.Formatter
 import android.os.storage.StorageManager
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.Dns
+import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.SdStorage
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Storage
@@ -13,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
@@ -21,7 +26,9 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.utils.StorageUtils
 import java.io.File
+import app.gamenative.ui.util.SnackbarManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
@@ -135,6 +142,51 @@ internal fun DownloadsSettings() {
                 onClick = { volumeDialog = true },
             )
         }
+    }
+
+    // What Rift can download again, and the packs the user chose to keep.
+    val scope = rememberCoroutineScope()
+    var usageVersion by remember { mutableStateOf(0) }
+    val usage by produceState<CacheStorage.Usage?>(null, usageVersion) { value = CacheStorage.measure(context) }
+    var clearDialog by rememberSaveable { mutableStateOf(false) }
+    SettingsGroup(title = stringResource(R.string.rift_settings_group_cache)) {
+        InfoRow(
+            title = stringResource(R.string.rift_settings_cache_size),
+            value = usage?.let { Formatter.formatShortFileSize(context, it.cache) } ?: "…",
+            icon = Icons.Rounded.Memory,
+        )
+        LinkRow(
+            title = stringResource(R.string.rift_settings_cache_clear),
+            subtitle = stringResource(R.string.rift_settings_cache_clear_summary),
+            icon = Icons.Rounded.CleaningServices,
+            danger = true,
+            onClick = { clearDialog = true },
+        )
+        usage?.takeIf { it.soundPacks > 0 }?.let {
+            InfoRow(
+                title = stringResource(R.string.rift_settings_cache_packs),
+                value = Formatter.formatShortFileSize(context, it.soundPacks),
+                icon = Icons.Rounded.LibraryMusic,
+            )
+        }
+        NoteText(stringResource(R.string.rift_settings_cache_note), underGroup = true)
+    }
+    if (clearDialog) {
+        RiftConfirmDialog(
+            title = stringResource(R.string.rift_settings_cache_clear_title),
+            message = stringResource(R.string.rift_settings_cache_clear_message),
+            confirmText = stringResource(R.string.rift_settings_cache_clear_confirm),
+            dismissText = stringResource(R.string.rift_settings_cancel),
+            onConfirm = {
+                clearDialog = false
+                scope.launch {
+                    val freed = CacheStorage.clear(context)
+                    usageVersion++
+                    SnackbarManager.show(context.getString(R.string.rift_settings_cache_cleared, Formatter.formatShortFileSize(context, freed)))
+                }
+            },
+            onDismiss = { clearDialog = false },
+        )
     }
 
     if (volumeDialog) {
