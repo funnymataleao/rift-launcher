@@ -11,6 +11,7 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -164,26 +165,50 @@ object StoreDetailsRepository {
         val search = getBody("https://store.steampowered.com/api/storesearch/?term=$encoded&cc=us&l=$language")
             ?: return@withContext null
         val appId = matchSteamTitle(title, search) ?: return@withContext SteamTitleMeta()
+        fetchTitleMeta(appId, language)
+    }
+
+    /** One game found by a search, with what Steam says about it. */
+    data class SteamHit(val appId: Int, val name: String, val meta: SteamTitleMeta)
+
+    /** Rift: the first Steam store hits for [term], each with its details, for a list to choose from. Null when Steam could not be reached. */
+    suspend fun searchMeta(
+        term: String,
+        limit: Int = 5,
+        locale: Locale = Locale.getDefault(),
+    ): List<SteamHit>? = withContext(Dispatchers.IO) {
+        val language = SteamUtils.steamLanguageForAppLocale(locale)
+        val encoded = URLEncoder.encode(term, Charsets.UTF_8.name())
+        val search = getBody("https://store.steampowered.com/api/storesearch/?term=$encoded&cc=us&l=$language")
+            ?: return@withContext null
+        val items = parseObject(search)?.optJSONArray("items").objects()
+            .filter { it.optInt("id", 0) > 0 }.take(limit)
         coroutineScope {
-            val localized = async { getBody("https://store.steampowered.com/api/appdetails?appids=$appId&cc=us&l=$language") }
-            val english = if (language == "english") null else async {
-                getBody("https://store.steampowered.com/api/appdetails?appids=$appId&cc=us&l=english")
-            }
-            val reviews = async {
-                getBody("https://store.steampowered.com/appreviews/$appId?json=1&language=all&purchase_type=all&num_per_page=0&l=$language")
-            }
-            val localizedJson = localized.await() ?: return@coroutineScope null
-            val englishJson = english?.await() ?: localizedJson
-            val details = parseSteamStoreDetails(appId, localizedJson, reviews.await())
-            val data = parseObject(localizedJson)?.optJSONObject(appId.toString())?.optJSONObject("data")
-            val englishData = parseObject(englishJson)?.optJSONObject(appId.toString())?.optJSONObject("data")
-            SteamTitleMeta(
-                details = details,
-                developer = data?.optJSONArray("developers").strings().joinToString(", "),
-                publisher = data?.optJSONArray("publishers").strings().joinToString(", "),
-                releaseDate = parseSteamReleaseDate(englishData?.optJSONObject("release_date")),
-            )
+            items.map { item ->
+                async { fetchTitleMeta(item.optInt("id"), language)?.let { SteamHit(item.optInt("id"), item.optString("name"), it) } }
+            }.awaitAll().filterNotNull()
         }
+    }
+
+    private suspend fun fetchTitleMeta(appId: Int, language: String): SteamTitleMeta? = coroutineScope {
+        val localized = async { getBody("https://store.steampowered.com/api/appdetails?appids=$appId&cc=us&l=$language") }
+        val english = if (language == "english") null else async {
+            getBody("https://store.steampowered.com/api/appdetails?appids=$appId&cc=us&l=english")
+        }
+        val reviews = async {
+            getBody("https://store.steampowered.com/appreviews/$appId?json=1&language=all&purchase_type=all&num_per_page=0&l=$language")
+        }
+        val localizedJson = localized.await() ?: return@coroutineScope null
+        val englishJson = english?.await() ?: localizedJson
+        val details = parseSteamStoreDetails(appId, localizedJson, reviews.await())
+        val data = parseObject(localizedJson)?.optJSONObject(appId.toString())?.optJSONObject("data")
+        val englishData = parseObject(englishJson)?.optJSONObject(appId.toString())?.optJSONObject("data")
+        SteamTitleMeta(
+            details = details,
+            developer = data?.optJSONArray("developers").strings().joinToString(", "),
+            publisher = data?.optJSONArray("publishers").strings().joinToString(", "),
+            releaseDate = parseSteamReleaseDate(englishData?.optJSONObject("release_date")),
+        )
     }
 
     private suspend fun fetchSteam(appId: Int, locale: Locale): StoreGameDetails = coroutineScope {

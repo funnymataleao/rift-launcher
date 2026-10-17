@@ -24,6 +24,8 @@ object RiftAutoMeta {
     // "tried3_": new sources and title cleaning, so games nobody knew before are asked again.
     private const val TRIED = "tried3_"
     private const val TRIED_IGDB = "tried3_igdb_"
+    // Set when the user chose the game's information by hand: nothing replaces it by itself.
+    private const val PIN = "pin_"
     private const val TAG = "RiftMeta"
     private val lock = Mutex()
 
@@ -47,7 +49,31 @@ object RiftAutoMeta {
 
     /** Drops what was found for [appId] (the game was renamed), so the next lookup asks IGDB again. */
     fun forget(context: Context, appId: String) {
-        prefs(context).edit { remove(appId); remove(TRIED + appId) }
+        prefs(context).edit { remove(appId); remove(TRIED + appId); remove(TRIED_IGDB + appId); remove(PIN + appId) }
+    }
+
+    /** Whether the user chose what is saved for [appId] by hand. */
+    fun isPinned(context: Context, appId: String): Boolean = prefs(context).contains(PIN + appId)
+
+    /** Saves [meta] as the user's own choice for [appId]; a lookup never replaces it. */
+    fun pin(context: Context, appId: String, meta: GameMeta) {
+        prefs(context).edit { putString(appId, meta.toJson()); putString(PIN + appId, meta.source) }
+    }
+
+    /**
+     * "Update game info": asks every source again, ignoring what was saved and when a game was last not found.
+     * What was saved stays when nothing new is found; null then (or while a source cannot be reached) means the
+     * user should choose by hand. A game the user chose by hand is not refreshed here.
+     */
+    suspend fun refresh(context: Context, item: LibraryItem, platformId: String?): GameMeta? {
+        if (isPinned(context, item.appId)) return cached(context, item.appId)
+        val p = prefs(context)
+        val before = p.getString(item.appId, null)
+        p.edit { remove(item.appId); remove(TRIED + item.appId); remove(TRIED_IGDB + item.appId) }
+        Timber.tag(TAG).i("%s: refresh asked", item.name)
+        val fresh = ensure(context, item, platformId)
+        if (fresh == null && before != null) p.edit { putString(item.appId, before) }
+        return fresh
     }
 
     /**
@@ -58,6 +84,7 @@ object RiftAutoMeta {
      */
     suspend fun ensure(context: Context, item: LibraryItem, platformId: String?): GameMeta? {
         val saved = cached(context, item.appId)
+        if (saved != null && isPinned(context, item.appId)) return saved
         val rift = RiftPrefs.of(context)
         val hasKeys = rift.igdbClientId.isNotBlank() && rift.igdbClientSecret.isNotBlank()
         if (saved != null && (saved.source == "igdb" || !hasKeys)) return saved
@@ -138,8 +165,13 @@ object RiftAutoMeta {
     /** The Steam store's game of exactly this name. */
     private suspend fun steam(title: String): MetaResult {
         val found = StoreDetailsRepository.getMetaByTitle(title) ?: return MetaResult.Unreachable("Steam search failed")
+        val meta = steamMeta(found)
+        return if (found.isEmpty || meta.isEmpty) MetaResult.Miss("no game with this name") else MetaResult.Found(meta)
+    }
+
+    internal fun steamMeta(found: StoreDetailsRepository.SteamTitleMeta): GameMeta {
         val d = found.details
-        val meta = GameMeta(
+        return GameMeta(
             description = d.description,
             rating = d.reviewPercentage,
             ratingCount = d.reviewCount,
@@ -151,7 +183,6 @@ object RiftAutoMeta {
             source = "steam",
             ratingText = d.reviewSummary.orEmpty(),
         )
-        return if (found.isEmpty || meta.isEmpty) MetaResult.Miss("no game with this name") else MetaResult.Found(meta)
     }
 
     /**

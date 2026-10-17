@@ -2,6 +2,7 @@ package dev.rift.launcher.home
 
 import android.content.SharedPreferences
 import android.graphics.Bitmap
+import android.widget.Toast
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
@@ -74,6 +75,8 @@ import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Image as ImageIcon
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search as SearchFilled
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarOutline
@@ -455,6 +458,10 @@ fun RiftHomeScreen(
     // The art picker (SteamGridDB) for one game; opened from the game's options or Y on a streamed game.
     var artItem by remember { mutableStateOf<LibraryItem?>(null) }
     var artToken by remember { mutableIntStateOf(0) }
+    // "Choose game info": the game and its emulator system while the picker is open.
+    var metaItem by remember { mutableStateOf<LibraryItem?>(null) }
+    var metaPlatform by remember { mutableStateOf<String?>(null) }
+    var metaToken by remember { mutableIntStateOf(0) }
     var pendingFocusKey by remember { mutableStateOf<String?>(null) }
 
     // Row positions live here, above the game page, so coming back (or switching tabs) keeps them.
@@ -551,7 +558,7 @@ fun RiftHomeScreen(
     /** Puts focus back on the cover this section had last. */
     fun focusSection(target: RiftSection?) {
         // The game page has its own focus; the home picks its cover again when the page closes.
-        if (openedAppId != null || artItem != null) return
+        if (openedAppId != null || (artItem != null || metaItem != null)) return
         // In the library, the grid takes it back on the game it had last.
         if (libraryOpen) {
             val items = when (target) {
@@ -767,7 +774,7 @@ fun RiftHomeScreen(
     val libraryMenuOpen = libraryFiltersOpen || startMenuItems != null
     var wasLibraryMenuOpen by remember { mutableStateOf(false) }
     LaunchedEffect(libraryMenuOpen) {
-        if (wasLibraryMenuOpen && !libraryMenuOpen && libraryOpen && optionsItem == null && artItem == null && openedAppId == null) {
+        if (wasLibraryMenuOpen && !libraryMenuOpen && libraryOpen && optionsItem == null && (artItem == null && metaItem == null) && openedAppId == null) {
             libraryPending = libraryFocusedId
         }
         wasLibraryMenuOpen = libraryMenuOpen
@@ -812,6 +819,27 @@ fun RiftHomeScreen(
         }
     }
     SideEffect { optionsOnly.onHide = ::hideGame }
+    fun openMetaPicker(item: LibraryItem, platformId: String?) {
+        metaToken++
+        metaPlatform = platformId
+        metaItem = item
+    }
+    // "Update game info": every source again; when nothing (new) turns up, the list to choose from opens.
+    fun refreshMeta(item: LibraryItem, platformId: String?) {
+        if (RiftAutoMeta.isPinned(context, item.appId)) {
+            openMetaPicker(item, platformId)
+            return
+        }
+        Toast.makeText(context, R.string.rift_meta_refreshing, Toast.LENGTH_SHORT).show()
+        homeScope.launch {
+            val meta = withContext(Dispatchers.IO) { RiftAutoMeta.refresh(context, item, platformId) }
+            if (meta != null) {
+                Toast.makeText(context, R.string.rift_meta_refreshed, Toast.LENGTH_SHORT).show()
+            } else {
+                openMetaPicker(item, platformId)
+            }
+        }
+    }
     fun otherTabMenu(picked: LibraryItem? = null): List<RiftStartMenuItem>? {
         fun line(@androidx.annotation.StringRes label: Int, icon: ImageVector, action: () -> Unit) =
             RiftStartMenuItem(context.getString(label), icon = icon) { startMenuItems = null; action() }
@@ -834,6 +862,8 @@ fun RiftHomeScreen(
                     line(R.string.rift_option_change_art, Icons.Default.ImageIcon) { openArt(art) },
                     favorite(art.appId, game.label),
                     line(R.string.rift_option_rename, Icons.Default.Edit) { renameTarget = Triple(art.appId, art.name, game.label) },
+                    line(R.string.rift_menu_refresh_meta, Icons.Default.Refresh) { refreshMeta(game.toPageItem(), null) },
+                    line(R.string.rift_menu_pick_meta, Icons.Default.SearchFilled) { openMetaPicker(game.toPageItem(), null) },
                     line(R.string.rift_menu_hide, Icons.Default.VisibilityOff) { hideGame(art.appId, game.label) },
                     properties { openGame(game.toPageItem()) },
                     cancel,
@@ -856,6 +886,8 @@ fun RiftHomeScreen(
                     line(R.string.rift_option_rename, Icons.Default.Edit) {
                         renameTarget = Triple(item.appId, item.name, EmulatorLibrary.game(item.appId)?.name ?: item.name)
                     },
+                    line(R.string.rift_menu_refresh_meta, Icons.Default.Refresh) { refreshMeta(item, EmulatorLibrary.game(item.appId)?.platformId) },
+                    line(R.string.rift_menu_pick_meta, Icons.Default.SearchFilled) { openMetaPicker(item, EmulatorLibrary.game(item.appId)?.platformId) },
                     line(R.string.rift_menu_hide, Icons.Default.VisibilityOff) { hideGame(item.appId, item.name) },
                     properties { openGame(item) },
                     cancel,
@@ -886,14 +918,14 @@ fun RiftHomeScreen(
     var panelHasFocus by remember { mutableStateOf(false) }
     var panelFocusAsk by remember { mutableIntStateOf(0) }
     LaunchedEffect(panelOpen) { if (!panelOpen) panelHasFocus = false }
-    val overlayOpen = panelOpen || systemMenuOpen || gameOptionsOpen || startMenuItems != null || appsOpen || libraryOpen || artItem != null
+    val overlayOpen = panelOpen || systemMenuOpen || gameOptionsOpen || startMenuItems != null || appsOpen || libraryOpen || (artItem != null || metaItem != null)
     RiftLayerSound(panelOpen)
     RiftLayerSound(systemMenuOpen)
     RiftLayerSound(gameOptionsOpen)
     RiftLayerSound(startMenuItems != null)
     RiftLayerSound(appsOpen)
     RiftLayerSound(libraryOpen)
-    RiftLayerSound(artItem != null)
+    RiftLayerSound((artItem != null || metaItem != null))
     var selectLongPressed by remember { mutableStateOf(false) }
     val quickAccessKey = remember { RiftControls.quickAccessKey(context) }
     // B / Back closes the open panel and never leaves the app.
@@ -917,12 +949,12 @@ fun RiftHomeScreen(
         // key reaches the screen at all: take the view's focus back first.
         if (!composeView.hasFocus()) composeView.requestFocus()
         // Back from a stream the game's page is still open: the focus goes into it.
-        if (openedAppId != null && artItem == null && !appsOpen) {
+        if (openedAppId != null && (artItem == null && metaItem == null) && !appsOpen) {
             if (!pageFocused) runCatching { pageFocus.requestFocus() }
             return
         }
         // Behind the apps grid the covers must not take focus; the grid keeps its own.
-        if (appsOpen || openedAppId != null || artItem != null) return
+        if (appsOpen || openedAppId != null || (artItem != null || metaItem != null)) return
         // Across a frame, so the cover sees its focus request change even if it was the last one.
         pendingFocusKey = null
         libraryPending = null
@@ -951,7 +983,7 @@ fun RiftHomeScreen(
                 // stays alive, so it is sent to the back dispatcher from here.
                 if (ev.action == KeyEvent.ACTION_UP && !ev.isCanceled) backDispatcher?.onBackPressed()
                 true
-            } else if (artItem != null) {
+            } else if ((artItem != null || metaItem != null)) {
                 // The art picker has its own keys.
                 false
             } else if (appsOpen && !appsFocused && isBackKey) {
@@ -1089,7 +1121,7 @@ fun RiftHomeScreen(
                     // The Start menu takes its own keys (B closes only it).
                     if (startMenuItems != null) return@onPreviewKeyEvent false
                     if (optionsItem != null && event.type == KeyEventType.KeyDown) optionsItem = null
-                    if (appsOpen || libraryOpen || artItem != null) return@onPreviewKeyEvent false
+                    if (appsOpen || libraryOpen || (artItem != null || metaItem != null)) return@onPreviewKeyEvent false
                     // Never stranded: a direction press with nothing but the screen focused goes to a cover.
                     if (rootFocused && event.type == KeyEventType.KeyDown && native.keyCode in KeyEvent.KEYCODE_DPAD_UP..KeyEvent.KEYCODE_DPAD_RIGHT) {
                         refocusCover()
@@ -1507,7 +1539,7 @@ fun RiftHomeScreen(
                     }
                 },
                 onDismiss = ::closeLibrary,
-                keepFocusInside = { !libraryFiltersOpen && startMenuItems == null && openedAppId == null && optionsItem == null && artItem == null },
+                keepFocusInside = { !libraryFiltersOpen && startMenuItems == null && openedAppId == null && optionsItem == null && (artItem == null && metaItem == null) },
                 onKeyDown = { code -> libraryKey(code, library) },
             ) {
                 PcLibraryGrid(
@@ -1547,7 +1579,7 @@ fun RiftHomeScreen(
                     }
                 },
                 onDismiss = ::closeLibrary,
-                keepFocusInside = { !libraryFiltersOpen && startMenuItems == null && openedAppId == null && artItem == null },
+                keepFocusInside = { !libraryFiltersOpen && startMenuItems == null && openedAppId == null && (artItem == null && metaItem == null) },
                 onKeyDown = { code -> libraryKey(code, streamLibraryItems) },
             ) {
                 PcLibraryGrid(
@@ -1854,6 +1886,18 @@ fun RiftHomeScreen(
             }
         }
     }
+        RiftTheme {
+            dev.rift.launcher.meta.RiftMetaPicker(
+                item = metaItem,
+                platformId = metaPlatform,
+                openToken = metaToken,
+                onDismiss = { metaItem = null },
+                onChosen = {
+                    metaItem = null
+                    Toast.makeText(context, R.string.rift_meta_chosen, Toast.LENGTH_SHORT).show()
+                },
+            )
+        }
         // The art picker lives above everything, the game page included.
         RiftTheme {
             RiftArtPicker(

@@ -36,7 +36,7 @@ object IgdbClient {
     private const val GAMES = "https://api.igdb.com/v4/games"
     private const val TOKEN = "https://id.twitch.tv/oauth2/token"
     private const val FIELDS = "id,name,summary,storyline,total_rating,total_rating_count,first_release_date," +
-        "genres.name,themes.name,game_modes.name,player_perspectives.name," +
+        "genres.name,themes.name,game_modes.name,player_perspectives.name,platforms.name," +
         "involved_companies.developer,involved_companies.company.name"
 
     private val http = OkHttpClient.Builder()
@@ -155,6 +155,10 @@ object IgdbClient {
         val wanted = normalize(term)
         val list = (0 until results.length()).mapNotNull { results.optJSONObject(it) }
         val game = list.firstOrNull { normalize(it.optString("name")) == wanted } ?: list.first()
+        return Pair(parse(game), game.optLong("id"))
+    }
+
+    private fun parse(game: JSONObject): GameMeta {
         val companies = game.optJSONArray("involved_companies")
         val developer = companies?.let { arr ->
             (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }
@@ -165,7 +169,7 @@ object IgdbClient {
         }.orEmpty()
         val summary = game.optString("summary").trim()
         val story = game.optString("storyline").trim()
-        return Pair(GameMeta(
+        return GameMeta(
             description = if (summary.isEmpty()) story else summary,
             rating = if (game.has("total_rating")) game.optDouble("total_rating").toInt() else null,
             ratingCount = if (game.has("total_rating_count")) game.optInt("total_rating_count") else null,
@@ -173,8 +177,40 @@ object IgdbClient {
             tags = (names(game.optJSONArray("themes")) + names(game.optJSONArray("game_modes")) + names(game.optJSONArray("player_perspectives"))).distinct(),
             developer = developer,
             releaseDate = game.optLong("first_release_date"),
-        ), game.optLong("id"))
+        )
     }
+
+    /** IGDB's hits for [term] to choose from: on [platforms] first, then on any platform. */
+    suspend fun candidates(clientId: String, secret: String, term: String, platforms: List<Int>): List<MetaCandidate> {
+        if (clientId.isBlank() || secret.isBlank()) throw MetaError.NoKey
+        val clean = SteamGridDbClient.cleanTitle(term)
+        if (clean.isEmpty()) throw MetaError.NotFound
+        val games = buildList {
+            if (platforms.isNotEmpty()) addAll(request(clientId, secret, clean, platforms).objects())
+            addAll(request(clientId, secret, clean, emptyList()).objects())
+        }
+        return games.distinctBy { it.optLong("id") }.take(8).map { game ->
+            val onPlatform = names(game.optJSONArray("platforms"))
+            val year = game.optLong("first_release_date").takeIf { it > 0 }
+                ?.let { java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply { timeInMillis = it * 1000 }.get(java.util.Calendar.YEAR) }
+            MetaCandidate(
+                source = "igdb",
+                ref = game.optLong("id").toString(),
+                title = game.optString("name"),
+                platform = onPlatform.take(3).joinToString(", "),
+                year = year,
+                meta = parse(game),
+            )
+        }
+    }
+
+    /** A chosen hit with IGDB's time to beat. */
+    suspend fun complete(clientId: String, secret: String, candidate: MetaCandidate): GameMeta {
+        val (main, extras, complete) = beatTimes(clientId, secret, candidate.ref.toLongOrNull() ?: return candidate.meta)
+        return candidate.meta.copy(beatMain = main, beatExtras = extras, beatComplete = complete)
+    }
+
+    private fun JSONArray.objects(): List<JSONObject> = (0 until length()).mapNotNull { optJSONObject(it) }
 
     private fun names(array: JSONArray?): List<String> = if (array == null) emptyList() else
         (0 until array.length()).mapNotNull { array.optJSONObject(it)?.optString("name")?.ifEmpty { null } }

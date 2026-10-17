@@ -533,4 +533,19 @@
     <string name="rift_accent_lagoon">Лагуна</string>
     <string name="rift_accent_glacier">Ледник</string>
     <string name="rift_accent_dawn">Рассвет</string>
+    <string name="rift_menu_refresh_meta">Обновить информацию об игре</string>
+    <string name="rift_menu_pick_meta">Выбрать информацию об игре</string>
+    <string name="rift_meta_refreshing">Обновляю информацию об игре…</string>
+    <string name="rift_meta_refreshed">Информация об игре обновлена</string>
+    <string name="rift_meta_chosen">Информация об игре сохранена</string>
+    <string name="rift_meta_pick_title">Информация: %1$s</string>
+    <string name="rift_meta_pick_hint">Выберите запись, которая подходит этой игре.</string>
+    <string name="rift_meta_search_edit">Изменить</string>
+    <string name="rift_meta_search_go">Найти</string>
+    <string name="rift_meta_searching">Ищу…</string>
+    <string name="rift_meta_empty">Ничего не нашлось. Измените название и найдите снова.</string>
+    <string name="rift_meta_offline">Не удалось связаться с источниками. Проверьте интернет, затем измените название или нажмите на строку поиска.</string>
+    <string name="rift_meta_query_title">Поиск игры</string>
+    <string name="rift_meta_query_hint">Введите название игры так, как оно опубликовано, например «Batman Forever».</string>
+    <string name="rift_meta_src_wikipedia">Википедия</string>
 </resources>

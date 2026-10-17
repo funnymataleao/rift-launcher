@@ -538,4 +538,19 @@
     <string name="rift_accent_lagoon">Lagoon</string>
     <string name="rift_accent_glacier">Glacier</string>
     <string name="rift_accent_dawn">Dawn</string>
+    <string name="rift_menu_refresh_meta">Update game info</string>
+    <string name="rift_menu_pick_meta">Choose game info</string>
+    <string name="rift_meta_refreshing">Updating game info…</string>
+    <string name="rift_meta_refreshed">Game info updated</string>
+    <string name="rift_meta_chosen">Game info saved</string>
+    <string name="rift_meta_pick_title">Info for %1$s</string>
+    <string name="rift_meta_pick_hint">Choose the entry that matches this game.</string>
+    <string name="rift_meta_search_edit">Change</string>
+    <string name="rift_meta_search_go">Search</string>
+    <string name="rift_meta_searching">Searching…</string>
+    <string name="rift_meta_empty">Nothing found. Change the name and search again.</string>
+    <string name="rift_meta_offline">Could not reach the sources. Check the connection, then change the name or press the search field again.</string>
+    <string name="rift_meta_query_title">Search for the game</string>
+    <string name="rift_meta_query_hint">Type the game\'s name as it is published, for example “Batman Forever”.</string>
+    <string name="rift_meta_src_wikipedia">Wikipedia</string>
 </resources>
