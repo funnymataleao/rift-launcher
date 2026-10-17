@@ -4,7 +4,6 @@ import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -12,7 +11,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -26,6 +24,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -49,7 +49,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SupportAgent
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -68,12 +67,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -94,11 +95,23 @@ import app.gamenative.ui.util.adaptivePanelWidth
 import app.gamenative.ui.util.shouldShowGamepadUI
 import app.gamenative.utils.getAvatarURL
 import `in`.dragonbra.javasteam.enums.EPersonaState
+import dev.rift.launcher.settings.PlateGap
+import dev.rift.launcher.settings.PlateShape
+import dev.rift.launcher.settings.RowIcon
+import dev.rift.launcher.settings.RowTexts
+import dev.rift.launcher.settings.plateFill
+import dev.rift.launcher.settings.plateSubtext
+import dev.rift.launcher.settings.plateText
+import dev.rift.launcher.ui.BlackGlass
+import dev.rift.launcher.ui.theme.RiftAccent
+import dev.rift.launcher.ui.theme.RiftColors
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
- * A single menu item in the System Menu
+ * A single menu item in the System Menu: a full-width plate like a Rift settings row, filled with the
+ * accent while focused, with dark text and icon on it.
  */
 @Composable
 internal fun SystemMenuItem(
@@ -113,32 +126,10 @@ internal fun SystemMenuItem(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
 
-    val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.02f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium,
-        ),
-        label = "menuItemScale",
-    )
-
-    val backgroundColor = when {
-        isFocused -> MaterialTheme.colorScheme.primaryContainer
-        else -> Color.Transparent
-    }
-
-    val contentColor = when {
-        isDestructive && isFocused -> MaterialTheme.colorScheme.error
-        isDestructive -> MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
-        else -> MaterialTheme.colorScheme.onSurface
-    }
-
-    Box(
+    Row(
         modifier = modifier
-            .scale(scale)
-            .clip(RoundedCornerShape(16.dp))
-            .background(backgroundColor)
+            .fillMaxWidth()
+            .plateFill(isFocused, rest = Color.Transparent)
             .focusRequester(focusRequester)
             .selectable(
                 selected = isFocused,
@@ -146,31 +137,19 @@ internal fun SystemMenuItem(
                 indication = null,
                 onClick = onClick,
             )
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .heightIn(min = 72.dp)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier.size(28.dp),
+        RowIcon(icon, isFocused, danger = isDestructive)
+        RowTexts(text, null, danger = isDestructive, focused = isFocused, modifier = Modifier.weight(1f))
+        if (badge) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .background(plateText(isFocused), CircleShape),
             )
-            Text(
-                text = text,
-                style = MaterialTheme.typography.titleMedium,
-                color = contentColor,
-                fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Normal,
-            )
-            if (badge) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .background(MaterialTheme.colorScheme.primary, CircleShape),
-                )
-            }
         }
     }
 }
@@ -185,63 +164,39 @@ private fun StatusOption(
     isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    focusRequester: FocusRequester? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
 
-    val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.02f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium,
-        ),
-        label = "statusOptionScale",
-    )
-
-    val backgroundColor = when {
-        isFocused -> MaterialTheme.colorScheme.primaryContainer
-        isSelected -> MaterialTheme.colorScheme.surfaceContainerHighest
-        else -> Color.Transparent
-    }
-
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .scale(scale)
-            .clip(RoundedCornerShape(12.dp))
-            .background(backgroundColor)
+            .plateFill(isFocused, rest = Color.Transparent)
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .selectable(
                 selected = isFocused,
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
             )
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .heightIn(min = 60.dp)
+            .padding(horizontal = 18.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Box(
             modifier = Modifier
-                .size(10.dp)
+                .size(12.dp)
                 .background(statusColor, CircleShape),
         )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (isFocused) {
-                MaterialTheme.colorScheme.onPrimaryContainer
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
-            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-            modifier = Modifier.weight(1f),
-        )
+        RowTexts(text, null, danger = false, focused = isFocused, modifier = Modifier.weight(1f))
         if (isSelected) {
             Icon(
                 imageVector = Icons.Default.Check,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp),
+                tint = if (isFocused) plateText(true) else RiftAccent.current.main,
+                modifier = Modifier.size(22.dp),
             )
         }
     }
@@ -260,15 +215,15 @@ fun SystemMenu(
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
     isOffline: Boolean = false,
-    gogLoggedIn: Boolean,
-    epicLoggedIn: Boolean,
-    amazonLoggedIn: Boolean,
-    onGogLoginClick: () -> Unit,
-    onGogLogoutClick: () -> Unit,
-    onEpicLoginClick: () -> Unit,
-    onEpicLogoutClick: () -> Unit,
-    onAmazonLoginClick: () -> Unit,
-    onAmazonLogoutClick: () -> Unit,
+    gogLoggedIn: Boolean = false,
+    epicLoggedIn: Boolean = false,
+    amazonLoggedIn: Boolean = false,
+    onGogLoginClick: () -> Unit = {},
+    onGogLogoutClick: () -> Unit = {},
+    onEpicLoginClick: () -> Unit = {},
+    onEpicLogoutClick: () -> Unit = {},
+    onAmazonLoginClick: () -> Unit = {},
+    onAmazonLogoutClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     // Rift draws the panel as a flat, full height glass sheet without a close button (B closes it).
     panelShape: Shape = RoundedCornerShape(topStart = 32.dp, bottomStart = 32.dp),
@@ -276,11 +231,16 @@ fun SystemMenu(
     showCloseButton: Boolean = true,
     // Rift is its own app: no GameNative Discord link and no GameNative supporters list.
     showCommunityItems: Boolean = true,
+    // Rift signs in to GOG, Epic and Amazon in Settings > Accounts.
+    showStoreAccounts: Boolean = true,
 ) {
     val scope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
     val firstItemFocusRequester = remember { FocusRequester() }
     val profileFocusRequester = remember { FocusRequester() }
+    val statusFocusRequester = remember { FocusRequester() }
+    var profileWidth by remember { mutableStateOf(0.dp) }
+    val density = LocalDensity.current
 
     var persona by remember { mutableStateOf<SteamFriend?>(null) }
     var selectedStatus by remember(persona) { mutableStateOf(persona?.state ?: EPersonaState.Online) }
@@ -388,7 +348,8 @@ fun SystemMenu(
                     modifier = Modifier
                         .fillMaxSize()
                         .statusBarsPadding()
-                        .padding(24.dp),
+                        .navigationBarsPadding()
+                        .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 20.dp),
                 ) {
                     // Header with close button
                     Row(
@@ -419,39 +380,13 @@ fun SystemMenu(
                     // Profile section
                     val profileInteractionSource = remember { MutableInteractionSource() }
                     val isProfileFocused by profileInteractionSource.collectIsFocusedAsState()
-                    val profileScale by animateFloatAsState(
-                        targetValue = if (isProfileFocused) 1.02f else 1f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMedium,
-                        ),
-                        label = "profileScale",
-                    )
 
                     Box {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .scale(profileScale)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(
-                                    if (isProfileFocused) {
-                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceContainerHigh
-                                    },
-                                )
-                                .then(
-                                    if (isProfileFocused) {
-                                        Modifier.border(
-                                            1.dp,
-                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                            RoundedCornerShape(16.dp),
-                                        )
-                                    } else {
-                                        Modifier
-                                    },
-                                )
+                                .onGloballyPositioned { profileWidth = with(density) { it.size.width.toDp() } }
+                                .plateFill(isProfileFocused)
                                 .focusRequester(profileFocusRequester)
                                 .selectable(
                                     selected = isProfileFocused,
@@ -492,7 +427,7 @@ fun SystemMenu(
                                     text = persona?.name ?: stringResource(R.string.default_user_name),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                    color = plateText(isProfileFocused),
                                     maxLines = 1,
                                 )
                                 Row(
@@ -512,7 +447,7 @@ fun SystemMenu(
                                             else -> selectedStatus.name
                                         },
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = plateSubtext(isProfileFocused),
                                     )
                                 }
                             }
@@ -527,29 +462,33 @@ fun SystemMenu(
                                     },
                                     contentDescription = null,
                                     modifier = Modifier.size(20.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = plateSubtext(isProfileFocused),
                                 )
                             }
                         }
 
                         // Status picker dropdown
+                        // As wide as the profile plate, near-opaque black glass, accent focus like the rows.
                         androidx.compose.material3.DropdownMenu(
                             expanded = showStatusPicker,
                             onDismissRequest = { showStatusPicker = false },
-                            modifier = Modifier
-                                .width(280.dp)
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                            modifier = Modifier.width(profileWidth.coerceAtLeast(280.dp)),
+                            shape = PlateShape,
+                            containerColor = BlackGlass.Solid.copy(alpha = 0.96f),
+                            tonalElevation = 0.dp,
+                            shadowElevation = 0.dp,
                         ) {
                             Column(
                                 modifier = Modifier
-                                    .padding(8.dp)
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
                                     .focusGroup(),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
                                 Text(
                                     text = stringResource(R.string.status),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = RiftColors.OnSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
                                 )
                                 listOf(
                                     Triple(EPersonaState.Online, stringResource(R.string.status_online), PluviaTheme.colors.statusInstalled),
@@ -560,6 +499,7 @@ fun SystemMenu(
                                         text = label,
                                         statusColor = color,
                                         isSelected = selectedStatus == state,
+                                        focusRequester = if (selectedStatus == state) statusFocusRequester else null,
                                         onClick = {
                                             selectedStatus = state
                                             showStatusPicker = false
@@ -573,13 +513,7 @@ fun SystemMenu(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // Menu items
                     Column(
@@ -587,7 +521,7 @@ fun SystemMenu(
                             .weight(1f)
                             .verticalScroll(rememberScrollState())
                             .focusGroup(),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(PlateGap),
                     ) {
                         SystemMenuItem(
                             text = stringResource(R.string.settings_text),
@@ -616,7 +550,6 @@ fun SystemMenu(
                                 onDownloadsClick()
                                 onDismiss()
                             },
-                            focusRequester = firstItemFocusRequester,
                         )
 
                         if (showCommunityItems) {
@@ -634,14 +567,6 @@ fun SystemMenu(
                                 onClick = { showSupporters = true },
                             )
                         }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
 
                         if (isOffline || !SteamService.isLoggedIn) {
                             val goOnlineLabelRes = if (!SteamService.isLoggedIn) {
@@ -678,14 +603,7 @@ fun SystemMenu(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
+                        if (showStoreAccounts) {
                         // GOG
                         SystemMenuItem(
                             text = stringResource(
@@ -739,6 +657,7 @@ fun SystemMenu(
                             },
                             isDestructive = amazonLoggedIn,
                         )
+                        }
                     }
 
                     // Gamepad hint at bottom (only on expanded screens)
@@ -761,14 +680,22 @@ fun SystemMenu(
         }
     }
 
-    // Request focus on first item when menu opens
+    // Focus Settings when the menu opens. After a touch the window is in touch mode, where nothing takes
+    // gamepad focus: leave it, and retry while the panel is still sliding in.
+    val view = LocalView.current
     LaunchedEffect(isOpen) {
-        if (isOpen) {
-            try {
-                firstItemFocusRequester.requestFocus()
-            } catch (_: Exception) {
-                // TODO: Focus request may fail if composition is not ready
-            }
+        if (!isOpen) return@LaunchedEffect
+        repeat(15) {
+            if (view.isInTouchMode) view.requestFocusFromTouch()
+            if (runCatching { firstItemFocusRequester.requestFocus() }.isSuccess) return@LaunchedEffect
+            delay(60)
+        }
+    }
+    LaunchedEffect(showStatusPicker) {
+        if (!showStatusPicker) return@LaunchedEffect
+        repeat(15) {
+            if (runCatching { statusFocusRequester.requestFocus() }.isSuccess) return@LaunchedEffect
+            delay(40)
         }
     }
 }
