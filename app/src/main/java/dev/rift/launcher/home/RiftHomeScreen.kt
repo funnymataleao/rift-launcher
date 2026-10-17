@@ -327,6 +327,8 @@ fun RiftHomeScreen(
     var focusedPackage by rememberSaveable { mutableStateOf<String?>(null) }
     var focusedStreamId by rememberSaveable { mutableStateOf<String?>(null) }
     var focusedCloudId by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastStreamView by remember { mutableStateOf(streamView) }
+    var lastAndroidView by remember { mutableStateOf(androidView) }
     var cloudCardFocused by rememberSaveable { mutableStateOf(false) }
     var openedAppId by rememberSaveable { mutableStateOf<String?>(null) }
     // The open game page was opened from the PC streaming tab: its main button streams the game.
@@ -661,6 +663,18 @@ fun RiftHomeScreen(
     val heroLayer = rememberGraphicsLayer()
     // The panel's layout choice belongs to GameNative's library screen; Rift only keeps it in sync.
     var libraryLayout by remember { mutableStateOf(PrefManager.libraryLayout) }
+    // A new sort or filter reorders the covers, so the one that had focus may be gone from the screen (and
+    // with it the focus, leaving the gamepad dead). Every tab starts again from its first cover.
+    LaunchedEffect(streamView, androidView) {
+        if (streamView == lastStreamView && androidView == lastAndroidView) return@LaunchedEffect
+        lastStreamView = streamView
+        lastAndroidView = androidView
+        focusedStreamId = null
+        focusedPackage = null
+        streamRowState.scrollToItem(0)
+        androidRowState.scrollToItem(0)
+        if (!overlayOpen) focusSection(section)
+    }
     LaunchedEffect(overlayOpen) {
         if (!overlayOpen) {
             focusSection(section)
