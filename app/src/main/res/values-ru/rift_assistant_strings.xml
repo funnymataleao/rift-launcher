@@ -104,4 +104,7 @@
     <string name="rift_assistant_error_server">У провайдера сбой на его стороне.</string>
     <string name="rift_assistant_error_bad_response">Провайдер прислал ответ, который Rift не понимает.</string>
     <string name="rift_assistant_error_other">Запрос не удался: %1$s</string>
+    <string name="rift_assistant_group_permissions">Разрешения</string>
+    <string name="rift_assistant_allow_env">Переменные окружения и аргументы запуска</string>
+    <string name="rift_assistant_allow_env_hint">Разрешить помощнику менять и их. Ими проще сломать игру.</string>
 </resources>

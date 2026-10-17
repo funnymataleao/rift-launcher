@@ -74,6 +74,11 @@ class AiSettings private constructor(private val prefs: SharedPreferences) {
         get() = prefs.getLong(MONTHLY_LIMIT, 0L)
         set(value) = prefs.edit().putLong(MONTHLY_LIMIT, value).apply()
 
+    /** Lets suggestions change environment variables and launch arguments. Off by default. */
+    var allowEnvAndArgs: Boolean
+        get() = prefs.getBoolean(ALLOW_ENV, false)
+        set(value) = prefs.edit().putBoolean(ALLOW_ENV, value).apply()
+
     data class Usage(val month: String, val requests: Int, val inputTokens: Long, val outputTokens: Long) {
         val totalTokens: Long get() = inputTokens + outputTokens
     }
@@ -113,6 +118,7 @@ class AiSettings private constructor(private val prefs: SharedPreferences) {
         private const val PROVIDER = "provider"
         private const val MAX_OUTPUT = "max_output_tokens"
         private const val MONTHLY_LIMIT = "monthly_token_limit"
+        private const val ALLOW_ENV = "allow_env_and_args"
         private const val USAGE_MONTH = "usage_month"
         private const val USAGE_REQUESTS = "usage_requests"
         private const val USAGE_IN = "usage_input_tokens"

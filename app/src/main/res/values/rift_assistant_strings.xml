@@ -105,4 +105,7 @@
     <string name="rift_assistant_error_server">The provider has a problem on its side.</string>
     <string name="rift_assistant_error_bad_response">The provider sent an answer Rift doesn\'t understand.</string>
     <string name="rift_assistant_error_other">Request failed: %1$s</string>
+    <string name="rift_assistant_group_permissions">Permissions</string>
+    <string name="rift_assistant_allow_env">Environment variables and launch arguments</string>
+    <string name="rift_assistant_allow_env_hint">Let suggestions change them too. They can break a game more easily.</string>
 </resources>

@@ -147,6 +147,18 @@ internal fun AssistantSettings() {
         }
     }
 
+    SettingsGroup(title = stringResource(R.string.rift_assistant_group_permissions)) {
+        SwitchRow(
+            title = stringResource(R.string.rift_assistant_allow_env),
+            subtitle = stringResource(R.string.rift_assistant_allow_env_hint),
+            checked = remember(revision) { settings.allowEnvAndArgs },
+            onCheckedChange = {
+                settings.allowEnvAndArgs = it
+                saved()
+            },
+        )
+    }
+
     SettingsGroup(title = stringResource(R.string.rift_assistant_group_limits)) {
         val outputIndex = OUTPUT_TOKEN_OPTIONS.indexOf(settings.maxOutputTokens).coerceAtLeast(0)
         ChoiceChipsRow(
