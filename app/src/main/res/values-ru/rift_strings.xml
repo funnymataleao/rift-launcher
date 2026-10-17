@@ -390,4 +390,8 @@
     <string name="rift_settings_packs_remove">Удалить</string>
     <string name="rift_community_source_rift">База Rift</string>
     <string name="rift_community_source_gamenative">База GameNative</string>
+    <!-- Шторка в игре -->
+    <string name="rift_quick_menu_performance">Производительность</string>
+    <string name="rift_quick_menu_frame_generation">Генерация кадров</string>
+    <string name="rift_off">Выкл</string>
 </resources>

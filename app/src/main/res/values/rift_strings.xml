@@ -395,4 +395,8 @@
     <string name="rift_settings_packs_remove">Delete</string>
     <string name="rift_community_source_rift">Rift database</string>
     <string name="rift_community_source_gamenative">GameNative database</string>
+    <!-- Quick access panel in game -->
+    <string name="rift_quick_menu_performance">Performance</string>
+    <string name="rift_quick_menu_frame_generation">Frame generation</string>
+    <string name="rift_off">Off</string>
 </resources>
