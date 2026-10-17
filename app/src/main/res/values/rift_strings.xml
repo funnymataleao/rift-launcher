@@ -40,7 +40,7 @@
     <string name="rift_settings_launch_summary">Wine, CPU translators and what happens at start</string>
     <string name="rift_settings_emulators">Emulators</string>
     <string name="rift_settings_emulators_summary">Systems, their emulators and games folders</string>
-    <string name="rift_settings_streaming">PC streaming</string>
+    <string name="rift_settings_streaming">Home streaming</string>
     <string name="rift_settings_streaming_summary">Artemis: picture, latency, sound, host and gamepads</string>
     <string name="rift_settings_downloads">Downloads and storage</string>
     <string name="rift_settings_downloads_summary">Network, speed, install location and Steam server</string>

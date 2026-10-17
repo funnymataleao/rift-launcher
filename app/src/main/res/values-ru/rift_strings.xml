@@ -39,7 +39,7 @@
     <string name="rift_settings_launch_summary">Wine, трансляторы процессора и поведение при запуске</string>
     <string name="rift_settings_emulators">Эмуляторы</string>
     <string name="rift_settings_emulators_summary">Системы, их эмуляторы и папки с играми</string>
-    <string name="rift_settings_streaming">Стриминг с ПК</string>
+    <string name="rift_settings_streaming">Домашний стриминг</string>
     <string name="rift_settings_streaming_summary">Artemis: картинка, задержка, звук, хост и геймпады</string>
     <string name="rift_settings_downloads">Загрузки и хранилище</string>
     <string name="rift_settings_downloads_summary">Сеть, скорость, место установки и сервер Steam</string>

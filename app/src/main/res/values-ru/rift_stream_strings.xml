@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Rift: PC streaming (embedded Artemis core) -->
 <resources>
-    <string name="rift_section_pc_streaming">Стриминг с ПК</string>
+    <string name="rift_section_pc_streaming">Домашний стриминг</string>
     <string name="rift_stream_add_pc_title">Добавить ПК</string>
     <string name="rift_stream_add_pc_subtitle">Игры с ПК, на котором работает Apollo, Vibepollo или Sunshine, в той же сети</string>
     <string name="rift_stream_back">Назад</string>
@@ -25,7 +25,7 @@
     <string name="rift_stream_pin_title">PIN для %1$s</string>
     <string name="rift_stream_pin_help">На ПК откройте %1$s, раздел PIN, и введите этот код.</string>
     <string name="rift_stream_paired_title">%1$s подключён</string>
-    <string name="rift_stream_paired_help">На главном экране появилась вкладка «Стриминг с ПК».</string>
+    <string name="rift_stream_paired_help">На главном экране появилась вкладка «Домашний стриминг».</string>
     <string name="rift_stream_done">Готово</string>
     <string name="rift_stream_pair_error_title">Не удалось спарить</string>
     <string name="rift_stream_pair_wrong_pin">Неверный PIN. Попробуйте ещё раз.</string>
@@ -40,7 +40,7 @@
     <string name="rift_stream_stage_failed">Ошибка на этапе %1$s (код %2$d)</string>
     <string name="rift_stream_terminated">Соединение прервано (код %1$d)</string>
     <string name="rift_stream_no_decoder">На устройстве нет аппаратного декодера H.264.</string>
-    <string name="rift_stream_no_games">Игр с ПК пока нет. Чтобы они появились на главной во вкладке «Стриминг с ПК» с обложками:\n1. Установите на ПК Vibepollo и добавьте ПК выше.\n2. В веб-интерфейсе Vibepollo откройте «Приложения» → Setup Game Library Integration.\n3. Включите Steam, Auto-sync и синхронизацию всех установленных игр, затем сохраните.</string>
+    <string name="rift_stream_no_games">Игр с ПК пока нет. Чтобы они появились на главной во вкладке «Домашний стриминг» с обложками:\n1. Установите на ПК Vibepollo и добавьте ПК выше.\n2. В веб-интерфейсе Vibepollo откройте «Приложения» → Setup Game Library Integration.\n3. Включите Steam, Auto-sync и синхронизацию всех установленных игр, затем сохраните.</string>
     <string name="rift_stream_group_pc_apps">Приложения ПК</string>
     <string name="rift_stream_end">Закончить стрим</string>
     <string name="rift_stream_end_failed">Не удалось закрыть игру на ПК.</string>
