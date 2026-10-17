@@ -174,12 +174,12 @@ private fun CardButton(text: String, onClick: () -> Unit, modifier: Modifier, pr
     val focused by interactionSource.collectIsFocusedAsState()
     val shape = RoundedCornerShape(50)
     // Rift: two states (Denis 17.10): the button in focus is filled with the accent, every other one is grey.
-    val container = if (focused) RiftColors.Primary else Color.White.copy(alpha = 0.1f)
+    val container = if (focused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.1f))
     Box(
         modifier = modifier
             .height(RiftSizes.button)
             .clip(shape)
-            .background(if (enabled) container else container.copy(alpha = container.alpha * 0.4f))
+            .background(container, alpha = if (enabled) 1f else 0.4f)
             .selectable(
                 selected = focused,
                 enabled = enabled,

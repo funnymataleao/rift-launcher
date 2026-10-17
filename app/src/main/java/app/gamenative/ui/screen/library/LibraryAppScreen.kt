@@ -288,7 +288,8 @@ private fun PrimaryActionButton(
 
     // Rift: two states only, as everywhere on a gamepad (Denis 17.10): in focus the accent fill with dark
     // text and icon, otherwise the same grey as the other buttons. No outline.
-    val buttonColor = if (isFocused) dev.rift.launcher.ui.theme.RiftColors.Primary else Color.White.copy(alpha = 0.1f)
+    // The focus fill is the user's accent brush, so a gradient accent shows as a gradient (Denis 17.10).
+    val buttonFill = if (isFocused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.1f))
     val contentColor = if (isFocused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else Color.White
 
     // Rift: every button on the game page is one height (RiftSizes.button); Play is a wider pill.
@@ -298,9 +299,7 @@ private fun PrimaryActionButton(
             .widthIn(min = 180.dp)
             .scale(scale)
             .clip(RoundedCornerShape(50))
-            .background(
-                if (enabled) buttonColor else buttonColor.copy(alpha = buttonColor.alpha * 0.5f),
-            )
+            .background(buttonFill, alpha = if (enabled) 1f else 0.5f)
             .focusRequester(focusRequester)
             .selectable(
                 selected = isFocused,
@@ -402,9 +401,7 @@ private fun ActionIconButton(
             .scale(scale)
             .size(dev.rift.launcher.ui.theme.RiftSizes.button)
             .clip(CircleShape)
-            .background(
-                if (isFocused) dev.rift.launcher.ui.theme.RiftColors.Primary else Color.White.copy(alpha = 0.1f),
-            )
+            .background(if (isFocused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.1f)))
             .selectable(
                 selected = isFocused,
                 interactionSource = interactionSource,
@@ -447,7 +444,7 @@ private fun ActionPillButton(
             .scale(scale)
             .height(dev.rift.launcher.ui.theme.RiftSizes.button)
             .clip(RoundedCornerShape(50))
-            .background(if (isFocused) dev.rift.launcher.ui.theme.RiftColors.Primary else Color.White.copy(alpha = 0.1f))
+            .background(if (isFocused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.1f)))
             .selectable(
                 selected = isFocused,
                 interactionSource = interactionSource,
@@ -872,7 +869,7 @@ private fun GamePageBackPill(onClick: () -> Unit, modifier: Modifier = Modifier)
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(50))
-            .background(if (isFocused) dev.rift.launcher.ui.theme.RiftColors.Primary else Color.White.copy(alpha = 0.08f))
+            .background(if (isFocused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.08f)))
             .selectable(selected = isFocused, interactionSource = interactionSource, indication = null, onClick = onClick)
             .padding(start = 6.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -951,12 +948,7 @@ private fun GamePageSectionTabs(
                 maxLines = 1,
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
-                    .background(
-                        when {
-                            selected -> dev.rift.launcher.ui.theme.RiftColors.Primary
-                            else -> Color.Transparent
-                        },
-                    )
+                    .background(if (selected) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.Transparent))
                     .then(tabModifier)
                     .padding(horizontal = 18.dp, vertical = 9.dp),
             )
@@ -1367,7 +1359,7 @@ private fun GamePageMediaRow(
                         modifier = Modifier
                             .size(60.dp)
                             .clip(CircleShape)
-                            .background(if (isFocused) dev.rift.launcher.ui.theme.RiftColors.Primary else Color.Black.copy(alpha = 0.55f)),
+                            .background(if (isFocused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.Black.copy(alpha = 0.55f))),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
@@ -2771,11 +2763,12 @@ private fun AchievementRow(ach: Achievement, focusRequester: FocusRequester? = n
     // Rift: in focus the row is filled with the accent and its text goes dark; no outline.
     Surface(
         shape = shape,
-        color = if (focused) dev.rift.launcher.ui.theme.RiftColors.Primary else MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = if (focused) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh,
         contentColor = if (focused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
             .fillMaxWidth()
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .then(if (focused) Modifier.clip(shape).background(dev.rift.launcher.ui.theme.RiftAccent.current.brush) else Modifier)
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
     ) {
         Row(
@@ -2830,10 +2823,11 @@ private fun HiddenAchievementsSummary(count: Int, onClick: () -> Unit) {
     val focused by interactionSource.collectIsFocusedAsState()
     Surface(
         shape = shape,
-        color = if (focused) dev.rift.launcher.ui.theme.RiftColors.Primary else MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = if (focused) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh,
         contentColor = if (focused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (focused) Modifier.clip(shape).background(dev.rift.launcher.ui.theme.RiftAccent.current.brush) else Modifier)
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
     ) {
         Row(
@@ -3039,10 +3033,7 @@ private fun GamePageAchievements(achievements: List<Achievement>, wide: Boolean)
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(18.dp))
-                        .background(
-                            if (focused) dev.rift.launcher.ui.theme.RiftColors.Primary
-                            else dev.rift.launcher.ui.theme.RiftColors.SurfaceContainer,
-                        )
+                        .background(if (focused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(dev.rift.launcher.ui.theme.RiftColors.SurfaceContainer))
                         .selectable(selected = focused, interactionSource = interactionSource, indication = null) { detail = ach }
                         .padding(10.dp),
                     verticalAlignment = Alignment.CenterVertically,

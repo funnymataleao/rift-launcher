@@ -1104,7 +1104,7 @@ private fun RiftFilterPill(text: String, selected: Boolean, enabled: Boolean, on
         modifier = Modifier
             .height(44.dp)
             .clip(shape)
-            .background(if (filled) RiftColors.Primary else Color.White.copy(alpha = 0.07f))
+            .background(if (filled) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.07f)))
             .selectable(selected = selected, enabled = enabled, interactionSource = interactionSource, indication = null, onClick = onClick)
             .padding(horizontal = 18.dp),
         contentAlignment = Alignment.Center,
@@ -1144,7 +1144,7 @@ private fun RiftConfigRow(
             .fillMaxWidth()
             .height(76.dp)
             .clip(shape)
-            .background(if (focused) RiftColors.Primary else RiftColors.Surface)
+            .background(if (focused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(RiftColors.Surface))
             .selectable(selected = selected, interactionSource = interactionSource, indication = null, onClick = onClick)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1261,7 +1261,7 @@ private fun RiftConfigDetailPane(
                 .fillMaxWidth()
                 .height(RiftSizes.button)
                 .clip(shape)
-                .background(if (applyFocused) RiftColors.Primary else Color.White.copy(alpha = if (canApply) 0.1f else 0.05f))
+                .background(if (applyFocused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = if (canApply) 0.1f else 0.05f)))
                 .selectable(selected = false, interactionSource = interactionSource, indication = null, onClick = onApply),
             contentAlignment = Alignment.Center,
         ) {
@@ -1333,7 +1333,7 @@ private fun RiftHeaderButton(icon: androidx.compose.ui.graphics.vector.ImageVect
         modifier = Modifier
             .size(RiftSizes.button)
             .clip(RoundedCornerShape(50))
-            .background(if (focused) RiftColors.Primary else Color.White.copy(alpha = 0.1f))
+            .background(if (focused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.1f)))
             .selectable(selected = false, enabled = enabled, interactionSource = interactionSource, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
