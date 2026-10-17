@@ -8,14 +8,18 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -23,6 +27,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.RestartAlt
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -40,6 +46,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -49,7 +56,8 @@ import app.gamenative.ui.component.QuickMenuAdjustmentRow
 import app.gamenative.ui.component.QuickMenuChoiceChip
 import app.gamenative.ui.component.QuickMenuItem
 import app.gamenative.ui.component.QuickMenuItemRow
-import app.gamenative.ui.component.QuickMenuSectionHeader
+import app.gamenative.ui.component.QuickMenuRailActionButton
+import app.gamenative.ui.component.QuickMenuTabButton
 import app.gamenative.ui.component.QuickMenuToggleRow
 import app.gamenative.ui.util.adaptivePanelWidth
 import dev.rift.launcher.settings.rememberRiftPrefs
@@ -123,6 +131,15 @@ fun StreamMenu(
             val relaunch = error != null && onRelaunch != null
             // After an error the first button ("Quit and start again") holds the focus.
             val first = if (relaunch) RELAUNCH else focusRow
+            // PC streams have their picture and stream tabs while the stream runs; a cloud game brings its own.
+            val tabs = when {
+                error != null -> emptyList()
+                onPerfOverlayChange != null && onPictureChange != null -> listOf(StreamTab.PICTURE, StreamTab.STREAM)
+                extraSettings != null -> listOf(StreamTab.CLOUD)
+                else -> emptyList()
+            }
+            var tab by remember { mutableStateOf(StreamTab.of(focusRow).takeIf { it in tabs } ?: tabs.firstOrNull()) }
+            val accent = RiftAccent.current.main
             Surface(
                 modifier = Modifier
                     .then(if (ownWindow) Modifier.fillMaxSize() else Modifier.width(adaptivePanelWidth(440.dp)).fillMaxHeight().blackGlass())
@@ -133,56 +150,90 @@ fun StreamMenu(
                 shape = RectangleShape,
                 color = Color.Transparent,
             ) {
-                Column(
+                // The shell of Rift's quick access panel: the open tab on the left, the tab rail on the
+                // outer edge with "End stream" at its foot.
+                Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(start = 12.dp, end = 12.dp, top = 20.dp, bottom = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                        .padding(start = 20.dp, end = 10.dp, top = 16.dp, bottom = 12.dp),
                 ) {
-                    Column(modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 12.dp)) {
+                    Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
                         Text(
-                            text = appName,
+                            text = tab?.let { stringResource(it.title) } ?: appName,
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 4.dp),
                         )
                         Text(
-                            text = pcName,
+                            text = if (tab != null) "$appName · $pcName" else pcName,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 12.dp),
                         )
-                        if (error != null) {
-                            Text(
-                                text = error,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.padding(top = 12.dp),
-                            )
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            if (error != null) {
+                                Text(
+                                    text = error,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 12.dp),
+                                )
+                            }
+                            if (relaunch) {
+                                QuickMenuItemRow(
+                                    item = QuickMenuItem(0, Icons.Rounded.RestartAlt, R.string.rift_stream_relaunch),
+                                    onClick = onRelaunch!!,
+                                    focusRequester = requester(RELAUNCH),
+                                )
+                            }
+                            when (tab) {
+                                StreamTab.PICTURE -> PictureSettings(::requester, onPictureChange!!, maxFps, screenSize)
+                                StreamTab.STREAM -> StreamSettingsTab(::requester, onPerfOverlayChange!!)
+                                StreamTab.CLOUD -> extraSettings!!(::requester)
+                                null -> Unit
+                            }
                         }
                     }
-                    if (relaunch) {
-                        QuickMenuItemRow(
-                            item = QuickMenuItem(0, Icons.Rounded.RestartAlt, R.string.rift_stream_relaunch),
-                            onClick = onRelaunch!!,
-                            focusRequester = requester(RELAUNCH),
-                        )
-                    }
-                    QuickMenuItemRow(
-                        item = QuickMenuItem(1, Icons.Rounded.PowerSettingsNew, R.string.rift_stream_end),
-                        onClick = onEndStream,
-                        focusRequester = requester(StreamMenuRow.END),
+                    Box(
+                        modifier = Modifier
+                            .padding(start = 12.dp, end = 8.dp)
+                            .width(1.dp)
+                            .fillMaxHeight()
+                            .background(Color.White.copy(alpha = 0.06f)),
                     )
-                    // A cloud game brings its own settings instead of the PC stream's.
-                    if (error == null && extraSettings != null) extraSettings(::requester)
-                    // PC streams only, and only while the stream runs.
-                    if (error == null && onPerfOverlayChange != null && onPictureChange != null) {
-                        StreamQuickSettings(
-                            requester = ::requester,
-                            onPerfOverlayChange = onPerfOverlayChange,
-                            onPictureChange = onPictureChange,
-                            maxFps = maxFps,
-                            screenSize = screenSize,
+                    Column(
+                        modifier = Modifier
+                            .width(56.dp)
+                            .fillMaxHeight()
+                            .focusGroup(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            tabs.forEach { option ->
+                                QuickMenuTabButton(
+                                    icon = option.icon,
+                                    contentDescriptionResId = option.title,
+                                    selected = tab == option,
+                                    accentColor = accent,
+                                    onSelected = { tab = option },
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        QuickMenuRailActionButton(
+                            item = QuickMenuItem(1, Icons.Rounded.PowerSettingsNew, R.string.rift_stream_end),
+                            onClick = onEndStream,
+                            focusRequester = requester(StreamMenuRow.END),
                         )
                     }
                 }
@@ -203,29 +254,31 @@ fun StreamMenu(
     }
 }
 
-/**
- * The stream settings from Rift's settings. The overlay and vibration apply at once; the picture
- * settings are saved and handed to [onPictureChange], which reconnects the stream with them.
- */
+/** The rail's tabs and the rows each one holds, so a reconnect opens the tab of the row being changed. */
+private enum class StreamTab(val title: Int, val icon: ImageVector) {
+    PICTURE(R.string.rift_settings_group_stream_video, Icons.Rounded.Tv),
+    STREAM(R.string.rift_stream_tab_stream, Icons.Rounded.Tune),
+    CLOUD(R.string.rift_stream_settings, Icons.Rounded.Tune);
+
+    companion object {
+        fun of(row: String) = when (row) {
+            StreamMenuRow.OVERLAY, StreamMenuRow.VIBRATION -> STREAM
+            StreamMenuRow.END -> null
+            else -> PICTURE
+        }
+    }
+}
+
+/** What changes on the fly: the overlay and the pad's vibration. */
 @Composable
-private fun StreamQuickSettings(
+private fun StreamSettingsTab(
     requester: (String) -> FocusRequester,
     onPerfOverlayChange: (Boolean) -> Unit,
-    onPictureChange: (String) -> Unit,
-    maxFps: Int,
-    screenSize: Pair<Int, Int>?,
 ) {
     val prefs = rememberRiftPrefs()
     val accent = RiftAccent.current.main
     var overlay by remember { mutableStateOf(prefs.streamPerfOverlay) }
     var vibration by remember { mutableStateOf(prefs.streamGamepadVibration) }
-    var resolution by remember { mutableStateOf(prefs.streamResolution) }
-    var fps by remember { mutableStateOf(prefs.streamFps) }
-    var bitrate by remember { mutableStateOf(prefs.streamBitrateMbps) }
-    var codec by remember { mutableStateOf(prefs.streamCodec) }
-    var hdr by remember { mutableStateOf(prefs.streamHdr) }
-
-    QuickMenuSectionHeader(title = stringResource(R.string.rift_stream_settings), modifier = Modifier.padding(top = 12.dp))
     QuickMenuToggleRow(
         title = stringResource(R.string.rift_settings_stream_overlay),
         enabled = overlay,
@@ -247,12 +300,32 @@ private fun StreamQuickSettings(
         accentColor = accent,
         focusRequester = requester(StreamMenuRow.VIBRATION),
     )
+}
 
-    // The picture is set when a session starts, so these reconnect the stream (the game keeps running).
-    QuickMenuSectionHeader(
-        title = stringResource(R.string.rift_settings_group_stream_video),
-        subtitle = stringResource(R.string.rift_stream_settings_picture_note),
-        modifier = Modifier.padding(top = 12.dp),
+/**
+ * The picture, set when a session starts: a change is saved and handed to [onPictureChange], which
+ * reconnects the stream with it (the game keeps running on the PC).
+ */
+@Composable
+private fun PictureSettings(
+    requester: (String) -> FocusRequester,
+    onPictureChange: (String) -> Unit,
+    maxFps: Int,
+    screenSize: Pair<Int, Int>?,
+) {
+    val prefs = rememberRiftPrefs()
+    val accent = RiftAccent.current.main
+    var resolution by remember { mutableStateOf(prefs.streamResolution) }
+    var fps by remember { mutableStateOf(prefs.streamFps) }
+    var bitrate by remember { mutableStateOf(prefs.streamBitrateMbps) }
+    var codec by remember { mutableStateOf(prefs.streamCodec) }
+    var hdr by remember { mutableStateOf(prefs.streamHdr) }
+
+    Text(
+        text = stringResource(R.string.rift_stream_settings_picture_note),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 4.dp),
     )
     // Smallest to largest picture; "Screen" is the tablet's own size, wherever that falls.
     val screenLabel = stringResource(R.string.rift_settings_stream_device_screen)
@@ -290,11 +363,12 @@ private fun StreamQuickSettings(
         focusRequester = requester(StreamMenuRow.FPS),
     )
     val auto = stringResource(R.string.rift_settings_auto)
+    val mbps = stringResource(R.string.rift_stream_mbps)
     StepRow(
-        title = stringResource(R.string.rift_settings_stream_bitrate),
-        steps = listOf(0, 10, 20, 30, 40, 60, 80, 100, 150),
+        title = stringResource(R.string.rift_stream_bitrate),
+        steps = BITRATES,
         value = bitrate,
-        label = { if (it == 0) auto else "$it" },
+        label = { if (it == 0) auto else mbps.format(it) },
         onChange = {
             bitrate = it
             prefs.streamBitrateMbps = it
@@ -342,9 +416,10 @@ internal fun <T> StepRow(
     focusRequester: FocusRequester,
 ) {
     val index = steps.indexOf(value).coerceAtLeast(0)
+    // The value always stands by the title, as in the Steam Deck's quick access menu.
     QuickMenuAdjustmentRow(
-        title = title,
-        valueText = label(steps[index]),
+        title = "$title · ${label(steps[index])}",
+        valueText = "",
         progress = if (steps.size > 1) index / (steps.size - 1f) else 1f,
         onDecrease = { if (index > 0) onChange(steps[index - 1]) },
         onIncrease = { if (index < steps.lastIndex) onChange(steps[index + 1]) },
@@ -390,6 +465,9 @@ private fun <T> ChoiceRow(
         }
     }
 }
+
+/** Bitrates in Mbps, 0 for automatic: fine steps low down, wider up to what Wi-Fi 7 carries. */
+private val BITRATES = listOf(0, 5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 250, 300, 350, 400, 450, 500)
 
 private const val RELAUNCH = "relaunch"
 private const val FOCUS_ATTEMPTS = 20

@@ -40,7 +40,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.ComposeView
@@ -161,7 +160,7 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
     private var backdropFailed = false
     private val copyBackdrop: Runnable = Runnable { requestBackdrop() }
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var panelRow by mutableStateOf(StreamMenuRow.END)
+    private var panelRow by mutableStateOf(StreamMenuRow.RESOLUTION)
     private var maxFps by mutableStateOf(60)
     private var screenSize by mutableStateOf<Pair<Int, Int>?>(null)
     private var changedRow = StreamMenuRow.END
@@ -767,7 +766,7 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(if (backdrop != null) BlackGlass.Tint else ComposeColor(OverlayPanel.GLASS_SOLID)),
+                        .background(if (backdrop != null) BlackGlass.Tint else BlackGlass.Solid),
                 )
                 StreamMenu(
                     isOpen = panelOpen,
