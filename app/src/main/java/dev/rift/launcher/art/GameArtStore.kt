@@ -4,7 +4,11 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import app.gamenative.data.LibraryItem
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
@@ -24,6 +28,7 @@ object GameArtStore {
     private const val PREFS = "rift_game_art"
     private const val DIR = "game_art"
     private const val TAG = "RiftArt"
+    private const val IDS_PREFS = "rift_game_art_ids"
 
     private val _version = MutableStateFlow(0)
     val version: StateFlow<Int> = _version
@@ -85,7 +90,7 @@ object GameArtStore {
      * first and only then put in place, so the screens switch once, straight to the finished picture.
      * If the download fails the web address is used instead.
      */
-    suspend fun pick(context: Context, appId: String, kind: ArtKind, remoteUrl: String) {
+    suspend fun pick(context: Context, appId: String, kind: ArtKind, remoteUrl: String, optionId: Long = 0L) {
         val saved = withContext(Dispatchers.IO) {
             runCatching { download(context, appId, kind, remoteUrl) }
                 .onFailure { Timber.tag(TAG).w(it, "Picked %s for %s did not download: %s", kind.key, appId, remoteUrl) }
@@ -93,8 +98,28 @@ object GameArtStore {
         }
         Timber.tag(TAG).i("Picked %s for %s: %s", kind.key, appId, saved ?: remoteUrl)
         prefs(context).edit { putString(key(appId, kind), saved ?: remoteUrl) }
+        idPrefs(context).edit { if (optionId != 0L) putLong(key(appId, kind), optionId) else remove(key(appId, kind)) }
         pickCount = -1
         _version.value++
+    }
+
+    /** Lives as long as the app, so a pick finishes even when the picker is closed or its tab changed meanwhile. */
+    private val picks = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /** [pick] that is not cancelled with the screen that asked for it. */
+    fun pickAsync(context: Context, appId: String, kind: ArtKind, remoteUrl: String, optionId: Long): Job {
+        val app = context.applicationContext
+        return picks.launch { pick(app, appId, kind, remoteUrl, optionId) }
+    }
+
+    private fun idPrefs(context: Context): SharedPreferences =
+        context.applicationContext.getSharedPreferences(IDS_PREFS, Context.MODE_PRIVATE)
+
+    /** SteamGridDB's id of the picture now in use for [appId] and [kind] (picked, else found by itself), or 0 when unknown. */
+    fun currentOptionId(context: Context, appId: String, kind: ArtKind): Long {
+        val ids = idPrefs(context)
+        if (prefs(context).getString(key(appId, kind), "").orEmpty().isNotEmpty()) return ids.getLong(key(appId, kind), 0L)
+        return ids.getLong("auto|" + autoKey(appId, kind), 0L)
     }
 
     // --- Pictures found without being asked (emulator and Android games have no store art of their own) ---
@@ -195,6 +220,7 @@ object GameArtStore {
             } else {
                 val saved = withContext(Dispatchers.IO) { download(context, "auto|$appId", kind, option.url) }
                 p.edit { putString(slot, saved) }
+                idPrefs(context).edit { putLong("auto|$slot", option.id) }
                 true
             }
         } catch (e: ArtError) {
@@ -213,6 +239,7 @@ object GameArtStore {
     /** Back to the store's own picture of [kind]. */
     fun reset(context: Context, appId: String, kind: ArtKind) {
         prefs(context).edit { remove(key(appId, kind)) }
+        idPrefs(context).edit { remove(key(appId, kind)) }
         pickCount = -1
         File(context.filesDir, DIR).listFiles { f -> f.name.startsWith(fileStem(appId, kind)) }?.forEach { it.delete() }
         _version.value++

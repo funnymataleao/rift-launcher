@@ -249,8 +249,8 @@ private fun ArtGrid(
         val appId = session.item.appId
         val artVersion by GameArtStore.version.collectAsState()
         val hasOwn = remember(artVersion) { GameArtStore.get(context, appId, kind).isNotEmpty() }
-        // The picture taken in this session, so it shows as chosen; the one being saved shows a spinner.
-        var chosenId by remember { mutableStateOf<Long?>(null) }
+        // The picture in use (kept by the store, so it shows as chosen on every visit); the one being saved shows a spinner.
+        val chosenId = remember(artVersion) { GameArtStore.currentOptionId(context, appId, kind).takeIf { it != 0L } }
         var savingId by remember { mutableStateOf<Long?>(null) }
         var pendingFocus by remember { mutableStateOf<Long?>(null) }
 
@@ -316,7 +316,6 @@ private fun ArtGrid(
                                     onFocusConsumed = { pendingFocus = null },
                                     onClick = {
                                         GameArtStore.reset(context, appId, kind)
-                                        chosenId = null
                                     },
                                 ) {
                                     Column(
@@ -352,9 +351,10 @@ private fun ArtGrid(
                                 onClick = {
                                     if (savingId != null) return@ArtTile
                                     savingId = option.id
+                                    // The pick belongs to the app, not to this tab: switching tabs or leaving does not cancel it.
+                                    val job = GameArtStore.pickAsync(context, appId, kind, option.url, option.id)
                                     scope.launch {
-                                        GameArtStore.pick(context, appId, kind, option.url)
-                                        chosenId = option.id
+                                        job.join()
                                         savingId = null
                                     }
                                 },

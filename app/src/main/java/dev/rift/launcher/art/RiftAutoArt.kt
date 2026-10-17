@@ -34,7 +34,7 @@ object RiftAutoArt {
                 val path = SteamGridDbClient.resolve(key, SteamGridDbClient.Game(null, item.name))
                 for (kind in kinds) {
                     val option = SteamGridDbClient.options(key, path, kind, 0).firstOrNull() ?: continue
-                    GameArtStore.pick(context, item.appId, kind, option.url)
+                    GameArtStore.pick(context, item.appId, kind, option.url, option.id)
                 }
                 // Found (or nothing to find): not asked again for now either way.
                 p.edit { putLong(item.appId, System.currentTimeMillis()) }
