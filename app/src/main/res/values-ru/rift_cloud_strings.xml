@@ -75,8 +75,9 @@
     <string name="rift_cloud_set_resolution">Разрешение потока</string>
     <string name="rift_cloud_set_codec">Качество картинки</string>
     <string name="rift_cloud_set_codec_summary">Профиль H.264: выше — чётче, но тяжелее</string>
-    <string name="rift_cloud_set_bitrate">Максимальный битрейт</string>
-    <string name="rift_cloud_set_bitrate_summary">Мбит/с. Ограничение может ухудшить картинку</string>
+    <string name="rift_cloud_opt_server_max">Максимум</string>
+    <string name="rift_cloud_set_bitrate">Ограничение битрейта</string>
+    <string name="rift_cloud_set_bitrate_summary">«Максимум» — всё, что даёт сервер Xbox. Числа в Мбит/с только урезают поток для слабой сети</string>
     <string name="rift_cloud_set_prevent_drops">Не снижать разрешение</string>
     <string name="rift_cloud_set_combine_audio">Объединить звук и видео</string>
     <string name="rift_cloud_set_combine_audio_summary">Может убрать отставание звука. Экспериментально</string>
