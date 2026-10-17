@@ -12,6 +12,9 @@ import androidx.core.graphics.drawable.toBitmap
 /** An installed Android app shown in the "Android games" section. */
 data class AndroidGame(val packageName: String, val label: String, val isGame: Boolean = false, val installedAt: Long = 0L)
 
+/** The library entry the art picker and the picked-art store know an Android game by. */
+fun AndroidGame.toArtItem() = app.gamenative.data.LibraryItem(appId = "ANDROID_$packageName", name = label, isInstalled = true)
+
 /**
  * Android games for the "Android games" section. Like every other section it only appears once the
  * user sets it up: the packages picked in Rift's settings are stored under [KEY_PACKAGES].
@@ -83,6 +86,7 @@ object AndroidGames {
     fun launch(context: Context, game: AndroidGame) {
         val intent = context.packageManager.getLaunchIntentForPackage(game.packageName) ?: return
         context.getSharedPreferences(USAGE_PREFS, Context.MODE_PRIVATE).edit { putLong(game.packageName, System.currentTimeMillis()) }
+        dev.rift.launcher.overlay.ExternalGameSession.started(context, game.packageName)
         context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 }

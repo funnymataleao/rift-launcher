@@ -3,18 +3,23 @@ package dev.rift.launcher.cloud
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.Gravity
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
+import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
+import android.webkit.RenderProcessGoneDetail
+import android.webkit.WebResourceError
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -55,6 +60,9 @@ class XcloudActivity : ComponentActivity() {
         private const val SIGNED_IN_CLOSE_MS = 1_200L
         private const val HINT_MS = 4_000L
 
+        /** Logcat tag for the page's console and load errors; release builds log them too, for the tablet's logs. */
+        private const val LOG_TAG = "Xcloud"
+
         private const val SIGNED_IN_CHECK =
             "(function(){try{return !!(window.xbcUser&&window.xbcUser.isSignedIn)}catch(e){return false}})()"
 
@@ -82,6 +90,11 @@ class XcloudActivity : ComponentActivity() {
     private lateinit var webView: WebView
     private lateinit var hintText: TextView
     private lateinit var menuView: ComposeView
+    private lateinit var root: FrameLayout
+
+    /** The page's full-screen element (xCloud's stream asks for full screen), shown over the page. */
+    private var fullScreenView: View? = null
+    private var fullScreenCallback: WebChromeClient.CustomViewCallback? = null
     private var menuOpen by mutableStateOf(false)
     private var signInMode = false
     private val handler = Handler(Looper.getMainLooper())
@@ -110,6 +123,8 @@ class XcloudActivity : ComponentActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // A debuggable build can be inspected from chrome://inspect on a computer.
+        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) WebView.setWebContentsDebuggingEnabled(true)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         hideSystemBars()
         signInMode = intent.getBooleanExtra(EXTRA_SIGN_IN, false)
@@ -131,7 +146,7 @@ class XcloudActivity : ComponentActivity() {
                 .replace("; wv)", ")")
                 .replace(Regex("Version/[\\d.]+ "), "")
             webViewClient = XcloudClient()
-            webChromeClient = WebChromeClient()
+            webChromeClient = XcloudChromeClient()
         }
         CookieManager.getInstance().apply {
             setAcceptCookie(true)
@@ -148,29 +163,28 @@ class XcloudActivity : ComponentActivity() {
             text = getString(R.string.rift_stream_menu_hint)
             visibility = View.GONE
         }
-        setContentView(
-            FrameLayout(this).apply {
-                setBackgroundColor(Color.BLACK)
-                addView(webView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
-                menuView = ComposeView(context).apply {
-                    setContent {
-                        StreamMenu(
-                            isOpen = menuOpen,
-                            appName = title,
-                            pcName = getString(R.string.rift_cloud_service_xcloud),
-                            onDismiss = ::closeMenu,
-                            onEndStream = ::finish,
-                        )
-                    }
+        root = FrameLayout(this).apply {
+            setBackgroundColor(Color.BLACK)
+            addView(webView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+            menuView = ComposeView(context).apply {
+                setContent {
+                    StreamMenu(
+                        isOpen = menuOpen,
+                        appName = title,
+                        pcName = getString(R.string.rift_cloud_service_xcloud),
+                        onDismiss = ::closeMenu,
+                        onEndStream = ::finish,
+                    )
                 }
-                addView(menuView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
-                addView(
-                    hintText,
-                    FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
-                        .apply { bottomMargin = 64 },
-                )
-            },
-        )
+            }
+            addView(menuView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+            addView(
+                hintText,
+                FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
+                    .apply { bottomMargin = 64 },
+            )
+        }
+        setContentView(root)
         onBackPressedDispatcher.addCallback(this) {
             if (menuOpen) closeMenu() else openMenu()
         }
@@ -227,7 +241,20 @@ class XcloudActivity : ComponentActivity() {
             if (!documentStartScript && url.startsWith(ORIGIN)) pendingScript?.let { view.evaluateJavascript(it, null) }
         }
 
+        override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+            if (request.isForMainFrame) Log.w(LOG_TAG, "Page failed: ${error.errorCode} ${error.description} ${request.url}")
+        }
+
+        // The page's renderer died (out of memory, a GPU fault): the session cannot go on, so the
+        // browser closes back to Rift instead of taking the whole app down.
+        override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+            Log.e(LOG_TAG, "Renderer gone, crashed=${detail.didCrash()}")
+            if (!isFinishing) finish()
+            return true
+        }
+
         override fun onPageFinished(view: WebView, url: String) {
+            Log.i(LOG_TAG, "Page finished: $url")
             if (!signInMode && !hintShown && url.contains("/play/launch/")) {
                 hintShown = true
                 hintText.visibility = View.VISIBLE
@@ -235,6 +262,57 @@ class XcloudActivity : ComponentActivity() {
                 handler.postDelayed(hideHint, HINT_MS)
             }
         }
+    }
+
+    /**
+     * xCloud puts its stream in full screen as soon as the game starts. A WebView hands the full-screen
+     * element to the app as a separate view; until it is on screen the stream is drawn nowhere and
+     * the page stays black. It goes right above the page, under the side panel and the hint.
+     */
+    private inner class XcloudChromeClient : WebChromeClient() {
+        override fun onShowCustomView(view: View, callback: CustomViewCallback) {
+            if (fullScreenView != null) {
+                callback.onCustomViewHidden()
+                return
+            }
+            Log.i(LOG_TAG, "Page went full screen")
+            fullScreenView = view
+            fullScreenCallback = callback
+            view.setBackgroundColor(Color.BLACK)
+            root.addView(view, 1, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+            // The gamepad and the keys go where the stream is.
+            view.isFocusable = true
+            view.isFocusableInTouchMode = true
+            if (!menuOpen) view.requestFocus()
+            hideSystemBars()
+        }
+
+        override fun onHideCustomView() {
+            val view = fullScreenView ?: return
+            root.removeView(view)
+            fullScreenView = null
+            fullScreenCallback = null
+            if (!menuOpen) webView.requestFocus()
+        }
+
+        override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+            val priority = when (message.messageLevel()) {
+                ConsoleMessage.MessageLevel.ERROR -> Log.ERROR
+                ConsoleMessage.MessageLevel.WARNING -> Log.WARN
+                else -> Log.INFO
+            }
+            Log.println(priority, LOG_TAG, "${message.message()} (${message.sourceId()}:${message.lineNumber()})")
+            return true
+        }
+
+        // Without a poster of its own the WebView draws its stock one (an Android robot) over a video that
+        // has no picture yet; the stream's own black background is what should show.
+        override fun getDefaultVideoPoster(): Bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+    }
+
+    /** Where the page's input goes: the full-screen stream when there is one, else the page. */
+    private fun focusPage() {
+        (fullScreenView ?: webView).requestFocus()
     }
 
     private fun onSignedIn() {
@@ -264,7 +342,7 @@ class XcloudActivity : ComponentActivity() {
 
     private fun closeMenu() {
         menuOpen = false
-        webView.requestFocus()
+        focusPage()
     }
 
     private fun isGamepad(source: Int) =
@@ -281,7 +359,7 @@ class XcloudActivity : ComponentActivity() {
         }
         // With the panel open the pad drives the panel: B closes it, A and the d-pad reach Compose.
         if (menuOpen) {
-            if (event.action == KeyEvent.ACTION_UP && pressedInPage.remove(event.keyCode)) webView.dispatchKeyEvent(event)
+            if (event.action == KeyEvent.ACTION_UP && pressedInPage.remove(event.keyCode)) (fullScreenView ?: webView).dispatchKeyEvent(event)
             if (event.keyCode == KeyEvent.KEYCODE_BUTTON_B) {
                 if (event.action == KeyEvent.ACTION_UP) closeMenu()
                 return true
@@ -322,8 +400,10 @@ class XcloudActivity : ComponentActivity() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        fullScreenCallback?.onCustomViewHidden()
         if (::webView.isInitialized) {
             webView.stopLoading()
+            (webView.parent as? android.view.ViewGroup)?.removeView(webView)
             webView.destroy()
         }
         super.onDestroy()

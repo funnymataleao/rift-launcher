@@ -1,5 +1,8 @@
 package dev.rift.launcher.settings
 
+import dev.rift.launcher.sound.RiftSound
+import dev.rift.launcher.sound.rememberRiftSoundPlayer
+import dev.rift.launcher.sound.riftKeySounds
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -63,8 +66,11 @@ internal fun RiftDialog(
             usePlatformDefaultWidth = false,
         ),
     ) {
+        val sounds = rememberRiftSoundPlayer()
+        LaunchedEffect(Unit) { sounds.play(RiftSound.SidebarOpen) }
         Column(
             modifier = modifier
+                .riftKeySounds(panelKeys = false, touch = true)
                 .widthIn(min = 420.dp, max = 620.dp)
                 .padding(24.dp)
                 .clip(RiftShapes.sheet)

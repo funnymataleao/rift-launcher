@@ -17,6 +17,7 @@ import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.RocketLaunch
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Videocam
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Tab
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Image
@@ -55,6 +56,7 @@ enum class RiftSettingsSection(
 
     Interface(RiftSettingsGroup.Rift, R.string.rift_settings_interface, R.string.rift_settings_interface_summary, Icons.Rounded.Palette),
     Tabs(RiftSettingsGroup.Rift, R.string.rift_settings_tabs, R.string.rift_settings_tabs_summary, Icons.Rounded.Tab),
+    HiddenGames(RiftSettingsGroup.Rift, R.string.rift_settings_hidden, R.string.rift_settings_hidden_summary, Icons.Rounded.VisibilityOff),
     Controller(RiftSettingsGroup.Rift, R.string.rift_settings_controller, R.string.rift_settings_controller_summary, Icons.Rounded.Gamepad),
     Sound(RiftSettingsGroup.Rift, R.string.rift_settings_sound, R.string.rift_settings_sound_summary, Icons.Rounded.MusicNote),
     Home(RiftSettingsGroup.Rift, R.string.rift_settings_home, R.string.rift_settings_home_summary, Icons.Rounded.Home),

@@ -45,4 +45,5 @@ enum class AppOptionMenuType(@StringRes val title: Int) {
     AddToFavorites(R.string.option_add_to_favorites),
     RemoveFromFavorites(R.string.option_remove_from_favorites),
     ChangeArt(R.string.rift_option_change_art),
+    ChooseEmulator(R.string.rift_option_choose_emulator),
 }

@@ -971,8 +971,10 @@ internal fun AppScreenContent(
     // Rift: opened from the PC streaming tab, the main action streams the game from the PC.
     val riftStream = dev.rift.launcher.home.LocalRiftStreamAction.current
     var optionsMenuVisible by remember { mutableStateOf(riftOptionsOnly != null) }
+    // Rift: the game's properties page (all the options, by group), from the Start menu or the page's settings icon.
+    var propertiesOpen by remember { mutableStateOf(false) }
     if (riftOptionsOnly != null) {
-        LaunchedEffect(optionsMenuVisible) { riftOptionsOnly.panelOpen = optionsMenuVisible }
+        LaunchedEffect(optionsMenuVisible, propertiesOpen) { riftOptionsOnly.panelOpen = optionsMenuVisible || propertiesOpen }
     }
 
     // Track the original progress bar bounds for ambient mode morph animation
@@ -1077,8 +1079,8 @@ internal fun AppScreenContent(
     }
 
     // Restore focus when options menu, dialogs
-    LaunchedEffect(optionsMenuVisible, dialogOpen) {
-        if (!optionsMenuVisible && !dialogOpen) {
+    LaunchedEffect(optionsMenuVisible, propertiesOpen, dialogOpen) {
+        if (!optionsMenuVisible && !propertiesOpen && !dialogOpen) {
             kotlinx.coroutines.delay(100) // Brief delay for menu/dialog animation
             try {
                 playButtonFocusRequester.requestFocus()
@@ -1133,7 +1135,7 @@ internal fun AppScreenContent(
             when (event.keyCode) {
                 // SELECT button - open options menu
                 KeyEvent.KEYCODE_BUTTON_SELECT -> {
-                    if (riftStream == null) optionsMenuVisible = true
+                    if (riftStream == null || riftStream.showOptions) propertiesOpen = true
                     true
                 }
 
@@ -1236,8 +1238,8 @@ internal fun AppScreenContent(
                                 .background(
                                     brush = Brush.verticalGradient(
                                         colors = listOf(
-                                            MaterialTheme.colorScheme.primary,
-                                            MaterialTheme.colorScheme.primaryContainer,
+                                            dev.rift.launcher.ui.theme.RiftColors.SurfaceContainerHigh,
+                                            Color.Black,
                                         ),
                                     ),
                                 ),
@@ -1485,11 +1487,11 @@ internal fun AppScreenContent(
                         }
 
                         // Secondary action icons (right-aligned); a streamed game has no local options.
-                        if (riftStream == null) {
+                        if (riftStream == null || riftStream.showOptions) {
                             ActionIconButton(
                                 icon = Icons.Default.Settings,
                                 contentDescription = stringResource(R.string.options),
-                                onClick = { optionsMenuVisible = true },
+                                onClick = { propertiesOpen = true },
                             )
                         }
 
@@ -1866,11 +1868,11 @@ internal fun AppScreenContent(
                         onClick = { if (startActionEnabled) onStartAction() },
                     )
                 },
-                if (riftStream == null) {
+                if (riftStream == null || riftStream.showOptions) {
                     GamepadAction(
                         button = GamepadButton.SELECT,
                         labelResId = R.string.options,
-                        onClick = { optionsMenuVisible = true },
+                        onClick = { propertiesOpen = true },
                     )
                 } else {
                     null
@@ -1891,6 +1893,19 @@ internal fun AppScreenContent(
             onDismiss = { optionsMenuVisible = false },
             options = optionsMenu.toList(),
             modifier = Modifier.align(Alignment.CenterEnd),
+            onPlay = if (isInstalled) onStartAction else null,
+            onProperties = { propertiesOpen = true },
+            onHide = if (riftOptionsOnly != null) {
+                { dev.rift.launcher.home.RiftHiddenGames.hide(context, displayInfo.appId, displayInfo.name) }
+            } else {
+                null
+            },
+        )
+        dev.rift.launcher.home.RiftGameProperties(
+            isOpen = propertiesOpen,
+            title = displayInfo.name,
+            options = optionsMenu.toList(),
+            onDismiss = { propertiesOpen = false },
         )
 
         // Ambient mode during downloads

@@ -3,9 +3,13 @@ package dev.rift.launcher.settings
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Stop
+import dev.rift.launcher.sound.pack.PackPreview
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CloudDownload
@@ -33,20 +37,30 @@ import dev.rift.launcher.sound.pack.InstalledPack
 import dev.rift.launcher.sound.pack.InstalledPacks
 import dev.rift.launcher.sound.pack.PackError
 import kotlinx.coroutines.launch
+import java.io.File
 
-/** Picks an interface-sound or a music pack: the ones on the device first, then the DeckThemes catalog. */
+/**
+ * A page of the Sound section (not a pop-up): the packs on the device first, then the DeckThemes catalog, which
+ * loads further pages as the list is walked down. Every pack has a play button to hear it before it is kept.
+ * The caller handles Back by closing the page.
+ */
 @Composable
-internal fun PackManagerDialog(music: Boolean, onChanged: () -> Unit, onDismiss: () -> Unit) {
+internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var installed by remember { mutableStateOf(InstalledPacks.list(context).filter { it.music == music }) }
     var selected by remember { mutableStateOf(selectedId(context, music)) }
     val catalog = remember { mutableStateListOf<DeckPack>() }
     var page by remember { mutableStateOf(0) }
+    var hasMore by remember { mutableStateOf(true) }
     var loading by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
     var busyId by remember { mutableStateOf<String?>(null) }
+    var previewBusyId by remember { mutableStateOf<String?>(null) }
     var removing by remember { mutableStateOf<InstalledPack?>(null) }
+    val previewing = PackPreview.playing
+
+    DisposableEffect(Unit) { onDispose { PackPreview.stop(context) } }
 
     fun select(id: String) {
         if (music) RiftSoundSettings.setMusicPackId(context, id) else RiftSoundSettings.setSoundPackId(context, id)
@@ -56,13 +70,15 @@ internal fun PackManagerDialog(music: Boolean, onChanged: () -> Unit, onDismiss:
     }
 
     fun loadMore() {
-        if (loading) return
+        if (loading || !hasMore) return
         loading = true
         failed = false
         scope.launch {
             try {
-                catalog += DeckThemesClient.list(music, page + 1)
+                val batch = DeckThemesClient.list(music, page + 1)
+                catalog += batch
                 page += 1
+                hasMore = batch.size >= DeckThemesClient.PAGE_SIZE
             } catch (e: PackError) {
                 failed = true
             }
@@ -71,63 +87,88 @@ internal fun PackManagerDialog(music: Boolean, onChanged: () -> Unit, onDismiss:
     }
     LaunchedEffect(Unit) { loadMore() }
 
-    RiftDialog(
-        title = stringResource(if (music) R.string.rift_settings_packs_music_title else R.string.rift_settings_packs_sound_title),
-        onDismiss = onDismiss,
-        actions = { RiftPillButton(text = stringResource(R.string.rift_settings_done), onClick = onDismiss, primary = true) },
-    ) {
-        Column(
-            modifier = Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            val first = remember { androidx.compose.ui.focus.FocusRequester() }
-            LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
-            LinkRow(
-                modifier = Modifier.focusRequester(first),
-                title = stringResource(if (music) R.string.rift_settings_packs_none_music else R.string.rift_settings_packs_builtin),
-                icon = Icons.Rounded.RestartAlt,
-                value = if (selected.isBlank()) stringResource(R.string.rift_settings_packs_selected) else null,
-                onClick = { select("") },
-            )
-            installed.forEach { pack ->
-                LinkRow(
-                    title = pack.name,
-                    subtitle = pack.author.takeIf { it.isNotBlank() },
-                    icon = if (music) Icons.Rounded.MusicNote else Icons.Rounded.Check,
-                    value = stringResource(if (pack.id == selected) R.string.rift_settings_packs_selected else R.string.rift_settings_packs_choose),
-                    onClick = { select(pack.id) },
-                    onLongClick = { removing = pack },
-                )
-            }
-            if (installed.isNotEmpty()) NoteText(stringResource(R.string.rift_settings_packs_remove_hint))
+    fun hear(key: String, ready: File?, pack: DeckPack?) {
+        if (PackPreview.playing == key) {
+            PackPreview.stop(context)
+            return
+        }
+        scope.launch {
+            val dir = ready ?: run {
+                if (pack == null || previewBusyId != null) return@launch
+                previewBusyId = key
+                try {
+                    DeckThemesClient.preview(context, pack).also { failed = false }
+                } catch (e: PackError) {
+                    failed = true
+                    null
+                } finally {
+                    previewBusyId = null
+                }
+            } ?: return@launch
+            if (music) PackPreview.playMusic(context, key, dir) else PackPreview.playSounds(context, key, dir)
+        }
+    }
 
-            val onDevice = installed.map { it.id }.toSet()
-            catalog.filter { it.id !in onDevice }.forEach { pack ->
-                LinkRow(
-                    title = pack.name,
-                    subtitle = listOf(pack.author, stringResource(R.string.rift_settings_packs_downloads, pack.downloads))
-                        .filter { it.isNotBlank() }.joinToString(" · "),
-                    icon = Icons.Rounded.CloudDownload,
-                    value = stringResource(if (busyId == pack.id) R.string.rift_settings_packs_downloading else R.string.rift_settings_packs_download),
-                    enabled = busyId == null,
-                    onClick = {
-                        busyId = pack.id
-                        scope.launch {
-                            try {
-                                DeckThemesClient.install(context, pack)
-                                installed = InstalledPacks.list(context).filter { it.music == music }
-                                select(pack.id)
-                                failed = false
-                            } catch (e: PackError) {
-                                failed = true
-                            }
-                            busyId = null
+    SettingsGroup(
+        title = stringResource(if (music) R.string.rift_settings_packs_music_title else R.string.rift_settings_packs_sound_title),
+    ) {
+        val first = remember { androidx.compose.ui.focus.FocusRequester() }
+        LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
+        LinkRow(
+            modifier = Modifier.focusRequester(first),
+            title = stringResource(if (music) R.string.rift_settings_packs_none_music else R.string.rift_settings_packs_builtin),
+            icon = Icons.Rounded.RestartAlt,
+            value = if (selected.isBlank()) stringResource(R.string.rift_settings_packs_selected) else null,
+            onClick = { select("") },
+        )
+        installed.forEach { pack ->
+            PackRow(
+                title = pack.name,
+                subtitle = pack.author.takeIf { it.isNotBlank() },
+                icon = if (music) Icons.Rounded.MusicNote else Icons.Rounded.Check,
+                value = stringResource(if (pack.id == selected) R.string.rift_settings_packs_selected else R.string.rift_settings_packs_choose),
+                onClick = { select(pack.id) },
+                onLongClick = { removing = pack },
+                playing = previewing == pack.id,
+                onPreview = { hear(pack.id, pack.dir, null) },
+            )
+        }
+        if (installed.isNotEmpty()) NoteText(stringResource(R.string.rift_settings_packs_remove_hint))
+    }
+
+    val onDevice = installed.map { it.id }.toSet()
+    SettingsGroup(title = stringResource(R.string.rift_settings_packs_catalog)) {
+        catalog.filter { it.id !in onDevice }.forEach { pack ->
+            PackRow(
+                title = pack.name,
+                subtitle = listOf(pack.author, stringResource(R.string.rift_settings_packs_downloads, pack.downloads))
+                    .filter { it.isNotBlank() }.joinToString(" · "),
+                icon = Icons.Rounded.CloudDownload,
+                value = stringResource(if (busyId == pack.id) R.string.rift_settings_packs_downloading else R.string.rift_settings_packs_download),
+                enabled = busyId == null,
+                onClick = {
+                    busyId = pack.id
+                    scope.launch {
+                        try {
+                            DeckThemesClient.install(context, pack)
+                            installed = InstalledPacks.list(context).filter { it.music == music }
+                            select(pack.id)
+                            failed = false
+                        } catch (e: PackError) {
+                            failed = true
                         }
-                    },
-                )
-            }
-            if (failed) NoteText(stringResource(R.string.rift_settings_packs_error))
+                        busyId = null
+                    }
+                },
+                playing = previewing == pack.id,
+                busy = previewBusyId == pack.id,
+                onPreview = { hear(pack.id, null, pack) },
+            )
+        }
+        if (failed) NoteText(stringResource(R.string.rift_settings_packs_error))
+        if (hasMore || failed) {
             LinkRow(
+                modifier = Modifier.onFocusChanged { if (it.hasFocus && !failed) loadMore() },
                 title = stringResource(
                     when {
                         loading -> R.string.rift_settings_packs_loading
@@ -136,10 +177,11 @@ internal fun PackManagerDialog(music: Boolean, onChanged: () -> Unit, onDismiss:
                     },
                 ),
                 enabled = !loading,
-                onClick = ::loadMore,
+                onClick = { if (failed) failed = false; loadMore() },
             )
-            NoteText(stringResource(R.string.rift_settings_packs_note))
         }
+        NoteText(stringResource(R.string.rift_settings_packs_preview_hint))
+        NoteText(stringResource(R.string.rift_settings_packs_note))
     }
 
     removing?.let { pack ->
@@ -150,11 +192,45 @@ internal fun PackManagerDialog(music: Boolean, onChanged: () -> Unit, onDismiss:
             dismissText = stringResource(R.string.rift_settings_cancel),
             onConfirm = {
                 if (pack.id == selected) select("")
+                if (PackPreview.playing == pack.id) PackPreview.stop(context)
                 InstalledPacks.remove(context, pack.id)
                 installed = InstalledPacks.list(context).filter { it.music == music }
                 removing = null
             },
             onDismiss = { removing = null },
+        )
+    }
+}
+
+/** A pack row with its play button on the right: D-pad right reaches the button, A on the row chooses or downloads. */
+@Composable
+private fun PackRow(
+    title: String,
+    subtitle: String?,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    value: String,
+    onClick: () -> Unit,
+    playing: Boolean,
+    onPreview: () -> Unit,
+    enabled: Boolean = true,
+    busy: Boolean = false,
+    onLongClick: (() -> Unit)? = null,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        LinkRow(
+            modifier = Modifier.weight(1f),
+            title = title,
+            subtitle = subtitle,
+            icon = icon,
+            value = value,
+            enabled = enabled,
+            onClick = onClick,
+            onLongClick = onLongClick,
+        )
+        RiftRoundButton(
+            icon = if (playing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
+            description = stringResource(if (playing) R.string.rift_settings_packs_preview_stop else R.string.rift_settings_packs_preview),
+            onClick = { if (!busy) onPreview() },
         )
     }
 }

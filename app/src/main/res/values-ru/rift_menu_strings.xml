@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rift_menu_play">Играть</string>
+    <string name="rift_menu_properties">Свойства…</string>
+    <string name="rift_menu_cancel">Отмена</string>
+    <string name="rift_menu_properties_title">Свойства</string>
+    <string name="rift_menu_stream">Стримить с ПК</string>
+    <string name="rift_option_choose_emulator">Выбрать эмулятор</string>
+    <string name="rift_menu_hide">Скрыть игру</string>
+    <string name="rift_settings_hidden">Скрытые игры</string>
+    <string name="rift_settings_hidden_summary">Игры, скрытые с главной: отсюда их можно вернуть</string>
+    <string name="rift_settings_hidden_none">Ничего не скрыто. Start на игре, затем «Скрыть игру», убирает её со всех вкладок.</string>
+    <string name="rift_settings_hidden_note">Скрытые игры не показываются ни на одной вкладке и ни в одной библиотеке. Нажмите на игру, чтобы вернуть её.</string>
+    <string name="rift_settings_hidden_restore">Вернуть</string>
+</resources>

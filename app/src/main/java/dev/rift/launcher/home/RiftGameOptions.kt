@@ -32,6 +32,8 @@ class RiftStreamAction(
     @StringRes val labelRes: Int = R.string.rift_stream_play,
     val icon: ImageVector = Icons.Default.Cast,
     val showLocalDetails: Boolean = true,
+    /** The page keeps its settings icon and "Properties" page (for native games on Rift's shared page). */
+    val showOptions: Boolean = false,
     val onStream: () -> Unit,
 )
 

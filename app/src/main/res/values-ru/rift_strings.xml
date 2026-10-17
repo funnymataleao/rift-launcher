@@ -242,7 +242,7 @@
     <string name="rift_apps_sort_recent">Недавние</string>
     <string name="rift_apps_sort_newest">Новые</string>
     <string name="rift_apps_sort_name">А–Я</string>
-    <string name="rift_hint_menu">Удерживать: быстрый доступ</string>
+    <string name="rift_hint_menu">Быстрый доступ</string>
     <string name="rift_source_android">Android</string>
     <string name="rift_search">Поиск</string>
     <string name="rift_settings_stream_vibration">Вибрация геймпада</string>
@@ -387,6 +387,10 @@
     <string name="rift_settings_packs_remove_hint">Удерживайте скачанный пак, чтобы удалить его.</string>
     <string name="rift_settings_packs_remove_title">Удалить «%1$s»?</string>
     <string name="rift_settings_packs_remove_message">Пак будет удалён с устройства, потом его можно скачать снова.</string>
+    <string name="rift_settings_packs_catalog">Каталог DeckThemes</string>
+    <string name="rift_settings_packs_preview">Прослушать</string>
+    <string name="rift_settings_packs_preview_stop">Остановить</string>
+    <string name="rift_settings_packs_preview_hint">Кнопка справа проигрывает пак до выбора. Нескачанный пак временно загружается для прослушивания и потом удаляется.</string>
     <string name="rift_settings_packs_remove">Удалить</string>
     <string name="rift_community_source_rift">База Rift</string>
     <string name="rift_community_source_gamenative">База GameNative</string>
@@ -394,4 +398,13 @@
     <string name="rift_quick_menu_performance">Производительность</string>
     <string name="rift_quick_menu_frame_generation">Генерация кадров</string>
     <string name="rift_off">Выкл</string>
+    <!-- Шторка поверх Android-игр и эмуляторов (dev.rift.launcher.overlay) -->
+    <string name="rift_overlay_service_label">Шторка Rift в играх</string>
+    <string name="rift_overlay_service_summary">Home на геймпаде открывает шторку Rift в Android-играх и эмуляторах, запущенных из Rift</string>
+    <string name="rift_overlay_service_description">Кнопка Home на геймпаде открывает боковую шторку Rift поверх Android-игр и эмуляторов, запущенных из Rift. Rift смотрит только на кнопки геймпада и только пока такая игра на экране, больше ничего не читает.</string>
+    <string name="rift_overlay_back_to_rift">Вернуться в Rift</string>
+    <string name="rift_overlay_back_to_rift_summary">Игра останется открытой в фоне</string>
+    <string name="rift_overlay_volume">Громкость</string>
+    <string name="rift_settings_overlay">Шторка в Android-играх</string>
+    <string name="rift_settings_overlay_summary">Home на геймпаде открывает шторку Rift в Android-играх и эмуляторах. Включается в «Спец. возможностях»: «Шторка Rift в играх».</string>
 </resources>

@@ -9,7 +9,10 @@ import android.os.BatteryManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BatteryChargingFull
@@ -29,16 +32,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gamenative.NetworkMonitor
 import app.gamenative.PrefManager
-import app.gamenative.ui.util.SteamIconImage
 import app.gamenative.utils.getAvatarURL
+import com.skydoves.landscapist.ImageOptions
+import com.skydoves.landscapist.coil.CoilImage
 import dev.rift.launcher.settings.RiftPrefs
-import dev.rift.launcher.ui.blackGlass
 import dev.rift.launcher.ui.theme.RiftColors
 
 /**
@@ -74,15 +79,20 @@ internal fun StatusIcons() {
 @Composable
 private fun ProfileIcon() {
     val avatarHash = PrefManager.steamUserAvatarHash
+    // A round avatar of one fixed size, whatever room the bar leaves (never squeezed into a sliver).
     Box(
         modifier = Modifier
-            .size(44.dp)
+            .requiredSize(44.dp)
             .clip(CircleShape)
-            .blackGlass(CircleShape),
+            .background(Color.Black.copy(alpha = 0.55f)),
         contentAlignment = Alignment.Center,
     ) {
         if (avatarHash.isNotEmpty()) {
-            SteamIconImage(size = 44.dp, image = { avatarHash.getAvatarURL() })
+            CoilImage(
+                modifier = Modifier.fillMaxSize(),
+                imageModel = { avatarHash.getAvatarURL() },
+                imageOptions = ImageOptions(contentScale = ContentScale.Crop),
+            )
         } else {
             Icon(Icons.Rounded.Person, contentDescription = null, tint = RiftColors.OnSurface, modifier = Modifier.size(26.dp))
         }

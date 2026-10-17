@@ -243,7 +243,7 @@
     <string name="rift_apps_sort_recent">Recent</string>
     <string name="rift_apps_sort_newest">Newest</string>
     <string name="rift_apps_sort_name">A–Z</string>
-    <string name="rift_hint_menu">Hold: quick access</string>
+    <string name="rift_hint_menu">Quick Access</string>
     <string name="rift_source_android">Android</string>
     <string name="rift_search">Search</string>
     <string name="rift_settings_stream_vibration">Gamepad vibration</string>
@@ -392,6 +392,10 @@
     <string name="rift_settings_packs_remove_hint">Hold a downloaded pack to delete it.</string>
     <string name="rift_settings_packs_remove_title">Delete %1$s?</string>
     <string name="rift_settings_packs_remove_message">The pack is removed from this device. You can download it again later.</string>
+    <string name="rift_settings_packs_catalog">DeckThemes catalog</string>
+    <string name="rift_settings_packs_preview">Listen</string>
+    <string name="rift_settings_packs_preview_stop">Stop</string>
+    <string name="rift_settings_packs_preview_hint">The play button on the right plays a pack before you keep it. A pack you have not downloaded yet is fetched for listening and removed again.</string>
     <string name="rift_settings_packs_remove">Delete</string>
     <string name="rift_community_source_rift">Rift database</string>
     <string name="rift_community_source_gamenative">GameNative database</string>
@@ -399,4 +403,13 @@
     <string name="rift_quick_menu_performance">Performance</string>
     <string name="rift_quick_menu_frame_generation">Frame generation</string>
     <string name="rift_off">Off</string>
+    <!-- Panel over Android games and emulators (dev.rift.launcher.overlay) -->
+    <string name="rift_overlay_service_label">Rift panel in games</string>
+    <string name="rift_overlay_service_summary">Home on the gamepad opens Rift\'s panel in Android games and emulators started from Rift</string>
+    <string name="rift_overlay_service_description">Lets the gamepad\'s Home button open Rift\'s side panel over Android games and emulators you start from Rift. Rift only looks at gamepad buttons while such a game is on screen and reads nothing else.</string>
+    <string name="rift_overlay_back_to_rift">Back to Rift</string>
+    <string name="rift_overlay_back_to_rift_summary">The game stays open in the background</string>
+    <string name="rift_overlay_volume">Volume</string>
+    <string name="rift_settings_overlay">Panel in Android games</string>
+    <string name="rift_settings_overlay_summary">Home on the gamepad opens Rift\'s panel in Android games and emulators. Turn on \"Rift panel in games\" in Accessibility.</string>
 </resources>

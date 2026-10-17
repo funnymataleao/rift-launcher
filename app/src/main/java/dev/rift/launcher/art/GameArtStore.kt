@@ -43,10 +43,11 @@ object GameArtStore {
     fun get(context: Context, appId: String, kind: ArtKind): String =
         prefs(context).getString(key(appId, kind), "").orEmpty()
 
-    /** [item] with the pictures the user picked in place of the store's. */
+    /** [item] with the pictures the user picked in place of the store's; for games with none, the ones [autoFill] found. */
     fun apply(context: Context, item: LibraryItem): LibraryItem {
         val p = prefs(context)
-        fun picked(kind: ArtKind) = p.getString(key(item.appId, kind), "").orEmpty()
+        val a = autoPrefs(context)
+        fun picked(kind: ArtKind) = p.getString(key(item.appId, kind), "").orEmpty().ifEmpty { autoValue(a, item.appId, kind) }
         val capsule = picked(ArtKind.Capsule)
         val wide = picked(ArtKind.Wide)
         val hero = picked(ArtKind.Hero)
@@ -62,12 +63,12 @@ object GameArtStore {
         )
     }
 
-    /** How many pictures are picked in all; -1 until first asked. Lets [apply] skip the work for the common case of none. */
+    /** How many pictures are picked or found in all; -1 until first asked. Lets [apply] skip the work for the common case of none. */
     @Volatile
     private var pickCount = -1
 
     private fun pickedCount(context: Context): Int {
-        if (pickCount < 0) pickCount = prefs(context).all.size
+        if (pickCount < 0) pickCount = prefs(context).all.size + autoPrefs(context).all.size
         return pickCount
     }
 
@@ -87,6 +88,111 @@ object GameArtStore {
         prefs(context).edit { putString(key(appId, kind), saved ?: remoteUrl) }
         pickCount = -1
         _version.value++
+    }
+
+    // --- Pictures found without being asked (emulator and Android games have no store art of their own) ---
+    private const val AUTO_PREFS = "rift_game_art_auto"
+    private const val AUTO_NONE = "none:"
+    private const val AUTO_RETRY_MS = 24 * 60 * 60 * 1000L
+    private const val AUTO_PATH = "path"
+    private const val AUTO_PUBLISH_MS = 1_500L
+
+    private fun autoPrefs(context: Context): SharedPreferences =
+        context.applicationContext.getSharedPreferences(AUTO_PREFS, Context.MODE_PRIVATE)
+
+    private fun autoKey(appId: String, kind: ArtKind) = "$appId|${kind.key}"
+
+    /** What was found earlier for [appId] and [kind], or empty. */
+    private fun autoValue(p: SharedPreferences, appId: String, kind: ArtKind): String =
+        p.getString(autoKey(appId, kind), "").orEmpty().takeUnless { it.startsWith(AUTO_NONE) }.orEmpty()
+
+    /** A "none yet" note that is younger than a day: SteamGridDB did not have it, no need to ask again at once. */
+    private fun recentlyMissing(known: String) =
+        known.startsWith(AUTO_NONE) &&
+            System.currentTimeMillis() - (known.removePrefix(AUTO_NONE).toLongOrNull() ?: 0L) < AUTO_RETRY_MS
+
+    /**
+     * Finds [kinds] of pictures on SteamGridDB, by name, for every game of [items] that has none yet, one game
+     * after another in the order given (the ones on screen first). Pictures are saved on the device; [version]
+     * moves while this runs (at most about once a second) so the covers appear one by one. A game SteamGridDB does
+     * not know is skipped for a day; a network failure is not remembered, the next run tries again.
+     * Returns early when the key is missing or refused.
+     */
+    suspend fun autoFill(context: Context, items: List<Pair<LibraryItem, List<ArtKind>>>, key: String) {
+        if (key.isBlank()) return
+        val p = autoPrefs(context)
+        var lastPublish = 0L
+        var dirty = false
+        fun publish(force: Boolean) {
+            val now = System.currentTimeMillis()
+            if (dirty && (force || now - lastPublish >= AUTO_PUBLISH_MS)) {
+                pickCount = -1
+                _version.value++
+                lastPublish = now
+                dirty = false
+            }
+        }
+        try {
+            for ((item, kinds) in items) {
+                val missing = kinds.filter { kind ->
+                    val known = p.getString(autoKey(item.appId, kind), "").orEmpty()
+                    known.isEmpty() || (known.startsWith(AUTO_NONE) && !recentlyMissing(known))
+                }
+                if (missing.isEmpty()) continue
+                val path = resolveAuto(p, item, key) ?: continue
+                for (kind in missing) {
+                    if (fetchAuto(context, p, item.appId, path, kind, key)) dirty = true
+                    publish(force = false)
+                }
+            }
+        } catch (e: ArtError) {
+            // A refused or missing key: nothing more to ask this time.
+            if (e !== ArtError.BadKey && e !== ArtError.NoKey) throw e
+        } finally {
+            publish(force = true)
+        }
+    }
+
+    /** SteamGridDB's path for the game, from the saved one or by searching its name; null when it has none. */
+    private suspend fun resolveAuto(p: SharedPreferences, item: LibraryItem, key: String): String? {
+        val pathKey = "${item.appId}|$AUTO_PATH"
+        val known = p.getString(pathKey, "").orEmpty()
+        if (known.isNotEmpty() && !known.startsWith(AUTO_NONE)) return known
+        if (recentlyMissing(known)) return null
+        return try {
+            SteamGridDbClient.resolve(key, SteamGridDbClient.Game(null, item.name)).also { p.edit { putString(pathKey, it) } }
+        } catch (e: ArtError) {
+            when (e) {
+                ArtError.NotFound -> p.edit { putString(pathKey, AUTO_NONE + System.currentTimeMillis()) }
+                ArtError.BadKey, ArtError.NoKey -> throw e
+                else -> Unit
+            }
+            null
+        }
+    }
+
+    /** Downloads the first picture of [kind] for [path]; true when one was saved. */
+    private suspend fun fetchAuto(context: Context, p: SharedPreferences, appId: String, path: String, kind: ArtKind, key: String): Boolean {
+        val slot = autoKey(appId, kind)
+        return try {
+            val option = SteamGridDbClient.options(key, path, kind, 0).firstOrNull()
+            if (option == null) {
+                p.edit { putString(slot, AUTO_NONE + System.currentTimeMillis()) }
+                false
+            } else {
+                val saved = withContext(Dispatchers.IO) { download(context, "auto|$appId", kind, option.url) }
+                p.edit { putString(slot, saved) }
+                true
+            }
+        } catch (e: ArtError) {
+            if (e === ArtError.BadKey || e === ArtError.NoKey) throw e
+            if (e === ArtError.NotFound) p.edit { putString(slot, AUTO_NONE + System.currentTimeMillis()) }
+            false
+        } catch (e: java.io.IOException) {
+            false
+        } catch (e: IllegalStateException) {
+            false
+        }
     }
 
     /** Back to the store's own picture of [kind]. */
