@@ -223,7 +223,14 @@ private fun ExoVideoHero(
             )
         }
 
-        if (showFallback) {
+        if (showFallback && fallbackImageUrl.isNotBlank()) {
+            // Rift: until the first frame the art stays on screen instead of black with a spinner (Denis 17.10).
+            CoilImage(
+                imageModel = { fallbackImageUrl },
+                imageOptions = ImageOptions(contentDescription = contentDescription, contentScale = ContentScale.Crop),
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else if (showFallback) {
             CircularProgressIndicator(
                 color = Color.White,
                 modifier = Modifier.size(34.dp),

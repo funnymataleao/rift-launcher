@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package app.gamenative.ui.component.dialog
 
 import android.os.Build
@@ -453,6 +455,11 @@ fun CommunityConfigsDialog(
                             modifier = Modifier.align(Alignment.Center),
                         )
                         else -> BoxWithConstraints(Modifier.fillMaxSize()) {
+                        // Rift: the focused profile always shows whole, 48 dp from the list's edges (Denis 17.10).
+                        val listKeepInView = with(androidx.compose.ui.platform.LocalDensity.current) {
+                            remember { dev.rift.launcher.home.KeepInView(48.dp.toPx()) }
+                        }
+                        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides listKeepInView) {
                         val wide = maxWidth >= 840.dp
                         val shownRun = highlightedRun?.takeIf { it in runs } ?: runs.first()
                         Row(Modifier.fillMaxSize()) {
@@ -519,6 +526,7 @@ fun CommunityConfigsDialog(
                                 onApply = { selectedRun = shownRun },
                                 modifier = Modifier.weight(0.54f).fillMaxHeight(),
                             )
+                        }
                         }
                         }
                         }

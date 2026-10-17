@@ -1311,6 +1311,9 @@ private fun GamePageMediaRow(
     val tiles = remember(media) {
         media.withIndex().distinctBy { it.value.url.substringBefore('?').lowercase(Locale.ROOT) }
     }
+    // Sideways the row keeps the focused tile whole with room on both sides, not the page's vertical margins.
+    val rowKeepInView = with(LocalDensity.current) { remember(sidePadding) { dev.rift.launcher.home.KeepInView((sidePadding + 16.dp).toPx()) } }
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides rowKeepInView) {
     LazyRow(
         modifier = Modifier.layout { measurable, constraints ->
             val extra = (sidePadding * 2).roundToPx()
@@ -1391,6 +1394,7 @@ private fun GamePageMediaRow(
                 }
             }
         }
+    }
     }
 }
 
@@ -1751,7 +1755,14 @@ internal fun AppScreenContent(
     }
 
     LaunchedEffect(Unit) {
-        playButtonFocusRequester.requestFocus()
+        // Rift: the page opens at the top with focus on Play. On the tablet the first request could land
+        // before the button was attached and focus fell to the section tabs, scrolling the page down
+        // (tabs on the first screen, back pill cut off at the top). Retry briefly and keep the scroll at 0.
+        repeat(4) {
+            runCatching { playButtonFocusRequester.requestFocus() }
+            scrollState.scrollTo(0)
+            kotlinx.coroutines.delay(120)
+        }
     }
 
     LaunchedEffect(downloadInfo) {
@@ -1919,6 +1930,12 @@ internal fun AppScreenContent(
     ) {
         // Rift: options-only mode shows just the options panel over the Rift home, no page.
         if (riftOptionsOnly == null) {
+        // Rift: with the d-pad every focused element scrolls fully into view with 48 dp to spare, below the
+        // sticky header at the top and above the screen edge at the bottom; nothing is cut off (Denis 17.10).
+        val pageKeepInView = with(LocalDensity.current) {
+            remember { dev.rift.launcher.home.KeepInView(margin = (88.dp + 48.dp).toPx(), endMargin = 48.dp.toPx()) }
+        }
+        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides pageKeepInView) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -1931,7 +1948,11 @@ internal fun AppScreenContent(
             val sidePadding = if (configuration.screenWidthDp >= 840) 48.dp else 20.dp
             // Rift: the section tabs sit at the bottom of the first screen, right under the action row.
             // Rift: the first screen is only the trailer, the title and the button row; the section tabs start below it (Denis 17.10).
-            val heroHeight = configuration.screenHeightDp.dp.coerceAtLeast(420.dp)
+            // The whole window, system bars included: screenHeightDp leaves them out, which let the tabs peek in at the bottom.
+            val windowHeightPx = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.height
+            val heroHeight = with(LocalDensity.current) {
+                if (windowHeightPx > 0) windowHeightPx.toDp() else configuration.screenHeightDp.dp
+            }.coerceAtLeast(420.dp)
             // Rift: Settings → Внешний вид → Страница игры picks the background; the trailer starts 3 s
             // after the page opens and the art stays when there is no trailer, it ended, or Wi-Fi is required.
             val pagePrefs = remember { dev.rift.launcher.settings.RiftPrefs.of(context) }
@@ -2567,6 +2588,7 @@ internal fun AppScreenContent(
                 // Rift: the same bottom margin as everywhere, so the last tile shows whole with room under it.
                 Spacer(modifier = Modifier.height(48.dp).navigationBarsPadding())
             }
+        }
         }
 
         // Rift: once the hero scrolls away a slim header keeps the name and the section tabs on top.
