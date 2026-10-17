@@ -358,4 +358,8 @@
     <string name="rift_emulator_not_set">Для этой системы ещё не выбран эмулятор. Выберите его в Настройках, Эмуляторы.</string>
     <string name="rift_emulator_missing">%1$s больше не установлен. Выберите другой эмулятор в Настройках, Эмуляторы.</string>
     <string name="rift_emulator_opened_only">%1$s не умеет открывать эту игру снаружи, поэтому открыто само приложение. Выберите игру в нём.</string>
+    <!-- Шторка в игре -->
+    <string name="rift_quick_menu_performance">Производительность</string>
+    <string name="rift_quick_menu_frame_generation">Генерация кадров</string>
+    <string name="rift_off">Выкл</string>
 </resources>

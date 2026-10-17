@@ -363,4 +363,8 @@
     <string name="rift_emulator_not_set">This system has no emulator yet. Pick one in Settings, Emulators.</string>
     <string name="rift_emulator_missing">%1$s is not installed any more. Pick another emulator in Settings, Emulators.</string>
     <string name="rift_emulator_opened_only">%1$s cannot open this game from outside, so its own app is open. Pick the game there.</string>
+    <!-- Quick access panel in game -->
+    <string name="rift_quick_menu_performance">Performance</string>
+    <string name="rift_quick_menu_frame_generation">Frame generation</string>
+    <string name="rift_off">Off</string>
 </resources>

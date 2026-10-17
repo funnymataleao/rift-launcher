@@ -259,7 +259,7 @@ internal fun SwitchRow(
  * a faint tint when on, a grey outline when off, so a switch stays a small accent on black.
  */
 @Composable
-private fun RiftSwitch(checked: Boolean, focused: Boolean) {
+internal fun RiftSwitch(checked: Boolean, focused: Boolean) {
     val accent = RiftAccent.current
     // On the accent plate the switch turns dark, so it still reads.
     val on = if (focused) accent.onAccent else accent.main
