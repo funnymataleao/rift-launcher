@@ -5,18 +5,15 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.gamenative.ui.enums.HomeDestination
 import app.gamenative.ui.model.HomeViewModel
 import app.gamenative.ui.screen.downloads.HomeDownloadsScreen
-import app.gamenative.ui.screen.library.HomeLibraryScreen
 import app.gamenative.ui.theme.PluviaTheme
 import dev.rift.launcher.home.RiftHomeScreen
+import dev.rift.launcher.settings.RiftSettingsSection
 
 @Composable
 fun HomeScreen(
@@ -33,61 +30,38 @@ fun HomeScreen(
     isOffline: Boolean = false,
     isSteamConnected: Boolean = false,
 ) {
-    val homeState by viewModel.homeState.collectAsStateWithLifecycle()
-
-    // Rift: our home screen comes first; GameNative's library stays reachable as "Stores".
-    var showRiftHome by rememberSaveable { mutableStateOf(true) }
-    if (showRiftHome) {
-        RiftHomeScreen(
+    // Rift: our home replaces GameNative's library screen, which never opens in Rift. Only its downloads
+    // screen is reachable (quick access panel), and Back from it returns to the Rift home.
+    var showDownloads by rememberSaveable { mutableStateOf(false) }
+    if (showDownloads) {
+        BackHandler { showDownloads = false }
+        HomeDownloadsScreen(
+            onBack = { showDownloads = false },
             onClickPlay = onClickPlay,
             onTestGraphics = onTestGraphics,
             onPlayWithDiagnostics = onPlayWithDiagnostics,
             onAiDebugRun = onAiDebugRun,
-            onOpenStores = { showRiftHome = false },
-            onNavigateRoute = onNavigateRoute,
-            onDownloadsClick = {
-                showRiftHome = false
-                viewModel.onDestination(HomeDestination.Downloads)
-            },
-            onLogout = onLogout,
-            onGoOnline = onGoOnline,
-            onExit = onClickExit,
-            isOffline = isOffline,
-            isSteamConnected = isSteamConnected,
         )
         return
     }
 
-    // Pressing back while logged in, confirm we want to close the app.
-    BackHandler {
-        if (homeState.currentDestination != HomeDestination.Library) {
-            viewModel.onDestination(HomeDestination.Library)
-        } else {
-            showRiftHome = true
-        }
-    }
-
-    when (homeState.currentDestination) {
-        HomeDestination.Library -> HomeLibraryScreen(
-            onClickPlay = onClickPlay,
-            onTestGraphics = onTestGraphics,
-            onPlayWithDiagnostics = onPlayWithDiagnostics,
-            onAiDebugRun = onAiDebugRun,
-            onNavigateRoute = onNavigateRoute,
-            onLogout = onLogout,
-            onGoOnline = onGoOnline,
-            onDownloadsClick = { viewModel.onDestination(HomeDestination.Downloads) },
-            isOffline = isOffline,
-            isSteamConnected = isSteamConnected,
-        )
-        HomeDestination.Downloads -> HomeDownloadsScreen(
-            onBack = { viewModel.onDestination(HomeDestination.Library) },
-            onClickPlay = onClickPlay,
-            onTestGraphics = onTestGraphics,
-            onPlayWithDiagnostics = onPlayWithDiagnostics,
-            onAiDebugRun = onAiDebugRun,
-        )
-    }
+    RiftHomeScreen(
+        onClickPlay = onClickPlay,
+        onTestGraphics = onTestGraphics,
+        onPlayWithDiagnostics = onPlayWithDiagnostics,
+        onAiDebugRun = onAiDebugRun,
+        onOpenStores = {
+            RiftSettingsSection.request(RiftSettingsSection.Accounts)
+            onNavigateRoute(PluviaScreen.Settings.route)
+        },
+        onNavigateRoute = onNavigateRoute,
+        onDownloadsClick = { showDownloads = true },
+        onLogout = onLogout,
+        onGoOnline = onGoOnline,
+        onExit = onClickExit,
+        isOffline = isOffline,
+        isSteamConnected = isSteamConnected,
+    )
 }
 
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
@@ -98,9 +72,6 @@ fun HomeScreen(
 @Composable
 private fun Preview_HomeScreenContent() {
     PluviaTheme {
-        var destination: HomeDestination by remember {
-            mutableStateOf(HomeDestination.Library)
-        }
         HomeScreen(
             onChat = {},
             onClickPlay = { _, _ -> },

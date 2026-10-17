@@ -171,5 +171,6 @@ fun RiftSystemMenu(
         panelShape = RectangleShape,
         panelShadowElevation = 0.dp,
         showCloseButton = false,
+        showCommunityItems = false,
     )
 }
