@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
+import androidx.compose.runtime.derivedStateOf
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -269,6 +270,8 @@ fun RiftHomeScreen(
     val ready = library.isNotEmpty() || androidGames.isNotEmpty() || hasStreamGames || (settled && !libraryState.isLoading)
     var introPlayed by rememberSaveable { mutableStateOf(false) }
     val intro = remember { Animatable(if (introPlayed) 1f else 0f) }
+    // The covers roll in together with the backdrop's entrance, after the curtain, never behind it.
+    val introRunning by remember { derivedStateOf { intro.value > 0f } }
     val introSpec = MaterialTheme.motionScheme.slowEffectsSpec<Float>()
     LaunchedEffect(ready) {
         if (ready && !introPlayed) {
@@ -769,6 +772,7 @@ fun RiftHomeScreen(
                             PcGamesShelf(
                                 shown = homeRow,
                                 entry = if (!introPlayed) ShelfEntry.Intro else switchEntry,
+                                entryStarted = introPlayed || introRunning,
                                 onOpenLibrary = ::openLibrary,
                                 onLibraryFocused = { libraryCardFocused = true },
                                 libraryState = libraryState,
@@ -965,7 +969,8 @@ private fun focusKeyFor(item: LibraryItem): String = item.appId
 /** The game page grows from slightly smaller than the screen and shrinks back to it. */
 private const val PAGE_START_SCALE = 0.94f
 private const val PAGE_FOCUS_CHECK_MS = 250L
-private const val PRELOAD_DECODE_PX = 64
+private const val PRELOAD_COVER_PX = 1000
+private const val PRELOAD_BACKDROP_PX = 2560
 
 /** Games in the home row before the "Open library" card, like Big Picture. */
 private const val HOME_ROW_COUNT = 20
@@ -1164,9 +1169,10 @@ private fun PcGamesShelf(
     emptyMessage: String = stringResource(R.string.rift_filter_empty),
     onOpenLibrary: (() -> Unit)? = null,
     onLibraryFocused: () -> Unit = {},
+    entryStarted: Boolean = true,
 ) {
     // One entrance clock for the shelf (app start, tab switch).
-    val clock = rememberShelfClock(entry)
+    val clock = rememberShelfClock(entry, entryStarted)
     val scope = rememberCoroutineScope()
     if (shown.isEmpty()) {
         Box(
@@ -1977,21 +1983,17 @@ private fun RiftRow(
 /** Loads what the home shows first (backdrop, the first covers) into Coil's cache, in parallel. */
 private suspend fun preloadFirstImages(context: android.content.Context, library: List<LibraryItem>) = coroutineScope {
     val first = library.take(FIRST_IMAGES_COUNT)
-    val urls = buildList {
-        first.firstOrNull()?.let { add(it.heroImageUrl.ifEmpty { it.headerImageUrl.ifEmpty { it.capsuleImageUrl } }) }
+    // Decoded into the memory cache, so the covers are on screen the moment the curtain lifts, but
+    // bounded (a cover is never drawn bigger than this), so no full-size bitmaps pile up at start.
+    val requests = buildList {
+        first.firstOrNull()?.let { add(it.heroImageUrl.ifEmpty { it.headerImageUrl.ifEmpty { it.capsuleImageUrl } } to PRELOAD_BACKDROP_PX) }
         first.forEachIndexed { index, item ->
-            add(if (index == 0) item.headerImageUrl.ifEmpty { item.heroImageUrl.ifEmpty { item.capsuleImageUrl } } else item.capsuleImageUrl.ifEmpty { item.headerImageUrl })
+            add((if (index == 0) item.headerImageUrl.ifEmpty { item.heroImageUrl.ifEmpty { item.capsuleImageUrl } } else item.capsuleImageUrl.ifEmpty { item.headerImageUrl }) to PRELOAD_COVER_PX)
         }
-    }.filter { it.isNotEmpty() }.distinct()
-    urls.map { url ->
-        // Only to have the files on disk: decoded tiny and kept out of the memory cache, so no full-size
-        // bitmaps pile up at start.
+    }.filter { it.first.isNotEmpty() }.distinctBy { it.first }
+    requests.map { (url, px) ->
         async(Dispatchers.IO) {
-            runCatching {
-                context.imageLoader.execute(
-                    ImageRequest.Builder(context).data(url).size(PRELOAD_DECODE_PX).memoryCachePolicy(coil.request.CachePolicy.DISABLED).build(),
-                )
-            }
+            runCatching { context.imageLoader.execute(ImageRequest.Builder(context).data(url).size(px).build()) }
         }
     }.awaitAll()
 }

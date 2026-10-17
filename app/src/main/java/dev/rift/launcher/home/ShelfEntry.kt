@@ -6,6 +6,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -46,8 +47,10 @@ private val EmphasizedDecelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
  * if the list composes it late or reuses it.
  */
 @Composable
-fun rememberShelfClock(entry: ShelfEntry?): State<Long> = produceState(if (entry == null) Long.MAX_VALUE else 0L) {
-    if (entry == null) return@produceState
+fun rememberShelfClock(entry: ShelfEntry?, started: Boolean = true): State<Long> =
+    produceState(if (entry == null) Long.MAX_VALUE else 0L, started) {
+    // Until [started], the covers wait unseen at the start of their entrance.
+    if (entry == null || !started) return@produceState
     val start = withFrameMillis { it }
     while (true) {
         val elapsed = withFrameMillis { it } - start
@@ -61,6 +64,9 @@ fun rememberShelfClock(entry: ShelfEntry?): State<Long> = produceState(if (entry
 fun Modifier.shelfEntry(entry: ShelfEntry?, index: Int, clock: State<Long>): Modifier {
     if (entry == null) return this
     return graphicsLayer {
+        // Fade each drawing on its own: an offscreen layer would clip the focused cover's growth,
+        // lift, frame and rounded corners to the tile's bounds while it fades.
+        compositingStrategy = CompositingStrategy.ModulateAlpha
         val elapsed = clock.value
         val p = if (elapsed == Long.MAX_VALUE) {
             1f
