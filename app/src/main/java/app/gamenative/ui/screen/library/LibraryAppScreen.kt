@@ -1896,7 +1896,14 @@ internal fun AppScreenContent(
             onPlay = if (isInstalled) onStartAction else null,
             onProperties = { propertiesOpen = true },
             onHide = if (riftOptionsOnly != null) {
-                { dev.rift.launcher.home.RiftHiddenGames.hide(context, displayInfo.appId, displayInfo.name) }
+                {
+                    val hide = riftOptionsOnly.onHide
+                    if (hide != null) {
+                        hide(displayInfo.appId, displayInfo.name)
+                    } else {
+                        dev.rift.launcher.home.RiftHiddenGames.hide(context, displayInfo.appId, displayInfo.name)
+                    }
+                }
             } else {
                 null
             },

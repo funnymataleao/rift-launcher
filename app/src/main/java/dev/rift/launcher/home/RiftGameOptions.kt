@@ -18,6 +18,9 @@ import app.gamenative.R
  */
 class RiftOptionsOnly {
     var panelOpen by mutableStateOf(true)
+
+    /** Hides a game the way the home does (the cursor moves to the next card); null until the home sets it. */
+    var onHide: ((appId: String, name: String) -> Unit)? = null
 }
 
 val LocalRiftOptionsOnly = staticCompositionLocalOf<RiftOptionsOnly?> { null }
