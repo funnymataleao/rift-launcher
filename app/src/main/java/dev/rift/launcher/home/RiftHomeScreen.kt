@@ -2750,6 +2750,7 @@ private data class TabPlace(val tab: Offset, val tabSize: Size, val text: Offset
  * blurred, with a light tint and a bright rim), which slides to the next tab on LB/RB with the
  * expressive spatial spring. No line under the title: the capsule shows the selection (Denis).
  */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 private fun SectionTabs(
     glass: GraphicsLayer,
