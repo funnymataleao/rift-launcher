@@ -93,6 +93,7 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         const val EXTRA_APP_ID = "appId"
         const val EXTRA_APP_UUID = "appUuid"
         const val EXTRA_APP_HDR = "appHdr"
+        const val EXTRA_COVER_URLS = "coverUrls"
 
         /** The host can make a virtual screen of the stream's own size and rate (Apollo/Vibepollo). */
         const val EXTRA_VIRTUAL_DISPLAY_READY = "virtualDisplayReady"
@@ -782,6 +783,7 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
                     maxFps = maxFps,
                     screenSize = screenSize,
                     ownWindow = true,
+                    coverUrls = intent.getStringArrayExtra(EXTRA_COVER_URLS)?.toList().orEmpty(),
                 )
             } }
         }

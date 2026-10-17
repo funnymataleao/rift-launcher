@@ -52,6 +52,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Computer
+import androidx.compose.material3.Icon
+import androidx.compose.ui.draw.clip
+import dev.rift.launcher.home.CoverImage
+import dev.rift.launcher.settings.PlateShape
 import app.gamenative.ui.component.QuickMenuAdjustmentRow
 import app.gamenative.ui.component.QuickMenuChoiceChip
 import app.gamenative.ui.component.QuickMenuItem
@@ -105,6 +114,7 @@ fun StreamMenu(
     screenSize: Pair<Int, Int>? = null,
     ownWindow: Boolean = false,
     extraSettings: (@Composable (requester: (String) -> FocusRequester) -> Unit)? = null,
+    coverUrls: List<String> = emptyList(),
 ) = RiftGlassTheme {
     Box(modifier = Modifier.fillMaxSize()) {
         // In a window of its own the window is the glass, slides in and closes on a tap outside.
@@ -158,18 +168,12 @@ fun StreamMenu(
                         .padding(start = 20.dp, end = 10.dp, top = 16.dp, bottom = 12.dp),
                 ) {
                     Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        Text(
-                            text = tab?.let { stringResource(it.title) } ?: appName,
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 4.dp),
-                        )
-                        Text(
-                            text = if (tab != null) "$appName · $pcName" else pcName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 12.dp),
+                        // The game on top (Denis): its wide cover across the panel, its name, then the PC.
+                        StreamHeader(
+                            appName = appName,
+                            pcName = pcName,
+                            coverUrls = coverUrls,
+                            cloud = extraSettings != null,
                         )
                         Column(
                             modifier = Modifier
@@ -182,7 +186,7 @@ fun StreamMenu(
                                     text = error,
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 12.dp),
+                                    modifier = Modifier.padding(horizontal = CONTENT_INSET, vertical = 8.dp),
                                 )
                             }
                             if (relaunch) {
@@ -321,14 +325,8 @@ private fun PictureSettings(
     var codec by remember { mutableStateOf(prefs.streamCodec) }
     var hdr by remember { mutableStateOf(prefs.streamHdr) }
 
-    Text(
-        text = stringResource(R.string.rift_stream_settings_picture_note),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 4.dp),
-    )
     // Smallest to largest picture; "Screen" is the tablet's own size, wherever that falls.
-    val screenLabel = stringResource(R.string.rift_settings_stream_device_screen)
+    val screenLabel = stringResource(R.string.rift_stream_resolution_screen)
     val resolutions = remember(screenSize) {
         listOf("1280x720" to "720p", "1920x1080" to "1080p", "2560x1440" to "1440p", "3840x2160" to "4K")
             .plus("device" to "")
@@ -439,32 +437,103 @@ private fun <T> ChoiceRow(
     accent: Color,
     focusRequester: FocusRequester,
 ) {
+    // On the same lines as the quick menu's rows: their text and controls start and end CONTENT_INSET
+    // from the panel's column, with the same space above, below and under the title.
     Column(
-        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = CONTENT_INSET, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 8.dp),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // The panel comes back to this row on the chosen pill.
-            val chosen = choices.indexOf(value).coerceAtLeast(0)
-            choices.forEachIndexed { index, choice ->
-                QuickMenuChoiceChip(
-                    text = label(choice),
-                    selected = index == chosen,
-                    accentColor = accent,
-                    onClick = { if (choice != value) onChange(choice) },
-                    modifier = Modifier.weight(1f),
-                    focusRequester = if (index == chosen) focusRequester else null,
+        // The panel comes back to this row on the chosen pill.
+        val chosen = choices.indexOf(value).coerceAtLeast(0)
+        // Pills of one width on a grid, so the row ends where the others do and no label is cut:
+        // more than four take two lines of three.
+        val columns = if (choices.size > 4) 3 else choices.size
+        choices.chunked(columns).forEachIndexed { line, items ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items.forEachIndexed { column, choice ->
+                    val index = line * columns + column
+                    QuickMenuChoiceChip(
+                        text = label(choice),
+                        selected = index == chosen,
+                        accentColor = accent,
+                        onClick = { if (choice != value) onChange(choice) },
+                        modifier = Modifier.weight(1f),
+                        focusRequester = if (index == chosen) focusRequester else null,
+                    )
+                }
+                repeat(columns - items.size) { Spacer(modifier = Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+/**
+ * The top of the panel: the game's wide cover across the column (when it has one), its name, and the
+ * PC (or the cloud service) it runs on, on the same left line as the rows below.
+ */
+@Composable
+private fun StreamHeader(appName: String, pcName: String, coverUrls: List<String>, cloud: Boolean) {
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+        if (coverUrls.any { it.isNotBlank() }) {
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = PLATE_INSET)
+                    .fillMaxWidth()
+                    .aspectRatio(WIDE_COVER_RATIO)
+                    .clip(PlateShape)
+                    .background(Color.White.copy(alpha = 0.06f)),
+            ) {
+                CoverImage(urls = coverUrls, contentDescription = appName)
+            }
+            Spacer(modifier = Modifier.height(14.dp))
+        }
+        Text(
+            text = appName,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 2,
+            modifier = Modifier.padding(horizontal = CONTENT_INSET),
+        )
+        if (pcName.isNotBlank()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.padding(horizontal = CONTENT_INSET),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    imageVector = if (cloud) Icons.Rounded.Cloud else Icons.Rounded.Computer,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    text = pcName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
     }
 }
+
+/** Where the quick menu's plates (and the cover) start and end in the panel's column. */
+private val PLATE_INSET = 8.dp
+
+/** Where the rows' text and controls start and end: the plate's edge plus its padding. */
+private val CONTENT_INSET = 24.dp
+
+/** Steam's wide header picture, 460 x 215. */
+private const val WIDE_COVER_RATIO = 460f / 215f
 
 /** Bitrates in Mbps, 0 for automatic: fine steps low down, wider up to what Wi-Fi 7 carries. */
 private val BITRATES = listOf(0, 5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200, 250, 300, 350, 400, 450, 500)
