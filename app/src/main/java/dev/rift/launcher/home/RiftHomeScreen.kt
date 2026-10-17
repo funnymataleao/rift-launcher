@@ -1108,7 +1108,7 @@ fun RiftHomeScreen(
                                 pendingFocusKey = pendingFocusKey,
                                 onFocusConsumed = { pendingFocusKey = null },
                                 onFocused = { focusedPackage = it.packageName },
-                                onOpen = { AndroidGames.launch(context, it) },
+                                onOpen = { openGame(it.toPageItem()) },
                                 entry = switchEntry,
                             )
                         }
@@ -1154,7 +1154,7 @@ fun RiftHomeScreen(
                                     focusedEmulatorId = it.appId
                                     emulatorCardFocused = false
                                 },
-                                onOpen = { item -> EmulatorLibrary.game(item.appId)?.let { EmulatorLibrary.launch(context, it) } },
+                                onOpen = { item -> openGame(item) },
                                 onNearEnd = {},
                                 badges = false,
                             )
@@ -1425,7 +1425,7 @@ fun RiftHomeScreen(
                     onFocusConsumed = { libraryPending = null },
                     onWantFocus = { libraryPending = it },
                     onFocused = { libraryFocusedId = it.appId },
-                    onOpen = { item -> EmulatorLibrary.game(item.appId)?.let { EmulatorLibrary.launch(context, it) } },
+                    onOpen = { item -> openGame(item) },
                     onNearEnd = {},
                     badges = false,
                     waitForReload = false,
@@ -1585,7 +1585,29 @@ fun RiftHomeScreen(
                     null
                 }
             }
-            if (openedForCloud && cloudTab != null) {
+            if (EmulatorLibrary.isEmulatorGame(item.appId)) {
+                // An emulator game's page; the page stays open while the emulator runs, like a PC game's.
+                RiftGamePage(
+                    item = item,
+                    onPlay = {
+                        sounds.play(RiftSound.Launch)
+                        EmulatorLibrary.game(item.appId)?.let { EmulatorLibrary.launch(context, it) }
+                    },
+                    onBack = { closePage() },
+                    onChangeArt = { openArt(item) },
+                    platformId = EmulatorLibrary.game(item.appId)?.platformId,
+                )
+            } else if (item.appId.startsWith("ANDROID_")) {
+                RiftGamePage(
+                    item = item,
+                    onPlay = {
+                        sounds.play(RiftSound.Launch)
+                        AndroidGames.launch(context, AndroidGame(item.appId.removePrefix("ANDROID_"), item.name))
+                    },
+                    onBack = { closePage() },
+                    onChangeArt = { openArt(item) },
+                )
+            } else if (openedForCloud && cloudTab != null) {
                 // A cloud game's page; like a stream, the page closes first so the game ends back on its cover.
                 CloudGamePage(
                     item = item,
