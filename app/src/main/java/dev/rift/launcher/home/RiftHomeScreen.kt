@@ -180,6 +180,7 @@ import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import dev.rift.launcher.cloud.CloudGamePage
 import dev.rift.launcher.cloud.CloudLibrary
+import dev.rift.launcher.cloud.CloudLogos
 import dev.rift.launcher.cloud.XcloudAccount
 import dev.rift.launcher.cloud.rememberCloudStreamingTab
 import dev.rift.launcher.emulators.EmulatorLibrary
@@ -1151,6 +1152,10 @@ fun RiftHomeScreen(
                         }
                         // The cloud tab: Game Pass cloud games, the ones played from Rift first; A opens the game page.
                         section == RiftSection.CloudStreaming -> {
+                            // The row's logos are looked up while it is on screen (the store has none).
+                            LaunchedEffect(cloudHomeRow.map { it.appId }) {
+                                CloudLogos.prefetch(context, cloudHomeRow.mapNotNull { CloudLibrary.game(it.appId) })
+                            }
                             HeroLogo(item = focusedCloud, modifier = Modifier.weight(1f).graphicsLayer { alpha = intro.value })
                             PcGamesShelf(
                                 shown = cloudHomeRow,
@@ -2505,7 +2510,8 @@ private fun GameLogo(item: LibraryItem) {
                     loading = {},
                     failure = { LaunchedEffect(Unit) { logoFailed = true } },
                 )
-            } else {
+            } else if (!CloudLibrary.isCloud(item.appId)) {
+                // A cloud game shows no name in its place: its logo comes in once it is found.
                 Text(
                     text = item.name,
                     style = LogoTitleStyle,

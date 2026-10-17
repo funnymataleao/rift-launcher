@@ -30,6 +30,8 @@ data class CloudGame(
     val releaseDate: Long,
     val categories: List<String>,
     val screenshots: List<String>,
+    /** The English title, which the logo search on Steam needs; the same as [title] when the store has no other. */
+    val englishTitle: String = title,
 ) {
     /** The path xbox.com uses for the game, the same way Better xCloud builds it. */
     val slug: String
@@ -42,8 +44,16 @@ data class CloudGame(
             .lowercase()
 }
 
-/** The cloud catalog: every game, and the product ids of Game Pass's "Most popular" list in its order. */
-data class CloudCatalog(val games: List<CloudGame>, val popular: List<String>, val fetchedAt: Long)
+/**
+ * The cloud catalog: every game, the product ids of Game Pass's "Most popular" list and of its "Recently
+ * added" list, each in its own order.
+ */
+data class CloudCatalog(
+    val games: List<CloudGame>,
+    val popular: List<String>,
+    val fetchedAt: Long,
+    val recentlyAdded: List<String> = emptyList(),
+)
 
 /**
  * Xbox Cloud Gaming's catalog, from the same public endpoints xbox.com/play and Better xCloud read:
@@ -55,9 +65,10 @@ object GamePassCatalog {
     private const val SIGL_URL = "https://catalog.gamepass.com/sigls/v2"
     private const val PRODUCTS_URL = "https://displaycatalog.mp.microsoft.com/v7.0/products"
 
-    /** "All cloud games" and "Most popular", ids as Better xCloud uses them. */
+    /** "All cloud games", "Most popular" and "Recently added", ids as Better xCloud uses them. */
     private const val SIGL_ALL_CLOUD = "29a81209-df6f-41fd-a528-2ae6b91f719c"
     private const val SIGL_POPULAR = "e7590b22-e299-44db-ae22-25c61405454c"
+    private const val SIGL_RECENTLY_ADDED = "44a55037-770f-4bbf-bde5-a9fa27dba1da"
 
     private const val BATCH = 20
     private const val PARALLEL = 4
@@ -81,6 +92,7 @@ object GamePassCatalog {
             val language = XcloudAccount.catalogLanguages().substringBefore(',')
             val all = siglIds(SIGL_ALL_CLOUD, language)
             val popular = runCatching { siglIds(SIGL_POPULAR, language) }.getOrDefault(emptyList())
+            val recentlyAdded = runCatching { siglIds(SIGL_RECENTLY_ADDED, language) }.getOrDefault(emptyList())
             val gate = Semaphore(PARALLEL)
             val games = coroutineScope {
                 all.chunked(BATCH).map { batch -> async { gate.withPermit { products(batch) } } }.awaitAll().flatten()
@@ -89,7 +101,7 @@ object GamePassCatalog {
             val byId = games.associateBy { it.productId }
             val ordered = all.mapNotNull { byId[it] }
             if (ordered.isEmpty()) error("empty catalog")
-            CloudCatalog(ordered, popular, System.currentTimeMillis()).also { catalog ->
+            CloudCatalog(ordered, popular, System.currentTimeMillis(), recentlyAdded).also { catalog ->
                 val file = cacheFile(context)
                 file.parentFile?.mkdirs()
                 file.writeText(toCache(catalog))
@@ -120,8 +132,13 @@ object GamePassCatalog {
 
     private fun parseProduct(product: JSONObject): CloudGame? {
         val id = product.optString("ProductId").ifBlank { return null }
-        val texts = product.optJSONArray("LocalizedProperties")?.optJSONObject(0) ?: return null
+        val localized = product.optJSONArray("LocalizedProperties")
+        val texts = localized?.optJSONObject(0) ?: return null
         val title = texts.optString("ProductTitle").ifBlank { return null }
+        // The store sends one entry per asked language it has; the English one names the game for Steam.
+        val english = (0 until localized.length()).mapNotNull { localized.optJSONObject(it) }
+            .firstOrNull { it.optString("Language").startsWith("en", ignoreCase = true) }
+            ?.optString("ProductTitle")?.takeIf(String::isNotBlank) ?: title
         val images = texts.optJSONArray("Images") ?: JSONArray()
         fun image(vararg purposes: String): String {
             for (purpose in purposes) {
@@ -152,6 +169,7 @@ object GamePassCatalog {
             releaseDate = runCatching { Instant.parse(released).epochSecond }.getOrDefault(0L).coerceAtLeast(0L),
             categories = categories.filter(String::isNotBlank),
             screenshots = screenshots.filter(String::isNotBlank).take(8),
+            englishTitle = english,
         )
     }
 
@@ -169,6 +187,7 @@ object GamePassCatalog {
     private fun toCache(catalog: CloudCatalog): String = JSONObject()
         .put("fetchedAt", catalog.fetchedAt)
         .put("popular", JSONArray(catalog.popular))
+        .put("recentlyAdded", JSONArray(catalog.recentlyAdded))
         .put(
             "games",
             JSONArray(
@@ -185,6 +204,7 @@ object GamePassCatalog {
                         .put("releaseDate", game.releaseDate)
                         .put("categories", JSONArray(game.categories))
                         .put("screenshots", JSONArray(game.screenshots))
+                        .put("englishTitle", game.englishTitle)
                 },
             ),
         )
@@ -209,10 +229,13 @@ object GamePassCatalog {
                     releaseDate = game.optLong("releaseDate"),
                     categories = game.optJSONArray("categories").strings(),
                     screenshots = game.optJSONArray("screenshots").strings(),
+                    englishTitle = game.optString("englishTitle").ifBlank { game.getString("title") },
                 )
             },
             popular = json.optJSONArray("popular").strings(),
-            fetchedAt = json.optLong("fetchedAt"),
+            // A copy saved before Rift read the English titles and "Recently added" is shown but downloaded again.
+            fetchedAt = if (json.has("recentlyAdded")) json.optLong("fetchedAt") else 0L,
+            recentlyAdded = json.optJSONArray("recentlyAdded").strings(),
         )
     }
 }
