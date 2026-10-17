@@ -61,6 +61,7 @@ class XcloudActivity : ComponentActivity() {
         private const val SIGN_IN_POLL_MS = 1_500L
         private const val SIGNED_IN_CLOSE_MS = 1_200L
         private const val HINT_MS = 4_000L
+        private const val XBOX_MENU_PRESS_MS = 150L
 
         /** Logcat tag for the page's console and load errors; release builds log them too, for the tablet's logs. */
         private const val LOG_TAG = "Xcloud"
@@ -112,6 +113,9 @@ class XcloudActivity : ComponentActivity() {
 
     /** A button chosen in Rift's settings that also opens the panel, besides Home. */
     private var menuKey = KeyEvent.KEYCODE_UNKNOWN
+
+    /** The gamepad last used, to press its Home for the page ([openXboxMenu]). */
+    private var lastGamepad: Int? = null
 
     private val pollSignIn = object : Runnable {
         override fun run() {
@@ -180,7 +184,7 @@ class XcloudActivity : ComponentActivity() {
                         pcName = getString(R.string.rift_cloud_service_xcloud),
                         onDismiss = ::closeMenu,
                         onEndStream = ::finish,
-                        extraSettings = if (signInMode) null else { requester -> CloudQuickSettings(requester, ::applyLive) },
+                        extraSettings = if (signInMode) null else { requester -> CloudQuickSettings(requester, ::openXboxMenu, ::applyLive) },
                     )
                 }
             }
@@ -260,6 +264,22 @@ class XcloudActivity : ComponentActivity() {
         patch("buttonsLayout = [buttons.scriptSettings,", "buttonsLayout = [")
         patch("SettingsDialog.getInstance().show();}\$btnSettings", ";}\$btnSettings")
         return text
+    }
+
+    /**
+     * xCloud's own guide (friends, quitting the game inside xCloud), which Home opens on a console. Home
+     * opens Rift's panel here, so the panel presses Home for the page: down and, a moment later so the
+     * page's gamepad polling sees it, up.
+     */
+    private fun openXboxMenu() {
+        closeMenu()
+        val device = lastGamepad ?: return
+        val source = InputDevice.getDevice(device)?.sources ?: InputDevice.SOURCE_GAMEPAD
+        val now = android.os.SystemClock.uptimeMillis()
+        fun press(action: Int, time: Long) =
+            KeyEvent(now, time, action, KeyEvent.KEYCODE_BUTTON_MODE, 0, 0, device, 0, 0, source)
+        (fullScreenView ?: webView).dispatchKeyEvent(press(KeyEvent.ACTION_DOWN, now))
+        handler.postDelayed({ (fullScreenView ?: webView).dispatchKeyEvent(press(KeyEvent.ACTION_UP, android.os.SystemClock.uptimeMillis())) }, XBOX_MENU_PRESS_MS)
     }
 
     /** A setting changed in the side panel: kept for the next game and applied to this one now. */
@@ -396,6 +416,7 @@ class XcloudActivity : ComponentActivity() {
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val gamepad = isGamepad(event.source)
         if (gamepad) {
+            lastGamepad = event.deviceId
             when (event.action) {
                 KeyEvent.ACTION_DOWN -> held += event.keyCode
                 KeyEvent.ACTION_UP -> held -= event.keyCode
