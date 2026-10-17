@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.first
 import app.gamenative.ui.enums.SortOption
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.geometry.Size
 import kotlin.math.roundToInt
@@ -2553,27 +2554,41 @@ private fun TopBar(
     avatarFocus: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
-    // Big Picture style: only the section tabs, between the bumpers that switch them.
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = ScreenPadding, vertical = 18.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        BumperButton(GamepadButton.LB.iconRes, "LB") { onStep(-1) }
-        // The tabs take what the right corner leaves, so Wi-Fi, battery and the avatar are never squeezed out.
-        Box(modifier = Modifier.weight(1f, fill = false)) {
-            SectionTabs(glass = glass, sections = sections, selected = selected, onSelect = onSelect)
-        }
-        BumperButton(GamepadButton.RB.iconRes, "RB") { onStep(1) }
-        // The right corner (Steam Big Picture): search, then Wi-Fi, battery and the avatar.
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (search != null) SearchField(search, searchFocus)
+    // Big Picture style: the section tabs between the bumpers, the search in the middle of what is left, the
+    // status icons in the right corner. The corner is measured first and keeps its room; the tabs shrink.
+    val gap = with(LocalDensity.current) { 10.dp.roundToPx() }
+    val pad = with(LocalDensity.current) { ScreenPadding.roundToPx() }
+    Layout(
+        modifier = modifier.fillMaxWidth().padding(vertical = 18.dp),
+        content = {
+            BumperButton(GamepadButton.LB.iconRes, "LB") { onStep(-1) }
+            Box { SectionTabs(glass = glass, sections = sections, selected = selected, onSelect = onSelect) }
+            BumperButton(GamepadButton.RB.iconRes, "RB") { onStep(1) }
+            Box { if (search != null) SearchField(search, searchFocus) }
             StatusIcons(avatarFocus)
+        },
+    ) { measurables, constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val icons = measurables[4].measure(loose)
+        val lb = measurables[0].measure(loose)
+        val rb = measurables[2].measure(loose)
+        val inner = constraints.maxWidth - 2 * pad
+        // The tabs get what the bumpers and the corner leave (plus a little room for the search).
+        val tabsMax = (inner - lb.width - rb.width - icons.width - 3 * gap).coerceAtLeast(0)
+        val tabs = measurables[1].measure(loose.copy(maxWidth = tabsMax))
+        val leftEnd = pad + lb.width + gap + tabs.width + gap + rb.width
+        val iconsX = constraints.maxWidth - pad - icons.width
+        val free = (iconsX - gap - (leftEnd + gap)).coerceAtLeast(0)
+        val searchBox = measurables[3].measure(loose.copy(maxWidth = free))
+        val height = maxOf(icons.height, lb.height, tabs.height, searchBox.height)
+        layout(constraints.maxWidth, height) {
+            var x = pad
+            lb.placeRelative(x, (height - lb.height) / 2); x += lb.width + gap
+            tabs.placeRelative(x, (height - tabs.height) / 2); x += tabs.width + gap
+            rb.placeRelative(x, (height - rb.height) / 2)
+            val centre = leftEnd + gap + free / 2
+            searchBox.placeRelative(centre - searchBox.width / 2, (height - searchBox.height) / 2)
+            icons.placeRelative(iconsX, (height - icons.height) / 2)
         }
     }
 }
@@ -2581,25 +2596,12 @@ private fun TopBar(
 /** Search in the middle of the top bar: a black glass pill, an icon and the query (or "Search"). */
 @Composable
 private fun SearchField(search: SearchState, pillFocus: FocusRequester) {
-    if (!search.typing && !search.open && search.query.isEmpty()) {
-        // Idle: just the round search icon, so it always fits next to the status icons.
-        PillButton(
-            onClick = search.onOpen,
-            background = { focused -> if (focused) RiftAccent.current.brush else solid(Color.Transparent) },
-            modifier = Modifier.clip(RiftShapes.full).blackGlass(RiftShapes.full),
-            square = true,
-            focusRequester = pillFocus,
-        ) { focused ->
-            Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.rift_search), tint = if (focused) RiftAccent.current.onAccent else RiftColors.OnSurfaceVariant, modifier = Modifier.size(22.dp))
-        }
-        return
-    }
     if (!search.typing) {
         // Not typing: a plain pill with the query; A opens the keyboard again.
         PillButton(
             onClick = search.onOpen,
             background = { focused -> if (focused) RiftAccent.current.brush else solid(Color.Transparent) },
-            modifier = Modifier.widthIn(max = 260.dp).height(RiftSizes.button).clip(RiftShapes.full).blackGlass(RiftShapes.full),
+            modifier = Modifier.widthIn(max = 320.dp).height(RiftSizes.button).clip(RiftShapes.full).blackGlass(RiftShapes.full),
             focusRequester = pillFocus,
         ) { focused ->
             Row(
@@ -2623,7 +2625,7 @@ private fun SearchField(search: SearchState, pillFocus: FocusRequester) {
     LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
     Row(
         modifier = Modifier
-            .widthIn(max = 260.dp)
+            .widthIn(max = 320.dp)
             .height(RiftSizes.button)
             .clip(RiftShapes.full)
             .blackGlass(RiftShapes.full)
