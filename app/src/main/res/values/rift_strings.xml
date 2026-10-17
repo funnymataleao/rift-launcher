@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Rift Launcher strings. Kept apart from GameNative's strings.xml to avoid upstream merge conflicts. -->
 <resources>
-    <string name="rift_section_pc_games">PC games</string>
+    <string name="rift_section_pc_games">PC Games</string>
     <string name="rift_filter_empty">Nothing here yet</string>
     <string name="rift_hint_filters">Filters</string>
     <string name="rift_play">Play</string>
@@ -235,7 +235,7 @@
     <string name="rift_settings_sound_pack">Sounds folder</string>
     <string name="rift_settings_sound_pack_builtin">Built-in sounds</string>
     <string name="rift_settings_sound_pack_reset">Back to built-in sounds</string>
-    <string name="rift_section_android_games">Android games</string>
+    <string name="rift_section_android_games">Android Games</string>
     <string name="rift_hint_options">Options</string>
     <string name="rift_settings_quick_access_hold_select">Hold Select</string>
     <string name="rift_apps_title">Apps</string>
