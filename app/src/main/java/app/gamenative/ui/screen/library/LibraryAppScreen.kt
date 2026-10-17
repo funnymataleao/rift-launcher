@@ -972,7 +972,7 @@ internal fun AppScreenContent(
     val riftStream = dev.rift.launcher.home.LocalRiftStreamAction.current
     var optionsMenuVisible by remember { mutableStateOf(riftOptionsOnly != null) }
     // Rift: the game's properties page (all the options, by group), from the Start menu or the page's settings icon.
-    var propertiesOpen by remember { mutableStateOf(false) }
+    var propertiesOpen by remember { mutableStateOf(riftOptionsOnly == null && dev.rift.launcher.home.RiftPropertiesRequest.take()) }
     if (riftOptionsOnly != null) {
         LaunchedEffect(optionsMenuVisible, propertiesOpen) { riftOptionsOnly.panelOpen = optionsMenuVisible || propertiesOpen }
     }

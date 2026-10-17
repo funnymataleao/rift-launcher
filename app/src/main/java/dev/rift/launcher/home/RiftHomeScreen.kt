@@ -69,6 +69,17 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cast
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Image as ImageIcon
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarOutline
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.ui.graphics.vector.ImageVector
+import app.gamenative.data.FavoritesManager
+import app.gamenative.ui.screen.library.components.toggleFavorite
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SwapVert
@@ -268,6 +279,7 @@ fun RiftHomeScreen(
     val streamUninstalledMode by rememberUninstalledMode(RiftSection.PcStreaming)
     // Games the person hid (Start menu) are gone from every tab and library.
     val hiddenGames by RiftHiddenGames.hidden(context).collectAsStateWithLifecycle()
+    val favoriteIds by FavoritesManager.favorites.collectAsStateWithLifecycle()
     val loadedLibrary = remember(libraryState.appInfoList, pickedArt, uninstalledMode, hiddenGames) {
         GameArtStore.apply(
             context,
@@ -704,39 +716,56 @@ fun RiftHomeScreen(
     var lastStartMenuItems by remember { mutableStateOf<List<RiftStartMenuItem>>(emptyList()) }
     if (startMenuItems != null) lastStartMenuItems = startMenuItems!!
     fun otherTabMenu(picked: LibraryItem? = null): List<RiftStartMenuItem>? {
-        fun line(@androidx.annotation.StringRes label: Int, action: () -> Unit) =
-            RiftStartMenuItem(context.getString(label)) { startMenuItems = null; action() }
-        val cancel = line(R.string.rift_menu_cancel) {}
+        fun line(@androidx.annotation.StringRes label: Int, icon: ImageVector, action: () -> Unit) =
+            RiftStartMenuItem(context.getString(label), icon = icon) { startMenuItems = null; action() }
+        val cancel = line(R.string.rift_menu_cancel, Icons.Default.Close) {}
+        fun favorite(appId: String, name: String): RiftStartMenuItem {
+            val on = appId in favoriteIds
+            return line(if (on) R.string.option_remove_from_favorites else R.string.option_add_to_favorites, if (on) Icons.Default.Star else Icons.Default.StarOutline) {
+                toggleFavorite(context, appId, name)
+            }
+        }
+        fun properties(open: () -> Unit) = line(R.string.rift_menu_properties, Icons.Default.Settings) {
+            RiftPropertiesRequest.request()
+            open()
+        }
         return when (section) {
             RiftSection.AndroidGames -> focusedAndroid?.let { game ->
+                val art = game.toArtItem()
                 listOf(
-                    line(R.string.rift_menu_play) { AndroidGames.launch(context, game) },
-                    line(R.string.rift_option_change_art) { openArt(game.toArtItem()) },
-                    line(R.string.rift_menu_hide) { RiftHiddenGames.hide(context, game.toArtItem().appId, game.label) },
+                    line(R.string.rift_menu_play, Icons.Default.PlayArrow) { AndroidGames.launch(context, game) },
+                    line(R.string.rift_option_change_art, Icons.Default.ImageIcon) { openArt(art) },
+                    favorite(art.appId, game.label),
+                    line(R.string.rift_menu_hide, Icons.Default.VisibilityOff) { RiftHiddenGames.hide(context, art.appId, game.label) },
+                    properties { openGame(game.toPageItem()) },
                     cancel,
                 )
             }
             RiftSection.PcStreaming -> (picked ?: focusedStream)?.let { item ->
                 listOf(
-                    line(R.string.rift_menu_stream) { openGame(item, forStream = true) },
-                    line(R.string.rift_option_change_art) { openArt(item) },
-                    line(R.string.rift_menu_hide) { RiftHiddenGames.hide(context, item.appId, item.name) },
+                    line(R.string.rift_menu_stream, Icons.Default.Cast) { openGame(item, forStream = true) },
+                    line(R.string.rift_option_change_art, Icons.Default.ImageIcon) { openArt(item) },
+                    favorite(item.appId, item.name),
+                    line(R.string.rift_menu_hide, Icons.Default.VisibilityOff) { RiftHiddenGames.hide(context, item.appId, item.name) },
                     cancel,
                 )
             }
             RiftSection.Emulators -> (picked ?: focusedEmulator)?.let { item ->
                 listOf(
-                    line(R.string.rift_menu_play) { EmulatorLibrary.game(item.appId)?.let { EmulatorLibrary.launch(context, it) } },
-                    line(R.string.rift_option_change_art) { openArt(item) },
-                    line(R.string.rift_menu_hide) { RiftHiddenGames.hide(context, item.appId, item.name) },
+                    line(R.string.rift_menu_play, Icons.Default.PlayArrow) { EmulatorLibrary.game(item.appId)?.let { EmulatorLibrary.launch(context, it) } },
+                    line(R.string.rift_option_change_art, Icons.Default.ImageIcon) { openArt(item) },
+                    favorite(item.appId, item.name),
+                    line(R.string.rift_menu_hide, Icons.Default.VisibilityOff) { RiftHiddenGames.hide(context, item.appId, item.name) },
+                    properties { openGame(item) },
                     cancel,
                 )
             }
             RiftSection.CloudStreaming -> (picked ?: focusedCloud)?.let { item ->
                 listOf(
-                    line(R.string.rift_menu_play) { openGame(item) },
-                    line(R.string.rift_option_change_art) { openArt(item) },
-                    line(R.string.rift_menu_hide) { RiftHiddenGames.hide(context, item.appId, item.name) },
+                    line(R.string.rift_menu_play, Icons.Default.PlayArrow) { openGame(item) },
+                    line(R.string.rift_option_change_art, Icons.Default.ImageIcon) { openArt(item) },
+                    favorite(item.appId, item.name),
+                    line(R.string.rift_menu_hide, Icons.Default.VisibilityOff) { RiftHiddenGames.hide(context, item.appId, item.name) },
                     cancel,
                 )
             }
@@ -954,6 +983,8 @@ fun RiftHomeScreen(
                         panelFocusAsk++
                         return@onPreviewKeyEvent true
                     }
+                    // The Start menu takes its own keys (B closes only it).
+                    if (startMenuItems != null) return@onPreviewKeyEvent false
                     if (optionsItem != null && event.type == KeyEventType.KeyDown) optionsItem = null
                     if (appsOpen || libraryOpen || artItem != null) return@onPreviewKeyEvent false
                     // Never stranded: a direction press with nothing but the screen focused goes to a cover.
