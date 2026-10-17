@@ -100,7 +100,12 @@ class PcStreamingTab internal constructor(internal val hosts: PcHosts) {
             TabSort.NAME_ASC -> shown.sortedBy { it.name.lowercase() }
             TabSort.NAME_DESC -> shown.sortedByDescending { it.name.lowercase() }
             TabSort.DATE_ADDED -> shown.sortedWith(compareByDescending<LibraryItem> { addedAt[it.appId] ?: 0L }.thenBy { it.name.lowercase() })
-            TabSort.LAST_PLAYED -> shown.sortedWith(compareByDescending<LibraryItem> { played[it.appId] ?: 0L }.thenBy { it.name.lowercase() })
+            // Streamed from Rift first, newest first; then the rest by when they came to the PC.
+            TabSort.LAST_PLAYED -> shown.sortedWith(
+                compareByDescending<LibraryItem> { played[it.appId] ?: 0L }
+                    .thenByDescending { addedAt[it.appId] ?: 0L }
+                    .thenBy { it.name.lowercase() },
+            )
         }
     }
 

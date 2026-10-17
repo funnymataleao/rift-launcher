@@ -13,8 +13,8 @@ import androidx.compose.ui.unit.dp
 
 /**
  * How the covers of a shelf come in when it first shows: one after another, sliding in from the
- * side [direction] points to (1 from the right). Only a graphics layer moves, so nothing is laid out
- * again and focus stays where it is.
+ * side [direction] points to (1 from the right), or rising from below when [rise]. Only a graphics
+ * layer moves, so nothing is laid out again and focus stays where it is.
  */
 data class ShelfEntry(
     val direction: Int,
@@ -22,8 +22,10 @@ data class ShelfEntry(
     val startMs: Long,
     val stepMs: Long,
     val durationMs: Long,
+    val rise: Boolean = false,
+    val maxStaggered: Int = MAX_STAGGERED,
 ) {
-    val totalMs: Long get() = startMs + stepMs * MAX_STAGGERED + durationMs
+    val totalMs: Long get() = startMs + stepMs * maxStaggered + durationMs
 
     companion object {
         private const val MAX_STAGGERED = 10
@@ -34,7 +36,8 @@ data class ShelfEntry(
         /** Switching tabs with LB/RB: a short, quick slide. */
         fun switch(direction: Int) = ShelfEntry(direction = direction, distance = 96.dp, startMs = 0, stepMs = 28, durationMs = 420)
 
-        internal fun stagger(index: Int) = index.coerceAtMost(MAX_STAGGERED)
+        /** A library grid opening or changing tab: covers rise in one after another, quickly (Denis). */
+        val Library = ShelfEntry(direction = 1, distance = 56.dp, startMs = 40, stepMs = 18, durationMs = 380, rise = true, maxStaggered = 24)
     }
 }
 
@@ -71,10 +74,11 @@ fun Modifier.shelfEntry(entry: ShelfEntry?, index: Int, clock: State<Long>): Mod
         val p = if (elapsed == Long.MAX_VALUE) {
             1f
         } else {
-            val t = (elapsed - entry.startMs - entry.stepMs * ShelfEntry.stagger(index)).toFloat() / entry.durationMs
+            val t = (elapsed - entry.startMs - entry.stepMs * index.coerceAtMost(entry.maxStaggered)).toFloat() / entry.durationMs
             EmphasizedDecelerate.transform(t.coerceIn(0f, 1f))
         }
-        translationX = (1f - p) * entry.distance.toPx() * entry.direction
+        val offset = (1f - p) * entry.distance.toPx() * entry.direction
+        if (entry.rise) translationY = offset else translationX = offset
         alpha = p
     }
 }

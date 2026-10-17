@@ -286,7 +286,8 @@ fun RiftHomeScreen(
     // The PC streaming tab exists only while it has games to show; setup hints live in settings.
     val streamTab = if (pairedPcs.isNotEmpty()) rememberPcStreamingTab() else null
     // Each tab keeps its own sort and filter; the filters panel edits the tab that is open.
-    var streamView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.PcStreaming)) }
+    // Home streaming starts with the games last streamed from Rift, then the ones newest on the PC.
+    var streamView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.PcStreaming, TabSort.LAST_PLAYED)) }
     var androidView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.AndroidGames)) }
     val streamItems by remember(streamTab, streamView, streamUninstalledMode, pickedArt) { derivedStateOf { GameArtStore.apply(context, streamTab?.arrange(context, streamView.copy(showAll = streamUninstalledMode != UninstalledMode.HIDE)).orEmpty()) } }
     val hasStreamGames = streamTab?.items?.isNotEmpty() == true
@@ -343,6 +344,9 @@ fun RiftHomeScreen(
     var lastStreamView by remember { mutableStateOf(streamView) }
     var lastAndroidView by remember { mutableStateOf(androidView) }
     var cloudCardFocused by rememberSaveable { mutableStateOf(false) }
+    var streamCardFocused by rememberSaveable { mutableStateOf(false) }
+    // The home streaming library's tab: all games, the ones on the PC, the ones not on it.
+    var streamLibraryTab by rememberSaveable { mutableStateOf(STREAM_TAB_ALL) }
     var openedAppId by rememberSaveable { mutableStateOf<String?>(null) }
     // The open game page was opened from the PC streaming tab: its main button streams the game.
     var openedForStream by rememberSaveable { mutableStateOf(false) }
@@ -387,7 +391,14 @@ fun RiftHomeScreen(
         }
     }
     val focusedAndroid = androidShown.firstOrNull { it.packageName == focusedPackage } ?: androidShown.firstOrNull()
-    val focusedStream = streamItems.firstOrNull { it.appId == focusedStreamId } ?: streamItems.firstOrNull()
+    // Like PC games (Denis): the row has the latest games and ends in "Open library", not hundreds of covers.
+    val streamHomeRow = streamItems.take(HOME_ROW_COUNT)
+    val streamLibraryItems = when (streamLibraryTab) {
+        STREAM_TAB_INSTALLED -> streamItems.filter { it.isInstalled }
+        STREAM_TAB_NOT_INSTALLED -> streamItems.filterNot { it.isInstalled }
+        else -> streamItems
+    }
+    val focusedStream = streamHomeRow.firstOrNull { it.appId == focusedStreamId } ?: streamHomeRow.firstOrNull()
     val cloudHomeRow = cloudItems.take(HOME_ROW_COUNT)
     val focusedCloud = cloudHomeRow.firstOrNull { it.appId == focusedCloudId } ?: cloudHomeRow.firstOrNull()
 
@@ -404,7 +415,11 @@ fun RiftHomeScreen(
         if (openedAppId != null || artItem != null) return
         // In the library, the grid takes it back on the game it had last.
         if (libraryOpen) {
-            val items = if (target == RiftSection.CloudStreaming) cloudItems else library
+            val items = when (target) {
+                RiftSection.CloudStreaming -> cloudItems
+                RiftSection.PcStreaming -> streamLibraryItems
+                else -> library
+            }
             libraryPending = (libraryFocusedId?.takeIf { id -> items.any { it.appId == id } } ?: items.firstOrNull()?.appId)
             return
         }
@@ -423,7 +438,7 @@ fun RiftHomeScreen(
             }
         }
         if (target == RiftSection.PcStreaming) {
-            val index = focusedStream?.let { streamItems.indexOf(it) } ?: -1
+            val index = if (streamCardFocused) streamHomeRow.size else focusedStream?.let(streamHomeRow::indexOf) ?: -1
             if (index >= 0 && streamRowState.layoutInfo.visibleItemsInfo.none { it.index == index }) {
                 homeScope.launch { streamRowState.scrollToItem((index - 1).coerceAtLeast(0)) }
             }
@@ -437,7 +452,7 @@ fun RiftHomeScreen(
         pendingFocusKey = when (target) {
             RiftSection.PcGames -> if (libraryCardFocused && homeRow.isNotEmpty()) LIBRARY_CARD_KEY else focusedItem?.let(::focusKeyFor)
             RiftSection.AndroidGames -> focusedAndroid?.let(::androidFocusKey)
-            RiftSection.PcStreaming -> focusedStream?.let(::focusKeyFor)
+            RiftSection.PcStreaming -> if (streamCardFocused && streamHomeRow.isNotEmpty()) LIBRARY_CARD_KEY else focusedStream?.let(::focusKeyFor)
             RiftSection.CloudStreaming -> if (cloudCardFocused && cloudHomeRow.isNotEmpty()) LIBRARY_CARD_KEY else focusedCloud?.let(::focusKeyFor)
             null -> null
         }
@@ -503,6 +518,13 @@ fun RiftHomeScreen(
     }
     // The cloud tab's library: every cloud game, one tab per cloud service.
     fun openCloudLibrary() {
+        libraryFocusedId = null
+        libraryOpen = true
+        libraryTabSwitch++
+    }
+    // The home streaming library opens on all games too.
+    fun openStreamLibrary() {
+        streamLibraryTab = STREAM_TAB_ALL
         libraryFocusedId = null
         libraryOpen = true
         libraryTabSwitch++
@@ -917,14 +939,19 @@ fun RiftHomeScreen(
                         section == RiftSection.PcStreaming && streamTab != null -> {
                             HeroLogo(item = focusedStream, modifier = Modifier.weight(1f).graphicsLayer { alpha = intro.value })
                             PcGamesShelf(
-                                shown = streamItems,
+                                shown = streamHomeRow,
                                 entry = switchEntry,
+                                onOpenLibrary = ::openStreamLibrary,
+                                onLibraryFocused = { streamCardFocused = true },
                                 libraryState = libraryState,
                                 listState = streamRowState,
                                 cardHeight = cardHeight,
                                 pendingFocusKey = pendingFocusKey,
                                 onFocusConsumed = { pendingFocusKey = null },
-                                onFocused = { focusedStreamId = it.appId },
+                                onFocused = {
+                                    focusedStreamId = it.appId
+                                    streamCardFocused = false
+                                },
                                 onOpen = { openGame(it, forStream = true) },
                                 onNearEnd = {},
                                 badges = false,
@@ -1001,7 +1028,7 @@ fun RiftHomeScreen(
             // Big Picture's library: all the PC games in a grid, one tab per store with games.
             val libraryTabs = pcLibraryTabs(libraryState)
             RiftLibraryScreen(
-                isOpen = libraryOpen && section != RiftSection.CloudStreaming,
+                isOpen = libraryOpen && section != RiftSection.CloudStreaming && section != RiftSection.PcStreaming,
                 glass = heroLayer,
                 tabs = libraryTabs,
                 selectedKey = libraryState.currentTab.name,
@@ -1044,6 +1071,53 @@ fun RiftHomeScreen(
                             viewModel.onPageChange(1)
                         }
                     },
+                )
+            }
+            // The home streaming library: the PC's Steam games, all of them or by whether the PC has them
+            // installed (Xbox and PlayStation join later as their own tabs).
+            val streamLibraryTabs = buildList {
+                add(LibraryTabSpec(STREAM_TAB_ALL, stringResource(R.string.rift_library_all)))
+                if (streamItems.any { it.isInstalled }) add(LibraryTabSpec(STREAM_TAB_INSTALLED, stringResource(R.string.rift_stream_library_installed)))
+                if (streamItems.any { !it.isInstalled }) add(LibraryTabSpec(STREAM_TAB_NOT_INSTALLED, stringResource(R.string.rift_stream_library_not_installed)))
+            }
+            RiftLibraryScreen(
+                isOpen = libraryOpen && section == RiftSection.PcStreaming,
+                glass = heroLayer,
+                tabs = streamLibraryTabs,
+                selectedKey = streamLibraryTab,
+                onSelectTab = { key ->
+                    if (key != streamLibraryTab) {
+                        streamLibraryTab = key
+                        libraryTabSwitch++
+                    }
+                },
+                onDismiss = ::closeLibrary,
+                keepFocusInside = { openedAppId == null && artItem == null },
+                onKeyDown = { code ->
+                    // Y: the focused game's art, as on the home row (streamed games have no options panel).
+                    val item = streamLibraryItems.firstOrNull { it.appId == libraryFocusedId }
+                    if (item != null && code == KeyEvent.KEYCODE_BUTTON_Y) {
+                        openArt(item)
+                        true
+                    } else {
+                        false
+                    }
+                },
+            ) {
+                PcLibraryGrid(
+                    items = streamLibraryItems,
+                    dimUninstalled = streamUninstalledMode == UninstalledMode.DIM,
+                    loading = false,
+                    tabSwitch = libraryTabSwitch,
+                    libraryState = libraryState,
+                    pendingFocusKey = libraryPending,
+                    onFocusConsumed = { libraryPending = null },
+                    onWantFocus = { libraryPending = it },
+                    onFocused = { libraryFocusedId = it.appId },
+                    onOpen = { openGame(it, forStream = true) },
+                    onNearEnd = {},
+                    badges = false,
+                    waitForReload = false,
                 )
             }
             // The cloud tab's library: one tab per cloud service (GeForce NOW joins Xbox Cloud Gaming later).
@@ -1281,6 +1355,9 @@ private const val PRELOAD_BACKDROP_PX = 2560
 private const val HOME_ROW_COUNT = 20
 private const val LIBRARY_CARD_KEY = "rift:library"
 private const val CLOUD_XCLOUD_TAB = "xcloud"
+private const val STREAM_TAB_ALL = "all"
+private const val STREAM_TAB_INSTALLED = "installed"
+private const val STREAM_TAB_NOT_INSTALLED = "not_installed"
 private const val RECENT_SORT_DEFAULT_KEY = "home_recent_sort_default_v1"
 
 /** The library's tabs for PC games: all games first, then each store that has games. */
@@ -1320,10 +1397,14 @@ private fun PcLibraryGrid(
     val gridState = rememberLazyGridState()
     val currentItems by rememberUpdatedState(items)
     val currentLoading by rememberUpdatedState(loading)
+    // The entrance starts once per opening or tab switch, when the new list is in; later page loads
+    // (more games as the grid scrolls) do not start it again.
+    var entryReady by remember(tabSwitch) { mutableStateOf(false) }
     // On opening and after a tab switch: wait for the new list, then focus its first game.
     LaunchedEffect(tabSwitch) {
         if (waitForReload) withTimeoutOrNull(TAB_RELOAD_WAIT_MS) { snapshotFlow { currentLoading }.first { it } }
         snapshotFlow { currentLoading }.first { !it }
+        entryReady = true
         val first = currentItems.firstOrNull() ?: return@LaunchedEffect
         gridState.scrollToItem(0)
         onWantFocus(first.appId)
@@ -1340,6 +1421,9 @@ private fun PcLibraryGrid(
         return
     }
     val context = LocalContext.current
+    // Opening and every tab switch: the covers rise in one after another once the list is there,
+    // on one clock for the grid (a tile composed late or reused can never stay unseen).
+    val clock = key(tabSwitch) { rememberShelfClock(ShelfEntry.Library, started = entryReady) }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(LibraryCoverWidth),
         state = gridState,
@@ -1351,7 +1435,7 @@ private fun PcLibraryGrid(
         itemsIndexed(items, key = { _, item -> item.appId }) { index, item ->
             val urls = portraitCoverUrls(item)
             val url = urls.firstOrNull { it.isNotEmpty() }.orEmpty()
-            BoxWithConstraints {
+            BoxWithConstraints(modifier = Modifier.shelfEntry(ShelfEntry.Library, index, clock)) {
                 CoverCard(
                     height = maxWidth * 1.5f,
                     paletteKey = url,

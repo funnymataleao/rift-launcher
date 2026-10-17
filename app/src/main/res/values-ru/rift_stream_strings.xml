@@ -49,4 +49,6 @@
     <string name="rift_stream_get_vibepollo">Скачать Vibepollo для ПК</string>
     <string name="rift_stream_get_vibepollo_summary">Бесплатный хост для стриминга, сам добавляет игры Steam</string>
     <string name="rift_stream_play">Стримить с ПК</string>
+    <string name="rift_stream_library_installed">Установлены на ПК</string>
+    <string name="rift_stream_library_not_installed">Не установлены</string>
 </resources>
