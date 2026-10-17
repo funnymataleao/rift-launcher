@@ -57,6 +57,8 @@ internal fun VideoHero(
     autoplay: Boolean = true,
     loop: Boolean = true,
     onEnded: () -> Unit = {},
+    // Rift: fill the whole area and crop the edges (the game page's first screen), no black bars.
+    fill: Boolean = false,
 ) {
     val youTubeId = remember(videoUrl) { videoUrl?.let(::extractYouTubeId) }
     var manuallyStarted by remember(videoUrl) { mutableStateOf(false) }
@@ -74,6 +76,7 @@ internal fun VideoHero(
             active = active,
             muted = muted,
             autoplay = autoplay,
+            fill = fill,
         )
         active && videoUrl != null && (autoplay || manuallyStarted) -> ExoVideoHero(
             videoUrl = videoUrl,
@@ -83,6 +86,7 @@ internal fun VideoHero(
             muted = muted,
             loop = loop,
             onEnded = onEnded,
+            fill = fill,
         )
         active && videoUrl != null -> VideoPlaceholder(
             contentDescription = contentDescription,
@@ -111,6 +115,7 @@ private fun ExoVideoHero(
     muted: Boolean,
     loop: Boolean = true,
     onEnded: () -> Unit = {},
+    fill: Boolean = false,
 ) {
     val context = LocalContext.current
     val currentOnEnded by androidx.compose.runtime.rememberUpdatedState(onEnded)
@@ -205,8 +210,8 @@ private fun ExoVideoHero(
                 factory = { ctx ->
                     PlayerView(ctx).apply {
                         player = exoPlayer
-                        useController = true
-                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        useController = !fill
+                        resizeMode = if (fill) AspectRatioFrameLayout.RESIZE_MODE_ZOOM else AspectRatioFrameLayout.RESIZE_MODE_FIT
                         setShutterBackgroundColor(android.graphics.Color.BLACK)
                         layoutParams = ViewGroup.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -242,6 +247,7 @@ private fun YouTubeHero(
     active: Boolean,
     muted: Boolean,
     autoplay: Boolean,
+    fill: Boolean = false,
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
@@ -305,7 +311,7 @@ private fun YouTubeHero(
                     }
                     loadDataWithBaseURL(
                         "https://www.gamenative.app",
-                        youTubeEmbedHtml(videoId, muted),
+                        youTubeEmbedHtml(videoId, muted, fill),
                         "text/html",
                         "utf-8",
                         null,
@@ -395,13 +401,21 @@ private fun VideoPlaceholder(
     }
 }
 
-private fun youTubeEmbedHtml(videoId: String, muted: Boolean): String =
-    """
+// Rift: with fill the 16:9 player covers the whole area (16:10 on the tablet) and the overflow is cropped.
+private fun youTubeEmbedHtml(videoId: String, muted: Boolean, fill: Boolean = false): String {
+    val frame = if (fill) {
+        "iframe{border:0;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);" +
+            "width:max(100vw,177.78vh);height:max(100vh,56.25vw);pointer-events:none}"
+    } else {
+        "iframe{border:0;width:100%;height:100%}"
+    }
+    return """
     <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
-    <style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100%;height:100%}</style></head>
-    <body><iframe src="https://www.youtube.com/embed/$videoId?autoplay=1&mute=${if (muted) 1 else 0}&controls=1&playsinline=1&rel=0"
+    <style>html,body{margin:0;height:100%;overflow:hidden;background:#000}$frame</style></head>
+    <body><iframe src="https://www.youtube.com/embed/$videoId?autoplay=1&mute=${if (muted) 1 else 0}&controls=${if (fill) 0 else 1}&playsinline=1&rel=0"
         allow="autoplay; fullscreen" allowfullscreen></iframe></body></html>
     """.trimIndent()
+}
 
 private fun extractYouTubeId(url: String): String? {
     val patterns = listOf(

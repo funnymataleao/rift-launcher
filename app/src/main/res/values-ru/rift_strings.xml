@@ -497,8 +497,10 @@
     <string name="rift_game_page_bg_trailer">Трейлер</string>
     <string name="rift_game_page_bg_art">Арт</string>
     <string name="rift_game_page_bg_cover">Обложка</string>
-    <string name="rift_game_page_trailer_sound">Звук трейлера на фоне</string>
-    <string name="rift_game_page_trailer_sound_summary">Музыка лаунчера плавно затихает, пока играет трейлер</string>
+    <string name="rift_game_page_trailer_sound">Запускать видео</string>
+    <string name="rift_game_page_trailer_sound_summary">Со звуком музыка лаунчера плавно затихает, пока играет трейлер. Кнопка «Без звука» на странице игры меняет эту же настройку</string>
+    <string name="rift_game_page_sound_on">Со звуком</string>
+    <string name="rift_game_page_sound_off">Без звука</string>
     <string name="rift_game_page_wifi_only">Только по Wi-Fi</string>
     <string name="rift_game_page_wifi_only_summary">В мобильной сети фоном будет арт</string>
     <string name="rift_game_page_loop">Повторять трейлер</string>

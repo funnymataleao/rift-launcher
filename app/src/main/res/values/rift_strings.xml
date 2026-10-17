@@ -502,8 +502,10 @@
     <string name="rift_game_page_bg_trailer">Trailer</string>
     <string name="rift_game_page_bg_art">Art</string>
     <string name="rift_game_page_bg_cover">Cover</string>
-    <string name="rift_game_page_trailer_sound">Trailer sound in the background</string>
-    <string name="rift_game_page_trailer_sound_summary">The launcher music fades out while the trailer plays</string>
+    <string name="rift_game_page_trailer_sound">Start videos</string>
+    <string name="rift_game_page_trailer_sound_summary">With sound, the launcher music fades out while the trailer plays. The Mute button on the game page changes the same setting</string>
+    <string name="rift_game_page_sound_on">With sound</string>
+    <string name="rift_game_page_sound_off">Muted</string>
     <string name="rift_game_page_wifi_only">Wi-Fi only</string>
     <string name="rift_game_page_wifi_only_summary">On mobile data the art is shown</string>
     <string name="rift_game_page_loop">Repeat the trailer</string>
