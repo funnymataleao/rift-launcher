@@ -374,8 +374,24 @@ fun RiftHomeScreen(
         derivedStateOf { GameArtStore.apply(context, EmulatorLibrary.arrange(context, emulatorGames, emulatorView).filterNot { it.appId in hiddenGames }) }
     }
     val hasEmulatorGames = emulatorGames.any { it.appId !in hiddenGames }
-    val sections = remember(library, androidGames, hasStreamGames, hasCloudGames, hasEmulatorGames) {
-        RiftSections.configured(context, library, androidGames, hasStreamGames, hasCloudGames, hasEmulatorGames)
+    // The streaming, cloud and emulator lists load a moment after the home comes back (from settings, a game
+    // page, a game); until they have, the tabs they had last time stay, so the open tab never jumps to
+    // PC Games and back.
+    var sourcesGrace by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        delay(SOURCES_GRACE_MS)
+        sourcesGrace = false
+    }
+    val stickyStream = hasStreamGames || (sourcesGrace && RiftTabsMemory.stream)
+    val stickyCloud = hasCloudGames || (sourcesGrace && RiftTabsMemory.cloud)
+    val stickyEmulators = hasEmulatorGames || (sourcesGrace && RiftTabsMemory.emulators)
+    SideEffect {
+        if (!sourcesGrace || hasStreamGames) RiftTabsMemory.stream = hasStreamGames
+        if (!sourcesGrace || hasCloudGames) RiftTabsMemory.cloud = hasCloudGames
+        if (!sourcesGrace || hasEmulatorGames) RiftTabsMemory.emulators = hasEmulatorGames
+    }
+    val sections = remember(library, androidGames, stickyStream, stickyCloud, stickyEmulators) {
+        RiftSections.configured(context, library, androidGames, stickyStream, stickyCloud, stickyEmulators)
     }
 
     // Start-up: pure black until there is something to show (or, with nothing set up, until the
@@ -2951,3 +2967,12 @@ private fun uninstalledGroup(mode: UninstalledMode, onChange: (UninstalledMode) 
         },
     )
 }
+
+/** Which source tabs the home had when it was last left, so they are back on the first frame. */
+private object RiftTabsMemory {
+    var stream = false
+    var cloud = false
+    var emulators = false
+}
+
+private const val SOURCES_GRACE_MS = 2500L
