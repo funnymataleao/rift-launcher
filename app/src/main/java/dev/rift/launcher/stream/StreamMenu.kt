@@ -69,8 +69,8 @@ fun StreamMenu(
     pcName: String,
     onDismiss: () -> Unit,
     onEndStream: () -> Unit,
-    onPerfOverlayChange: (Boolean) -> Unit,
-    onRestart: () -> Unit,
+    onPerfOverlayChange: ((Boolean) -> Unit)? = null,
+    onRestart: (() -> Unit)? = null,
 ) = RiftGlassTheme {
     Box(modifier = Modifier.fillMaxSize()) {
         AnimatedVisibility(
@@ -122,7 +122,10 @@ fun StreamMenu(
                         modifier = Modifier.fillMaxWidth(),
                         focusRequester = endFocus,
                     )
-                    StreamQuickSettings(onPerfOverlayChange = onPerfOverlayChange, onRestart = onRestart)
+                    // PC streams only: the cloud stream has its own settings in the page.
+                    if (onPerfOverlayChange != null && onRestart != null) {
+                        StreamQuickSettings(onPerfOverlayChange = onPerfOverlayChange, onRestart = onRestart)
+                    }
                 }
             }
             LaunchedEffect(Unit) {
