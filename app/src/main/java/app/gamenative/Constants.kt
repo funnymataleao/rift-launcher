@@ -34,9 +34,12 @@ object Constants {
     }
 
     object Misc {
+        // RIFT: the "Become a member" link (Settings -> About, and the support dialogs). Put your own Ko-fi
+        // address here: this is the only place it is written.
         const val KO_FI_LINK = "https://ko-fi.com/gamenative"
         const val DISCORD_SHOP_LINK = "https://discord.com/channels/1378308569287622737/shop"
         const val GITHUB_LINK = "https://github.com/utkarshdalal/GameNative"
+        const val RIFT_SOURCE_LINK = "https://github.com/funnymataleao/rift-launcher"
         const val PRIVACY_LINK = "https://github.com/utkarshdalal/GameNative/tree/master/PrivacyPolicy"
         const val UPDATE_CHECK_URL = "https://api.gamenative.app/api/update-check"
     }

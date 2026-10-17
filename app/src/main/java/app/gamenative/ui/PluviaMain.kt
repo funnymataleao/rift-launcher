@@ -122,6 +122,8 @@ import app.gamenative.ui.screen.HomeScreen
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.login.UserLoginScreen
 import dev.rift.launcher.settings.RiftSettingsScreen
+import dev.rift.launcher.settings.RiftSettingsSection
+import dev.rift.launcher.settings.SettingsReturn
 import dev.rift.launcher.stream.PcStreaming
 import app.gamenative.ui.screen.support.SnackbarActionContent
 import app.gamenative.ui.screen.support.SupportAppliedRun
@@ -2007,6 +2009,16 @@ fun PluviaMain(
                     ),
                 ) { backStackEntry ->
                     val isOffline = backStackEntry.arguments?.getBoolean("offline") ?: false
+
+                    // Rift was dropped while Settings was open (a browser was opened for a key, say):
+                    // go back to that section, not the home screen.
+                    LaunchedEffect(Unit) {
+                        SettingsReturn.take(context)?.let { section ->
+                            RiftSettingsSection.request(section)
+                            SettingsReturn.focusContentOnOpen = true
+                            navController.navigate(PluviaScreen.Settings.route)
+                        }
+                    }
 
                     // Show update/crash/support dialogs when Home is first displayed
                     // Skip when offline with Steam credentials (avoid flash when Steam reconnects)
