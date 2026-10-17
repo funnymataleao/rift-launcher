@@ -1,5 +1,8 @@
 package dev.rift.launcher.ui
 
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.FiniteAnimationSpec
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
@@ -108,6 +111,15 @@ object RiftDrawer {
 
     /** The hairline between the open tab and the rail. */
     val SeparatorColor = Color.White.copy(alpha = 0.06f)
+
+    /**
+     * How a panel slides in from its edge: a spring without bounce, so it never runs past the edge and leaves a
+     * gap behind it (Denis 2026-10-17: the bounce showed a gap on the right).
+     */
+    val SlideIn: FiniteAnimationSpec<IntOffset> = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+
+    /** How a panel slides out. */
+    val SlideOut: FiniteAnimationSpec<IntOffset> = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
 }
 
 /** What a panel's glass blurs. */

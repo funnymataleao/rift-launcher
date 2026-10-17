@@ -89,7 +89,7 @@ object StreamMenuRow {
 }
 
 /**
- * The in-stream panel on the right, opened with Select + Start: the running game and "End stream",
+ * The in-stream panel on the right, opened with Home: the running game and "End stream",
  * which quits the game on the PC so the host lets go of its virtual display, then the stream settings.
  * B closes it. When the stream broke, the panel says why and offers to quit the game on the PC and
  * start it again.
@@ -135,8 +135,8 @@ fun StreamMenu(
         }
         AnimatedVisibility(
             visible = isOpen,
-            enter = if (ownWindow) EnterTransition.None else slideInHorizontally(MaterialTheme.motionScheme.defaultSpatialSpec()) { it },
-            exit = if (ownWindow) ExitTransition.None else slideOutHorizontally(MaterialTheme.motionScheme.fastSpatialSpec()) { it },
+            enter = if (ownWindow) EnterTransition.None else slideInHorizontally(RiftDrawer.SlideIn) { it },
+            exit = if (ownWindow) ExitTransition.None else slideOutHorizontally(RiftDrawer.SlideOut) { it },
             modifier = Modifier.align(Alignment.CenterEnd),
         ) {
             val requesters = remember { mutableMapOf<String, FocusRequester>() }
