@@ -944,6 +944,7 @@ fun RiftHomeScreen(
                     }
                 }
                 RiftAppsGrid(isOpen = appsOpen, onDismiss = { appsOpen = false })
+                dev.rift.launcher.assistant.optimize.RiftOptimizeHost()
                 RiftSystemMenu(
                     isOpen = systemMenuOpen,
                     onDismiss = { systemMenuOpen = false },
