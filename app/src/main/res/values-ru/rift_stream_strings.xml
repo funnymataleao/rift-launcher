@@ -42,4 +42,7 @@
     <string name="rift_stream_no_decoder">На устройстве нет аппаратного декодера H.264.</string>
     <string name="rift_stream_no_games">Игр с ПК пока нет. Включи в веб-интерфейсе Vibepollo синхронизацию Steam (Integrations → Steam), и установленные игры появятся здесь.</string>
     <string name="rift_stream_group_pc_apps">Приложения ПК</string>
+    <string name="rift_stream_end">Закончить стрим</string>
+    <string name="rift_stream_end_failed">Не удалось закрыть игру на ПК.</string>
+    <string name="rift_stream_menu_hint">Select + Start — меню стрима</string>
 </resources>

@@ -1,6 +1,5 @@
 package dev.rift.launcher.stream
 
-import android.app.Activity
 import android.graphics.Color
 import android.graphics.Point
 import android.os.Build
@@ -18,6 +17,12 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.TextView
+import androidx.activity.ComponentActivity
+import androidx.activity.addCallback
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
 import app.gamenative.R
 import app.gamenative.ui.util.SnackbarManager
 import com.limelight.binding.PlatformBinding
@@ -31,6 +36,7 @@ import com.limelight.nvstream.NvConnectionListener
 import com.limelight.nvstream.StreamConfiguration
 import com.limelight.nvstream.http.ComputerDetails
 import com.limelight.nvstream.http.NvApp
+import com.limelight.nvstream.http.NvHTTP
 import com.limelight.nvstream.input.ControllerPacket
 import com.limelight.nvstream.input.MouseButtonPacket
 import com.limelight.nvstream.jni.MoonBridge
@@ -46,9 +52,9 @@ import kotlin.math.roundToInt
 /**
  * Full-screen stream on top of the Artemis core, configured from [StreamSettings].
  * Input: one gamepad (with vibration) and touch as an absolute mouse.
- * Leave: Back, or Select+Start+LB+RB on the gamepad.
+ * Leave: Select + Start (or Back) opens the side panel with "End stream".
  */
-class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener, PerfOverlayListener {
+class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnectionListener, PerfOverlayListener {
 
     companion object {
         const val EXTRA_HOST = "host"
@@ -62,8 +68,7 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
         const val EXTRA_APP_UUID = "appUuid"
         const val EXTRA_APP_HDR = "appHdr"
 
-        private const val QUIT_COMBO = ControllerPacket.BACK_FLAG or ControllerPacket.PLAY_FLAG or
-            ControllerPacket.LB_FLAG or ControllerPacket.RB_FLAG
+        private const val MENU_COMBO = ControllerPacket.BACK_FLAG or ControllerPacket.PLAY_FLAG
         private const val DPAD_FLAGS = ControllerPacket.UP_FLAG or ControllerPacket.DOWN_FLAG or
             ControllerPacket.LEFT_FLAG or ControllerPacket.RIGHT_FLAG
     }
@@ -80,6 +85,10 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
     private var stopped = false
     private var streamWidth = 1920
     private var streamHeight = 1080
+    private var menuOpen by mutableStateOf(false)
+    private lateinit var host: String
+    private lateinit var uniqueId: String
+    private var serverCert: X509Certificate? = null
 
     private var buttons = 0
     private var leftTrigger = 0
@@ -115,15 +124,36 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
                 addView(surfaceView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT, Gravity.CENTER))
                 addView(statusText, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.START))
                 addView(
+                    ComposeView(context).apply {
+                        setContent {
+                            StreamMenu(
+                                isOpen = menuOpen,
+                                appName = intent.getStringExtra(EXTRA_APP_NAME).orEmpty(),
+                                pcName = intent.getStringExtra(EXTRA_PC_NAME).orEmpty(),
+                                onDismiss = { menuOpen = false },
+                                onEndStream = ::endStream,
+                            )
+                        }
+                    },
+                    FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT),
+                )
+                addView(
                     messageText,
                     FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
                         .apply { bottomMargin = 64 },
                 )
             },
         )
+        onBackPressedDispatcher.addCallback(this) {
+            if (menuOpen) {
+                menuOpen = false
+            } else {
+                openMenu()
+            }
+        }
 
-        val host = intent.getStringExtra(EXTRA_HOST) ?: return finish()
-        val uniqueId = intent.getStringExtra(EXTRA_UNIQUE_ID) ?: return finish()
+        host = intent.getStringExtra(EXTRA_HOST) ?: return finish()
+        uniqueId = intent.getStringExtra(EXTRA_UNIQUE_ID) ?: return finish()
         val appSupportsHdr = intent.getBooleanExtra(EXTRA_APP_HDR, false)
         val app = NvApp(
             intent.getStringExtra(EXTRA_APP_NAME) ?: "app",
@@ -131,7 +161,7 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
             intent.getIntExtra(EXTRA_APP_ID, StreamConfiguration.INVALID_APP_ID),
             appSupportsHdr,
         )
-        val serverCert = intent.getByteArrayExtra(EXTRA_SERVER_CERT)?.let {
+        serverCert = intent.getByteArrayExtra(EXTRA_SERVER_CERT)?.let {
             CertificateFactory.getInstance("X.509").generateCertificate(ByteArrayInputStream(it)) as X509Certificate
         }
         statusText.text = getString(R.string.rift_stream_connecting, intent.getStringExtra(EXTRA_PC_NAME) ?: host)
@@ -268,12 +298,46 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
         finish()
     }
 
-    private fun stopStream() {
-        if (!started || stopped) return
-        stopped = true
-        stopRumble()
-        decoder.prepareForStop()
-        thread { conn.stop() }
+    private fun stopStream(quitOnPc: Boolean = false) {
+        val stopConnection = started && !stopped
+        if (stopConnection) {
+            stopped = true
+            stopRumble()
+            decoder.prepareForStop()
+        }
+        if (!stopConnection && !quitOnPc) return
+        val port = intent.getIntExtra(EXTRA_PORT, 47989)
+        val httpsPort = intent.getIntExtra(EXTRA_HTTPS_PORT, 0)
+        val crypto = PlatformBinding.getCryptoProvider(applicationContext)
+        val endFailed = getString(R.string.rift_stream_end_failed)
+        thread {
+            if (stopConnection) conn.stop()
+            // Quitting the app is what makes the host drop its virtual display and wake the PC's monitor.
+            if (quitOnPc) {
+                runCatching { NvHTTP(ComputerDetails.AddressTuple(host, port), httpsPort, uniqueId, serverCert, crypto).quitApp() }
+                    .onFailure { SnackbarManager.show(endFailed) }
+            }
+        }
+    }
+
+    /** "End stream": stops the stream, quits the game on the PC and returns to the PC streaming tab. */
+    private fun endStream() {
+        menuOpen = false
+        stopStream(quitOnPc = true)
+        finish()
+    }
+
+    /** Opens the side panel; the host gets a released pad so nothing stays held in the game. */
+    private fun openMenu() {
+        buttons = 0
+        leftTrigger = 0
+        rightTrigger = 0
+        lsX = 0
+        lsY = 0
+        rsX = 0
+        rsY = 0
+        sendController()
+        menuOpen = true
     }
 
     // NvConnectionListener
@@ -295,6 +359,7 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
     override fun connectionStarted() {
         runOnUiThread {
             if (!settings.perfOverlay) statusText.visibility = View.GONE
+            showMessage(getString(R.string.rift_stream_menu_hint), 4000)
         }
     }
 
@@ -394,36 +459,33 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
         else -> 0
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (isGamepad(event.source)) {
-            val flag = buttonFlag(keyCode)
-            if (flag != 0) {
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // With the panel open the pad drives the panel: B closes it, A and the d-pad reach Compose.
+        if (menuOpen) {
+            if (event.keyCode == KeyEvent.KEYCODE_BUTTON_B) {
+                if (event.action == KeyEvent.ACTION_UP) menuOpen = false
+                return true
+            }
+            return super.dispatchKeyEvent(event)
+        }
+        val flag = if (isGamepad(event.source)) buttonFlag(event.keyCode) else 0
+        if (flag == 0) return super.dispatchKeyEvent(event)
+        when (event.action) {
+            KeyEvent.ACTION_DOWN -> {
                 buttons = buttons or flag
-                if (buttons and QUIT_COMBO == QUIT_COMBO) {
-                    finish()
+                if (buttons and MENU_COMBO == MENU_COMBO) {
+                    openMenu()
                     return true
                 }
-                sendController()
-                return true
             }
+            KeyEvent.ACTION_UP -> buttons = buttons and flag.inv()
         }
-        return super.onKeyDown(keyCode, event)
-    }
-
-    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        if (isGamepad(event.source)) {
-            val flag = buttonFlag(keyCode)
-            if (flag != 0) {
-                buttons = buttons and flag.inv()
-                sendController()
-                return true
-            }
-        }
-        return super.onKeyUp(keyCode, event)
+        sendController()
+        return true
     }
 
     override fun onGenericMotionEvent(event: MotionEvent): Boolean {
-        if (!isGamepad(event.source) || event.action != MotionEvent.ACTION_MOVE) {
+        if (menuOpen || !isGamepad(event.source) || event.action != MotionEvent.ACTION_MOVE) {
             return super.onGenericMotionEvent(event)
         }
         lsX = stick(event.getAxisValue(MotionEvent.AXIS_X))
@@ -463,7 +525,7 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
     // Touch as absolute mouse
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (!started || stopped) return true
+        if (!started || stopped || menuOpen) return true
         val x = event.x.toInt().toShort()
         val y = event.y.toInt().toShort()
         val w = surfaceView.width.toShort()
