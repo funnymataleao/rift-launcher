@@ -101,7 +101,7 @@ import timber.log.Timber
  * A single menu item in the System Menu
  */
 @Composable
-private fun SystemMenuItem(
+internal fun SystemMenuItem(
     text: String,
     icon: ImageVector,
     onClick: () -> Unit,
