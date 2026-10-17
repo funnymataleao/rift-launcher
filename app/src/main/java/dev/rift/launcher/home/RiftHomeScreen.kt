@@ -546,6 +546,21 @@ fun RiftHomeScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
+    // Home pressed while Rift is the home app: every layer closes, back to the row of covers.
+    val latestHomePressed = rememberUpdatedState<() -> Unit> {
+        if (searchOpen) closeSearch()
+        if (viewModel.state.value.isOptionsPanelOpen) viewModel.onOptionsPanelToggle(false)
+        systemMenuOpen = false
+        appsOpen = false
+        if (libraryOpen) closeLibrary()
+        openedAppId = null
+        refocusCover()
+    }
+    DisposableEffect(Unit) {
+        val onHome: (AndroidEvent.HomePressed) -> Unit = { latestHomePressed.value() }
+        PluviaApp.events.on<AndroidEvent.HomePressed, Unit>(onHome)
+        onDispose { PluviaApp.events.off<AndroidEvent.HomePressed, Unit>(onHome) }
+    }
     // What the footer blurs: the screen behind it, recorded once per frame and drawn again under the footer.
     val backdrop = rememberGraphicsLayer()
     // Just the backdrop art, for the glass behind the selected tab (the top bar cannot blur itself).

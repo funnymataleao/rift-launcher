@@ -187,6 +187,9 @@
     <string name="rift_settings_ui_sounds">Звуки интерфейса</string>
     <string name="rift_settings_ui_sounds_summary">Тихий щелчок при движении и нажатии</string>
     <string name="rift_settings_sound_note">Положите в папку файлы move, select, back, tab, open, close и launch (ogg, wav или mp3). Чего не хватит, останется встроенным.</string>
+    <string name="rift_settings_home_status">Домашний экран сейчас</string>
+    <string name="rift_settings_home_status_yes">Rift</string>
+    <string name="rift_settings_home_status_no">Другой</string>
     <string name="rift_settings_home_pick">Сделать Rift домашним экраном</string>
     <string name="rift_settings_home_pick_summary">Открывается по кнопке «Домой». Android спросит, какой выбрать.</string>
     <string name="rift_settings_home_failed">Не получилось открыть выбор домашнего экрана.</string>

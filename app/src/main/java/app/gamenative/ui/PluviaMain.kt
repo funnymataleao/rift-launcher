@@ -976,15 +976,26 @@ fun PluviaMain(
         )
     }
 
+    // Rift as the home app: Home from Settings or Support goes back to the main screen.
+    // A running game and the sign-in screen are left alone.
+    val onHomePressed: (AndroidEvent.HomePressed) -> Unit = {
+        val route = navController.currentDestination?.route
+        if (route == PluviaScreen.Settings.route || route == PluviaScreen.Support.route) {
+            navController.popBackStack(PluviaScreen.Home.route + "?offline={offline}", inclusive = false)
+        }
+    }
+
     LaunchedEffect(Unit) {
         PluviaApp.events.on<AndroidEvent.PromptSaveContainerConfig, Unit>(onPromptSaveConfig)
         PluviaApp.events.on<AndroidEvent.ShowGameFeedback, Unit>(onShowGameFeedback)
+        PluviaApp.events.on<AndroidEvent.HomePressed, Unit>(onHomePressed)
     }
 
     DisposableEffect(Unit) {
         onDispose {
             PluviaApp.events.off<AndroidEvent.PromptSaveContainerConfig, Unit>(onPromptSaveConfig)
             PluviaApp.events.off<AndroidEvent.ShowGameFeedback, Unit>(onShowGameFeedback)
+            PluviaApp.events.off<AndroidEvent.HomePressed, Unit>(onHomePressed)
         }
     }
 

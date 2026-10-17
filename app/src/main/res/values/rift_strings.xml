@@ -188,6 +188,9 @@
     <string name="rift_settings_ui_sounds">Interface sounds</string>
     <string name="rift_settings_ui_sounds_summary">A soft click when moving and pressing</string>
     <string name="rift_settings_sound_note">Put files named move, select, back, tab, open, close and launch (ogg, wav or mp3) in the folder. Missing ones stay built-in.</string>
+    <string name="rift_settings_home_status">Home screen now</string>
+    <string name="rift_settings_home_status_yes">Rift</string>
+    <string name="rift_settings_home_status_no">Another app</string>
     <string name="rift_settings_home_pick">Make Rift the home screen</string>
     <string name="rift_settings_home_pick_summary">Opens when you press Home. Android asks which one to use.</string>
     <string name="rift_settings_home_failed">Could not open Android home settings.</string>
