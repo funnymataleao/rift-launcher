@@ -182,6 +182,9 @@ import dev.rift.launcher.cloud.CloudLibrary
 import dev.rift.launcher.cloud.XcloudAccount
 import dev.rift.launcher.cloud.rememberCloudStreamingTab
 import dev.rift.launcher.art.GameArtStore
+import dev.rift.launcher.ui.BlackGlass
+import dev.rift.launcher.ui.LocalGlassBackdrop
+import dev.rift.launcher.ui.blackGlass
 import dev.rift.launcher.art.LocalRiftArtPicker
 import dev.rift.launcher.art.RiftArtPicker
 import dev.rift.launcher.settings.RiftPrefs
@@ -840,6 +843,8 @@ fun RiftHomeScreen(
                     )
                 }
 
+                // Black glass on the home blurs the backdrop art (not the row itself, which is drawn here).
+                CompositionLocalProvider(LocalGlassBackdrop provides heroLayer) {
                 Column(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = if (ready) 1f else 0f }) {
                     Box(modifier = Modifier.graphicsLayer { alpha = intro.value }) {
                     TopBar(
@@ -962,6 +967,7 @@ fun RiftHomeScreen(
                     // The footer is frosted glass over the lower part of the reflections, so the row sits low
                     // and its reflections fade out under the glass.
                     Spacer(modifier = Modifier.height(FooterHeight - 36.dp))
+                }
                 }
               }
                 Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(FooterHeight).graphicsLayer { alpha = intro.value }) {
@@ -1522,7 +1528,10 @@ private fun PcGamesShelf(
     }
 }
 
-/** The last tile of the home row: opens the whole library (Big Picture's "Open library"). */
+/**
+ * The last tile of the home row: opens the whole library (Big Picture's "Open library"). Black glass
+ * over the backdrop art, no grey and no white outline (Denis); focus as on the covers, with the glass's own rim.
+ */
 @Composable
 private fun LibraryCard(
     height: Dp,
@@ -1534,7 +1543,8 @@ private fun LibraryCard(
     CoverCard(
         height = height,
         paletteKey = LIBRARY_CARD_KEY,
-        loadPalette = { null },
+        loadPalette = { BlackGlass.RimColors },
+        surface = Color.Transparent,
         requestFocus = requestFocus,
         onFocusRequested = onFocusRequested,
         onFocused = onFocused,
@@ -1543,7 +1553,7 @@ private fun LibraryCard(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.12f), Color.White.copy(alpha = 0.05f))))
+                    .blackGlass()
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,

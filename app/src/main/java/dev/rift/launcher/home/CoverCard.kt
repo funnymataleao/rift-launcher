@@ -91,6 +91,7 @@ fun CoverCard(
     cover: @Composable BoxScope.() -> Unit,
     badge: @Composable BoxScope.() -> Unit = {},
     reflection: Boolean = true,
+    surface: Color = RiftColors.SurfaceContainer,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
@@ -147,7 +148,7 @@ fun CoverCard(
                     spotColor = palette.first().copy(alpha = 0.22f),
                 )
                 .clip(RiftShapes.card)
-                .background(RiftColors.SurfaceContainer)
+                .background(surface)
                 .coverSheen(focused, tiltX, tiltY)
                 .coverFrame(focused, palette, RiftShapes.card)
                 .drawWithContent {
@@ -169,6 +170,7 @@ fun CoverCard(
                 height = height * REFLECTION_SHARE,
                 focused = focused,
                 scale = scale,
+                surface = surface,
             )
         }
     }
@@ -249,6 +251,7 @@ private fun CoverReflection(
     height: Dp,
     focused: Boolean,
     scale: Float,
+    surface: Color,
 ) {
     val alpha by animateFloatAsState(if (focused) 0.42f else 0.3f, tween(300), label = "reflectionAlpha")
     // One mask for everything: the card's own rounded shape, so the reflection has the same corners.
@@ -265,7 +268,7 @@ private fun CoverReflection(
             }
             .drawWithContent {
                 // Same base as the card, then its picture flipped: its bottom edge at the top here.
-                drawRect(RiftColors.SurfaceContainer)
+                drawRect(surface)
                 val coverPx = coverHeight.toPx()
                 translate(top = coverPx) {
                     scale(scaleX = 1f, scaleY = -1f, pivot = Offset.Zero) { drawLayer(picture) }
