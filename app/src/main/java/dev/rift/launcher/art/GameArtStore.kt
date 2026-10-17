@@ -60,8 +60,8 @@ object GameArtStore {
             capsuleImageUrl = capsule.ifEmpty { item.capsuleImageUrl },
             headerImageUrl = wide.ifEmpty { item.headerImageUrl },
             heroImageUrl = hero.ifEmpty { item.heroImageUrl },
-            customLogoUrl = logo,
-            customIconUrl = icon,
+            customLogoUrl = logo.ifEmpty { item.customLogoUrl },
+            customIconUrl = icon.ifEmpty { item.customIconUrl },
         )
     }
 
