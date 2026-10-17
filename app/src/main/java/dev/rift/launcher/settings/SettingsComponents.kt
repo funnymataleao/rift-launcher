@@ -275,6 +275,7 @@ internal fun CheckRow(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     icon: ImageVector? = null,
+    enabled: Boolean = true,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
@@ -283,13 +284,14 @@ internal fun CheckRow(
         subtitle = subtitle,
         icon = icon,
         focused = focused,
-        enabled = true,
+        enabled = enabled,
         danger = false,
         modifier = modifier,
         interactive = Modifier.toggleable(
             value = checked,
             interactionSource = interaction,
             indication = null,
+            enabled = enabled,
             role = Role.Checkbox,
             onValueChange = onCheckedChange,
         ),
@@ -651,6 +653,7 @@ internal fun RiftPillButton(
     modifier: Modifier = Modifier,
     primary: Boolean = false,
     icon: ImageVector? = null,
+    enabled: Boolean = true,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
@@ -658,6 +661,7 @@ internal fun RiftPillButton(
     val accent = RiftAccent.current
     Button(
         onClick = onClick,
+        enabled = enabled,
         shapes = ButtonDefaults.shapes(
             shape = RiftShapes.full,
             pressedShape = RiftShapes.full,
@@ -673,6 +677,8 @@ internal fun RiftPillButton(
                 primary -> RiftColors.OnPrimary
                 else -> RiftColors.OnSurface
             },
+            disabledContainerColor = RiftColors.SurfaceContainerHigh,
+            disabledContentColor = RiftColors.OnSurfaceVariant.copy(alpha = 0.6f),
         ),
         contentPadding = PaddingValues(horizontal = 26.dp),
         interactionSource = interaction,

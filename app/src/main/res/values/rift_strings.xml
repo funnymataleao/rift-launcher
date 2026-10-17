@@ -558,4 +558,15 @@
     <string name="rift_meta_src_wikipedia">Wikipedia</string>
     <string name="epic_install_size_calculating">Calculating…</string>
     <string name="epic_install_size_unknown">Unknown</string>
+    <string name="rift_install_download_size">Download size</string>
+    <string name="rift_install_size_on_disk">Size on disk</string>
+    <string name="rift_install_available_space">Free space</string>
+    <string name="rift_install_components">Components</string>
+    <string name="rift_install_back">Back</string>
+    <string name="rift_install_select_all">Select all</string>
+    <string name="rift_install_deselect_all">Deselect all</string>
+    <string name="rift_install_branch">Installing the “%1$s” branch</string>
+    <string name="rift_install_not_enough_space">Not enough free space</string>
+    <string name="rift_install_item_sizes">%1$s download • %2$s on disk</string>
+    <string name="rift_install_dlc">DLC</string>
 </resources>
