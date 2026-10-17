@@ -160,7 +160,6 @@ import dev.rift.launcher.sound.RiftSound
 import dev.rift.launcher.sound.rememberRiftSoundPlayer
 import dev.rift.launcher.sound.riftKeySounds
 import dev.rift.launcher.stream.PcStreaming
-import dev.rift.launcher.stream.PcStreamingContent
 import dev.rift.launcher.stream.rememberPcStreamingTab
 import dev.rift.launcher.ui.theme.RiftBrush
 import dev.rift.launcher.ui.theme.RiftColors
@@ -275,6 +274,7 @@ fun RiftHomeScreen(
 
     var focusedAppId by rememberSaveable { mutableStateOf<String?>(null) }
     var focusedPackage by rememberSaveable { mutableStateOf<String?>(null) }
+    var focusedStreamId by rememberSaveable { mutableStateOf<String?>(null) }
     var openedAppId by rememberSaveable { mutableStateOf<String?>(null) }
     var lastOpenedItem by remember { mutableStateOf<LibraryItem?>(null) }
     var pendingFocusKey by remember { mutableStateOf<String?>(null) }
@@ -282,6 +282,7 @@ fun RiftHomeScreen(
     // Row positions live here, above the game page, so coming back (or switching tabs) keeps them.
     val pcRowState = rememberLazyListState()
     val androidRowState = rememberLazyListState()
+    val streamRowState = rememberLazyListState()
     val filterKey = listOf(libraryState.appInfoSortType.toList(), libraryState.currentSortOption)
     var lastFilterKey by remember { mutableStateOf(filterKey) }
     LaunchedEffect(filterKey) {
@@ -293,6 +294,8 @@ fun RiftHomeScreen(
 
     val focusedItem = library.firstOrNull { it.appId == focusedAppId } ?: library.firstOrNull()
     val focusedAndroid = androidGames.firstOrNull { it.packageName == focusedPackage } ?: androidGames.firstOrNull()
+    val streamItems = streamTab?.items.orEmpty()
+    val focusedStream = streamItems.firstOrNull { it.appId == focusedStreamId } ?: streamItems.firstOrNull()
 
     fun openGame(item: LibraryItem) {
         lastOpenedItem = item
@@ -313,7 +316,7 @@ fun RiftHomeScreen(
         pendingFocusKey = when (target) {
             RiftSection.PcGames -> focusedItem?.let(::focusKeyFor)
             RiftSection.AndroidGames -> focusedAndroid?.let(::androidFocusKey)
-            RiftSection.PcStreaming -> streamTab?.focusKey()
+            RiftSection.PcStreaming -> focusedStream?.let(::focusKeyFor)
             null -> null
         }
     }
@@ -586,7 +589,7 @@ fun RiftHomeScreen(
                             scaleY = 1.12f - 0.12f * p
                         },
                 ) {
-                    if (section == RiftSection.AndroidGames) AndroidBackdrop(focusedAndroid) else HeroBackdrop(item = focusedItem.takeIf { section == RiftSection.PcGames })
+                    if (section == RiftSection.AndroidGames) AndroidBackdrop(focusedAndroid) else HeroBackdrop(item = if (section == RiftSection.PcStreaming) focusedStream else focusedItem.takeIf { section == RiftSection.PcGames })
                 }
 
                 Column(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = if (ready) 1f else 0f }) {
@@ -634,17 +637,24 @@ fun RiftHomeScreen(
                                 onOpen = { AndroidGames.launch(context, it) },
                             )
                         }
-                        section == RiftSection.PcStreaming && streamTab != null -> PcStreamingContent(
-                            tab = streamTab,
-                            cardHeight = cardHeight,
-                            screenPadding = ScreenPadding,
-                            cardGap = CardGap,
-                            rowBottomGap = RowBottomGap,
-                            pendingFocusKey = pendingFocusKey,
-                            onFocusConsumed = { pendingFocusKey = null },
-                            onWantFocus = { if (pendingFocusKey == null) focusSection(section) },
-                            modifier = Modifier.weight(1f),
-                        )
+                        // The PC games tab's screen, with the Steam games of the paired PCs; A streams the game.
+                        section == RiftSection.PcStreaming && streamTab != null -> {
+                            HeroLogo(item = focusedStream, modifier = Modifier.weight(1f).graphicsLayer { alpha = intro.value })
+                            PcGamesShelf(
+                                shown = streamItems,
+                                rollIn = false,
+                                libraryState = libraryState,
+                                listState = streamRowState,
+                                cardHeight = cardHeight,
+                                pendingFocusKey = pendingFocusKey,
+                                onFocusConsumed = { pendingFocusKey = null },
+                                onFocused = { focusedStreamId = it.appId },
+                                onOpen = { streamTab.launch(context, it) },
+                                onNearEnd = {},
+                                badges = false,
+                                emptyMessage = stringResource(R.string.rift_stream_no_games),
+                            )
+                        }
                         // Still loading with nothing cached: stay black rather than show a spinner.
                         library.isEmpty() && libraryState.isLoading -> Spacer(modifier = Modifier.weight(1f))
                         else -> {
@@ -774,7 +784,7 @@ fun RiftHomeScreen(
     }
 
     // Focus a cover once the section has something to show, so a gamepad works without touching the screen.
-    LaunchedEffect(section, library.isNotEmpty(), androidGames.isNotEmpty()) {
+    LaunchedEffect(section, library.isNotEmpty(), androidGames.isNotEmpty(), streamItems.isNotEmpty()) {
         if (pendingFocusKey == null) focusSection(section)
     }
 }
@@ -869,6 +879,8 @@ private fun PcGamesShelf(
     onFocused: (LibraryItem) -> Unit,
     onOpen: (LibraryItem) -> Unit,
     onNearEnd: () -> Unit,
+    badges: Boolean = true,
+    emptyMessage: String = stringResource(R.string.rift_filter_empty),
 ) {
     val scope = rememberCoroutineScope()
     if (shown.isEmpty()) {
@@ -880,7 +892,7 @@ private fun PcGamesShelf(
             contentAlignment = Alignment.CenterStart,
         ) {
             Text(
-                text = stringResource(R.string.rift_filter_empty),
+                text = emptyMessage,
                 color = RiftColors.OnSurfaceVariant,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
@@ -944,7 +956,7 @@ private fun PcGamesShelf(
                     )
                     CoverImage(urls = urls, contentDescription = item.name)
                 },
-                badge = { CoverBadges(item, libraryState) },
+                badge = { if (badges) CoverBadges(item, libraryState) },
             )
             }
         }
