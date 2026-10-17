@@ -247,6 +247,7 @@
     <string name="rift_apps_sort_newest">Новые</string>
     <string name="rift_apps_sort_name">А–Я</string>
     <string name="rift_hint_menu">Быстрый доступ</string>
+    <string name="rift_hint_search">Поиск</string>
     <string name="rift_settings_show_hint_bar_title">Показывать панель подсказок</string>
     <string name="rift_settings_show_hint_bar_subtitle">Нижняя панель главной с подсказками кнопок. Если скрыть, содержимое опустится вниз</string>
     <string name="rift_source_android">Android</string>

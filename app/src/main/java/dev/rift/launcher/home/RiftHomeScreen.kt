@@ -1158,6 +1158,21 @@ fun RiftHomeScreen(
                     // Up from the row does nothing: the top bar and the tabs are reached with LB/RB only (Denis).
                     if (native.keyCode == KeyEvent.KEYCODE_DPAD_UP && section != null && !searchOpen) return@onPreviewKeyEvent true
                     when (event.nativeKeyEvent.keyCode) {
+                        // The top bar has no gamepad path of its own: X opens the search (PC games), R3 the Quick Access panel (as Home).
+                        KeyEvent.KEYCODE_BUTTON_X -> {
+                            if (section == RiftSection.PcGames && !searchOpen) {
+                                viewModel.onIsSearching(true)
+                                searchOpen = true
+                                searchTyping = true
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        KeyEvent.KEYCODE_BUTTON_THUMBR -> {
+                            if (!panelOpen) systemMenuOpen = !systemMenuOpen
+                            true
+                        }
                         KeyEvent.KEYCODE_BUTTON_L1 -> {
                             switchSection(-1)
                             true
@@ -1419,7 +1434,7 @@ fun RiftHomeScreen(
               }
                 if (showHintBar) Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(FooterHeight).graphicsLayer { alpha = intro.value }) {
                     FrostedGlass(backdrop = backdrop, modifier = Modifier.matchParentSize())
-                    HintsBar(showFilters = section != null)
+                    HintsBar(showFilters = section != null, showSearch = section == RiftSection.PcGames)
                 }
             }
 
@@ -2896,7 +2911,7 @@ private fun FrostedGlass(backdrop: GraphicsLayer, modifier: Modifier = Modifier)
 
 /** Frosted glass footer with a hairline on top; the blur itself comes from [modifier]. */
 @Composable
-private fun HintsBar(showFilters: Boolean, modifier: Modifier = Modifier) {
+private fun HintsBar(showFilters: Boolean, showSearch: Boolean, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -2911,7 +2926,8 @@ private fun HintsBar(showFilters: Boolean, modifier: Modifier = Modifier) {
         val swap = PrefManager.swapFaceButtons
         fun face(button: GamepadButton, swapped: GamepadButton) = if (swap) swapped.iconRes else button.iconRes
         if (showFilters) Hint(listOf(GamepadButton.SELECT.iconRes), stringResource(R.string.rift_hint_filters))
-        Hint(listOf(InputIcons.Xbox.guide), stringResource(R.string.rift_hint_menu))
+        Hint(listOf(InputIcons.Xbox.guide, InputIcons.Xbox.rs), stringResource(R.string.rift_hint_menu))
+        if (showSearch) Hint(listOf(face(GamepadButton.X, GamepadButton.Y)), stringResource(R.string.rift_hint_search))
         Spacer(modifier = Modifier.weight(1f))
         if (showFilters) Hint(listOf(face(GamepadButton.Y, GamepadButton.X)), stringResource(R.string.rift_hint_options))
         if (showFilters) Hint(listOf(face(GamepadButton.A, GamepadButton.B)), stringResource(R.string.rift_details))
