@@ -1,6 +1,8 @@
 package dev.rift.launcher.settings
 
 import dev.rift.launcher.sound.riftKeySounds
+import dev.rift.launcher.ui.theme.RiftAccent
+import androidx.compose.ui.graphics.SolidColor
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
@@ -319,7 +321,7 @@ private fun RailItem(
                 modifier = Modifier
                     .size(RailDot)
                     .clip(CircleShape)
-                    .background(if (focused) plateText(true) else RiftColors.Primary),
+                    .background(if (focused) SolidColor(plateText(true)) else RiftAccent.current.brush),
             )
         }
     }

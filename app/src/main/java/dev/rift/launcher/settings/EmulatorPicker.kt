@@ -1,6 +1,7 @@
 package dev.rift.launcher.settings
 
 import android.content.ActivityNotFoundException
+import dev.rift.launcher.ui.theme.RiftAccent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -411,7 +412,7 @@ private fun PickerAppRow(
             .fillMaxWidth()
             .heightIn(min = RiftSizes.button)
             .clip(RiftShapes.full)
-            .background(if (focused) RiftColors.Primary else RiftColors.SurfaceContainer)
+            .background(if (focused) RiftAccent.current.brush else SolidColor(RiftColors.SurfaceContainer))
             .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,

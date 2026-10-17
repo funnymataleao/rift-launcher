@@ -2,6 +2,7 @@ package dev.rift.launcher.art
 
 import dev.rift.launcher.ui.theme.RiftAccent
 import android.view.KeyEvent
+import dev.rift.launcher.ui.theme.RiftAccent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
