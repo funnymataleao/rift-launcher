@@ -8,6 +8,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -34,7 +36,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Compress
@@ -52,12 +53,9 @@ import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -124,9 +122,22 @@ fun LibraryOptionsPanel(
     showCloseButton: Boolean = true,
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
+    // Accordion: only one group is open at a time. B closes the open group first, then the panel.
+    var openGroup by rememberSaveable { mutableStateOf<String?>(null) }
+    val headerFocus = remember { mutableMapOf("sort" to firstItemFocusRequester) }
+    fun headerRequester(key: String) = headerFocus.getOrPut(key) { FocusRequester() }
+    fun toggleGroup(key: String) {
+        openGroup = if (openGroup == key) null else key
+    }
 
     BackHandler(enabled = isOpen) {
-        onDismiss()
+        val open = openGroup
+        if (open != null) {
+            openGroup = null
+            runCatching { headerRequester(open).requestFocus() }
+        } else {
+            onDismiss()
+        }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -221,33 +232,64 @@ fun LibraryOptionsPanel(
                                 .padding(horizontal = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            FilterDropdown(
+                            FilterAccordion(
                                 label = stringResource(R.string.options_sort_by),
                                 valueText = stringResource(currentSortOption.displayTextRes),
                                 icon = currentSortOption.icon(),
-                                focusRequester = firstItemFocusRequester,
-                                entries = SortOption.entries.map { option ->
-                                    DropdownEntry(
+                                expanded = openGroup == "sort",
+                                onToggle = { toggleGroup("sort") },
+                                headerFocus = headerRequester("sort"),
+                            ) {
+                                SortOption.entries.forEach { option ->
+                                    OptionListItem(
                                         text = stringResource(option.displayTextRes),
                                         selected = currentSortOption == option,
+                                        onClick = {
+                                            onSortOptionChanged(option)
+                                            openGroup = null
+                                            runCatching { headerRequester("sort").requestFocus() }
+                                        },
                                         icon = option.icon(),
-                                        onClick = { onSortOptionChanged(option) },
+                                        modifier = Modifier.fillMaxWidth(),
                                     )
-                                },
-                                closeOnPick = true,
-                            )
-                            FilterDropdown(
+                                }
+                            }
+                            FilterAccordion(
                                 label = stringResource(R.string.library_app_type),
                                 valueText = summarize(TYPE_FILTERS, selectedFilters),
                                 icon = Icons.Default.Category,
-                                entries = TYPE_FILTERS.map { f -> f.toEntry(selectedFilters, onFilterChanged) },
-                            )
-                            FilterDropdown(
+                                expanded = openGroup == "type",
+                                onToggle = { toggleGroup("type") },
+                                headerFocus = headerRequester("type"),
+                            ) {
+                                TYPE_FILTERS.forEach { f ->
+                                    OptionListItem(
+                                        text = stringResource(f.displayTextRes),
+                                        selected = selectedFilters.contains(f),
+                                        onClick = { onFilterChanged(f) },
+                                        icon = f.icon,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
+                            }
+                            FilterAccordion(
                                 label = stringResource(R.string.library_app_status),
                                 valueText = summarize(STATUS_FILTERS, selectedFilters),
                                 icon = Icons.Default.FilterList,
-                                entries = STATUS_FILTERS.map { f -> f.toEntry(selectedFilters, onFilterChanged) },
-                            )
+                                expanded = openGroup == "status",
+                                onToggle = { toggleGroup("status") },
+                                headerFocus = headerRequester("status"),
+                            ) {
+                                STATUS_FILTERS.forEach { f ->
+                                    OptionListItem(
+                                        text = stringResource(f.displayTextRes),
+                                        selected = selectedFilters.contains(f),
+                                        onClick = { onFilterChanged(f) },
+                                        icon = f.icon,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
+                            }
                         }
 
                         // Steam collections — local view filter, shown only when Steam is connected.
@@ -267,6 +309,9 @@ fun LibraryOptionsPanel(
                                         add(R.string.steam_collections_smart_unsupported)
                                     }
                                 },
+                                expanded = openGroup == "steam",
+                                onExpandedChange = { toggleGroup("steam") },
+                                headerFocus = headerRequester("steam"),
                                 onToggle = onSteamCollectionToggle,
                                 onClear = onClearSteamCollections,
                             )
@@ -285,6 +330,9 @@ fun LibraryOptionsPanel(
                                 } else {
                                     emptyList()
                                 },
+                                expanded = openGroup == "curated",
+                                onExpandedChange = { toggleGroup("curated") },
+                                headerFocus = headerRequester("curated"),
                                 onToggle = onCuratedListToggle,
                                 onClear = onClearCuratedLists,
                             )
@@ -318,16 +366,19 @@ private fun CollectionFilterSection(
     @StringRes clearRes: Int,
     @StringRes emptyRes: Int? = null,
     messageRes: List<Int> = emptyList(),
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    headerFocus: FocusRequester,
     onToggle: (String) -> Unit,
     onClear: () -> Unit,
 ) {
-    var expanded by rememberSaveable { mutableStateOf(selectedIds.isNotEmpty()) }
 
     Spacer(modifier = Modifier.height(20.dp))
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { expanded = !expanded }
+            .focusRequester(headerFocus)
+            .clickable { onExpandedChange(!expanded) }
             .padding(end = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
@@ -427,21 +478,6 @@ private val STATUS_FILTERS = listOf(
     AppFilter.VR,
 )
 
-private class DropdownEntry(
-    val text: String,
-    val selected: Boolean,
-    val icon: ImageVector?,
-    val onClick: () -> Unit,
-)
-
-@Composable
-private fun AppFilter.toEntry(selected: EnumSet<AppFilter>, onToggle: (AppFilter) -> Unit) = DropdownEntry(
-    text = stringResource(displayTextRes),
-    selected = selected.contains(this),
-    icon = icon,
-    onClick = { onToggle(this) },
-)
-
 @Composable
 private fun summarize(options: List<AppFilter>, selected: EnumSet<AppFilter>): String {
     val chosen = options.filter { selected.contains(it) }
@@ -453,40 +489,41 @@ private fun summarize(options: List<AppFilter>, selected: EnumSet<AppFilter>): S
 }
 
 /**
- * One filter parameter on one line: label, current value, chevron. A opens the list, picking
- * closes it (single choice) or toggles (multi choice), B closes it and focus returns to the row.
+ * One filter group on one line (label + current value + chevron). A unrolls the options right
+ * inside the panel; the caller keeps only one group open at a time.
  */
 @Composable
-private fun FilterDropdown(
+private fun FilterAccordion(
     label: String,
     valueText: String,
     icon: ImageVector,
-    entries: List<DropdownEntry>,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    headerFocus: FocusRequester,
     modifier: Modifier = Modifier,
-    focusRequester: FocusRequester = remember { FocusRequester() },
-    closeOnPick: Boolean = false,
+    content: @Composable () -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val shape = RoundedCornerShape(12.dp)
-    val itemFocus = remember { FocusRequester() }
 
-    Box(modifier = modifier.fillMaxWidth()) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(shape)
                 .background(
-                    MaterialTheme.colorScheme.onSurface.copy(alpha = if (isFocused) 0.14f else 0.06f)
+                    MaterialTheme.colorScheme.onSurface.copy(
+                        alpha = if (isFocused) 0.14f else if (expanded) 0.09f else 0.06f
+                    )
                 )
                 .then(
                     if (isFocused) {
                         Modifier.border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f), shape)
                     } else Modifier
                 )
-                .focusRequester(focusRequester)
-                .clickable(interactionSource = interactionSource, indication = null) { expanded = true }
+                .focusRequester(headerFocus)
+                .clickable(interactionSource = interactionSource, indication = null, onClick = onToggle)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -518,50 +555,21 @@ private fun FilterDropdown(
             )
         }
 
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = {
-                expanded = false
-                // Back to the row so the gamepad focus is never lost.
-                runCatching { focusRequester.requestFocus() }
-            },
-            shape = shape,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier = Modifier.heightIn(max = 420.dp),
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(),
+            exit = shrinkVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)) + fadeOut(),
         ) {
-            entries.forEachIndexed { index, entry ->
-                DropdownMenuItem(
-                    text = { Text(entry.text, style = MaterialTheme.typography.bodyLarge) },
-                    leadingIcon = entry.icon?.let { vec ->
-                        { Icon(vec, contentDescription = null, modifier = Modifier.size(20.dp)) }
-                    },
-                    trailingIcon = if (entry.selected) {
-                        {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                    } else null,
-                    onClick = {
-                        entry.onClick()
-                        if (closeOnPick) {
-                            expanded = false
-                            runCatching { focusRequester.requestFocus() }
-                        }
-                    },
-                    modifier = if (index == entries.indexOfFirst { it.selected }.coerceAtLeast(0)) {
-                        Modifier.focusRequester(itemFocus)
-                    } else Modifier,
-                )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusGroup()
+                    .padding(top = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                content()
             }
         }
-    }
-
-    LaunchedEffect(expanded) {
-        if (expanded) runCatching { itemFocus.requestFocus() }
     }
 }
 
