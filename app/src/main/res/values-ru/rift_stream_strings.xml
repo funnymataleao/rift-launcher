@@ -40,9 +40,12 @@
     <string name="rift_stream_stage_failed">Ошибка на этапе %1$s (код %2$d)</string>
     <string name="rift_stream_terminated">Соединение прервано (код %1$d)</string>
     <string name="rift_stream_no_decoder">На устройстве нет аппаратного декодера H.264.</string>
-    <string name="rift_stream_no_games">Игр с ПК пока нет. Включи в веб-интерфейсе Vibepollo синхронизацию Steam (Integrations → Steam), и установленные игры появятся на главной во вкладке «Стриминг с ПК».</string>
+    <string name="rift_stream_no_games">Игр с ПК пока нет. Чтобы они появились на главной во вкладке «Стриминг с ПК» с обложками:\n1. Установите на ПК Vibepollo и добавьте ПК выше.\n2. В веб-интерфейсе Vibepollo откройте «Приложения» → Setup Game Library Integration.\n3. Включите Steam, Auto-sync и синхронизацию всех установленных игр, затем сохраните.</string>
     <string name="rift_stream_group_pc_apps">Приложения ПК</string>
     <string name="rift_stream_end">Закончить стрим</string>
     <string name="rift_stream_end_failed">Не удалось закрыть игру на ПК.</string>
     <string name="rift_stream_menu_hint">Select + Start — меню стрима</string>
+    <string name="rift_stream_setup_title">Игры с ПК</string>
+    <string name="rift_stream_get_vibepollo">Скачать Vibepollo для ПК</string>
+    <string name="rift_stream_get_vibepollo_summary">Бесплатный хост для стриминга, сам добавляет игры Steam</string>
 </resources>

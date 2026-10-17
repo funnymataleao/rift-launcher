@@ -6,6 +6,7 @@ import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Cast
 import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.Dns
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Gamepad
 import androidx.compose.material.icons.rounded.HighQuality
@@ -26,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -69,6 +71,7 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
 
     // Connecting a PC comes first: the paired PCs, then a big card to add one; the stream settings follow.
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var pairedPcs by remember { mutableStateOf<List<String>>(emptyList()) }
     DisposableEffect(lifecycleOwner) {
@@ -95,9 +98,9 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
             }
         }
     }
+    val streamTab = if (pairedPcs.isNotEmpty()) rememberPcStreamingTab() else null
     // Host apps that are not games (Desktop, Steam, Playnite, Game Pass...): the home tab shows only games.
-    if (pairedPcs.isNotEmpty()) {
-        val streamTab = rememberPcStreamingTab()
+    if (streamTab != null) {
         val services = streamTab.services
         if (services.isNotEmpty()) {
             SettingsGroup(title = stringResource(R.string.rift_stream_group_pc_apps)) {
@@ -111,10 +114,6 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
                 }
             }
         }
-        // The PCs answered but none of their apps is a Steam game: the home tab stays hidden until there is one.
-        if (streamTab.apps.isNotEmpty() && streamTab.games.isEmpty()) {
-            NoteText(stringResource(R.string.rift_stream_no_games))
-        }
     }
     BigActionCard(
         title = stringResource(R.string.rift_settings_stream_add_pc),
@@ -122,6 +121,18 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
         icon = Icons.Rounded.Computer,
         onClick = { onOpenPcPairing?.invoke() ?: PcStreaming.openAddPc(context) },
     )
+    // No PC games yet, so the home has no PC streaming tab: how to get them there.
+    if (streamTab == null || streamTab.games.isEmpty()) {
+        SettingsGroup(title = stringResource(R.string.rift_stream_setup_title)) {
+            NoteText(stringResource(R.string.rift_stream_no_games))
+            LinkRow(
+                title = stringResource(R.string.rift_stream_get_vibepollo),
+                subtitle = stringResource(R.string.rift_stream_get_vibepollo_summary),
+                icon = Icons.Rounded.Download,
+                onClick = { uriHandler.openUri(VIBEPOLLO_DOWNLOAD_URL) },
+            )
+        }
+    }
 
     NoteText(stringResource(R.string.rift_settings_stream_note))
 
@@ -343,3 +354,6 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
         )
     }
 }
+
+/** Vibepollo's official releases (Windows installer and Linux packages). */
+private const val VIBEPOLLO_DOWNLOAD_URL = "https://github.com/Nonary/Vibepollo/releases"
