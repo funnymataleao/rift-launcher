@@ -340,6 +340,48 @@ object EmulatorLibrary {
                     )
                 }
             }
+            LaunchKind.APS3E -> listOf(
+                Intent("aenu.intent.action.APS3E").apply {
+                    clipData = ClipData.newRawUri("", uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    component = ComponentName(pkg, "aenu.aps3e.EmulatorActivity")
+                    putExtra("iso_uri", uri.toString())
+                },
+                base(Intent.ACTION_VIEW).setPackage(pkg),
+            )
+            LaunchKind.ARMSX3 -> listOf(
+                Intent(Intent.ACTION_MAIN).apply {
+                    clipData = ClipData.newRawUri("", uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or clearTask)
+                    component = ComponentName(pkg, "com.armsx2.Main")
+                    putExtra("path", uri.toString())
+                },
+                base(Intent.ACTION_VIEW).setPackage(pkg),
+            )
+            LaunchKind.EMUCOREC -> listOf(
+                Intent(Intent.ACTION_MAIN).apply {
+                    clipData = ClipData.newRawUri("", uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or clearTask)
+                    component = ComponentName(pkg, "com.sbro.emucorec.core.ps3.Emulator")
+                    putExtra("gamePath", rawPath(uri) ?: uri.toString())
+                },
+                base(Intent.ACTION_VIEW).setPackage(pkg),
+            )
+            LaunchKind.BACHATAS4 -> {
+                // Bachata S4 starts only games installed inside it, by their CUSA code; the code is read from the file's name.
+                val serial = Regex("CUSA\\d{5}", RegexOption.IGNORE_CASE).find(Uri.decode(game.documentUri))?.value?.uppercase()
+                if (serial == null) {
+                    emptyList()
+                } else {
+                    listOf(
+                        Intent(Intent.ACTION_MAIN).apply {
+                            addFlags(clearTask)
+                            component = ComponentName(pkg, "com.bachatas4.android.DirectLaunchActivity")
+                            putExtra("game_id", serial)
+                        },
+                    )
+                }
+            }
             LaunchKind.VIEW -> listOfNotNull(
                 known?.activity?.let { explicit(base(Intent.ACTION_VIEW), it) },
                 base(Intent.ACTION_VIEW).setPackage(pkg),
