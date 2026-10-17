@@ -244,6 +244,11 @@ import kotlinx.coroutines.withContext
 
 private const val PANEL_EXIT_REFOCUS_MS = 450L
 private const val HIDE_REFOCUS_MS = 500L
+/**
+ * The one edge inset of the home (Denis): the distance from the screen edge to the first cover. The tabs and
+ * the avatar sit this far from the top, the left and right blocks of the top bar and of the hints bar this far
+ * from the sides, and the hints this far from the bottom.
+ */
 private val ScreenPadding = 48.dp
 private val CardGap = 18.dp
 
@@ -2598,8 +2603,10 @@ private fun TopBar(
     // status icons in the right corner. The corner is measured first and keeps its room; the tabs shrink.
     val gap = with(LocalDensity.current) { 10.dp.roundToPx() }
     val pad = with(LocalDensity.current) { ScreenPadding.roundToPx() }
+    // The bumper's picture sits a little inside its touch box; its edge, not the box, lines up with the covers.
+    val bumperInset = with(LocalDensity.current) { 8.dp.roundToPx() }
     Layout(
-        modifier = modifier.fillMaxWidth().padding(vertical = 18.dp),
+        modifier = modifier.fillMaxWidth().padding(top = ScreenPadding, bottom = 18.dp),
         content = {
             BumperButton(GamepadButton.LB.iconRes, "LB") { onStep(-1) }
             Box { SectionTabs(glass = glass, sections = sections, selected = selected, onSelect = onSelect) }
@@ -2614,21 +2621,22 @@ private fun TopBar(
         val rb = measurables[2].measure(loose)
         val inner = constraints.maxWidth - 2 * pad
         // The tabs get what the bumpers and the corner leave (plus a little room for the search).
-        val tabsMax = (inner - lb.width - rb.width - icons.width - 3 * gap).coerceAtLeast(0)
+        val tabsMax = (inner + bumperInset - lb.width - rb.width - icons.width - 3 * gap).coerceAtLeast(0)
         val tabs = measurables[1].measure(loose.copy(maxWidth = tabsMax))
-        val leftEnd = pad + lb.width + gap + tabs.width + gap + rb.width
+        val leftEnd = pad - bumperInset + lb.width + gap + tabs.width + gap + rb.width
         val iconsX = constraints.maxWidth - pad - icons.width
         val free = (iconsX - gap - (leftEnd + gap)).coerceAtLeast(0)
         val searchBox = measurables[3].measure(loose.copy(maxWidth = free))
         val height = maxOf(icons.height, lb.height, tabs.height, searchBox.height)
         layout(constraints.maxWidth, height) {
-            var x = pad
-            lb.placeRelative(x, (height - lb.height) / 2); x += lb.width + gap
-            tabs.placeRelative(x, (height - tabs.height) / 2); x += tabs.width + gap
-            rb.placeRelative(x, (height - rb.height) / 2)
+            // Everything hangs from the same top line, so the tabs, the search and the avatar share the inset.
+            var x = pad - bumperInset
+            lb.placeRelative(x, 0); x += lb.width + gap
+            tabs.placeRelative(x, 0); x += tabs.width + gap
+            rb.placeRelative(x, 0)
             val centre = leftEnd + gap + free / 2
-            searchBox.placeRelative(centre - searchBox.width / 2, (height - searchBox.height) / 2)
-            icons.placeRelative(iconsX, (height - icons.height) / 2)
+            searchBox.placeRelative(centre - searchBox.width / 2, 0)
+            icons.placeRelative(iconsX, 0)
         }
     }
 }
@@ -3000,10 +3008,8 @@ private fun EmptyState(message: String, onConnect: () -> Unit, modifier: Modifie
     }
 }
 
-private val FooterHeight = 58.dp
-
-/** The hints sit closer to the screen edges than the content (Denis): the left block further left, the right block further right. */
-private val HintBarSidePadding = 24.dp
+/** The hint icons are 28 dp; below them the screen inset, above them a little air. */
+private val FooterHeight = 28.dp + ScreenPadding + 12.dp
 
 /** Whether the hint footer is on, read by the library grids to keep their bottom space in step. */
 private object HintBarState {
@@ -3046,9 +3052,9 @@ private fun HintsBar(showFilters: Boolean, modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .height(FooterHeight)
             .drawBehind { drawLine(Color.White.copy(alpha = 0.12f), Offset.Zero, Offset(size.width, 0f), strokeWidth = 1.dp.toPx()) }
-            .padding(horizontal = HintBarSidePadding),
+            .padding(start = ScreenPadding, end = ScreenPadding, bottom = ScreenPadding),
         horizontalArrangement = Arrangement.spacedBy(24.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Bottom,
     ) {
         // GameNative's own Kenney prompts (coloured face buttons), with its A/B X/Y swap setting.
         // Menus on the left, game actions on the right, like Big Picture; the tabs explain LB/RB.
