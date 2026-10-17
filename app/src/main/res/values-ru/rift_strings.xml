@@ -405,6 +405,8 @@
     <string name="rift_overlay_back_to_rift">Вернуться в Rift</string>
     <string name="rift_overlay_back_to_rift_summary">Игра останется открытой в фоне</string>
     <string name="rift_overlay_volume">Громкость</string>
+    <string name="rift_overlay_game_menu">Меню игры</string>
+    <string name="rift_overlay_game_menu_summary">Как жест «Назад»: в эмуляторах открывает их меню с выходом</string>
     <string name="rift_settings_overlay">Шторка в Android-играх</string>
     <string name="rift_settings_overlay_summary">Home на геймпаде открывает шторку Rift в Android-играх и эмуляторах. Включается в «Спец. возможностях»: «Шторка Rift в играх».</string>
 </resources>
