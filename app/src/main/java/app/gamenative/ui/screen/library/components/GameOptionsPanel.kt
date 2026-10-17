@@ -97,10 +97,11 @@ fun GameOptionsPanel(
     options: List<AppMenuOption>,
     modifier: Modifier = Modifier,
     onPlay: (() -> Unit)? = null,
+    onProperties: (() -> Unit)? = null,
 ) {
     // Rift: Start on the home shows a small menu in the middle, not this side panel.
     if (dev.rift.launcher.home.LocalRiftOptionsOnly.current != null) {
-        dev.rift.launcher.home.RiftGameStartMenu(isOpen, onDismiss, options, onPlay)
+        dev.rift.launcher.home.RiftGameStartMenu(isOpen, onDismiss, options, onPlay, onProperties)
         return
     }
     val firstItemFocusRequester = remember { FocusRequester() }
@@ -206,7 +207,7 @@ fun GameOptionsPanel(
     }
 }
 
-private enum class OptionCategory {
+internal enum class OptionCategory {
     QUICK_ACTIONS,
     GAME_MANAGEMENT,
     CONTAINER,
@@ -334,7 +335,7 @@ private fun OptionItem(
     }
 }
 
-private fun getIconForOption(type: AppOptionMenuType): ImageVector {
+internal fun getIconForOption(type: AppOptionMenuType): ImageVector {
     return when (type) {
         AppOptionMenuType.StorePage -> Icons.AutoMirrored.Filled.OpenInNew
         AppOptionMenuType.CreateShortcut -> Icons.AutoMirrored.Filled.AddToHomeScreen
@@ -380,7 +381,7 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
     }
 }
 
-private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List<AppMenuOption>> {
+internal fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List<AppMenuOption>> {
     val quickActions = mutableListOf<AppMenuOption>()
     val gameManagement = mutableListOf<AppMenuOption>()
     val containerSettings = mutableListOf<AppMenuOption>()

@@ -971,8 +971,10 @@ internal fun AppScreenContent(
     // Rift: opened from the PC streaming tab, the main action streams the game from the PC.
     val riftStream = dev.rift.launcher.home.LocalRiftStreamAction.current
     var optionsMenuVisible by remember { mutableStateOf(riftOptionsOnly != null) }
+    // Rift: the game's properties page (all the options, by group), from the Start menu or the page's settings icon.
+    var propertiesOpen by remember { mutableStateOf(false) }
     if (riftOptionsOnly != null) {
-        LaunchedEffect(optionsMenuVisible) { riftOptionsOnly.panelOpen = optionsMenuVisible }
+        LaunchedEffect(optionsMenuVisible, propertiesOpen) { riftOptionsOnly.panelOpen = optionsMenuVisible || propertiesOpen }
     }
 
     // Track the original progress bar bounds for ambient mode morph animation
@@ -1077,8 +1079,8 @@ internal fun AppScreenContent(
     }
 
     // Restore focus when options menu, dialogs
-    LaunchedEffect(optionsMenuVisible, dialogOpen) {
-        if (!optionsMenuVisible && !dialogOpen) {
+    LaunchedEffect(optionsMenuVisible, propertiesOpen, dialogOpen) {
+        if (!optionsMenuVisible && !propertiesOpen && !dialogOpen) {
             kotlinx.coroutines.delay(100) // Brief delay for menu/dialog animation
             try {
                 playButtonFocusRequester.requestFocus()
@@ -1133,7 +1135,7 @@ internal fun AppScreenContent(
             when (event.keyCode) {
                 // SELECT button - open options menu
                 KeyEvent.KEYCODE_BUTTON_SELECT -> {
-                    if (riftStream == null) optionsMenuVisible = true
+                    if (riftStream == null) propertiesOpen = true
                     true
                 }
 
@@ -1489,7 +1491,7 @@ internal fun AppScreenContent(
                             ActionIconButton(
                                 icon = Icons.Default.Settings,
                                 contentDescription = stringResource(R.string.options),
-                                onClick = { optionsMenuVisible = true },
+                                onClick = { propertiesOpen = true },
                             )
                         }
 
@@ -1870,7 +1872,7 @@ internal fun AppScreenContent(
                     GamepadAction(
                         button = GamepadButton.SELECT,
                         labelResId = R.string.options,
-                        onClick = { optionsMenuVisible = true },
+                        onClick = { propertiesOpen = true },
                     )
                 } else {
                     null
@@ -1892,6 +1894,13 @@ internal fun AppScreenContent(
             options = optionsMenu.toList(),
             modifier = Modifier.align(Alignment.CenterEnd),
             onPlay = if (isInstalled) onStartAction else null,
+            onProperties = { propertiesOpen = true },
+        )
+        dev.rift.launcher.home.RiftGameProperties(
+            isOpen = propertiesOpen,
+            title = displayInfo.name,
+            options = optionsMenu.toList(),
+            onDismiss = { propertiesOpen = false },
         )
 
         // Ambient mode during downloads

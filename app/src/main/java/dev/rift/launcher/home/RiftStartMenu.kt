@@ -193,7 +193,7 @@ private fun StartMenuRow(item: RiftStartMenuItem, onClick: () -> Unit, focusRequ
 
 /**
  * The PC games Start menu: the few lines people use ([onPlay] is null when the game is not
- * installed), and "Properties…" for everything else GameNative's options list holds.
+ * installed), and "Properties…" ([onProperties]) for the game's full properties page.
  */
 @Composable
 fun RiftGameStartMenu(
@@ -201,6 +201,7 @@ fun RiftGameStartMenu(
     onDismiss: () -> Unit,
     options: List<AppMenuOption>,
     onPlay: (() -> Unit)?,
+    onProperties: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val main = listOf(
@@ -216,24 +217,10 @@ fun RiftGameStartMenu(
         main.forEach { option ->
             add(RiftStartMenuItem(stringResource(option.optionType.title)) { option.onClick(); onDismiss() })
         }
-        if (options.isNotEmpty()) add(RiftStartMenuItem(stringResource(R.string.rift_menu_properties), chevron = true) {})
+        if (onProperties != null) {
+            add(RiftStartMenuItem(stringResource(R.string.rift_menu_properties)) { onProperties(); onDismiss() })
+        }
         add(RiftStartMenuItem(stringResource(R.string.rift_menu_cancel)) { onDismiss() })
     }
-    // Until the properties page lands, "Properties…" holds GameNative's whole list.
-    val sub = options.map { option ->
-        RiftStartMenuItem(
-            label = stringResource(option.optionType.title),
-            destructive = option.optionType == AppOptionMenuType.Uninstall ||
-                option.optionType == AppOptionMenuType.ResetToDefaults ||
-                option.optionType == AppOptionMenuType.ResetDrm,
-        ) { option.onClick(); onDismiss() }
-    }
-    RiftStartMenu(
-        isOpen = isOpen,
-        items = items,
-        onDismiss = onDismiss,
-        modifier = modifier,
-        subTitle = stringResource(R.string.rift_menu_properties_title),
-        sub = sub,
-    )
+    RiftStartMenu(isOpen = isOpen, items = items, onDismiss = onDismiss, modifier = modifier)
 }
