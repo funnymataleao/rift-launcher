@@ -341,8 +341,6 @@ fun RiftHomeScreen(
     var focusedPackage by rememberSaveable { mutableStateOf<String?>(null) }
     var focusedStreamId by rememberSaveable { mutableStateOf<String?>(null) }
     var focusedCloudId by rememberSaveable { mutableStateOf<String?>(null) }
-    var lastStreamView by remember { mutableStateOf(streamView) }
-    var lastAndroidView by remember { mutableStateOf(androidView) }
     var cloudCardFocused by rememberSaveable { mutableStateOf(false) }
     var streamCardFocused by rememberSaveable { mutableStateOf(false) }
     // The home streaming library's tab: all games, the ones on the PC, the ones not on it.
@@ -716,22 +714,45 @@ fun RiftHomeScreen(
     var libraryLayout by remember { mutableStateOf(PrefManager.libraryLayout) }
     // A new sort or filter reorders the covers, so the one that had focus may be gone from the screen (and
     // with it the focus, leaving the gamepad dead). Every tab starts again from its first cover.
-    LaunchedEffect(streamView, androidView) {
-        if (streamView == lastStreamView && androidView == lastAndroidView) return@LaunchedEffect
-        lastStreamView = streamView
-        lastAndroidView = androidView
+    // One rule for every tab and the library: after any sort or filter change the rows start over and the first
+    // cover has focus. The panel is still open then, and the reorder can drop focus on some other cover that would
+    // become "the last one", so the start is enforced again when the panel closes.
+    var lastViewKey by remember { mutableStateOf(filterKey) }
+    var viewChanged by remember { mutableStateOf(false) }
+    suspend fun startOver() {
+        focusedAppId = null
         focusedStreamId = null
         focusedPackage = null
+        focusedCloudId = null
+        libraryCardFocused = false
+        cloudCardFocused = false
+        libraryFocusedId = null
+        pcRowState.scrollToItem(0)
         streamRowState.scrollToItem(0)
         androidRowState.scrollToItem(0)
-        if (!overlayOpen) focusSection(section)
+        cloudRowState.scrollToItem(0)
+    }
+    LaunchedEffect(filterKey) {
+        if (filterKey == lastViewKey) return@LaunchedEffect
+        lastViewKey = filterKey
+        viewChanged = true
+        startOver()
+        if (!overlayOpen) {
+            focusSection(section)
+            viewChanged = false
+        }
     }
     LaunchedEffect(overlayOpen) {
         if (!overlayOpen) {
+            if (viewChanged) startOver()
             focusSection(section)
             // The panel slides out while the row may still be re-sorting; ask once more so focus never stays nowhere.
             delay(PANEL_EXIT_REFOCUS_MS)
-            if (!overlayOpen) focusSection(section)
+            if (!overlayOpen) {
+                if (viewChanged) startOver()
+                focusSection(section)
+                viewChanged = false
+            }
         }
     }
     val blur by animateDpAsState(if (overlayOpen) 28.dp else 0.dp, tween(300), label = "backdropBlur")
