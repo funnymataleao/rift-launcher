@@ -1448,24 +1448,7 @@ private fun PcLibraryGrid(
                     },
                     onClick = { onOpen(item) },
                     cover = {
-                        Text(
-                            text = item.name,
-                            color = RiftColors.OnSurfaceVariant,
-                            fontSize = 13.sp,
-                            textAlign = TextAlign.Center,
-                            maxLines = 4,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.align(Alignment.Center).padding(12.dp),
-                        )
-                        CoverImage(
-                            urls = urls,
-                            contentDescription = item.name,
-                            modifier = if (dimUninstalled && !item.isInstalled) {
-                                Modifier.fillMaxSize().graphicsLayer { alpha = 0.4f }
-                            } else {
-                                Modifier.fillMaxSize()
-                            },
-                        )
+                        GameCoverArt(item = item, urls = urls, dimmed = dimUninstalled && !item.isInstalled)
                     },
                     badge = { if (badges) CoverBadges(item, libraryState) },
                     reflection = false,
@@ -1476,6 +1459,31 @@ private fun PcLibraryGrid(
 }
 
 private val LibraryCoverWidth = 150.dp
+
+/**
+ * A cover's picture. No title on the cover (Denis: the art already has it); the name shows only
+ * for a game with no art at all. A game not installed is dimmed by black over the art, so nothing
+ * under it shows through and the card's rounded corners stay as they are while it grows.
+ */
+@Composable
+private fun BoxScope.GameCoverArt(item: LibraryItem, urls: List<String>, dimmed: Boolean) {
+    if (urls.none { it.isNotBlank() }) {
+        Text(
+            text = item.name,
+            color = RiftColors.OnSurfaceVariant,
+            fontSize = 13.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 4,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.align(Alignment.Center).padding(12.dp),
+        )
+    }
+    CoverImage(urls = urls, contentDescription = item.name, modifier = Modifier.fillMaxSize())
+    if (dimmed) Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = UNINSTALLED_DIM)))
+}
+
+/** How much black covers a game that is not installed (the art keeps about 40 %). */
+private const val UNINSTALLED_DIM = 0.6f
 private const val LIBRARY_LOAD_MORE_THRESHOLD = 18
 private const val TAB_RELOAD_WAIT_MS = 1_500L
 
@@ -1625,25 +1633,7 @@ private fun PcGamesShelf(
                 },
                 onClick = { onOpen(item) },
                 cover = {
-                    Text(
-                        text = item.name,
-                        color = RiftColors.OnSurfaceVariant,
-                        fontSize = 13.sp,
-                        textAlign = TextAlign.Center,
-                        maxLines = 4,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.align(Alignment.Center).padding(12.dp),
-                    )
-                    // Dimmed on the art itself: a layer on the whole card would clip its corners while it grows.
-                    CoverImage(
-                        urls = urls,
-                        contentDescription = item.name,
-                        modifier = if (dimUninstalled && !item.isInstalled) {
-                            Modifier.fillMaxSize().graphicsLayer { alpha = 0.4f }
-                        } else {
-                            Modifier.fillMaxSize()
-                        },
-                    )
+                    GameCoverArt(item = item, urls = urls, dimmed = dimUninstalled && !item.isInstalled)
                 },
                 badge = { if (badges) CoverBadges(item, libraryState) },
             )
