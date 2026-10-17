@@ -19,7 +19,7 @@ object RiftTabPrefs {
     const val MAX_NAME_LENGTH = 24
 
     /** Every tab Rift can show, in the order used until the person changes it. A new section type goes here too. */
-    val known: List<RiftSection> = listOf(RiftSection.PcGames, RiftSection.PcStreaming, RiftSection.AndroidGames)
+    val known: List<RiftSection> = listOf(RiftSection.PcGames, RiftSection.PcStreaming, RiftSection.AndroidGames, RiftSection.CloudStreaming)
 
     private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 

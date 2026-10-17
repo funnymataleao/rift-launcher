@@ -36,6 +36,12 @@ sealed interface RiftSection {
         override val key = "stream"
         override val titleRes = R.string.rift_section_pc_streaming
     }
+
+    /** Cloud gaming services the person signed in to in settings (Xbox Cloud Gaming for now). */
+    data object CloudStreaming : RiftSection {
+        override val key = "cloud"
+        override val titleRes = R.string.rift_section_cloud_streaming
+    }
 }
 
 object RiftSections {
@@ -45,11 +51,13 @@ object RiftSections {
         pcLibrary: List<LibraryItem>,
         androidGames: List<AndroidGame>,
         hasStreamGames: Boolean = false,
+        hasCloudGames: Boolean = false,
     ): List<RiftSection> = buildList {
         if (PlatformAuthUtils.isSignedInToAnyPlatform(context) || pcLibrary.isNotEmpty()) {
             add(RiftSection.PcGames)
         }
         if (androidGames.isNotEmpty()) add(RiftSection.AndroidGames)
         if (hasStreamGames) add(RiftSection.PcStreaming)
+        if (hasCloudGames) add(RiftSection.CloudStreaming)
     }.let { RiftTabPrefs.arrange(context, it) }
 }

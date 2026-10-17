@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Android
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Cast
+import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.DesktopWindows
 import androidx.compose.material.icons.rounded.Gamepad
@@ -32,7 +33,7 @@ enum class RiftSettingsGroup(@get:StringRes val titleRes: Int) {
  * Sections of Rift's settings screen, in the order the left rail shows them.
  *
  * The logic follows Beacon Game Launcher: first the places games come from (Android games, PC games,
- * PC streaming, emulator platforms), where adding a source is what makes its tab appear on the home
+ * PC streaming, emulator platforms, cloud streaming), where adding a source is what makes its tab appear on the home
  * screen; then how Rift looks, sounds and is controlled; then GameNative's own settings for Windows games
  * (driver, display, launch), each on a page of its own. Rows read and write the same
  * [app.gamenative.PrefManager] values GameNative uses (and Rift's own [RiftPrefs] for what it does not have).
@@ -48,6 +49,7 @@ enum class RiftSettingsSection(
     Accounts(RiftSettingsGroup.Sources, R.string.rift_settings_accounts, R.string.rift_settings_accounts_summary, Icons.Rounded.ManageAccounts, SettingsAccent.Blue),
     Streaming(RiftSettingsGroup.Sources, R.string.rift_settings_streaming, R.string.rift_settings_streaming_summary, Icons.Rounded.Cast, SettingsAccent.Teal),
     Emulators(RiftSettingsGroup.Sources, R.string.rift_settings_emulators, R.string.rift_settings_emulators_summary, Icons.Rounded.SportsEsports, SettingsAccent.Peach),
+    Cloud(RiftSettingsGroup.Sources, R.string.rift_settings_cloud, R.string.rift_settings_cloud_summary, Icons.Rounded.Cloud, SettingsAccent.Sky),
 
     Interface(RiftSettingsGroup.Rift, R.string.rift_settings_interface, R.string.rift_settings_interface_summary, Icons.Rounded.Palette, SettingsAccent.Sky),
     Tabs(RiftSettingsGroup.Rift, R.string.rift_settings_tabs, R.string.rift_settings_tabs_summary, Icons.Rounded.Tab, SettingsAccent.Peach),

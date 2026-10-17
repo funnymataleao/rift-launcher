@@ -351,6 +351,7 @@ private fun SectionPane(
                         RiftSettingsSection.AndroidGames -> AndroidGamesSettings()
                         RiftSettingsSection.Emulators -> EmulatorsSettings()
                         RiftSettingsSection.Streaming -> StreamingSettings(onOpenPcPairing)
+                        RiftSettingsSection.Cloud -> CloudSettings()
                         RiftSettingsSection.Downloads -> DownloadsSettings()
                         RiftSettingsSection.Tabs -> TabsSettings()
                         RiftSettingsSection.Accounts -> AccountsSettings(onSteamSignIn, onSteamSignOut)

@@ -469,3 +469,14 @@ agreement. If you redistribute this project, verify your right to redistribute t
 - **moonlight-common-c** (`ClassicOldSong/moonlight-common-c` fork of
   `moonlight-stream/moonlight-common-c`), with **ENet** (MIT) and **Reed-Solomon** code. License: GPL-3.0.
 - Prebuilt **Opus** (BSD-3-Clause) and **OpenSSL** (Apache-2.0) static libraries shipped by Artemis.
+
+---
+
+## Better xCloud (`app/src/main/assets/better-xcloud/`)
+
+- **Better xCloud** userscript by redphx (`redphx/better-xcloud`, version 6.7.12, commit
+  `f8397043f6d2148d2345d508902a38c69cf1ee20`), the unmodified `dist/better-xcloud.user.js`.
+  License: MIT, full text in `app/src/main/assets/better-xcloud/LICENSE` (it also covers the
+  AMD FidelityFX CAS shader and Phosphor Icons the script contains).
+  Rift loads it into its own browser for Xbox Cloud Gaming. Rift is not affiliated with
+  Microsoft or Xbox.

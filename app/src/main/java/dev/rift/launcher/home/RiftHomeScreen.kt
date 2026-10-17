@@ -173,6 +173,10 @@ import app.gamenative.ui.screen.library.components.LibraryOptionsPanel
 import app.gamenative.utils.SteamUtils
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
+import dev.rift.launcher.cloud.CloudGamePage
+import dev.rift.launcher.cloud.CloudLibrary
+import dev.rift.launcher.cloud.XcloudAccount
+import dev.rift.launcher.cloud.rememberCloudStreamingTab
 import dev.rift.launcher.sound.RiftSound
 import dev.rift.launcher.sound.rememberRiftSoundPlayer
 import dev.rift.launcher.sound.riftKeySounds
@@ -257,7 +261,15 @@ fun RiftHomeScreen(
     val streamTab = if (pairedPcs.isNotEmpty()) rememberPcStreamingTab() else null
     val streamItems = streamTab?.items.orEmpty()
     val hasStreamGames = streamItems.isNotEmpty()
-    val sections = remember(library, androidGames, hasStreamGames) { RiftSections.configured(context, library, androidGames, hasStreamGames) }
+    val cloudSignedIn by XcloudAccount.signedIn(context).collectAsStateWithLifecycle()
+    // The cloud tab exists only while a cloud account is signed in and its catalog has games; the
+    // sign-in and the hints live in settings.
+    val cloudTab = if (cloudSignedIn == true) rememberCloudStreamingTab() else null
+    val cloudItems = cloudTab?.items.orEmpty()
+    val hasCloudGames = cloudItems.isNotEmpty()
+    val sections = remember(library, androidGames, hasStreamGames, hasCloudGames) {
+        RiftSections.configured(context, library, androidGames, hasStreamGames, hasCloudGames)
+    }
 
     // Start-up: pure black until there is something to show (or, with nothing set up, until the
     // stores have had a moment to sign in), then one entrance: the art drifts in with a slight zoom
@@ -267,7 +279,7 @@ fun RiftHomeScreen(
         delay(STARTUP_SETTLE_MS)
         settled = true
     }
-    val ready = library.isNotEmpty() || androidGames.isNotEmpty() || hasStreamGames || (settled && !libraryState.isLoading)
+    val ready = library.isNotEmpty() || androidGames.isNotEmpty() || hasStreamGames || hasCloudGames || (settled && !libraryState.isLoading)
     var introPlayed by rememberSaveable { mutableStateOf(false) }
     val intro = remember { Animatable(if (introPlayed) 1f else 0f) }
     // The covers roll in together with the backdrop's entrance, after the curtain, never behind it.
@@ -296,9 +308,13 @@ fun RiftHomeScreen(
     var focusedAppId by rememberSaveable { mutableStateOf<String?>(null) }
     var focusedPackage by rememberSaveable { mutableStateOf<String?>(null) }
     var focusedStreamId by rememberSaveable { mutableStateOf<String?>(null) }
+    var focusedCloudId by rememberSaveable { mutableStateOf<String?>(null) }
+    var cloudCardFocused by rememberSaveable { mutableStateOf(false) }
     var openedAppId by rememberSaveable { mutableStateOf<String?>(null) }
     // The open game page was opened from the PC streaming tab: its main button streams the game.
     var openedForStream by rememberSaveable { mutableStateOf(false) }
+    // The open game page is a cloud game's: its main button plays it in the cloud.
+    var openedForCloud by rememberSaveable { mutableStateOf(false) }
     var lastOpenedItem by remember { mutableStateOf<LibraryItem?>(null) }
     var pendingFocusKey by remember { mutableStateOf<String?>(null) }
 
@@ -306,6 +322,7 @@ fun RiftHomeScreen(
     val pcRowState = rememberLazyListState()
     val androidRowState = rememberLazyListState()
     val streamRowState = rememberLazyListState()
+    val cloudRowState = rememberLazyListState()
     val filterKey = listOf(libraryState.appInfoSortType.toList(), libraryState.currentSortOption)
     var lastFilterKey by remember { mutableStateOf(filterKey) }
     LaunchedEffect(filterKey) {
@@ -326,10 +343,13 @@ fun RiftHomeScreen(
     val focusedItem = homeRow.firstOrNull { it.appId == focusedAppId } ?: homeRow.firstOrNull()
     val focusedAndroid = androidGames.firstOrNull { it.packageName == focusedPackage } ?: androidGames.firstOrNull()
     val focusedStream = streamItems.firstOrNull { it.appId == focusedStreamId } ?: streamItems.firstOrNull()
+    val cloudHomeRow = cloudItems.take(HOME_ROW_COUNT)
+    val focusedCloud = cloudHomeRow.firstOrNull { it.appId == focusedCloudId } ?: cloudHomeRow.firstOrNull()
 
     fun openGame(item: LibraryItem, forStream: Boolean = false) {
         lastOpenedItem = item
         openedForStream = forStream
+        openedForCloud = CloudLibrary.isCloud(item.appId)
         openedAppId = item.appId
     }
 
@@ -339,7 +359,8 @@ fun RiftHomeScreen(
         if (openedAppId != null) return
         // In the library, the grid takes it back on the game it had last.
         if (libraryOpen) {
-            libraryPending = (libraryFocusedId?.takeIf { id -> library.any { it.appId == id } } ?: library.firstOrNull()?.appId)
+            val items = if (target == RiftSection.CloudStreaming) cloudItems else library
+            libraryPending = (libraryFocusedId?.takeIf { id -> items.any { it.appId == id } } ?: items.firstOrNull()?.appId)
             return
         }
         // The cover may be scrolled out of the row (a search changes it), so bring it into view first.
@@ -349,10 +370,18 @@ fun RiftHomeScreen(
                 homeScope.launch { pcRowState.scrollToItem((index - 1).coerceAtLeast(0)) }
             }
         }
+        // A game played from the cloud tab moves to the front of its row.
+        if (target == RiftSection.CloudStreaming) {
+            val index = if (cloudCardFocused) cloudHomeRow.size else focusedCloud?.let(cloudHomeRow::indexOf) ?: -1
+            if (index >= 0 && cloudRowState.layoutInfo.visibleItemsInfo.none { it.index == index }) {
+                homeScope.launch { cloudRowState.scrollToItem((index - 1).coerceAtLeast(0)) }
+            }
+        }
         pendingFocusKey = when (target) {
             RiftSection.PcGames -> if (libraryCardFocused && homeRow.isNotEmpty()) LIBRARY_CARD_KEY else focusedItem?.let(::focusKeyFor)
             RiftSection.AndroidGames -> focusedAndroid?.let(::androidFocusKey)
             RiftSection.PcStreaming -> focusedStream?.let(::focusKeyFor)
+            RiftSection.CloudStreaming -> if (cloudCardFocused && cloudHomeRow.isNotEmpty()) LIBRARY_CARD_KEY else focusedCloud?.let(::focusKeyFor)
             null -> null
         }
     }
@@ -411,6 +440,12 @@ fun RiftHomeScreen(
     // The library always opens on "All games" and the home row is always all of them.
     fun openLibrary() {
         if (libraryState.currentTab != LibraryTab.ALL) viewModel.onTabChanged(LibraryTab.ALL)
+        libraryFocusedId = null
+        libraryOpen = true
+        libraryTabSwitch++
+    }
+    // The cloud tab's library: every cloud game, one tab per cloud service.
+    fun openCloudLibrary() {
         libraryFocusedId = null
         libraryOpen = true
         libraryTabSwitch++
@@ -700,7 +735,13 @@ fun RiftHomeScreen(
                             scaleY = 1.12f - 0.12f * p
                         },
                 ) {
-                    if (section == RiftSection.AndroidGames) AndroidBackdrop(focusedAndroid) else HeroBackdrop(item = if (section == RiftSection.PcStreaming) focusedStream else focusedItem.takeIf { section == RiftSection.PcGames })
+                    if (section == RiftSection.AndroidGames) AndroidBackdrop(focusedAndroid) else HeroBackdrop(
+                        item = when (section) {
+                            RiftSection.PcStreaming -> focusedStream
+                            RiftSection.CloudStreaming -> focusedCloud
+                            else -> focusedItem.takeIf { section == RiftSection.PcGames }
+                        },
+                    )
                 }
 
                 Column(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = if (ready) 1f else 0f }) {
@@ -767,6 +808,29 @@ fun RiftHomeScreen(
                                 badges = false,
                             )
                         }
+                        // The cloud tab: Game Pass cloud games, the ones played from Rift first; A opens the game page.
+                        section == RiftSection.CloudStreaming -> {
+                            HeroLogo(item = focusedCloud, modifier = Modifier.weight(1f).graphicsLayer { alpha = intro.value })
+                            PcGamesShelf(
+                                shown = cloudHomeRow,
+                                entry = if (!introPlayed) ShelfEntry.Intro else switchEntry,
+                                entryStarted = introPlayed || introRunning,
+                                onOpenLibrary = ::openCloudLibrary,
+                                onLibraryFocused = { cloudCardFocused = true },
+                                libraryState = libraryState,
+                                listState = cloudRowState,
+                                cardHeight = cardHeight,
+                                pendingFocusKey = pendingFocusKey,
+                                onFocusConsumed = { pendingFocusKey = null },
+                                onFocused = {
+                                    focusedCloudId = it.appId
+                                    cloudCardFocused = false
+                                },
+                                onOpen = { openGame(it) },
+                                onNearEnd = {},
+                                badges = false,
+                            )
+                        }
                         // Still loading with nothing cached: stay black rather than show a spinner.
                         library.isEmpty() && libraryState.isLoading -> Spacer(modifier = Modifier.weight(1f))
                         else -> {
@@ -812,7 +876,7 @@ fun RiftHomeScreen(
             // Big Picture's library: all the PC games in a grid, one tab per store with games.
             val libraryTabs = pcLibraryTabs(libraryState)
             RiftLibraryScreen(
-                isOpen = libraryOpen,
+                isOpen = libraryOpen && section != RiftSection.CloudStreaming,
                 glass = heroLayer,
                 tabs = libraryTabs,
                 selectedKey = libraryState.currentTab.name,
@@ -854,6 +918,32 @@ fun RiftHomeScreen(
                             viewModel.onPageChange(1)
                         }
                     },
+                )
+            }
+            // The cloud tab's library: one tab per cloud service (GeForce NOW joins Xbox Cloud Gaming later).
+            val cloudLibraryTabs = listOf(LibraryTabSpec(CLOUD_XCLOUD_TAB, stringResource(R.string.rift_cloud_service_game_pass)))
+            RiftLibraryScreen(
+                isOpen = libraryOpen && section == RiftSection.CloudStreaming,
+                glass = heroLayer,
+                tabs = cloudLibraryTabs,
+                selectedKey = CLOUD_XCLOUD_TAB,
+                onSelectTab = {},
+                onDismiss = ::closeLibrary,
+                keepFocusInside = { openedAppId == null },
+            ) {
+                PcLibraryGrid(
+                    items = cloudItems,
+                    loading = false,
+                    tabSwitch = libraryTabSwitch,
+                    libraryState = libraryState,
+                    pendingFocusKey = libraryPending,
+                    onFocusConsumed = { libraryPending = null },
+                    onWantFocus = { libraryPending = it },
+                    onFocused = { libraryFocusedId = it.appId },
+                    onOpen = { openGame(it) },
+                    onNearEnd = {},
+                    badges = false,
+                    waitForReload = false,
                 )
             }
             RiftGlassTheme {
@@ -959,6 +1049,18 @@ fun RiftHomeScreen(
                     null
                 }
             }
+            if (openedForCloud && cloudTab != null) {
+                // A cloud game's page; like a stream, the page closes first so the game ends back on its cover.
+                CloudGamePage(
+                    item = item,
+                    onPlay = {
+                        sounds.play(RiftSound.Launch)
+                        closePage()
+                        cloudTab.launch(context, item)
+                    },
+                    onBack = { closePage() },
+                )
+            } else {
             CompositionLocalProvider(LocalRiftStreamAction provides streamAction) {
             LibraryDetailPane(
                 libraryItem = item,
@@ -972,12 +1074,13 @@ fun RiftHomeScreen(
                 onBack = { closePage() },
             )
             }
+            }
         }
     }
     }
 
     // Focus a cover once the section has something to show, so a gamepad works without touching the screen.
-    LaunchedEffect(section, library.isNotEmpty(), androidGames.isNotEmpty(), streamItems.isNotEmpty()) {
+    LaunchedEffect(section, library.isNotEmpty(), androidGames.isNotEmpty(), streamItems.isNotEmpty(), cloudItems.isNotEmpty()) {
         if (pendingFocusKey == null) focusSection(section)
     }
 }
@@ -993,6 +1096,7 @@ private const val PRELOAD_BACKDROP_PX = 2560
 /** Games in the home row before the "Open library" card, like Big Picture. */
 private const val HOME_ROW_COUNT = 20
 private const val LIBRARY_CARD_KEY = "rift:library"
+private const val CLOUD_XCLOUD_TAB = "xcloud"
 private const val RECENT_SORT_DEFAULT_KEY = "home_recent_sort_default_v1"
 
 /** The library's tabs for PC games: all games first, then each store that has games. */
@@ -1024,13 +1128,16 @@ private fun PcLibraryGrid(
     onFocused: (LibraryItem) -> Unit,
     onOpen: (LibraryItem) -> Unit,
     onNearEnd: () -> Unit,
+    badges: Boolean = true,
+    // The PC library reloads its list on a tab switch; a list already in memory has nothing to wait for.
+    waitForReload: Boolean = true,
 ) {
     val gridState = rememberLazyGridState()
     val currentItems by rememberUpdatedState(items)
     val currentLoading by rememberUpdatedState(loading)
     // On opening and after a tab switch: wait for the new list, then focus its first game.
     LaunchedEffect(tabSwitch) {
-        withTimeoutOrNull(TAB_RELOAD_WAIT_MS) { snapshotFlow { currentLoading }.first { it } }
+        if (waitForReload) withTimeoutOrNull(TAB_RELOAD_WAIT_MS) { snapshotFlow { currentLoading }.first { it } }
         snapshotFlow { currentLoading }.first { !it }
         val first = currentItems.firstOrNull() ?: return@LaunchedEffect
         gridState.scrollToItem(0)
@@ -1083,7 +1190,7 @@ private fun PcLibraryGrid(
                         )
                         CoverImage(urls = urls, contentDescription = item.name)
                     },
-                    badge = { CoverBadges(item, libraryState) },
+                    badge = { if (badges) CoverBadges(item, libraryState) },
                     reflection = false,
                 )
             }

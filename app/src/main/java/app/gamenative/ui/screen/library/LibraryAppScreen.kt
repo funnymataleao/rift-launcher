@@ -84,7 +84,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -1403,11 +1402,11 @@ internal fun AppScreenContent(
                         // Primary action button (left-aligned)
                         if (riftStream != null) {
                             PrimaryActionButton(
-                                text = stringResource(R.string.rift_stream_play),
+                                text = stringResource(riftStream.labelRes),
                                 onClick = riftStream.onStream,
                                 isInstalled = true,
                                 focusRequester = playButtonFocusRequester,
-                                icon = Icons.Default.Cast,
+                                icon = riftStream.icon,
                             )
                         } else if (isDownloading || hasPartialDownload) {
                             PrimaryActionButton(
@@ -1684,6 +1683,8 @@ internal fun AppScreenContent(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
+                // Rift: a cloud game runs on Microsoft's servers, so Wine compatibility says nothing about it.
+                if (riftStream?.showLocalDetails != false) {
                 CommunityCompatibilitySection(
                     gameKey = displayInfo.appId.toString(),
                     summary = communityCompatibility.summary,
@@ -1693,6 +1694,7 @@ internal fun AppScreenContent(
                     onViewReports = communityCompatibility.onViewReports,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
+                }
 
                 if (displayInfo.storeDetails.hasOverview) {
                     StoreDetailsSection(
@@ -1708,7 +1710,8 @@ internal fun AppScreenContent(
                     modifier = Modifier.padding(bottom = 12.dp),
                 )
 
-                // Info cards in 2-column grid
+                // Info cards in 2-column grid (Rift: not for a cloud game, nothing of it is on the device)
+                if (riftStream?.showLocalDetails != false) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -1742,6 +1745,7 @@ internal fun AppScreenContent(
                         modifier = Modifier.weight(1f),
                         focusableForNavigation = true,
                     )
+                }
                 }
 
                 displayInfo.hltbStats?.let { hltb ->
@@ -1834,7 +1838,7 @@ internal fun AppScreenContent(
                 if (riftStream != null) {
                     GamepadAction(
                         button = GamepadButton.START,
-                        labelResId = R.string.rift_stream_play,
+                        labelResId = riftStream.labelRes,
                         onClick = riftStream.onStream,
                     )
                 } else if (isInstalled) {
