@@ -3188,7 +3188,9 @@ private fun EmptyState(message: String, onConnect: () -> Unit, modifier: Modifie
 }
 
 /** The hint icons are 28 dp; below them the screen inset, above them a little air. */
-private val FooterHeight = 28.dp + ScreenPadding + 12.dp
+// The hints sit 20 dp above the bottom edge, like the top bar sits 20 dp below the top one.
+private val FooterInset = 20.dp
+private val FooterHeight = 28.dp + FooterInset + 12.dp
 
 /** Whether the hint footer is on, read by the library grids to keep their bottom space in step. */
 private object HintBarState {
@@ -3230,7 +3232,7 @@ private fun HintsBar(showFilters: Boolean, showOptions: Boolean = true, modifier
             .fillMaxWidth()
             .height(FooterHeight)
             .drawBehind { drawLine(Color.White.copy(alpha = 0.12f), Offset.Zero, Offset(size.width, 0f), strokeWidth = 1.dp.toPx()) }
-            .padding(start = ScreenPadding, end = ScreenPadding, bottom = ScreenPadding),
+            .padding(start = ScreenPadding, end = ScreenPadding, bottom = FooterInset),
         horizontalArrangement = Arrangement.spacedBy(24.dp),
         verticalAlignment = Alignment.Bottom,
     ) {
