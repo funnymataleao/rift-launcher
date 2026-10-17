@@ -313,7 +313,7 @@ private fun PickerSearchField(query: String, onChange: (String) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .plateFill(focused)
-            .heightIn(min = RiftSizes.button)
+            .heightIn(min = RowMinHeight)
             .padding(horizontal = 18.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -342,10 +342,10 @@ private fun PickerIcon(packageName: String?) {
     val icon by produceState<Bitmap?>(packageName?.let { AndroidGames.iconCached(it) }, packageName) {
         if (packageName != null && value == null) value = withContext(Dispatchers.IO) { AndroidGames.icon(context, packageName) }
     }
-    Box(modifier = Modifier.size(40.dp).clip(RiftShapes.control), contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.size(44.dp).clip(RiftShapes.control), contentAlignment = Alignment.Center) {
         val bitmap = icon
         if (bitmap != null) {
-            Image(bitmap = bitmap.asImageBitmap(), contentDescription = null, modifier = Modifier.size(40.dp))
+            Image(bitmap = bitmap.asImageBitmap(), contentDescription = null, modifier = Modifier.size(44.dp))
         } else if (packageName == null) {
             Icon(Icons.Rounded.Download, contentDescription = null, tint = RiftColors.OnSurfaceVariant, modifier = Modifier.size(26.dp))
         }
