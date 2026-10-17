@@ -514,4 +514,14 @@
     <string name="rift_game_ach_unlocked">Полученные</string>
     <string name="rift_game_ach_locked">Ещё не получены · %1$d</string>
     <string name="rift_game_ach_all">Все достижения · %1$d</string>
+    <string name="rift_settings_group_cache">Кэш</string>
+    <string name="rift_settings_cache_size">Размер кэша</string>
+    <string name="rift_settings_cache_clear">Очистить кэш</string>
+    <string name="rift_settings_cache_clear_summary">Обложки, фоны, логотипы и описания игр</string>
+    <string name="rift_settings_cache_packs">Скачанные паки звуков</string>
+    <string name="rift_settings_cache_note">Игры, сохранения, настройки, обложки, выбранные вами, и паки звуков остаются. Паки удаляются в разделе «Звуки».</string>
+    <string name="rift_settings_cache_clear_title">Очистить кэш?</string>
+    <string name="rift_settings_cache_clear_message">Обложки, фоны, логотипы и описания игр будут скачиваться заново, поэтому какое-то время библиотека может открываться медленнее. Игры, сохранения, настройки, выбранные вами обложки и паки звуков не затрагиваются.</string>
+    <string name="rift_settings_cache_clear_confirm">Очистить</string>
+    <string name="rift_settings_cache_cleared">Кэш очищен, освобождено %1$s</string>
 </resources>

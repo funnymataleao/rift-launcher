@@ -519,4 +519,14 @@
     <string name="rift_game_ach_unlocked">Unlocked</string>
     <string name="rift_game_ach_locked">Not unlocked yet · %1$d</string>
     <string name="rift_game_ach_all">All achievements · %1$d</string>
+    <string name="rift_settings_group_cache">Cache</string>
+    <string name="rift_settings_cache_size">Cache size</string>
+    <string name="rift_settings_cache_clear">Clear cache</string>
+    <string name="rift_settings_cache_clear_summary">Covers, backgrounds, logos and game descriptions</string>
+    <string name="rift_settings_cache_packs">Downloaded sound packs</string>
+    <string name="rift_settings_cache_note">Games, saves, settings, covers you picked yourself and sound packs stay. Sound packs are deleted in the Sounds section.</string>
+    <string name="rift_settings_cache_clear_title">Clear the cache?</string>
+    <string name="rift_settings_cache_clear_message">Covers, backgrounds, logos and game descriptions will be downloaded again, so the library may load slower for a while. Games, saves, settings, covers you picked yourself and sound packs are not touched.</string>
+    <string name="rift_settings_cache_clear_confirm">Clear</string>
+    <string name="rift_settings_cache_cleared">Cache cleared, %1$s freed</string>
 </resources>

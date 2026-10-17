@@ -236,6 +236,31 @@ object GameArtStore {
         }
     }
 
+    /** Bytes taken by the pictures found without being asked (the ones the user picked are not counted). */
+    fun autoBytes(context: Context): Long =
+        autoFiles(context).sumOf { it.length() }
+
+    /**
+     * Forgets every picture found without being asked and deletes its file; the next auto fill searches again.
+     * The pictures the user picked stay. Returns the bytes freed.
+     */
+    fun clearAuto(context: Context): Long {
+        val p = autoPrefs(context)
+        val freed = autoFiles(context).sumOf { file -> file.length().also { file.delete() } }
+        p.edit { clear() }
+        idPrefs(context).edit {
+            idPrefs(context).all.keys.filter { it.startsWith("auto|") }.forEach { remove(it) }
+        }
+        pickCount = -1
+        _version.value++
+        return freed
+    }
+
+    private fun autoFiles(context: Context): List<File> =
+        autoPrefs(context).all.values.mapNotNull { (it as? String)?.takeIf { v -> v.startsWith("file://") } }
+            .map { File(it.removePrefix("file://")) }
+            .filter { it.isFile }
+
     /** Drops the pictures found without being asked for [appId] (renamed): the next auto fill searches again. */
     fun forgetAuto(context: Context, appId: String) {
         autoPrefs(context).edit {

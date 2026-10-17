@@ -7,6 +7,7 @@ import app.gamenative.data.LibraryItem
 import app.gamenative.data.StoreDetailsRepository
 import dev.rift.launcher.art.SteamGridDbClient
 import timber.log.Timber
+import java.io.File
 import dev.rift.launcher.settings.RiftPrefs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -31,6 +32,17 @@ object RiftAutoMeta {
     /** What is saved for [appId] already; empty when nothing is. */
     fun cached(context: Context, appId: String): GameMeta? =
         prefs(context).getString(appId, null)?.let(GameMeta::fromJson)
+
+    /** Bytes taken by the saved descriptions and ratings. */
+    fun bytes(context: Context): Long =
+        File(context.applicationInfo.dataDir, "shared_prefs/$PREFS.xml").length()
+
+    /** Forgets everything found for every game; each game's page and the next library scan ask again. Returns the bytes freed. */
+    fun clearAll(context: Context): Long {
+        val freed = bytes(context)
+        prefs(context).edit { clear() }
+        return freed
+    }
 
     /** Drops what was found for [appId] (the game was renamed), so the next lookup asks IGDB again. */
     fun forget(context: Context, appId: String) {
