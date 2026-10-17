@@ -203,6 +203,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+private const val PANEL_EXIT_REFOCUS_MS = 450L
 private val ScreenPadding = 48.dp
 private val CardGap = 18.dp
 
@@ -404,6 +405,18 @@ fun RiftHomeScreen(
             val index = if (cloudCardFocused) cloudHomeRow.size else focusedCloud?.let(cloudHomeRow::indexOf) ?: -1
             if (index >= 0 && cloudRowState.layoutInfo.visibleItemsInfo.none { it.index == index }) {
                 homeScope.launch { cloudRowState.scrollToItem((index - 1).coerceAtLeast(0)) }
+            }
+        }
+        if (target == RiftSection.PcStreaming) {
+            val index = focusedStream?.let { streamItems.indexOf(it) } ?: -1
+            if (index >= 0 && streamRowState.layoutInfo.visibleItemsInfo.none { it.index == index }) {
+                homeScope.launch { streamRowState.scrollToItem((index - 1).coerceAtLeast(0)) }
+            }
+        }
+        if (target == RiftSection.AndroidGames) {
+            val index = focusedAndroid?.let { androidShown.indexOf(it) } ?: -1
+            if (index >= 0 && androidRowState.layoutInfo.visibleItemsInfo.none { it.index == index }) {
+                homeScope.launch { androidRowState.scrollToItem((index - 1).coerceAtLeast(0)) }
             }
         }
         pendingFocusKey = when (target) {
@@ -649,7 +662,12 @@ fun RiftHomeScreen(
     // The panel's layout choice belongs to GameNative's library screen; Rift only keeps it in sync.
     var libraryLayout by remember { mutableStateOf(PrefManager.libraryLayout) }
     LaunchedEffect(overlayOpen) {
-        if (!overlayOpen) focusSection(section)
+        if (!overlayOpen) {
+            focusSection(section)
+            // The panel slides out while the row may still be re-sorting; ask once more so focus never stays nowhere.
+            delay(PANEL_EXIT_REFOCUS_MS)
+            if (!overlayOpen) focusSection(section)
+        }
     }
     val blur by animateDpAsState(if (overlayOpen) 28.dp else 0.dp, tween(300), label = "backdropBlur")
 
@@ -1436,7 +1454,7 @@ private fun PcGamesShelf(
             val url = urls.firstOrNull { it.isNotEmpty() }.orEmpty()
             val context = LocalContext.current
             // Entrance: the covers on screen roll in one after another (app start, tab switch).
-            Box(modifier = Modifier.shelfEntry(entry, index, clock).graphicsLayer { alpha = if (dimUninstalled && !item.isInstalled) 0.4f else 1f }) {
+            Box(modifier = Modifier.shelfEntry(entry, index, clock)) {
             CoverCard(
                 height = cardHeight,
                 aspectRatio = if (wide) WIDE_TILE_RATIO else 2f / 3f,
@@ -1459,7 +1477,16 @@ private fun PcGamesShelf(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.align(Alignment.Center).padding(12.dp),
                     )
-                    CoverImage(urls = urls, contentDescription = item.name)
+                    // Dimmed on the art itself: a layer on the whole card would clip its corners while it grows.
+                    CoverImage(
+                        urls = urls,
+                        contentDescription = item.name,
+                        modifier = if (dimUninstalled && !item.isInstalled) {
+                            Modifier.fillMaxSize().graphicsLayer { alpha = 0.4f }
+                        } else {
+                            Modifier.fillMaxSize()
+                        },
+                    )
                 },
                 badge = { if (badges) CoverBadges(item, libraryState) },
             )
