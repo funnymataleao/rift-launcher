@@ -88,5 +88,6 @@ object AndroidGames {
         context.getSharedPreferences(USAGE_PREFS, Context.MODE_PRIVATE).edit { putLong(game.packageName, System.currentTimeMillis()) }
         dev.rift.launcher.overlay.ExternalGameSession.started(context, game.packageName)
         context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        dev.rift.launcher.overlay.ExternalGameSession.setResumeIntent(context, intent)
     }
 }

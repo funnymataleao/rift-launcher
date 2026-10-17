@@ -275,6 +275,15 @@
                 android:resource="@xml/rift_overlay_service" />
         </service>
 
+        <!-- Rift's panel over a game when the accessibility service is off (dev.rift.launcher.overlay.RiftGameHome). -->
+        <activity
+            android:name="dev.rift.launcher.overlay.RiftPanelActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="dev.rift.launcher.panel"
+            android:theme="@style/Theme.Rift.Panel" />
+
         <service
             android:name=".service.SteamService"
             android:enabled="true"
