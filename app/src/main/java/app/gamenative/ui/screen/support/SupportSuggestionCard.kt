@@ -28,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -184,6 +185,13 @@ private fun runRecordText(run: DebugRunParams): String? {
     return stringResource(R.string.support_suggestion_run_record, parts.joinToString("; "))
 }
 
+/**
+ * Rift: when set, the suggestion card's buttons are drawn by Rift (focused filled with its accent, otherwise grey,
+ * no ring or outline) and the card has no border.
+ */
+internal val LocalSupportButton =
+    staticCompositionLocalOf<(@Composable (text: String, enabled: Boolean, onClick: () -> Unit, modifier: Modifier) -> Unit)?> { null }
+
 @Composable
 internal fun OutlinedFocusButton(
     text: String,
@@ -191,6 +199,10 @@ internal fun OutlinedFocusButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    LocalSupportButton.current?.let {
+        it(text, enabled, onClick, modifier)
+        return
+    }
     val interaction = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(12.dp)
     OutlinedButton(
@@ -387,7 +399,7 @@ internal fun SuggestionCard(
         shape = RoundedCornerShape(16.dp),
         color = PluviaTheme.colors.surfaceElevated,
         contentColor = MaterialTheme.colorScheme.onSurface,
-        border = BorderStroke(1.dp, PluviaTheme.colors.accentPurple),
+        border = if (LocalSupportButton.current != null) null else BorderStroke(1.dp, PluviaTheme.colors.accentPurple),
         modifier = Modifier
             .padding(top = 6.dp)
             .widthIn(max = 640.dp)
