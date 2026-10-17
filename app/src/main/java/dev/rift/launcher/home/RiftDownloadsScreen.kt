@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -69,8 +70,18 @@ import dev.rift.launcher.settings.plateText
 import dev.rift.launcher.ui.theme.RiftAccent
 import dev.rift.launcher.ui.theme.RiftColors
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 
 private val ScreenPadding = 48.dp
+
+/** Lets other screens (the install screen) ask the home to show the downloads page. */
+object RiftDownloadsNav {
+    val requests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    fun open() {
+        requests.tryEmit(Unit)
+    }
+}
 private val CoverSize = 72.dp
 private val BarHeight = 8.dp
 
@@ -83,6 +94,7 @@ private val BarHeight = 8.dp
 @Composable
 fun RiftDownloadsScreen(
     onBack: () -> Unit,
+    onOpenStorage: () -> Unit,
     viewModel: DownloadsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -134,8 +146,8 @@ fun RiftDownloadsScreen(
                 }
             }
 
-            if (all.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (all.isNotEmpty()) {
                     if (activeCount > 0) {
                         RiftPillButton(
                             text = stringResource(R.string.downloads_pause_all),
@@ -163,6 +175,13 @@ fun RiftDownloadsScreen(
                         enabled = finished.isNotEmpty(),
                     )
                 }
+                RiftPillButton(
+                    text = stringResource(R.string.settings_storage_manage_title),
+                    onClick = onOpenStorage,
+                    icon = Icons.Rounded.Storage,
+                )
+            }
+            if (all.isNotEmpty()) {
                 Text(
                     text = stringResource(R.string.rift_downloads_hint),
                     color = RiftColors.OnSurfaceVariant,
