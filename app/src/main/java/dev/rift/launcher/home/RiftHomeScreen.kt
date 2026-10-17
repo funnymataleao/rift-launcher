@@ -198,8 +198,10 @@ import dev.rift.launcher.cloud.CloudLogos
 import dev.rift.launcher.cloud.XcloudAccount
 import dev.rift.launcher.cloud.rememberCloudStreamingTab
 import dev.rift.launcher.emulators.EmulatorLibrary
+import dev.rift.launcher.emulators.toLibraryItem
 import dev.rift.launcher.art.ArtKind
 import dev.rift.launcher.art.GameArtStore
+import dev.rift.launcher.meta.RiftAutoMeta
 import dev.rift.launcher.ui.BlackGlass
 import dev.rift.launcher.ui.LocalGlassBackdrop
 import dev.rift.launcher.ui.blackGlass
@@ -343,6 +345,22 @@ fun RiftHomeScreen(
         }
         homeLifecycle.lifecycle.addObserver(observer)
         onDispose { homeLifecycle.lifecycle.removeObserver(observer) }
+    }
+    // The description, rating and tags of every Android and emulator game are fetched as soon as the game is
+    // in the library (needs the IGDB keys from settings; asked again each time the home comes back).
+    var metaVersion by remember { mutableIntStateOf(0) }
+    DisposableEffect(homeLifecycle) {
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) metaVersion++ }
+        homeLifecycle.lifecycle.addObserver(observer)
+        onDispose { homeLifecycle.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(emulatorGames, androidGames, metaVersion) {
+        withContext(Dispatchers.IO) {
+            RiftAutoMeta.prefetch(
+                context,
+                emulatorGames.map { it.toLibraryItem() to it.platformId } + androidGames.map { it.toPageItem() to null },
+            )
+        }
     }
     var emulatorView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.Emulators, TabSort.LAST_PLAYED)) }
     val emulatorItems by remember(emulatorGames, emulatorView, pickedArt, hiddenGames) {
