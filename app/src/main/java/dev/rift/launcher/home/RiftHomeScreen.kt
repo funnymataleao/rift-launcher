@@ -297,6 +297,8 @@ fun RiftHomeScreen(
     var focusedPackage by rememberSaveable { mutableStateOf<String?>(null) }
     var focusedStreamId by rememberSaveable { mutableStateOf<String?>(null) }
     var openedAppId by rememberSaveable { mutableStateOf<String?>(null) }
+    // The open game page was opened from the PC streaming tab: its main button streams the game.
+    var openedForStream by rememberSaveable { mutableStateOf(false) }
     var lastOpenedItem by remember { mutableStateOf<LibraryItem?>(null) }
     var pendingFocusKey by remember { mutableStateOf<String?>(null) }
 
@@ -325,8 +327,9 @@ fun RiftHomeScreen(
     val focusedAndroid = androidGames.firstOrNull { it.packageName == focusedPackage } ?: androidGames.firstOrNull()
     val focusedStream = streamItems.firstOrNull { it.appId == focusedStreamId } ?: streamItems.firstOrNull()
 
-    fun openGame(item: LibraryItem) {
+    fun openGame(item: LibraryItem, forStream: Boolean = false) {
         lastOpenedItem = item
+        openedForStream = forStream
         openedAppId = item.appId
     }
 
@@ -759,7 +762,7 @@ fun RiftHomeScreen(
                                 pendingFocusKey = pendingFocusKey,
                                 onFocusConsumed = { pendingFocusKey = null },
                                 onFocused = { focusedStreamId = it.appId },
-                                onOpen = { streamTab.launch(context, it) },
+                                onOpen = { openGame(it, forStream = true) },
                                 onNearEnd = {},
                                 badges = false,
                             )
@@ -785,7 +788,7 @@ fun RiftHomeScreen(
                                     libraryCardFocused = false
                                 },
                                 // A opens the game page; games never start straight from the home (Denis).
-                                onOpen = ::openGame,
+                                onOpen = { openGame(it) },
                                 onNearEnd = {
                                     if (libraryState.currentPaginationPage < libraryState.lastPaginationPage) {
                                         viewModel.onPageChange(1)
@@ -845,7 +848,7 @@ fun RiftHomeScreen(
                     onFocusConsumed = { libraryPending = null },
                     onWantFocus = { libraryPending = it },
                     onFocused = { libraryFocusedId = it.appId },
-                    onOpen = ::openGame,
+                    onOpen = { openGame(it) },
                     onNearEnd = {
                         if (libraryState.currentPaginationPage < libraryState.lastPaginationPage) {
                             viewModel.onPageChange(1)
@@ -943,6 +946,20 @@ fun RiftHomeScreen(
                 },
         ) {
             BackHandler(enabled = openedAppId != null) { closePage() }
+            // From the PC streaming tab the page streams the game; the page closes first, so the stream
+            // ends back on the same tab and cover.
+            val streamAction = remember(item.appId, openedForStream, streamTab) {
+                if (openedForStream && streamTab != null) {
+                    RiftStreamAction {
+                        sounds.play(RiftSound.Launch)
+                        closePage()
+                        streamTab.launch(context, item)
+                    }
+                } else {
+                    null
+                }
+            }
+            CompositionLocalProvider(LocalRiftStreamAction provides streamAction) {
             LibraryDetailPane(
                 libraryItem = item,
                 onClickPlay = { asContainer ->
@@ -954,6 +971,7 @@ fun RiftHomeScreen(
                 onAiDebugRun = { onAiDebugRun(item.appId) },
                 onBack = { closePage() },
             )
+            }
         }
     }
     }

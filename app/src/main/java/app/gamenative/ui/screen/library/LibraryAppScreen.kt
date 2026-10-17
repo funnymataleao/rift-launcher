@@ -84,6 +84,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -242,6 +243,7 @@ private fun PrimaryActionButton(
     downloadProgress: Float = 0f,
     focusRequester: FocusRequester = remember { FocusRequester() },
     onProgressBarPositioned: ((Rect) -> Unit)? = null,
+    icon: ImageVector? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -336,7 +338,7 @@ private fun PrimaryActionButton(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Icon(
-                    imageVector = if (isInstalled) Icons.Default.PlayArrow else Icons.Default.CloudDownload,
+                    imageVector = icon ?: if (isInstalled) Icons.Default.PlayArrow else Icons.Default.CloudDownload,
                     contentDescription = null,
                     tint = contentColor,
                     modifier = Modifier.size(24.dp),
@@ -967,6 +969,8 @@ internal fun AppScreenContent(
 
     // Rift: Start on the Rift home shows only this game's options panel over the home.
     val riftOptionsOnly = dev.rift.launcher.home.LocalRiftOptionsOnly.current
+    // Rift: opened from the PC streaming tab, the main action streams the game from the PC.
+    val riftStream = dev.rift.launcher.home.LocalRiftStreamAction.current
     var optionsMenuVisible by remember { mutableStateOf(riftOptionsOnly != null) }
     if (riftOptionsOnly != null) {
         LaunchedEffect(optionsMenuVisible) { riftOptionsOnly.panelOpen = optionsMenuVisible }
@@ -1095,13 +1099,17 @@ internal fun AppScreenContent(
     } else {
         installEnabled && isValidToDownload
     }
-    val startActionEnabled = if (isDownloading || hasPartialDownload) {
+    val startActionEnabled = if (riftStream != null) {
+        true
+    } else if (isDownloading || hasPartialDownload) {
         pauseResumeEnabled
     } else {
         buttonEnabled
     }
     val onStartAction = {
-        if (isDownloading || hasPartialDownload) {
+        if (riftStream != null) {
+            riftStream.onStream()
+        } else if (isDownloading || hasPartialDownload) {
             onPauseResumeClick()
         } else {
             onDownloadInstallClick()
@@ -1126,7 +1134,7 @@ internal fun AppScreenContent(
             when (event.keyCode) {
                 // SELECT button - open options menu
                 KeyEvent.KEYCODE_BUTTON_SELECT -> {
-                    optionsMenuVisible = true
+                    if (riftStream == null) optionsMenuVisible = true
                     true
                 }
 
@@ -1393,7 +1401,15 @@ internal fun AppScreenContent(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         // Primary action button (left-aligned)
-                        if (isDownloading || hasPartialDownload) {
+                        if (riftStream != null) {
+                            PrimaryActionButton(
+                                text = stringResource(R.string.rift_stream_play),
+                                onClick = riftStream.onStream,
+                                isInstalled = true,
+                                focusRequester = playButtonFocusRequester,
+                                icon = Icons.Default.Cast,
+                            )
+                        } else if (isDownloading || hasPartialDownload) {
                             PrimaryActionButton(
                                 text = if (isDownloading) {
                                     stringResource(R.string.pause_download)
@@ -1469,14 +1485,16 @@ internal fun AppScreenContent(
                             }
                         }
 
-                        // Secondary action icons (right-aligned)
-                        ActionIconButton(
-                            icon = Icons.Default.Settings,
-                            contentDescription = stringResource(R.string.options),
-                            onClick = { optionsMenuVisible = true },
-                        )
+                        // Secondary action icons (right-aligned); a streamed game has no local options.
+                        if (riftStream == null) {
+                            ActionIconButton(
+                                icon = Icons.Default.Settings,
+                                contentDescription = stringResource(R.string.options),
+                                onClick = { optionsMenuVisible = true },
+                            )
+                        }
 
-                        if (isInstalled || hasPartialDownload || hasLeftoverInstall) {
+                        if (riftStream == null && (isInstalled || hasPartialDownload || hasLeftoverInstall)) {
                             ActionIconButton(
                                 icon = Icons.Default.Delete,
                                 contentDescription = if (isInstalled || hasLeftoverInstall) stringResource(R.string.uninstall) else stringResource(R.string.delete_app),
@@ -1812,8 +1830,14 @@ internal fun AppScreenContent(
         }
 
         GamepadActionBar(
-            actions = listOf(
-                if (isInstalled) {
+            actions = listOfNotNull(
+                if (riftStream != null) {
+                    GamepadAction(
+                        button = GamepadButton.START,
+                        labelResId = R.string.rift_stream_play,
+                        onClick = riftStream.onStream,
+                    )
+                } else if (isInstalled) {
                     GamepadAction(
                         button = GamepadButton.START,
                         labelResId = R.string.run_app,
@@ -1838,11 +1862,15 @@ internal fun AppScreenContent(
                         onClick = { if (startActionEnabled) onStartAction() },
                     )
                 },
-                GamepadAction(
-                    button = GamepadButton.SELECT,
-                    labelResId = R.string.options,
-                    onClick = { optionsMenuVisible = true },
-                ),
+                if (riftStream == null) {
+                    GamepadAction(
+                        button = GamepadButton.SELECT,
+                        labelResId = R.string.options,
+                        onClick = { optionsMenuVisible = true },
+                    )
+                } else {
+                    null
+                },
                 GamepadAction(
                     button = GamepadButton.B,
                     labelResId = R.string.back,

@@ -48,4 +48,5 @@
     <string name="rift_stream_setup_title">PC games</string>
     <string name="rift_stream_get_vibepollo">Download Vibepollo for your PC</string>
     <string name="rift_stream_get_vibepollo_summary">Free streaming host that adds your Steam games by itself</string>
+    <string name="rift_stream_play">Stream from PC</string>
 </resources>
