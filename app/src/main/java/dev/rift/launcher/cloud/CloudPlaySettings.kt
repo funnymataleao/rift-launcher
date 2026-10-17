@@ -160,6 +160,52 @@ object CloudPlaySettings {
         listOf(0, 25, 50, 75, 100, 125, 150, 200, 300, 400, 500, 600).map { CloudOpt(it, text = "$it%") }, 100,
     )
 
+    val renderer = CloudSetting.Choice(
+        "video.player.type", S, R.string.rift_cloud_set_renderer, Icons.Rounded.Memory,
+        listOf(default, CloudOpt("webgl2", text = "WebGL 2"), CloudOpt("webgpu", text = "WebGPU")), "default",
+    )
+    val power = CloudSetting.Choice(
+        "video.player.powerPreference", S, R.string.rift_cloud_set_power, Icons.Rounded.Memory,
+        listOf(default, CloudOpt("low-power", R.string.rift_cloud_opt_battery), CloudOpt("high-performance", R.string.rift_cloud_opt_performance)),
+        "default", summary = R.string.rift_cloud_set_power_summary,
+    )
+    val clarity = CloudSetting.Choice(
+        "video.processing", S, R.string.rift_cloud_set_clarity, Icons.Rounded.CenterFocusStrong,
+        listOf(CloudOpt("usm", R.string.rift_cloud_opt_usm), CloudOpt("cas", text = "AMD FidelityFX CAS")), "usm",
+    )
+    val clarityMode = CloudSetting.Choice(
+        "video.processing.mode", S, R.string.rift_cloud_set_clarity_mode, Icons.Rounded.Tune,
+        listOf(CloudOpt("performance", R.string.rift_cloud_opt_performance), CloudOpt("quality", R.string.rift_cloud_opt_quality)), "performance",
+    )
+    val position = CloudSetting.Choice(
+        "video.position", S, R.string.rift_cloud_set_position, Icons.Rounded.AspectRatio,
+        listOf(
+            CloudOpt("top", R.string.rift_cloud_opt_top),
+            CloudOpt("top-half", R.string.rift_cloud_opt_top_half),
+            CloudOpt("center", R.string.rift_cloud_opt_center),
+            CloudOpt("bottom-half", R.string.rift_cloud_opt_bottom_half),
+            CloudOpt("bottom", R.string.rift_cloud_opt_bottom),
+        ),
+        "center",
+    )
+    val deviceVibration = CloudSetting.Choice(
+        "deviceVibration.mode", S, R.string.rift_cloud_set_device_vibration, Icons.Rounded.Vibration,
+        listOf(off, CloudOpt("on", R.string.rift_settings_on), CloudOpt("auto", R.string.rift_cloud_opt_no_gamepad)), "off",
+        summary = R.string.rift_cloud_set_device_vibration_summary,
+    )
+    val vibrationStrength = CloudSetting.Choice("deviceVibration.intensity", S, R.string.rift_cloud_set_vibration_strength, Icons.Rounded.Vibration, percent(10, 100, 10), 50)
+    val pollingRate = CloudSetting.Choice(
+        "controller.pollingRate", S, R.string.rift_cloud_set_polling, Icons.Rounded.Gamepad,
+        (4..60 step 4).map { CloudOpt(it, R.string.rift_cloud_opt_hz, "%.0f".format(1000f / it)) }, 4,
+        summary = R.string.rift_cloud_set_polling_summary,
+    )
+    val localCoop = CloudSetting.Toggle("localCoOp.enabled", S, R.string.rift_cloud_set_local_coop, Icons.Rounded.Groups, false)
+    val statsPosition = CloudSetting.Choice(
+        "stats.position", S, R.string.rift_cloud_set_stats_position, Icons.Rounded.AspectRatio,
+        listOf(CloudOpt("top-left", R.string.rift_cloud_opt_left), CloudOpt("top-center", R.string.rift_cloud_opt_center), CloudOpt("top-right", R.string.rift_cloud_opt_right)),
+        "top-right",
+    )
+
     /** The game's tab of the settings: the stream, the picture, the sound, the gamepad, the stats. */
     val streamGroups = listOf(
         CloudGroup(
@@ -208,37 +254,14 @@ object CloudPlaySettings {
         CloudGroup(
             R.string.rift_cloud_group_picture,
             listOf(
-                CloudSetting.Choice(
-                    "video.player.type", S, R.string.rift_cloud_set_renderer, Icons.Rounded.Memory,
-                    listOf(default, CloudOpt("webgl2", text = "WebGL 2"), CloudOpt("webgpu", text = "WebGPU")), "default",
-                ),
-                CloudSetting.Choice(
-                    "video.player.powerPreference", S, R.string.rift_cloud_set_power, Icons.Rounded.Memory,
-                    listOf(default, CloudOpt("low-power", R.string.rift_cloud_opt_battery), CloudOpt("high-performance", R.string.rift_cloud_opt_performance)),
-                    "default", summary = R.string.rift_cloud_set_power_summary,
-                ),
-                CloudSetting.Choice(
-                    "video.processing", S, R.string.rift_cloud_set_clarity, Icons.Rounded.CenterFocusStrong,
-                    listOf(CloudOpt("usm", R.string.rift_cloud_opt_usm), CloudOpt("cas", text = "AMD FidelityFX CAS")), "usm",
-                ),
-                CloudSetting.Choice(
-                    "video.processing.mode", S, R.string.rift_cloud_set_clarity_mode, Icons.Rounded.Tune,
-                    listOf(CloudOpt("performance", R.string.rift_cloud_opt_performance), CloudOpt("quality", R.string.rift_cloud_opt_quality)), "performance",
-                ),
+                renderer,
+                power,
+                clarity,
+                clarityMode,
                 sharpness,
                 maxFps,
                 ratio,
-                CloudSetting.Choice(
-                    "video.position", S, R.string.rift_cloud_set_position, Icons.Rounded.AspectRatio,
-                    listOf(
-                        CloudOpt("top", R.string.rift_cloud_opt_top),
-                        CloudOpt("top-half", R.string.rift_cloud_opt_top_half),
-                        CloudOpt("center", R.string.rift_cloud_opt_center),
-                        CloudOpt("bottom-half", R.string.rift_cloud_opt_bottom_half),
-                        CloudOpt("bottom", R.string.rift_cloud_opt_bottom),
-                    ),
-                    "center",
-                ),
+                position,
                 brightness,
                 contrast,
                 saturation,
@@ -255,18 +278,10 @@ object CloudPlaySettings {
         CloudGroup(
             R.string.rift_cloud_group_gamepad,
             listOf(
-                CloudSetting.Choice(
-                    "deviceVibration.mode", S, R.string.rift_cloud_set_device_vibration, Icons.Rounded.Vibration,
-                    listOf(off, CloudOpt("on", R.string.rift_settings_on), CloudOpt("auto", R.string.rift_cloud_opt_no_gamepad)), "off",
-                    summary = R.string.rift_cloud_set_device_vibration_summary,
-                ),
-                CloudSetting.Choice("deviceVibration.intensity", S, R.string.rift_cloud_set_vibration_strength, Icons.Rounded.Vibration, percent(10, 100, 10), 50),
-                CloudSetting.Choice(
-                    "controller.pollingRate", S, R.string.rift_cloud_set_polling, Icons.Rounded.Gamepad,
-                    (4..60 step 4).map { CloudOpt(it, R.string.rift_cloud_opt_hz, "%.0f".format(1000f / it)) }, 4,
-                    summary = R.string.rift_cloud_set_polling_summary,
-                ),
-                CloudSetting.Toggle("localCoOp.enabled", S, R.string.rift_cloud_set_local_coop, Icons.Rounded.Groups, false),
+                deviceVibration,
+                vibrationStrength,
+                pollingRate,
+                localCoop,
                 CloudSetting.Toggle("ui.controllerStatus.show", P, R.string.rift_cloud_set_controller_status, Icons.Rounded.SportsEsports, true),
             ),
         ),
@@ -297,11 +312,7 @@ object CloudPlaySettings {
                     ),
                     listOf("ping", "fps", "btr", "dt", "pl", "fl"),
                 ),
-                CloudSetting.Choice(
-                    "stats.position", S, R.string.rift_cloud_set_stats_position, Icons.Rounded.AspectRatio,
-                    listOf(CloudOpt("top-left", R.string.rift_cloud_opt_left), CloudOpt("top-center", R.string.rift_cloud_opt_center), CloudOpt("top-right", R.string.rift_cloud_opt_right)),
-                    "top-right",
-                ),
+                statsPosition,
                 CloudSetting.Choice(
                     "stats.textSize", S, R.string.rift_cloud_set_stats_text, Icons.Rounded.FormatSize,
                     listOf(CloudOpt("0.9rem", R.string.rift_cloud_opt_small), CloudOpt("1.0rem", R.string.rift_cloud_opt_normal_size), CloudOpt("1.1rem", R.string.rift_cloud_opt_large)),
@@ -547,6 +558,9 @@ object CloudPlaySettings {
             stats.key -> "var s = StreamStats.getInstance(); if (v) { if (s.isHidden()) s.start(); } else if (!s.isHidden()) { s.stop(); }"
             maxFps.key -> "limitVideoPlayerFps(v);"
             volume.key -> "SoundShortcut.setGainNodeVolume(v);"
+            statsPosition.key -> "StreamStats.refreshStyles();"
+            deviceVibration.key, vibrationStrength.key, pollingRate.key -> "StreamSettings.refreshControllerSettings();"
+            localCoop.key -> "if (BxExposed.toggleLocalCoOp) BxExposed.toggleLocalCoOp(v);"
             else -> if (setting.key.startsWith("video.")) "updateVideoPlayer();" else ""
         }
         return "(function(){try{var v=$json[0];setGamePref(-1,'${setting.key}',v,'direct');$apply return 'ok'}catch(e){return String(e)}})()"

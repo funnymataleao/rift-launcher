@@ -2773,6 +2773,7 @@ private fun SectionTabs(
 }
 
 /** Tabs with the sliding glass capsule; the home's sections and the library's sources. */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 internal fun <T> GlassTabs(
     glass: GraphicsLayer,

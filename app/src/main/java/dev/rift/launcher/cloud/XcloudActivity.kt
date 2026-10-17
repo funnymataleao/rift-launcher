@@ -37,6 +37,7 @@ import androidx.webkit.WebViewFeature
 import app.gamenative.R
 import dev.rift.launcher.home.RiftControls
 import dev.rift.launcher.stream.StreamMenu
+import dev.rift.launcher.stream.StreamMenuRow
 import org.json.JSONObject
 import timber.log.Timber
 
@@ -187,6 +188,7 @@ class XcloudActivity : ComponentActivity() {
                         pcName = getString(R.string.rift_cloud_service_xcloud),
                         onDismiss = ::closeMenu,
                         onEndStream = ::finish,
+                        focusRow = StreamMenuRow.CLOUD_FIRST,
                         extraSettings = if (signInMode) null else { requester -> CloudQuickSettings(requester, ::openXboxMenu, ::applyLive) },
                     )
                 }
@@ -199,8 +201,13 @@ class XcloudActivity : ComponentActivity() {
             )
         }
         setContentView(root)
+        // In a game Back (the edge swipe) opens the panel; anywhere else on xbox.com it goes back to Rift.
         onBackPressedDispatcher.addCallback(this) {
-            if (menuOpen) closeMenu() else openMenu()
+            when {
+                menuOpen -> closeMenu()
+                inGame() -> openMenu()
+                else -> finish()
+            }
         }
         webView.loadUrl(url)
         webView.requestFocus()
@@ -366,6 +373,13 @@ class XcloudActivity : ComponentActivity() {
             root.removeView(view)
             fullScreenView = null
             fullScreenCallback = null
+            // The stream leaves full screen when the game is over (quit in xCloud's menu, the session
+            // ended): back to Rift, not to xbox.com's pages.
+            if (!signInMode && !isFinishing) {
+                Log.i(LOG_TAG, "Stream left full screen, closing")
+                finish()
+                return
+            }
             if (!menuOpen) webView.requestFocus()
         }
 
@@ -395,6 +409,9 @@ class XcloudActivity : ComponentActivity() {
         Log.i(LOG_TAG, "Game left for $url, closing")
         finish()
     }
+
+    /** Whether a game is on screen: the stream is full screen. */
+    private fun inGame() = fullScreenView != null
 
     /** Where the page's input goes: the full-screen stream when there is one, else the page. */
     private fun focusPage() {
@@ -464,6 +481,11 @@ class XcloudActivity : ComponentActivity() {
             KeyEvent.KEYCODE_BUTTON_SELECT in held && KeyEvent.KEYCODE_BUTTON_START in held
         ) {
             openMenu()
+            return true
+        }
+        // Out of a game (loading, xbox.com's own pages) B goes back to Rift; in a game it is the game's.
+        if (gamepad && !signInMode && !inGame() && event.keyCode == KeyEvent.KEYCODE_BUTTON_B) {
+            if (event.action == KeyEvent.ACTION_UP) finish()
             return true
         }
         if (gamepad) {
