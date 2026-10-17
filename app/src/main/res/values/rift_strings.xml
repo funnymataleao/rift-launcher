@@ -248,7 +248,6 @@
     <string name="rift_apps_sort_newest">Newest</string>
     <string name="rift_apps_sort_name">A–Z</string>
     <string name="rift_hint_menu">Quick Access</string>
-    <string name="rift_hint_search">Search</string>
     <string name="rift_settings_show_hint_bar_title">Show the hints bar</string>
     <string name="rift_settings_show_hint_bar_subtitle">The bar at the bottom of the home with the button hints. Hidden, the content moves down</string>
     <string name="rift_source_android">Android</string>
