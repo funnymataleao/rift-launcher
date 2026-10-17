@@ -45,6 +45,8 @@ internal fun RiftGamePage(
     onPlay: () -> Unit,
     onBack: () -> Unit,
     onChangeArt: () -> Unit,
+    onRefreshMeta: (() -> Unit)? = null,
+    onPickMeta: (() -> Unit)? = null,
     native: Boolean = true,
     platformId: String? = null,
 ) {
@@ -54,8 +56,9 @@ internal fun RiftGamePage(
     val artVersion by GameArtStore.version.collectAsStateWithLifecycle()
     val shown = remember(game, artVersion) { GameArtStore.apply(context, game) }
     LaunchedEffect(game.appId, game.name) { RiftAutoArt.ensure(context, game) }
-    var meta by remember(game.appId, game.name) { mutableStateOf(RiftAutoMeta.cached(context, game.appId)) }
-    LaunchedEffect(game.appId, game.name) { RiftAutoMeta.ensure(context, game, platformId)?.let { meta = it } }
+    val metaVersion by RiftAutoMeta.version.collectAsStateWithLifecycle()
+    var meta by remember(game.appId, game.name, metaVersion) { mutableStateOf(RiftAutoMeta.cached(context, game.appId)) }
+    LaunchedEffect(game.appId, game.name, metaVersion) { RiftAutoMeta.ensure(context, game, platformId)?.let { meta = it } }
     LaunchedEffect(meta, game.appId) {
         timber.log.Timber.tag("RiftMeta").i(
             "page %s: description %s, source %s, genres+tags %d",
@@ -105,7 +108,7 @@ internal fun RiftGamePage(
     }
     var choosingEmulator by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
-    val options = remember(native, platformId, onChangeArt) {
+    val options = remember(native, platformId, onChangeArt, onRefreshMeta, onPickMeta) {
         if (!native) {
             emptyList()
         } else {
@@ -113,6 +116,8 @@ internal fun RiftGamePage(
                 add(AppMenuOption(AppOptionMenuType.ChangeArt, onChangeArt))
                 if (platformId != null) add(AppMenuOption(AppOptionMenuType.ChooseEmulator) { choosingEmulator = true })
                 add(AppMenuOption(AppOptionMenuType.Rename) { renaming = true })
+                onRefreshMeta?.let { add(AppMenuOption(AppOptionMenuType.RefreshMeta, it)) }
+                onPickMeta?.let { add(AppMenuOption(AppOptionMenuType.ChooseMeta, it)) }
             }
         }
     }

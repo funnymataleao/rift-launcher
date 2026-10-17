@@ -55,6 +55,7 @@ import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SdStorage
 import androidx.compose.material.icons.filled.Settings
@@ -366,6 +367,8 @@ internal fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.ChangeArt -> Icons.Default.Image
         AppOptionMenuType.ChooseEmulator -> Icons.Default.Apps
         AppOptionMenuType.Rename -> Icons.Default.Edit
+        AppOptionMenuType.RefreshMeta -> Icons.Default.Refresh
+        AppOptionMenuType.ChooseMeta -> Icons.Default.Search
     }
 }
 
@@ -391,6 +394,8 @@ internal fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, Lis
             AppOptionMenuType.ChangeArt,
             AppOptionMenuType.ChooseEmulator,
             AppOptionMenuType.Rename,
+            AppOptionMenuType.RefreshMeta,
+            AppOptionMenuType.ChooseMeta,
             -> quickActions.add(option)
 
             // Game Management

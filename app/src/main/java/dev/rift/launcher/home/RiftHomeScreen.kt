@@ -1866,6 +1866,8 @@ fun RiftHomeScreen(
                     },
                     onBack = { closePage() },
                     onChangeArt = { openArt(item) },
+                    onRefreshMeta = { refreshMeta(item, EmulatorLibrary.game(item.appId)?.platformId) },
+                    onPickMeta = { openMetaPicker(item, EmulatorLibrary.game(item.appId)?.platformId) },
                     platformId = EmulatorLibrary.game(item.appId)?.platformId,
                 )
             } else if (PcStreamingTab.isHostGame(item.appId) && streamTab != null) {
@@ -1890,6 +1892,8 @@ fun RiftHomeScreen(
                     },
                     onBack = { closePage() },
                     onChangeArt = { openArt(item) },
+                    onRefreshMeta = { refreshMeta(item, null) },
+                    onPickMeta = { openMetaPicker(item, null) },
                 )
             } else if (openedForCloud && cloudTab != null) {
                 // A cloud game's page; like a stream, the page closes first so the game ends back on its cover.
@@ -1926,9 +1930,13 @@ fun RiftHomeScreen(
                 item = metaItem,
                 platformId = metaPlatform,
                 openToken = metaToken,
-                onDismiss = { metaItem = null },
+                onDismiss = {
+                    metaItem = null
+                    if (openedAppId != null) runCatching { pageFocus.requestFocus() }
+                },
                 onChosen = {
                     metaItem = null
+                    if (openedAppId != null) runCatching { pageFocus.requestFocus() }
                     SnackbarManager.show(context.getString(R.string.rift_meta_chosen))
                 },
             )

@@ -47,4 +47,6 @@ enum class AppOptionMenuType(@StringRes val title: Int) {
     ChangeArt(R.string.rift_option_change_art),
     ChooseEmulator(R.string.rift_option_choose_emulator),
     Rename(R.string.rift_option_rename),
+    RefreshMeta(R.string.rift_menu_refresh_meta),
+    ChooseMeta(R.string.rift_menu_pick_meta),
 }

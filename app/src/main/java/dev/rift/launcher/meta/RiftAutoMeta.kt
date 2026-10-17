@@ -29,6 +29,10 @@ object RiftAutoMeta {
     private const val TAG = "RiftMeta"
     private val lock = Mutex()
 
+    /** Counts every change the user can see (a refresh, a hand-picked game), so an open game page reads its info again. */
+    private val changes = kotlinx.coroutines.flow.MutableStateFlow(0)
+    val version: kotlinx.coroutines.flow.StateFlow<Int> get() = changes
+
     private fun prefs(context: Context): SharedPreferences =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -58,6 +62,7 @@ object RiftAutoMeta {
     /** Saves [meta] as the user's own choice for [appId]; a lookup never replaces it. */
     fun pin(context: Context, appId: String, meta: GameMeta) {
         prefs(context).edit { putString(appId, meta.toJson()); putString(PIN + appId, meta.source) }
+        changes.value++
     }
 
     /**
@@ -73,6 +78,7 @@ object RiftAutoMeta {
         Timber.tag(TAG).i("%s: refresh asked", item.name)
         val fresh = ensure(context, item, platformId)
         if (fresh == null && before != null) p.edit { putString(item.appId, before) }
+        if (fresh != null) changes.value++
         return fresh
     }
 
