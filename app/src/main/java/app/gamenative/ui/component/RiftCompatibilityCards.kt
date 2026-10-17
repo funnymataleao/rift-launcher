@@ -173,17 +173,13 @@ private fun CardButton(text: String, onClick: () -> Unit, modifier: Modifier, pr
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
     val shape = RoundedCornerShape(50)
-    val container = when {
-        primary -> RiftColors.Primary
-        focused -> Color.White.copy(alpha = 0.2f)
-        else -> Color.White.copy(alpha = 0.1f)
-    }
+    // Rift: two states (Denis 17.10): the button in focus is filled with the accent, every other one is grey.
+    val container = if (focused) RiftColors.Primary else Color.White.copy(alpha = 0.1f)
     Box(
         modifier = modifier
             .height(RiftSizes.button)
             .clip(shape)
             .background(if (enabled) container else container.copy(alpha = container.alpha * 0.4f))
-            .focusRing(interactionSource, shape, width = 2.dp)
             .selectable(
                 selected = focused,
                 enabled = enabled,
@@ -198,7 +194,7 @@ private fun CardButton(text: String, onClick: () -> Unit, modifier: Modifier, pr
             text = text,
             style = MaterialTheme.typography.titleSmall.copy(fontWeight = if (primary) FontWeight.ExtraBold else FontWeight.SemiBold),
             color = when {
-                primary -> RiftColors.OnPrimary
+                focused -> RiftColors.OnPrimary
                 enabled -> RiftColors.OnSurface
                 else -> RiftColors.OnSurfaceVariant
             },

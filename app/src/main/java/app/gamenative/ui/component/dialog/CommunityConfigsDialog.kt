@@ -19,7 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import app.gamenative.ui.component.focusRing
+import androidx.compose.ui.focus.onFocusChanged
 import dev.rift.launcher.ui.theme.RiftColors
 import dev.rift.launcher.ui.theme.RiftSizes
 import androidx.compose.foundation.layout.Arrangement
@@ -396,10 +396,7 @@ fun CommunityConfigsDialog(
                     },
             ) {
                 if (riftService != null) {
-                    Row(
-                        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
+                    RiftPillGroup(modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 4.dp)) {
                         listOf(true, false).forEach { rift ->
                             RiftFilterPill(
                                 text = stringResource(if (rift) R.string.rift_community_source_rift else R.string.rift_community_source_gamenative),
@@ -1037,7 +1034,7 @@ private fun RiftConfigFilters(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         RiftButtonGlyph("LB")
-        CommunityHardwareScope.entries.forEach { option ->
+        RiftPillGroup { CommunityHardwareScope.entries.forEach { option ->
             RiftFilterPill(
                 text = stringResource(
                     when (option) {
@@ -1050,11 +1047,11 @@ private fun RiftConfigFilters(
                 enabled = enabled && option in scopeOptions,
                 onClick = { onHardwareScopeChange(option) },
             )
-        }
+        } }
         RiftButtonGlyph("RB")
         Spacer(Modifier.width(24.dp))
         RiftButtonGlyph("Y")
-        CommunityConfigSort.entries.forEach { option ->
+        RiftPillGroup { CommunityConfigSort.entries.forEach { option ->
             RiftFilterPill(
                 text = stringResource(
                     if (option == CommunityConfigSort.HIGHEST_RATED) R.string.community_config_highest_rated else R.string.community_config_newest,
@@ -1063,7 +1060,22 @@ private fun RiftConfigFilters(
                 enabled = enabled,
                 onClick = { onSortChange(option) },
             )
-        }
+        } }
+    }
+}
+
+/** Whether focus is inside the current pill group: then only the focused pill is filled, else the active one. */
+private val LocalFilterGroupFocused = androidx.compose.runtime.compositionLocalOf { false }
+
+@Composable
+private fun RiftPillGroup(modifier: Modifier = Modifier, content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) {
+    var groupFocused by remember { mutableStateOf(false) }
+    Row(
+        modifier = modifier.onFocusChanged { groupFocused = it.hasFocus },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        androidx.compose.runtime.CompositionLocalProvider(LocalFilterGroupFocused provides groupFocused) { content() }
     }
 }
 
@@ -1085,27 +1097,23 @@ private fun RiftFilterPill(text: String, selected: Boolean, enabled: Boolean, on
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
     val shape = RoundedCornerShape(50)
+    // Rift: two states: the pill in focus is filled; with focus elsewhere the active choice is.
+    val groupFocused = LocalFilterGroupFocused.current
+    val filled = if (groupFocused) focused else selected
     Box(
         modifier = Modifier
             .height(44.dp)
             .clip(shape)
-            .background(
-                when {
-                    selected -> RiftColors.Primary
-                    focused -> Color.White.copy(alpha = 0.2f)
-                    else -> Color.White.copy(alpha = 0.07f)
-                },
-            )
-            .focusRing(interactionSource, shape, width = 2.dp)
+            .background(if (filled) RiftColors.Primary else Color.White.copy(alpha = 0.07f))
             .selectable(selected = selected, enabled = enabled, interactionSource = interactionSource, indication = null, onClick = onClick)
             .padding(horizontal = 18.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.titleSmall.copy(fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold),
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = if (filled) FontWeight.ExtraBold else FontWeight.SemiBold),
             color = when {
-                selected -> RiftColors.OnPrimary
+                filled -> RiftColors.OnPrimary
                 enabled -> RiftColors.OnSurface
                 else -> RiftColors.Outline
             },
@@ -1136,8 +1144,7 @@ private fun RiftConfigRow(
             .fillMaxWidth()
             .height(76.dp)
             .clip(shape)
-            .background(if (selected || focused) RiftColors.SurfaceContainer else RiftColors.Surface)
-            .focusRing(interactionSource, shape, width = 2.dp)
+            .background(if (focused) RiftColors.Primary else RiftColors.Surface)
             .selectable(selected = selected, interactionSource = interactionSource, indication = null, onClick = onClick)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1147,13 +1154,19 @@ private fun RiftConfigRow(
             modifier = Modifier
                 .size(44.dp)
                 .clip(RoundedCornerShape(50))
-                .background(if (selected) RiftColors.Primary else Color.White.copy(alpha = 0.1f)),
+                .background(
+                    when {
+                        focused -> Color.Black.copy(alpha = 0.12f)
+                        selected -> RiftColors.Primary
+                        else -> Color.White.copy(alpha = 0.1f)
+                    },
+                ),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = run.rating.toString(),
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                color = if (selected) RiftColors.OnPrimary else RiftColors.OnSurface,
+                color = if (selected || focused) RiftColors.OnPrimary else RiftColors.OnSurface,
             )
         }
         Column(modifier = Modifier.weight(1f)) {
@@ -1161,7 +1174,7 @@ private fun RiftConfigRow(
                 text = listOf(run.device.model, run.device.gpu).filter { it.isNotBlank() }.joinToString(" · ")
                     .ifBlank { stringResource(R.string.community_config_unknown) },
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = RiftColors.OnSurface,
+                color = if (focused) RiftColors.OnPrimary else RiftColors.OnSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1169,13 +1182,13 @@ private fun RiftConfigRow(
                 Text(
                     text = secondary,
                     style = MaterialTheme.typography.bodySmall,
-                    color = RiftColors.OnSurfaceVariant,
+                    color = if (focused) RiftColors.OnPrimary.copy(alpha = 0.72f) else RiftColors.OnSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
         }
-        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = RiftColors.OnSurfaceVariant)
+        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = if (focused) RiftColors.OnPrimary else RiftColors.OnSurfaceVariant)
     }
 }
 
@@ -1241,21 +1254,25 @@ private fun RiftConfigDetailPane(
             }
         }
         val interactionSource = remember { MutableInteractionSource() }
+        val applyFocused by interactionSource.collectIsFocusedAsState()
         val shape = RoundedCornerShape(50)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(RiftSizes.button)
                 .clip(shape)
-                .background(if (canApply) RiftColors.Primary else Color.White.copy(alpha = 0.1f))
-                .focusRing(interactionSource, shape, width = 2.dp)
+                .background(if (applyFocused) RiftColors.Primary else Color.White.copy(alpha = if (canApply) 0.1f else 0.05f))
                 .selectable(selected = false, interactionSource = interactionSource, indication = null, onClick = onApply),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = stringResource(R.string.rift_compat_apply),
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
-                color = if (canApply) RiftColors.OnPrimary else RiftColors.OnSurface,
+                color = when {
+                    applyFocused -> RiftColors.OnPrimary
+                    canApply -> RiftColors.OnSurface
+                    else -> RiftColors.Outline
+                },
             )
         }
     }
@@ -1316,11 +1333,18 @@ private fun RiftHeaderButton(icon: androidx.compose.ui.graphics.vector.ImageVect
         modifier = Modifier
             .size(RiftSizes.button)
             .clip(RoundedCornerShape(50))
-            .background(Color.White.copy(alpha = if (focused) 0.2f else 0.1f))
-            .focusRing(interactionSource, RoundedCornerShape(50), width = 2.dp)
+            .background(if (focused) RiftColors.Primary else Color.White.copy(alpha = 0.1f))
             .selectable(selected = false, enabled = enabled, interactionSource = interactionSource, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = description, tint = if (enabled) RiftColors.OnSurface else RiftColors.Outline)
+        Icon(
+            icon,
+            contentDescription = description,
+            tint = when {
+                focused -> RiftColors.OnPrimary
+                enabled -> RiftColors.OnSurface
+                else -> RiftColors.Outline
+            },
+        )
     }
 }
