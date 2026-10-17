@@ -35,6 +35,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -1495,6 +1498,7 @@ fun PluviaMain(
         isAmoled = (state.appTheme == AppTheme.AMOLED),
         style = state.paletteStyle,
     ) {
+        val bannerBackdrop = rememberGraphicsLayer()
         Box(modifier = Modifier.fillMaxSize()) {
             LoadingDialog(
                 visible = state.loadingDialogVisible,
@@ -1932,6 +1936,7 @@ fun PluviaMain(
                 SteamUtils.hasStoredCredentials()) {
                 Box(modifier = Modifier.zIndex(5f)) {
                     ConnectionStatusBanner(
+                        backdrop = bannerBackdrop,
                         connectionState = state.connectionState,
                         connectionMessage = state.connectionMessage,
                         timeoutSeconds = state.connectionTimeoutSeconds,
@@ -1962,6 +1967,15 @@ fun PluviaMain(
                 }
             }
 
+            // The screen is recorded so the connection banner can frost what is behind it.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .drawWithContent {
+                        bannerBackdrop.record { this@drawWithContent.drawContent() }
+                        drawLayer(bannerBackdrop)
+                    },
+            ) {
             NavHost(
                 navController = navController,
                 startDestination = startDestination,
@@ -2237,6 +2251,7 @@ fun PluviaMain(
                         },
                     )
                 }
+            }
             }
 
             if (snackbarController.rootOwnsHost) {

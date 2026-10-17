@@ -251,12 +251,11 @@ fun LibraryOptionsPanel(
                                             OptionListItem(
                                                 text = option.text,
                                                 selected = option.selected,
+                                                // Picking applies the filter and closes the panel; the home puts focus back on the row.
                                                 onClick = {
                                                     option.onPick()
                                                     openGroup = null
-                                                    runCatching {
-                                                        (if (index == 0) firstItemFocusRequester else headerRequester(key)).requestFocus()
-                                                    }
+                                                    onDismiss()
                                                 },
                                                 modifier = Modifier.fillMaxWidth(),
                                             )

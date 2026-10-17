@@ -12,9 +12,25 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import android.os.Build
+import androidx.compose.foundation.border
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -24,10 +40,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,7 +53,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -58,6 +74,7 @@ fun ConnectionStatusBanner(
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    backdrop: GraphicsLayer? = null,
 ) {
     val isVisible = connectionState == ConnectionState.CONNECTING ||
                     connectionState == ConnectionState.DISCONNECTED
@@ -68,24 +85,42 @@ fun ConnectionStatusBanner(
         exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
         modifier = modifier
     ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = Color.Transparent,
-            shadowElevation = 4.dp,
+        // Rift: floating black glass pill instead of the stock grey bar.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
+            var top by remember { mutableFloatStateOf(0f) }
+            var left by remember { mutableFloatStateOf(0f) }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.surfaceVariant,
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
-                            )
-                        )
-                    )
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .onGloballyPositioned {
+                        val pos = it.positionInRoot()
+                        top = pos.y
+                        left = pos.x
+                    }
+                    .clip(MaterialTheme.shapes.large)
+                    .background(Color.Black.copy(alpha = 0.60f))
+                    .border(1.dp, Color.White.copy(alpha = 0.10f), MaterialTheme.shapes.large)
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
             ) {
+                if (backdrop != null) {
+                    // Frosted glass as its own layer, so only the picture is blurred and not the text.
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .graphicsLayer {
+                                clip = true
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    renderEffect = BlurEffect(18.dp.toPx(), 18.dp.toPx(), TileMode.Clamp)
+                                }
+                            }
+                            .drawBehind { translate(left = -left, top = -top) { drawLayer(backdrop) } },
+                    )
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -107,7 +142,7 @@ fun ConnectionStatusBanner(
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = Color.White,
                         modifier = Modifier.weight(1f)
                     )
 
@@ -136,15 +171,20 @@ fun ConnectionStatusBanner(
                             }
                         }
                         ConnectionState.DISCONNECTED -> {
-                            TextButton(
+                            Button(
                                 onClick = onRetry,
+                                shape = CircleShape,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                                ),
+                                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 6.dp),
                                 modifier = Modifier.padding(start = 8.dp)
                             ) {
                                 Text(
                                     text = stringResource(R.string.connection_retry),
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
@@ -159,7 +199,7 @@ fun ConnectionStatusBanner(
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = stringResource(R.string.close),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = Color.White.copy(alpha = 0.7f),
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -207,13 +247,13 @@ private fun ConnectionIcon(connectionState: ConnectionState) {
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f)),
+                    .background(Color.White.copy(alpha = 0.10f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.CloudOff,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
+                    tint = Color.White.copy(alpha = 0.85f),
                     modifier = Modifier.size(18.dp)
                 )
             }

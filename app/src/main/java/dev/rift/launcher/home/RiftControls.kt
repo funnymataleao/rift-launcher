@@ -15,4 +15,10 @@ object RiftControls {
 
     fun quickAccessKey(context: Context): Int =
         AndroidGames.prefs(context).getInt(KEY_QUICK_ACCESS, DEFAULT_QUICK_ACCESS)
+
+    /** KeyEvent key code of a button that opens the stream's side panel besides Select + Start; none by default. */
+    const val KEY_STREAM_MENU = "stream_menu_keycode"
+
+    fun streamMenuKey(context: Context): Int =
+        AndroidGames.prefs(context).getInt(KEY_STREAM_MENU, KeyEvent.KEYCODE_UNKNOWN)
 }
