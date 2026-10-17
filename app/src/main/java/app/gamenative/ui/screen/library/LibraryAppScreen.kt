@@ -1805,6 +1805,8 @@ internal fun AppScreenContent(
                     AchievementsRow(achievements = achievements)
                 }
 
+                // Rift: room under the last card for the gamepad footer, so it is not cut off.
+                Spacer(modifier = Modifier.height(96.dp).navigationBarsPadding())
             }
         }
         }
