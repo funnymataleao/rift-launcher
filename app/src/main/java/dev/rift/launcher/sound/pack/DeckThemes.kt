@@ -83,7 +83,22 @@ object DeckThemesClient {
 
     /** Downloads [pack] and unpacks it into the app's own storage; throws [PackError] when it cannot be used. */
     suspend fun install(context: Context, pack: DeckPack) = withContext(Dispatchers.IO) {
-        val dir = InstalledPacks.dir(context, pack.id)
+        fetchInto(pack, InstalledPacks.dir(context, pack.id))
+    }
+
+    /**
+     * Fetches [pack] into the cache so it can be listened to before it is kept. Returns the folder; a pack already
+     * fetched is reused, and any other previews are dropped so the cache never holds more than one.
+     */
+    suspend fun preview(context: Context, pack: DeckPack): File = withContext(Dispatchers.IO) {
+        val root = File(context.applicationContext.cacheDir, "audio_preview")
+        val dir = File(root, pack.id.filter { it.isLetterOrDigit() || it == '-' })
+        root.listFiles().orEmpty().filter { it != dir }.forEach { it.deleteRecursively() }
+        if (!(File(dir, "pack.json").isFile && InstalledPacks.hasAudio(dir))) fetchInto(pack, dir)
+        dir
+    }
+
+    private fun fetchInto(pack: DeckPack, dir: File) {
         val tmp = File(dir.parentFile, "${pack.id}.tmp")
         tmp.deleteRecursively()
         tmp.mkdirs()
@@ -95,7 +110,6 @@ object DeckThemesClient {
             if (!File(tmp, "pack.json").isFile || !InstalledPacks.hasAudio(tmp)) throw PackError.BadPack
             dir.deleteRecursively()
             if (!tmp.renameTo(dir)) throw PackError.BadPack
-            Unit
         } catch (e: IOException) {
             Timber.tag(TAG).w(e, "Pack download failed: %s", pack.name)
             throw PackError.Network

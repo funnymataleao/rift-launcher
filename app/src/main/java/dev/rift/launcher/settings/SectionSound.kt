@@ -7,7 +7,12 @@ import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.VolumeUp
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,11 +39,34 @@ internal fun SoundSettings() {
     var musicVolume by rememberSaveable { mutableStateOf(RiftSoundSettings.musicVolume(context)) }
     var soundPackId by rememberSaveable { mutableStateOf(RiftSoundSettings.soundPackId(context)) }
     var musicPackId by rememberSaveable { mutableStateOf(RiftSoundSettings.musicPackId(context)) }
-    var packDialog by rememberSaveable { mutableStateOf<String?>(null) }
+    // The pack catalog is a page of this section, not a pop-up; Back closes it and focus returns to its row.
+    var page by rememberSaveable { mutableStateOf<String?>(null) }
+    var cameFrom by rememberSaveable { mutableStateOf<String?>(null) }
+    val soundLink = remember { FocusRequester() }
+    val musicLink = remember { FocusRequester() }
+    BackHandler(enabled = page != null) { page = null }
+    LaunchedEffect(page) {
+        if (page == null) {
+            cameFrom?.let { runCatching { (if (it == "music") musicLink else soundLink).requestFocus() } }
+        } else {
+            cameFrom = page
+        }
+    }
 
     val pickFolder = rememberFolderPicker { uri ->
         packUri = uri
         RiftSoundSettings.setPackUri(context, android.net.Uri.parse(uri))
+    }
+
+    page?.let { kind ->
+        PackCatalogPage(
+            music = kind == "music",
+            onChanged = {
+                soundPackId = RiftSoundSettings.soundPackId(context)
+                musicPackId = RiftSoundSettings.musicPackId(context)
+            },
+        )
+        return
     }
 
     SettingsGroup {
@@ -67,11 +95,12 @@ internal fun SoundSettings() {
 
     SettingsGroup(title = stringResource(R.string.rift_settings_group_deckthemes)) {
         LinkRow(
+            modifier = Modifier.focusRequester(soundLink),
             title = stringResource(R.string.rift_settings_packs_sound_title),
             subtitle = stringResource(R.string.rift_settings_packs_sound_summary),
             icon = Icons.Rounded.CloudDownload,
             value = packName(context, soundPackId) ?: stringResource(R.string.rift_settings_sound_pack_builtin),
-            onClick = { packDialog = "sound" },
+            onClick = { page = "sound" },
         )
         SwitchRow(
             title = stringResource(R.string.rift_settings_music),
@@ -85,11 +114,12 @@ internal fun SoundSettings() {
             },
         )
         LinkRow(
+            modifier = Modifier.focusRequester(musicLink),
             title = stringResource(R.string.rift_settings_packs_music_title),
             subtitle = stringResource(R.string.rift_settings_packs_music_summary),
             icon = Icons.Rounded.CloudDownload,
             value = packName(context, musicPackId) ?: stringResource(R.string.rift_settings_music_none),
-            onClick = { packDialog = "music" },
+            onClick = { page = "music" },
         )
         val musicLevels = listOf(10, 25, 40, 60, 100)
         ChoiceChipsRow(
@@ -102,17 +132,6 @@ internal fun SoundSettings() {
                 RiftSoundSettings.setMusicVolume(context, musicVolume)
                 RiftMusic.apply(context)
             },
-        )
-    }
-
-    packDialog?.let { kind ->
-        PackManagerDialog(
-            music = kind == "music",
-            onChanged = {
-                soundPackId = RiftSoundSettings.soundPackId(context)
-                musicPackId = RiftSoundSettings.musicPackId(context)
-            },
-            onDismiss = { packDialog = null },
         )
     }
 
