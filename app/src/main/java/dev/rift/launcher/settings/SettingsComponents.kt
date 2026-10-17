@@ -38,6 +38,7 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.layout
 import androidx.compose.runtime.getValue
@@ -80,9 +81,15 @@ internal val PlateGap = 8.dp
 internal val RowMinHeight = 84.dp
 private val RowIconSize = 44.dp
 
+/**
+ * A plate's fill when it has no focus. Grey on Rift's pages; the side panels make it black (Denis: the
+ * plates in a panel are black, not grey).
+ */
+internal val LocalPlateRest = compositionLocalOf { RiftColors.SurfaceContainer }
+
 /** The fill of a plate: the accent colour (or gradient) while it has focus, otherwise [rest]. */
 @Composable
-internal fun Modifier.plateFill(focused: Boolean, shape: Shape = PlateShape, rest: Color = RiftColors.SurfaceContainer): Modifier =
+internal fun Modifier.plateFill(focused: Boolean, shape: Shape = PlateShape, rest: Color = LocalPlateRest.current): Modifier =
     clip(shape).then(
         if (focused) Modifier.background(RiftAccent.current.brush) else Modifier.background(rest),
     )

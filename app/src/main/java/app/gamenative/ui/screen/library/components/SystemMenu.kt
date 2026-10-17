@@ -478,13 +478,16 @@ fun SystemMenu(
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                                .background(Color.Black.copy(alpha = 0.55f)),
                             contentAlignment = Alignment.Center,
                         ) {
-                            if (persona?.avatarHash?.isNotEmpty() == true) {
+                            // The live persona arrives late (or not at all offline); the saved avatar is the top
+                            // bar's, so the panel shows the same picture from the first frame.
+                            val avatarHash = persona?.avatarHash?.takeIf { it.isNotEmpty() } ?: PrefManager.steamUserAvatarHash
+                            if (avatarHash.isNotEmpty()) {
                                 SteamIconImage(
                                     size = 48.dp,
-                                    image = { persona?.avatarHash?.getAvatarURL() },
+                                    image = { avatarHash.getAvatarURL() },
                                 )
                             } else {
                                 Icon(
