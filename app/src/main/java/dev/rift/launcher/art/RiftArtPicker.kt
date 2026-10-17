@@ -1,5 +1,6 @@
 package dev.rift.launcher.art
 
+import android.view.KeyEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +23,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -37,10 +40,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -48,7 +53,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.gamenative.PluviaApp
 import app.gamenative.R
+import app.gamenative.events.AndroidEvent
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import com.skydoves.landscapist.ImageOptions
@@ -59,6 +66,7 @@ import dev.rift.launcher.home.LibraryTabSpec
 import dev.rift.launcher.home.RiftLibraryScreen
 import dev.rift.launcher.settings.RiftPillButton
 import dev.rift.launcher.ui.theme.RiftColors
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -70,6 +78,9 @@ val LocalRiftArtPicker = staticCompositionLocalOf<((LibraryItem) -> Unit)?> { nu
 private val ScreenPadding = 48.dp
 private const val LOAD_MORE_THRESHOLD = 12
 private const val RESET_KEY = -1L
+private const val FOCUS_TRIES = 20
+private const val RETRY_FEEDBACK_MS = 600L
+private const val FOCUS_RETRY_MS = 120L
 
 /** Pictures of one [ArtKind] for the game being edited: what was loaded so far and whether more may follow. */
 private class ArtFeed {
@@ -97,6 +108,7 @@ private class ArtSession(val item: LibraryItem, val key: String) {
         if (feed.loading || feed.done) return
         feed.loading = true
         feed.error = null
+        val started = System.currentTimeMillis()
         try {
             val loaded = fetch(kind, feed.page)
             val known = feed.options.mapTo(HashSet()) { it.id }
@@ -105,6 +117,8 @@ private class ArtSession(val item: LibraryItem, val key: String) {
             feed.options = feed.options + fresh
             feed.page++
         } catch (e: ArtError) {
+            // A failure that comes back at once would look like a retry that did nothing.
+            delay((RETRY_FEEDBACK_MS - (System.currentTimeMillis() - started)).coerceAtLeast(0))
             feed.error = e
         } finally {
             feed.loading = false
@@ -144,13 +158,62 @@ fun RiftArtPicker(
     if (item != null) shown = item
     val current = shown ?: return
     val context = LocalContext.current
+    val view = LocalView.current
+    val open = item != null
+    // After a touch the window is in touch mode, where nothing takes gamepad focus: leave it on opening.
+    LaunchedEffect(open, openToken) { if (open) view.requestFocusFromTouch() }
     key(openToken) {
         val session = remember { ArtSession(current, dev.rift.launcher.settings.RiftPrefs.of(context).steamGridDbKey) }
         var kindIndex by remember { mutableIntStateOf(0) }
         val kinds = ArtKind.entries
         val tabs = kinds.map { LibraryTabSpec(it.key, stringResource(it.titleRes)) }
+        // Whether a picture (or the status below the tabs) holds focus, and a counter that asks the grid to take it.
+        var contentFocused by remember { mutableStateOf(false) }
+        var focusAsk by remember { mutableIntStateOf(0) }
+        val latestDismiss = rememberUpdatedState(onDismiss)
+        fun step(by: Int) {
+            kindIndex = (kindIndex + by).mod(kinds.size)
+        }
+        val latestStep = rememberUpdatedState<(Int) -> Unit> { step(it) }
+        val latestFocused = rememberUpdatedState(contentFocused)
+        // The picker reads the gamepad itself, before Compose: a screen that was last touched has no focus,
+        // and without focus no key would ever reach it. LB/RB switch the tabs and B closes whatever has focus;
+        // a direction or A with nothing focused brings focus to the first picture.
+        DisposableEffect(open) {
+            if (!open) return@DisposableEffect onDispose { }
+            var backDown = false
+            val listener: (AndroidEvent.KeyEvent) -> Boolean = { androidEvent ->
+                val ev = androidEvent.event
+                val down = ev.action == KeyEvent.ACTION_DOWN
+                when (ev.keyCode) {
+                    KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_R1 -> {
+                        if (down && ev.repeatCount == 0) latestStep.value(if (ev.keyCode == KeyEvent.KEYCODE_BUTTON_L1) -1 else 1)
+                        true
+                    }
+                    KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_ESCAPE -> {
+                        if (down) backDown = true
+                        if (ev.action == KeyEvent.ACTION_UP && backDown) {
+                            backDown = false
+                            latestDismiss.value()
+                        }
+                        true
+                    }
+                    KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
+                    KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER,
+                    -> if (latestFocused.value) {
+                        false
+                    } else {
+                        if (down) focusAsk++
+                        true
+                    }
+                    else -> false
+                }
+            }
+            PluviaApp.events.on<AndroidEvent.KeyEvent, Boolean>(listener)
+            onDispose { PluviaApp.events.off<AndroidEvent.KeyEvent, Boolean>(listener) }
+        }
         RiftLibraryScreen(
-            isOpen = item != null,
+            isOpen = open,
             glass = glass,
             tabs = tabs,
             selectedKey = kinds[kindIndex].key,
@@ -161,6 +224,8 @@ fun RiftArtPicker(
             ArtGrid(
                 session = session,
                 kind = kinds[kindIndex],
+                focusAsk = focusAsk,
+                onFocusChange = { contentFocused = it },
                 onOpenSettings = onOpenSettings,
             )
         }
@@ -168,7 +233,13 @@ fun RiftArtPicker(
 }
 
 @Composable
-private fun ArtGrid(session: ArtSession, kind: ArtKind, onOpenSettings: () -> Unit) {
+private fun ArtGrid(
+    session: ArtSession,
+    kind: ArtKind,
+    focusAsk: Int,
+    onFocusChange: (Boolean) -> Unit,
+    onOpenSettings: () -> Unit,
+) {
     // A fresh grid, scroll position and focus for every tab.
     key(kind) {
         val context = LocalContext.current
@@ -182,13 +253,28 @@ private fun ArtGrid(session: ArtSession, kind: ArtKind, onOpenSettings: () -> Un
         var savingId by remember { mutableStateOf<Long?>(null) }
         var pendingFocus by remember { mutableStateOf<Long?>(null) }
 
+        var hasFocus by remember { mutableStateOf(false) }
+        val focusNow = rememberUpdatedState(hasFocus)
         LaunchedEffect(Unit) { session.loadMore(kind) }
-        // Focus the first picture once there is one.
-        LaunchedEffect(feed.options.isNotEmpty()) {
-            feed.options.firstOrNull()?.let { pendingFocus = it.id }
+        // Focus the first picture once there is one, and again on request; a request that did not take
+        // (the window was still in touch mode) is repeated for a moment.
+        LaunchedEffect(feed.options.isNotEmpty(), focusAsk) {
+            val first = feed.options.firstOrNull() ?: return@LaunchedEffect
+            repeat(FOCUS_TRIES) {
+                if (focusNow.value) return@LaunchedEffect
+                pendingFocus = first.id
+                delay(FOCUS_RETRY_MS)
+            }
         }
 
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .onFocusChanged {
+                    hasFocus = it.hasFocus
+                    onFocusChange(it.hasFocus)
+                },
+        ) {
             Text(
                 text = session.item.name,
                 color = RiftColors.OnSurfaceVariant,
@@ -200,7 +286,12 @@ private fun ArtGrid(session: ArtSession, kind: ArtKind, onOpenSettings: () -> Un
             )
             Box(modifier = Modifier.weight(1f).fillMaxSize()) {
                 if (feed.options.isEmpty()) {
-                    ArtStatus(feed = feed, onRetry = { scope.launch { session.loadMore(kind) } }, onOpenSettings = onOpenSettings)
+                    ArtStatus(
+                        feed = feed,
+                        focusAsk = focusAsk,
+                        onRetry = { scope.launch { session.loadMore(kind) } },
+                        onOpenSettings = onOpenSettings,
+                    )
                     return@Box
                 }
                 val gridState = rememberLazyGridState()
@@ -354,7 +445,7 @@ private fun ArtImage(kind: ArtKind, url: String) {
 
 /** Loading, nothing found or an error, always with something focusable so a gamepad is never stranded. */
 @Composable
-private fun ArtStatus(feed: ArtFeed, onRetry: () -> Unit, onOpenSettings: () -> Unit) {
+private fun ArtStatus(feed: ArtFeed, focusAsk: Int, onRetry: () -> Unit, onOpenSettings: () -> Unit) {
     val error = feed.error
     val focus = remember { FocusRequester() }
     val message = when {
@@ -364,9 +455,17 @@ private fun ArtStatus(feed: ArtFeed, onRetry: () -> Unit, onOpenSettings: () -> 
         feed.done -> stringResource(R.string.rift_art_empty)
         else -> null
     }
-    LaunchedEffect(message) { runCatching { focus.requestFocus() } }
+    var focused by remember { mutableStateOf(false) }
+    val focusedNow = rememberUpdatedState(focused)
+    LaunchedEffect(message, focusAsk) {
+        repeat(FOCUS_TRIES) {
+            if (focusedNow.value) return@LaunchedEffect
+            runCatching { focus.requestFocus() }
+            delay(FOCUS_RETRY_MS)
+        }
+    }
     Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = ScreenPadding),
+        modifier = Modifier.fillMaxSize().padding(horizontal = ScreenPadding).onFocusChanged { focused = it.hasFocus },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

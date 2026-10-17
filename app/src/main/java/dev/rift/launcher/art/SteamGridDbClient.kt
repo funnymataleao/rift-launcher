@@ -5,6 +5,8 @@ import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONException
+import timber.log.Timber
 import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -23,6 +25,9 @@ sealed class ArtError : Exception() {
     /** The game was not found on SteamGridDB. */
     object NotFound : ArtError()
     object Network : ArtError()
+
+    /** SteamGridDB refused the request's filters (HTTP 400). */
+    object BadRequest : ArtError()
 }
 
 /**
@@ -33,6 +38,7 @@ sealed class ArtError : Exception() {
 object SteamGridDbClient {
     private const val BASE = "https://www.steamgriddb.com/api/v2"
     const val PAGE_SIZE = 50
+    private const val TAG = "RiftArt"
 
     private val http = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -55,20 +61,28 @@ object SteamGridDbClient {
 
     /** One page (0-based) of [kind] pictures for the game that [resolve] returned [path] for. */
     suspend fun options(key: String, path: String, kind: ArtKind, page: Int): List<ArtOption> {
-        val url = "$BASE/${kind.endpoint}/$path".toHttpUrl().newBuilder()
+        val base = "$BASE/${kind.endpoint}/$path".toHttpUrl()
+        // The filters narrow the results to what Rift shows; if SteamGridDB turns them down for a type
+        // (each endpoint accepts its own list), the same request is made once more without them.
+        val filtered = base.newBuilder()
             .addQueryParameter("mimes", kind.mimes)
             .addQueryParameter("nsfw", "false")
             .addQueryParameter("humor", "any")
-            .addQueryParameter("types", "static")
             .addQueryParameter("page", page.toString())
             .apply { kind.dimensions?.let { addQueryParameter("dimensions", it) } }
             .build()
-        val data = getJson(key, url.toString()).optJSONArray("data") ?: return emptyList()
-        return List(data.length()) { i ->
-            val o = data.getJSONObject(i)
-            val full = o.getString("url")
+        val json = try {
+            getJson(key, filtered.toString())
+        } catch (e: ArtError) {
+            if (e !== ArtError.BadRequest) throw e
+            getJson(key, base.newBuilder().addQueryParameter("page", page.toString()).build().toString())
+        }
+        val data = json.optJSONArray("data") ?: return emptyList()
+        return (0 until data.length()).mapNotNull { i ->
+            val o = data.optJSONObject(i) ?: return@mapNotNull null
+            val full = o.optString("url").ifEmpty { return@mapNotNull null }
             ArtOption(
-                id = o.getLong("id"),
+                id = o.optLong("id"),
                 thumb = o.optString("thumb").ifEmpty { full },
                 url = full,
                 width = o.optInt("width"),
@@ -85,11 +99,22 @@ object SteamGridDbClient {
                 when {
                     response.code == 401 || response.code == 403 -> throw ArtError.BadKey
                     response.code == 404 -> throw ArtError.NotFound
-                    !response.isSuccessful -> throw ArtError.Network
+                    response.code == 400 -> {
+                        Timber.tag(TAG).w("HTTP 400 for %s: %s", url, response.body.string().take(300))
+                        throw ArtError.BadRequest
+                    }
+                    !response.isSuccessful -> {
+                        Timber.tag(TAG).w("HTTP %d for %s", response.code, url)
+                        throw ArtError.Network
+                    }
                 }
                 JSONObject(response.body.string())
             }
         } catch (e: IOException) {
+            Timber.tag(TAG).w(e, "SteamGridDB request failed: %s", url)
+            throw ArtError.Network
+        } catch (e: JSONException) {
+            Timber.tag(TAG).w(e, "SteamGridDB answered with something unreadable: %s", url)
             throw ArtError.Network
         }
     }
