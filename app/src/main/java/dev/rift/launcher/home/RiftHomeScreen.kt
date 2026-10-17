@@ -5,6 +5,12 @@ import android.graphics.Bitmap
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.CornerRadius
+import kotlin.math.roundToInt
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -440,6 +446,8 @@ fun RiftHomeScreen(
     }
     // What the footer blurs: the screen behind it, recorded once per frame and drawn again under the footer.
     val backdrop = rememberGraphicsLayer()
+    // Just the backdrop art, for the glass behind the selected tab (the top bar cannot blur itself).
+    val heroLayer = rememberGraphicsLayer()
     // The panel's layout choice belongs to GameNative's library screen; Rift only keeps it in sync.
     var libraryLayout by remember { mutableStateOf(PrefManager.libraryLayout) }
     LaunchedEffect(overlayOpen) {
@@ -579,6 +587,10 @@ fun RiftHomeScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .drawWithContent {
+                            heroLayer.record { this@drawWithContent.drawContent() }
+                            drawLayer(heroLayer)
+                        }
                         .graphicsLayer {
                             val p = intro.value
                             alpha = p
@@ -592,6 +604,7 @@ fun RiftHomeScreen(
                 Column(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = if (ready) 1f else 0f }) {
                     Box(modifier = Modifier.graphicsLayer { alpha = intro.value }) {
                     TopBar(
+                        glass = heroLayer,
                         sections = sections,
                         selected = section,
                         onSelect = ::selectSection,
@@ -1123,6 +1136,7 @@ private fun HeroBackdrop(item: LibraryItem?) {
 
 @Composable
 private fun TopBar(
+    glass: GraphicsLayer,
     sections: List<RiftSection>,
     selected: RiftSection?,
     onSelect: (RiftSection) -> Unit,
@@ -1138,13 +1152,7 @@ private fun TopBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BumperButton(GamepadButton.LB.iconRes, "LB") { onStep(-1) }
-        sections.forEach { section ->
-            SectionTab(
-                title = stringResource(section.titleRes),
-                selected = section == selected,
-                onClick = { onSelect(section) },
-            )
-        }
+        SectionTabs(glass = glass, sections = sections, selected = selected, onSelect = onSelect)
         BumperButton(GamepadButton.RB.iconRes, "RB") { onStep(1) }
         Spacer(modifier = Modifier.weight(1f))
         if (search != null) SearchField(search)
@@ -1254,31 +1262,145 @@ private fun solid(color: Color) = Brush.linearGradient(listOf(color, color))
 private fun quietBackground(focused: Boolean) =
     solid(if (focused) RiftColors.SurfaceContainerHigh else RiftColors.Surface.copy(alpha = 0.7f))
 
+/** Where a tab and its title sit on screen, to place the glass and the lemon line under it. */
+private data class TabPlace(val tab: Offset, val tabSize: Size, val text: Offset, val textSize: Size)
+
+/**
+ * The section tabs. The selected one sits in a small capsule of liquid glass (the backdrop art,
+ * blurred, with a light tint and a bright rim) and has a lemon line exactly as wide as its title;
+ * both slide to the next tab on LB/RB with the expressive spatial spring.
+ */
 @Composable
-private fun SectionTab(title: String, selected: Boolean, onClick: () -> Unit) {
-    // Active tab: dark grey pill with a thin lemon mark; lemon stays an accent.
-    PillButton(
-        onClick = onClick,
-        background = { focused -> solid(if (selected || focused) RiftColors.SurfaceContainerHigh else Color.Transparent) },
+private fun SectionTabs(
+    glass: GraphicsLayer,
+    sections: List<RiftSection>,
+    selected: RiftSection?,
+    onSelect: (RiftSection) -> Unit,
+) {
+    val places = remember { mutableStateMapOf<RiftSection, TabPlace>() }
+    var origin by remember { mutableStateOf<Offset?>(null) }
+    val capsuleX = remember { Animatable(0f) }
+    val capsuleW = remember { Animatable(0f) }
+    val lineX = remember { Animatable(0f) }
+    val lineW = remember { Animatable(0f) }
+    var placed by remember { mutableStateOf(false) }
+    val spec = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
+    val target = selected?.let { places[it] }
+    val base = origin
+    LaunchedEffect(target, base) {
+        if (target == null || base == null) return@LaunchedEffect
+        val cx = target.tab.x - base.x
+        val tx = target.text.x - base.x
+        if (!placed) {
+            capsuleX.snapTo(cx); capsuleW.snapTo(target.tabSize.width)
+            lineX.snapTo(tx); lineW.snapTo(target.textSize.width)
+            placed = true
+            return@LaunchedEffect
+        }
+        launch { capsuleX.animateTo(cx, spec) }
+        launch { capsuleW.animateTo(target.tabSize.width, spec) }
+        launch { lineX.animateTo(tx, spec) }
+        launch { lineW.animateTo(target.textSize.width, spec) }
+    }
+    val show = placed && target != null && base != null
+    Box(
+        modifier = Modifier
+            .onGloballyPositioned { origin = it.positionInRoot() }
+            .drawWithContent {
+                drawContent()
+                if (!show) return@drawWithContent
+                val h = 3.dp.toPx()
+                val y = target!!.text.y - base!!.y + target.textSize.height + 2.dp.toPx()
+                drawRoundRect(RiftColors.Primary, Offset(lineX.value, y), Size(lineW.value, h), CornerRadius(h / 2))
+            },
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = title,
-                color = if (selected) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
+        if (show) {
+            val top = target!!.tab.y - base!!.y
+            val height = target.tabSize.height
             Box(
                 modifier = Modifier
-                    .width(18.dp)
-                    .height(3.dp)
+                    .layout { measurable, _ ->
+                        val w = capsuleW.value.roundToInt().coerceAtLeast(1)
+                        val p = measurable.measure(Constraints.fixed(w, height.roundToInt()))
+                        layout(0, 0) { p.place(capsuleX.value.roundToInt(), top.roundToInt()) }
+                    }
                     .clip(RiftShapes.full)
-                    .background(if (selected) RiftColors.Primary else Color.Transparent),
+                    .border(
+                        1.dp,
+                        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.42f), Color.White.copy(alpha = 0.10f))),
+                        RiftShapes.full,
+                    )
+                    .drawWithContent {
+                        drawContent()
+                        // The glass's soft highlight on its upper half.
+                        drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.10f), 0.55f to Color.Transparent))
+                    }
+                    .graphicsLayer {
+                        clip = true
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            renderEffect = BlurEffect(16.dp.toPx(), 16.dp.toPx(), TileMode.Clamp)
+                        }
+                    }
+                    .drawBehind {
+                        translate(left = -(base.x + capsuleX.value), top = -(base.y + top)) { drawLayer(glass) }
+                        drawRect(Color.White.copy(alpha = 0.10f))
+                    },
             )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            sections.forEach { section ->
+                SectionTab(
+                    title = stringResource(section.titleRes),
+                    selected = section == selected,
+                    onClick = { onSelect(section) },
+                    onPlaced = { places[section] = it },
+                )
+            }
         }
     }
 }
+
+@Composable
+private fun SectionTab(title: String, selected: Boolean, onClick: () -> Unit, onPlaced: (TabPlace) -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    // Tab and title report their places in either order; the place is known once both have.
+    var tab by remember { mutableStateOf<Pair<Offset, Size>?>(null) }
+    var text by remember { mutableStateOf<Pair<Offset, Size>?>(null) }
+    fun report() {
+        val t = tab ?: return
+        val x = text ?: return
+        onPlaced(TabPlace(t.first, t.second, x.first, x.second))
+    }
+    Box(
+        modifier = Modifier
+            .height(TabHeight)
+            .onGloballyPositioned {
+                tab = it.positionInRoot() to Size(it.size.width.toFloat(), it.size.height.toFloat())
+                report()
+            }
+            .clip(RiftShapes.full)
+            .background(if (focused && !selected) Color.White.copy(alpha = 0.06f) else Color.Transparent)
+            .border(1.dp, if (focused) Color.White.copy(alpha = 0.3f) else Color.Transparent, RiftShapes.full)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            .padding(horizontal = 18.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = title,
+            color = if (selected) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            modifier = Modifier.onGloballyPositioned { coords ->
+                text = coords.positionInRoot() to Size(coords.size.width.toFloat(), coords.size.height.toFloat())
+                report()
+            },
+        )
+    }
+}
+
+private val TabHeight = 42.dp
 
 @Composable
 private fun BumperButton(@DrawableRes icon: Int, label: String, onClick: () -> Unit) {
