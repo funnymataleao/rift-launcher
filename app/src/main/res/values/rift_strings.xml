@@ -439,4 +439,14 @@
     <string name="rift_game_achievements">Achievements</string>
     <string name="rift_game_last_played">Last played</string>
     <string name="rift_game_played">You played</string>
+    <string name="rift_game_section_overview">Overview</string>
+    <string name="rift_game_section_media">Media</string>
+    <string name="rift_game_section_compatibility">Compatibility</string>
+    <string name="rift_game_section_details">Details</string>
+    <string name="rift_game_read_more">Read more</string>
+    <string name="rift_game_read_less">Show less</string>
+    <string name="rift_game_rating_title">Rating</string>
+    <string name="rift_game_rating_count">%1$d ratings</string>
+    <string name="rift_game_hltb_title">How long to beat</string>
+    <string name="rift_game_hours">%1$s h</string>
 </resources>

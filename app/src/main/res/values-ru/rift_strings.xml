@@ -434,4 +434,14 @@
     <string name="rift_game_achievements">Достижения</string>
     <string name="rift_game_last_played">Последний запуск</string>
     <string name="rift_game_played">Вы играли</string>
+    <string name="rift_game_section_overview">Обзор</string>
+    <string name="rift_game_section_media">Медиа</string>
+    <string name="rift_game_section_compatibility">Совместимость</string>
+    <string name="rift_game_section_details">Детали</string>
+    <string name="rift_game_read_more">Читать полностью</string>
+    <string name="rift_game_read_less">Свернуть</string>
+    <string name="rift_game_rating_title">Рейтинг</string>
+    <string name="rift_game_rating_count">Оценок: %1$d</string>
+    <string name="rift_game_hltb_title">Сколько проходить</string>
+    <string name="rift_game_hours">%1$s ч</string>
 </resources>
