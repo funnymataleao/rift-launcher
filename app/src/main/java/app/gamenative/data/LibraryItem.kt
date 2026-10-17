@@ -48,9 +48,12 @@ data class LibraryItem(
     val isFeatured: Boolean = false,
     val isRecTeaser: Boolean = false,
     val isRecLoading: Boolean = false,
+    /** Pictures the user picked for this game in Rift (SteamGridDB); empty when none. */
+    val customLogoUrl: String = "",
+    val customIconUrl: String = "",
 ) {
     val clientIconUrl: String
-        get() = when (gameSource) {
+        get() = if (customIconUrl.isNotEmpty()) customIconUrl else when (gameSource) {
             GameSource.STEAM -> if (iconHash.isNotEmpty()) {
                 Constants.Library.ICON_URL + "${gameId}/$iconHash.ico"
             } else {

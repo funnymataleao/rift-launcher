@@ -34,6 +34,7 @@ enum class AppOptionMenuType(@StringRes val title: Int) {
     PlayWithDiagnostics(R.string.option_play_with_diagnostics),
     ShareDiagnostics(R.string.option_share_diagnostics),
     AiDebugRun(R.string.option_ai_debug_run),
+    RiftOptimize(R.string.rift_option_optimize),
     ManageGameContent(R.string.option_manage_dlc),
     ManageWorkshop(R.string.option_manage_workshop),
     ImportFiles(R.string.option_import_files),
@@ -43,4 +44,5 @@ enum class AppOptionMenuType(@StringRes val title: Int) {
     ChangePreferredCopy(R.string.change_preferred_copy),
     AddToFavorites(R.string.option_add_to_favorites),
     RemoveFromFavorites(R.string.option_remove_from_favorites),
+    ChangeArt(R.string.rift_option_change_art),
 }

@@ -188,5 +188,5 @@ private fun RiftSection.accent(): SettingsAccent = when (this) {
     RiftSection.CloudStreaming -> SettingsAccent.Sky
     RiftSection.PcGames -> SettingsAccent.Blue
     RiftSection.AndroidGames -> SettingsAccent.Green
-    RiftSection.PcStreaming -> SettingsAccent.Teal
+    RiftSection.PcStreaming -> SettingsAccent.Mint
 }

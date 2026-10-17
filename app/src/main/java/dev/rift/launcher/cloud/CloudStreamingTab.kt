@@ -8,6 +8,8 @@ import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
 import app.gamenative.data.LibraryItem
+import dev.rift.launcher.home.TabSort
+import dev.rift.launcher.home.TabView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -73,6 +75,17 @@ class CloudStreamingTab internal constructor(private val catalog: CloudCatalog?,
     }
 
     val items: List<LibraryItem> = games.map { it.toLibraryItem() }
+
+    /**
+     * The tab's covers in the person's chosen order. "Last played" is the tab's own order above; "date
+     * added" is the order Game Pass lists its cloud games in.
+     */
+    fun arrange(view: TabView): List<LibraryItem> = when (view.sort) {
+        TabSort.LAST_PLAYED -> items
+        TabSort.DATE_ADDED -> catalog?.games.orEmpty().map { it.toLibraryItem() }
+        TabSort.NAME_ASC -> items.sortedBy { it.name.lowercase() }
+        TabSort.NAME_DESC -> items.sortedByDescending { it.name.lowercase() }
+    }
 
     /** Starts [item] in the cloud. */
     fun launch(context: Context, item: LibraryItem): Boolean {

@@ -3,6 +3,7 @@ package dev.rift.launcher.settings
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Android
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Cast
 import androidx.compose.material.icons.rounded.Cloud
@@ -11,12 +12,14 @@ import androidx.compose.material.icons.rounded.DesktopWindows
 import androidx.compose.material.icons.rounded.Gamepad
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.ManageAccounts
+import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.RocketLaunch
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material.icons.rounded.Tab
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.gamenative.R
@@ -47,21 +50,37 @@ enum class RiftSettingsSection(
 ) {
     AndroidGames(RiftSettingsGroup.Sources, R.string.rift_settings_android_games, R.string.rift_settings_android_games_summary, Icons.Rounded.Android, SettingsAccent.Green),
     Accounts(RiftSettingsGroup.Sources, R.string.rift_settings_accounts, R.string.rift_settings_accounts_summary, Icons.Rounded.ManageAccounts, SettingsAccent.Blue),
-    Streaming(RiftSettingsGroup.Sources, R.string.rift_settings_streaming, R.string.rift_settings_streaming_summary, Icons.Rounded.Cast, SettingsAccent.Teal),
+    Streaming(RiftSettingsGroup.Sources, R.string.rift_settings_streaming, R.string.rift_settings_streaming_summary, Icons.Rounded.Cast, SettingsAccent.Mint),
     Emulators(RiftSettingsGroup.Sources, R.string.rift_settings_emulators, R.string.rift_settings_emulators_summary, Icons.Rounded.SportsEsports, SettingsAccent.Peach),
     Cloud(RiftSettingsGroup.Sources, R.string.rift_settings_cloud, R.string.rift_settings_cloud_summary, Icons.Rounded.Cloud, SettingsAccent.Sky),
 
-    Interface(RiftSettingsGroup.Rift, R.string.rift_settings_interface, R.string.rift_settings_interface_summary, Icons.Rounded.Palette, SettingsAccent.Sky),
-    Tabs(RiftSettingsGroup.Rift, R.string.rift_settings_tabs, R.string.rift_settings_tabs_summary, Icons.Rounded.Tab, SettingsAccent.Peach),
-    Controller(RiftSettingsGroup.Rift, R.string.rift_settings_controller, R.string.rift_settings_controller_summary, Icons.Rounded.Gamepad, SettingsAccent.Sand),
-    Sound(RiftSettingsGroup.Rift, R.string.rift_settings_sound, R.string.rift_settings_sound_summary, Icons.Rounded.MusicNote, SettingsAccent.Yellow),
-    Home(RiftSettingsGroup.Rift, R.string.rift_settings_home, R.string.rift_settings_home_summary, Icons.Rounded.Home, SettingsAccent.Terracotta),
+    Interface(RiftSettingsGroup.Rift, R.string.rift_settings_interface, R.string.rift_settings_interface_summary, Icons.Rounded.Palette, SettingsAccent.Lilac),
+    Tabs(RiftSettingsGroup.Rift, R.string.rift_settings_tabs, R.string.rift_settings_tabs_summary, Icons.Rounded.Tab, SettingsAccent.Sky),
+    Controller(RiftSettingsGroup.Rift, R.string.rift_settings_controller, R.string.rift_settings_controller_summary, Icons.Rounded.Gamepad, SettingsAccent.Rose),
+    Sound(RiftSettingsGroup.Rift, R.string.rift_settings_sound, R.string.rift_settings_sound_summary, Icons.Rounded.MusicNote, SettingsAccent.Lemon),
+    Home(RiftSettingsGroup.Rift, R.string.rift_settings_home, R.string.rift_settings_home_summary, Icons.Rounded.Home, SettingsAccent.Peach),
+    Artwork(RiftSettingsGroup.Rift, R.string.rift_settings_artwork, R.string.rift_settings_artwork_summary, Icons.Rounded.Image, SettingsAccent.Mint),
 
     Graphics(RiftSettingsGroup.Windows, R.string.rift_settings_graphics, R.string.rift_settings_graphics_summary, Icons.Rounded.Videocam, SettingsAccent.Blue),
-    Display(RiftSettingsGroup.Windows, R.string.rift_settings_display, R.string.rift_settings_display_summary, Icons.Rounded.DesktopWindows, SettingsAccent.Teal),
-    Launch(RiftSettingsGroup.Windows, R.string.rift_settings_launch, R.string.rift_settings_launch_summary, Icons.Rounded.RocketLaunch, SettingsAccent.Terracotta),
+    Display(RiftSettingsGroup.Windows, R.string.rift_settings_display, R.string.rift_settings_display_summary, Icons.Rounded.DesktopWindows, SettingsAccent.Mint),
+    Launch(RiftSettingsGroup.Windows, R.string.rift_settings_launch, R.string.rift_settings_launch_summary, Icons.Rounded.RocketLaunch, SettingsAccent.Rose),
     Downloads(RiftSettingsGroup.Windows, R.string.rift_settings_downloads, R.string.rift_settings_downloads_summary, Icons.Rounded.CloudDownload, SettingsAccent.Green),
 
-    About(RiftSettingsGroup.System, R.string.rift_settings_about, R.string.rift_settings_about_summary, Icons.Rounded.Info, SettingsAccent.Sand),
-    Debug(RiftSettingsGroup.System, R.string.rift_settings_debug, R.string.rift_settings_debug_summary, Icons.Rounded.BugReport, SettingsAccent.Yellow),
+    Assistant(RiftSettingsGroup.System, R.string.rift_settings_assistant, R.string.rift_settings_assistant_summary, Icons.Rounded.AutoAwesome, SettingsAccent.Green),
+    Device(RiftSettingsGroup.System, R.string.rift_settings_device, R.string.rift_settings_device_summary, Icons.Rounded.Memory, SettingsAccent.Sky),
+    About(RiftSettingsGroup.System, R.string.rift_settings_about, R.string.rift_settings_about_summary, Icons.Rounded.Info, SettingsAccent.Lilac),
+    Debug(RiftSettingsGroup.System, R.string.rift_settings_debug, R.string.rift_settings_debug_summary, Icons.Rounded.BugReport, SettingsAccent.Lemon),
+    ;
+
+    companion object {
+        /** A section another screen wants the settings to open on (the art picker sends people to the key). Read once. */
+        @Volatile
+        private var requested: RiftSettingsSection? = null
+
+        fun request(section: RiftSettingsSection) {
+            requested = section
+        }
+
+        internal fun takeRequested(): RiftSettingsSection? = requested.also { requested = null }
+    }
 }

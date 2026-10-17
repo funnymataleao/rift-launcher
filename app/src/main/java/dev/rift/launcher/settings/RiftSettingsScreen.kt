@@ -90,7 +90,7 @@ fun RiftSettingsScreen(
     onSteamSignOut: (() -> Unit)? = null,
 ) {
     val sections = remember { RiftSettingsSection.entries }
-    var selectedIndex by rememberSaveable { mutableIntStateOf(0) }
+    var selectedIndex by rememberSaveable { mutableIntStateOf(RiftSettingsSection.takeRequested()?.ordinal ?: 0) }
     val selected = sections[selectedIndex]
 
     val railItems = remember { List(sections.size) { FocusRequester() } }
@@ -256,13 +256,13 @@ private fun RailItem(
             modifier = Modifier
                 .size(36.dp)
                 .clip(CircleShape)
-                .background(section.accent.color.copy(alpha = 0.2f)),
+                .background(section.accent.icon.disc),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = section.icon,
                 contentDescription = null,
-                tint = section.accent.color,
+                tint = section.accent.icon.symbol,
                 modifier = Modifier.size(22.dp),
             )
         }
@@ -343,6 +343,7 @@ private fun SectionPane(
                     when (section) {
                         RiftSettingsSection.Sound -> SoundSettings()
                         RiftSettingsSection.Home -> HomeSettings()
+                        RiftSettingsSection.Artwork -> ArtworkSettings()
                         RiftSettingsSection.Interface -> InterfaceSettings()
                         RiftSettingsSection.Controller -> ControllerSettings()
                         RiftSettingsSection.Display -> DisplaySettings()
@@ -355,6 +356,8 @@ private fun SectionPane(
                         RiftSettingsSection.Downloads -> DownloadsSettings()
                         RiftSettingsSection.Tabs -> TabsSettings()
                         RiftSettingsSection.Accounts -> AccountsSettings(onSteamSignIn, onSteamSignOut)
+                        RiftSettingsSection.Assistant -> AssistantSettings()
+                        RiftSettingsSection.Device -> DeviceSettings()
                         RiftSettingsSection.About -> AboutSettings()
                         RiftSettingsSection.Debug -> DebugSettings()
                     }

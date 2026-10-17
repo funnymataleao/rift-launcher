@@ -14,6 +14,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import app.gamenative.R
+import app.gamenative.ui.util.SnackbarManager
 import com.limelight.binding.PlatformBinding
 import com.limelight.computers.ComputerDatabaseManager
 import com.limelight.computers.ComputerManagerListener
@@ -30,6 +32,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 
 /**
  * Entry points for PC streaming (embedded Artemis core).
@@ -78,15 +82,50 @@ object PcStreaming {
 
     fun isOnline(pc: ComputerDetails) = pc.state == ComputerDetails.State.ONLINE && pc.activeAddress != null
 
-    /** Apps the host offers (Apollo/Sunshine apps.json); needs the PC online and paired. */
+    /**
+     * Apps the host offers (Apollo/Sunshine apps.json); needs the PC online and paired. The list is kept
+     * per PC, so the home still shows its games while the PC sleeps.
+     */
     suspend fun loadApps(context: Context, pc: ComputerDetails, uniqueId: String): List<NvApp> = withContext(Dispatchers.IO) {
         val http = NvHTTP(pc.activeAddress, pc.httpsPort, uniqueId, pc.serverCert, PlatformBinding.getCryptoProvider(context))
-        http.appList
+        http.appList.also { apps -> pc.uuid?.let { saveApps(context, it, apps) } }
     }
+
+    /** The last app list each PC returned, keyed by host UUID (call off the main thread). */
+    fun cachedApps(context: Context): Map<String, List<NvApp>> =
+        appsPrefs(context).all.mapNotNull { (uuid, value) ->
+            runCatching {
+                val json = JSONArray(value as String)
+                uuid to (0 until json.length()).map { i ->
+                    val app = json.getJSONObject(i)
+                    NvApp(app.getString("name"), app.optString("uuid").ifEmpty { null }, app.getInt("id"), app.optBoolean("hdr"))
+                }
+            }.getOrNull()
+        }.toMap()
+
+    private fun saveApps(context: Context, uuid: String, apps: List<NvApp>) {
+        val json = JSONArray()
+        apps.forEach { app ->
+            json.put(
+                JSONObject()
+                    .put("name", app.appName)
+                    .put("uuid", app.appUUID.orEmpty())
+                    .put("id", app.appId)
+                    .put("hdr", app.isHdrSupported),
+            )
+        }
+        appsPrefs(context).edit().putString(uuid, json.toString()).apply()
+    }
+
+    private fun appsPrefs(context: Context) = context.applicationContext.getSharedPreferences("rift_stream_apps", Context.MODE_PRIVATE)
 
     /** Starts the stream of [app] on [pc] with the user's stream settings. */
     fun startStream(context: Context, pc: ComputerDetails, app: NvApp, uniqueId: String) {
-        val address = pc.activeAddress ?: return
+        val address = pc.activeAddress
+        if (!isOnline(pc) || address == null) {
+            SnackbarManager.show(context.getString(R.string.rift_stream_pc_offline, pc.name))
+            return
+        }
         context.startActivity(
             Intent(context, StreamActivity::class.java).apply {
                 putExtra(StreamActivity.EXTRA_HOST, address.address)

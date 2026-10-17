@@ -68,7 +68,9 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -170,6 +172,8 @@ import app.gamenative.ui.model.LibraryViewModel
 import app.gamenative.ui.screen.library.components.GameSourceIcon
 import app.gamenative.ui.screen.library.components.LibraryDetailPane
 import app.gamenative.ui.screen.library.components.LibraryOptionsPanel
+import app.gamenative.ui.screen.library.components.TabFilterGroup
+import app.gamenative.ui.screen.library.components.TabFilterOption
 import app.gamenative.utils.SteamUtils
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
@@ -177,6 +181,12 @@ import dev.rift.launcher.cloud.CloudGamePage
 import dev.rift.launcher.cloud.CloudLibrary
 import dev.rift.launcher.cloud.XcloudAccount
 import dev.rift.launcher.cloud.rememberCloudStreamingTab
+import dev.rift.launcher.art.GameArtStore
+import dev.rift.launcher.art.LocalRiftArtPicker
+import dev.rift.launcher.art.RiftArtPicker
+import dev.rift.launcher.settings.RiftPrefs
+import dev.rift.launcher.settings.RiftSettingsSection
+import app.gamenative.ui.screen.PluviaScreen
 import dev.rift.launcher.sound.RiftSound
 import dev.rift.launcher.sound.rememberRiftSoundPlayer
 import dev.rift.launcher.sound.riftKeySounds
@@ -236,8 +246,10 @@ fun RiftHomeScreen(
         }
     }
 
-    val loadedLibrary = remember(libraryState.appInfoList) {
-        libraryState.appInfoList.filterNot { it.isRecommended || it.isFeatured || it.isRecTeaser || it.isRecLoading }
+    // The pictures the user picked (art picker) replace the store's, everywhere the games show.
+    val pickedArt by GameArtStore.version.collectAsStateWithLifecycle()
+    val loadedLibrary = remember(libraryState.appInfoList, pickedArt) {
+        GameArtStore.apply(context, libraryState.appInfoList.filterNot { it.isRecommended || it.isFeatured || it.isRecTeaser || it.isRecLoading })
     }
     // While GameNative reloads the list (it empties it first), keep showing the last one: no flashes.
     var lastLibrary by remember { mutableStateOf(emptyList<LibraryItem>()) }
@@ -259,14 +271,19 @@ fun RiftHomeScreen(
     val pairedPcs by PcStreaming.pairedHosts(context).collectAsStateWithLifecycle()
     // The PC streaming tab exists only while it has games to show; setup hints live in settings.
     val streamTab = if (pairedPcs.isNotEmpty()) rememberPcStreamingTab() else null
-    val streamItems = streamTab?.items.orEmpty()
-    val hasStreamGames = streamItems.isNotEmpty()
+    // Each tab keeps its own sort and filter; the filters panel edits the tab that is open.
+    var streamView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.PcStreaming)) }
+    var androidView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.AndroidGames)) }
+    val streamItems by remember(streamTab, streamView, pickedArt) { derivedStateOf { GameArtStore.apply(context, streamTab?.arrange(context, streamView).orEmpty()) } }
+    val hasStreamGames = streamTab?.items?.isNotEmpty() == true
     val cloudSignedIn by XcloudAccount.signedIn(context).collectAsStateWithLifecycle()
     // The cloud tab exists only while a cloud account is signed in and its catalog has games; the
     // sign-in and the hints live in settings.
     val cloudTab = if (cloudSignedIn == true) rememberCloudStreamingTab() else null
-    val cloudItems = cloudTab?.items.orEmpty()
-    val hasCloudGames = cloudItems.isNotEmpty()
+    // The cloud tab starts on its own order (played from Rift, then Game Pass's most popular).
+    var cloudView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.CloudStreaming, TabSort.LAST_PLAYED)) }
+    val cloudItems = remember(cloudTab, cloudView) { cloudTab?.arrange(cloudView).orEmpty() }
+    val hasCloudGames = cloudTab?.items?.isNotEmpty() == true
     val sections = remember(library, androidGames, hasStreamGames, hasCloudGames) {
         RiftSections.configured(context, library, androidGames, hasStreamGames, hasCloudGames)
     }
@@ -316,6 +333,9 @@ fun RiftHomeScreen(
     // The open game page is a cloud game's: its main button plays it in the cloud.
     var openedForCloud by rememberSaveable { mutableStateOf(false) }
     var lastOpenedItem by remember { mutableStateOf<LibraryItem?>(null) }
+    // The art picker (SteamGridDB) for one game; opened from the game's options or Y on a streamed game.
+    var artItem by remember { mutableStateOf<LibraryItem?>(null) }
+    var artToken by remember { mutableIntStateOf(0) }
     var pendingFocusKey by remember { mutableStateOf<String?>(null) }
 
     // Row positions live here, above the game page, so coming back (or switching tabs) keeps them.
@@ -323,7 +343,7 @@ fun RiftHomeScreen(
     val androidRowState = rememberLazyListState()
     val streamRowState = rememberLazyListState()
     val cloudRowState = rememberLazyListState()
-    val filterKey = listOf(libraryState.appInfoSortType.toList(), libraryState.currentSortOption)
+    val filterKey = listOf(libraryState.appInfoSortType.toList(), libraryState.currentSortOption, streamView, androidView, cloudView)
     var lastFilterKey by remember { mutableStateOf(filterKey) }
     LaunchedEffect(filterKey) {
         if (filterKey != lastFilterKey) {
@@ -341,7 +361,16 @@ fun RiftHomeScreen(
     var libraryPending by remember { mutableStateOf<String?>(null) }
     var libraryTabSwitch by remember { mutableIntStateOf(0) }
     val focusedItem = homeRow.firstOrNull { it.appId == focusedAppId } ?: homeRow.firstOrNull()
-    val focusedAndroid = androidGames.firstOrNull { it.packageName == focusedPackage } ?: androidGames.firstOrNull()
+    val androidShown = remember(androidGames, androidView) {
+        val opened = AndroidGames.lastOpened(context)
+        when (androidView.sort) {
+            TabSort.NAME_ASC -> androidGames.sortedBy { it.label.lowercase() }
+            TabSort.NAME_DESC -> androidGames.sortedByDescending { it.label.lowercase() }
+            TabSort.DATE_ADDED -> androidGames.sortedWith(compareByDescending<AndroidGame> { it.installedAt }.thenBy { it.label.lowercase() })
+            TabSort.LAST_PLAYED -> androidGames.sortedWith(compareByDescending<AndroidGame> { opened[it.packageName] ?: 0L }.thenBy { it.label.lowercase() })
+        }
+    }
+    val focusedAndroid = androidShown.firstOrNull { it.packageName == focusedPackage } ?: androidShown.firstOrNull()
     val focusedStream = streamItems.firstOrNull { it.appId == focusedStreamId } ?: streamItems.firstOrNull()
     val cloudHomeRow = cloudItems.take(HOME_ROW_COUNT)
     val focusedCloud = cloudHomeRow.firstOrNull { it.appId == focusedCloudId } ?: cloudHomeRow.firstOrNull()
@@ -356,7 +385,7 @@ fun RiftHomeScreen(
     /** Puts focus back on the cover this section had last. */
     fun focusSection(target: RiftSection?) {
         // The game page has its own focus; the home picks its cover again when the page closes.
-        if (openedAppId != null) return
+        if (openedAppId != null || artItem != null) return
         // In the library, the grid takes it back on the game it had last.
         if (libraryOpen) {
             val items = if (target == RiftSection.CloudStreaming) cloudItems else library
@@ -499,6 +528,20 @@ fun RiftHomeScreen(
     var optionsToken by remember { mutableIntStateOf(0) }
     val optionsOnly = remember { RiftOptionsOnly() }
     val gameOptionsOpen = optionsItem != null && optionsOnly.panelOpen
+    fun openArt(item: LibraryItem) {
+        if (RiftPrefs.of(context).steamGridDbKey.isBlank()) {
+            // No key yet: the settings page that takes it.
+            RiftSettingsSection.request(RiftSettingsSection.Artwork)
+            onNavigateRoute(PluviaScreen.Settings.route)
+            return
+        }
+        // The options panel (if that is where this came from) is done; its game screen goes away.
+        homeScope.launch { optionsItem = null }
+        artToken++
+        artItem = item
+    }
+    val latestOpenArt = rememberUpdatedState<(LibraryItem) -> Unit> { openArt(it) }
+    val artOpener = remember<(LibraryItem) -> Unit> { { item -> latestOpenArt.value(item) } }
     // B on the home: every installed Android app in a grid, Beacon style.
     var appsOpen by rememberSaveable { mutableStateOf(false) }
     // Load the app list ahead (after start-up), so B opens the grid at once.
@@ -507,7 +550,7 @@ fun RiftHomeScreen(
         withContext(Dispatchers.IO) { runCatching { AndroidGames.launchable(context) } }
     }
     var backDownHere by remember { mutableStateOf(false) }
-    val overlayOpen = panelOpen || systemMenuOpen || gameOptionsOpen || appsOpen || libraryOpen
+    val overlayOpen = panelOpen || systemMenuOpen || gameOptionsOpen || appsOpen || libraryOpen || artItem != null
     var selectLongPressed by remember { mutableStateOf(false) }
     val quickAccessKey = remember { RiftControls.quickAccessKey(context) }
     // B / Back closes the open panel and never leaves the app.
@@ -531,7 +574,7 @@ fun RiftHomeScreen(
         // key reaches the screen at all: take the view's focus back first.
         if (!composeView.hasFocus()) composeView.requestFocus()
         // Behind the apps grid the covers must not take focus; the grid keeps its own.
-        if (appsOpen || openedAppId != null) return
+        if (appsOpen || openedAppId != null || artItem != null) return
         // Across a frame, so the cover sees its focus request change even if it was the last one.
         pendingFocusKey = null
         libraryPending = null
@@ -557,6 +600,9 @@ fun RiftHomeScreen(
                 // stays alive, so it is sent to the back dispatcher from here.
                 if (ev.action == KeyEvent.ACTION_UP && !ev.isCanceled) backDispatcher?.onBackPressed()
                 true
+            } else if (artItem != null) {
+                // The art picker has its own keys.
+                false
             } else if (openedAppId != null && !pageFocused && isBackKey) {
                 // B on the game page with focus somewhere else: still back to the home.
                 if (ev.action == KeyEvent.ACTION_UP) latestClosePage.value()
@@ -580,6 +626,21 @@ fun RiftHomeScreen(
         val observer = LifecycleEventObserver { _, e -> if (e == Lifecycle.Event.ON_RESUME) latestRefocus.value() }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    // Home pressed while Rift is the home app: every layer closes, back to the row of covers.
+    val latestHomePressed = rememberUpdatedState<() -> Unit> {
+        if (searchOpen) closeSearch()
+        if (viewModel.state.value.isOptionsPanelOpen) viewModel.onOptionsPanelToggle(false)
+        systemMenuOpen = false
+        appsOpen = false
+        if (libraryOpen) closeLibrary()
+        openedAppId = null
+        refocusCover()
+    }
+    DisposableEffect(Unit) {
+        val onHome: (AndroidEvent.HomePressed) -> Unit = { latestHomePressed.value() }
+        PluviaApp.events.on<AndroidEvent.HomePressed, Unit>(onHome)
+        onDispose { PluviaApp.events.off<AndroidEvent.HomePressed, Unit>(onHome) }
     }
     // What the footer blurs: the screen behind it, recorded once per frame and drawn again under the footer.
     val backdrop = rememberGraphicsLayer()
@@ -606,7 +667,7 @@ fun RiftHomeScreen(
                     val native = event.nativeKeyEvent
                     if (optionsItem != null && optionsOnly.panelOpen) return@onPreviewKeyEvent false
                     if (optionsItem != null && event.type == KeyEventType.KeyDown) optionsItem = null
-                    if (appsOpen || libraryOpen) return@onPreviewKeyEvent false
+                    if (appsOpen || libraryOpen || artItem != null) return@onPreviewKeyEvent false
                     // Never stranded: a direction press with nothing but the screen focused goes to a cover.
                     if (rootFocused && event.type == KeyEventType.KeyDown && native.keyCode in KeyEvent.KEYCODE_DPAD_UP..KeyEvent.KEYCODE_DPAD_RIGHT) {
                         refocusCover()
@@ -655,7 +716,7 @@ fun RiftHomeScreen(
                             }
                             event.type == KeyEventType.KeyUp -> {
                                 selectHold[0]?.cancel()
-                                if (!selectLongPressed && !systemMenuOpen && section == RiftSection.PcGames) {
+                                if (!selectLongPressed && !systemMenuOpen && section != null) {
                                     viewModel.onOptionsPanelToggle(!viewModel.state.value.isOptionsPanelOpen)
                                 }
                             }
@@ -689,6 +750,9 @@ fun RiftHomeScreen(
                                     optionsToken++
                                     optionsItem = it
                                 }
+                            } else if (section == RiftSection.PcStreaming) {
+                                // Streamed games have no options panel; Y goes straight to their art.
+                                focusedStream?.let(::openArt)
                             }
                             true
                         }
@@ -781,7 +845,7 @@ fun RiftHomeScreen(
                         section == RiftSection.AndroidGames -> {
                             AndroidHero(game = focusedAndroid, modifier = Modifier.weight(1f))
                             AndroidShelf(
-                                games = androidGames,
+                                games = androidShown,
                                 listState = androidRowState,
                                 cardHeight = cardHeight,
                                 pendingFocusKey = pendingFocusKey,
@@ -806,6 +870,7 @@ fun RiftHomeScreen(
                                 onOpen = { openGame(it, forStream = true) },
                                 onNearEnd = {},
                                 badges = false,
+                                dimUninstalled = true,
                             )
                         }
                         // The cloud tab: Game Pass cloud games, the ones played from Rift first; A opens the game page.
@@ -869,7 +934,7 @@ fun RiftHomeScreen(
               }
                 Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(FooterHeight).graphicsLayer { alpha = intro.value }) {
                     FrostedGlass(backdrop = backdrop, modifier = Modifier.matchParentSize())
-                    HintsBar(showFilters = section == RiftSection.PcGames)
+                    HintsBar(showFilters = section != null)
                 }
             }
 
@@ -889,7 +954,7 @@ fun RiftHomeScreen(
                     }
                 },
                 onDismiss = ::closeLibrary,
-                keepFocusInside = { openedAppId == null && optionsItem == null },
+                keepFocusInside = { openedAppId == null && optionsItem == null && artItem == null },
                 onKeyDown = { code ->
                     // Y (and Start): the focused game's options, as on the home.
                     val item = library.firstOrNull { it.appId == libraryFocusedId }
@@ -946,6 +1011,21 @@ fun RiftHomeScreen(
                     waitForReload = false,
                 )
             }
+            val tabGroups = when (section) {
+                RiftSection.PcStreaming -> tabFilterGroups(streamView, withScope = true) {
+                    streamView = it
+                    RiftTabFilters.set(context, RiftSection.PcStreaming, it)
+                }
+                RiftSection.AndroidGames -> tabFilterGroups(androidView, withScope = false) {
+                    androidView = it
+                    RiftTabFilters.set(context, RiftSection.AndroidGames, it)
+                }
+                RiftSection.CloudStreaming -> tabFilterGroups(cloudView, withScope = false) {
+                    cloudView = it
+                    RiftTabFilters.set(context, RiftSection.CloudStreaming, it)
+                }
+                else -> null
+            }
             RiftGlassTheme {
                 LibraryOptionsPanel(
                     isOpen = panelOpen,
@@ -968,13 +1048,14 @@ fun RiftHomeScreen(
                     curatedListCounts = libraryState.curatedListCounts,
                     onCuratedListToggle = viewModel::onCuratedListToggle,
                     onClearCuratedLists = viewModel::onClearCuratedLists,
+                    tabGroups = tabGroups,
                     panelShape = RectangleShape,
                     panelShadowElevation = 0.dp,
                     showCloseButton = false,
                 )
                 optionsItem?.let { item ->
                     key(optionsToken) {
-                        CompositionLocalProvider(LocalRiftOptionsOnly provides optionsOnly) {
+                        CompositionLocalProvider(LocalRiftOptionsOnly provides optionsOnly, LocalRiftArtPicker provides artOpener) {
                             LibraryDetailPane(
                                 libraryItem = item,
                                 onClickPlay = { asContainer ->
@@ -990,6 +1071,7 @@ fun RiftHomeScreen(
                     }
                 }
                 RiftAppsGrid(isOpen = appsOpen, onDismiss = { appsOpen = false })
+                dev.rift.launcher.assistant.optimize.RiftOptimizeHost()
                 RiftSystemMenu(
                     isOpen = systemMenuOpen,
                     onDismiss = { systemMenuOpen = false },
@@ -1062,6 +1144,7 @@ fun RiftHomeScreen(
                 )
             } else {
             CompositionLocalProvider(LocalRiftStreamAction provides streamAction) {
+            CompositionLocalProvider(LocalRiftArtPicker provides artOpener) {
             LibraryDetailPane(
                 libraryItem = item,
                 onClickPlay = { asContainer ->
@@ -1075,8 +1158,27 @@ fun RiftHomeScreen(
             )
             }
             }
+            }
         }
     }
+        // The art picker lives above everything, the game page included.
+        RiftTheme {
+            RiftArtPicker(
+                item = artItem,
+                openToken = artToken,
+                glass = heroLayer,
+                onDismiss = {
+                    artItem = null
+                    // Over the game page, focus goes back into the page; over the home the covers take it.
+                    if (openedAppId != null) runCatching { pageFocus.requestFocus() }
+                },
+                onOpenSettings = {
+                    artItem = null
+                    RiftSettingsSection.request(RiftSettingsSection.Artwork)
+                    onNavigateRoute(PluviaScreen.Settings.route)
+                },
+            )
+        }
     }
 
     // Focus a cover once the section has something to show, so a gamepad works without touching the screen.
@@ -1164,7 +1266,7 @@ private fun PcLibraryGrid(
         modifier = Modifier.fillMaxSize(),
     ) {
         itemsIndexed(items, key = { _, item -> item.appId }) { index, item ->
-            val urls = listOf(item.capsuleImageUrl, item.headerImageUrl, item.heroImageUrl)
+            val urls = portraitCoverUrls(item)
             val url = urls.firstOrNull { it.isNotEmpty() }.orEmpty()
             BoxWithConstraints {
                 CoverCard(
@@ -1291,6 +1393,7 @@ private fun PcGamesShelf(
     onOpen: (LibraryItem) -> Unit,
     onNearEnd: () -> Unit,
     badges: Boolean = true,
+    dimUninstalled: Boolean = false,
     emptyMessage: String = stringResource(R.string.rift_filter_empty),
     onOpenLibrary: (() -> Unit)? = null,
     onLibraryFocused: () -> Unit = {},
@@ -1326,14 +1429,14 @@ private fun PcGamesShelf(
             val wide = index == 0
             // Preferred art first, the other kinds as fallbacks when one is missing or fails to load.
             val urls = if (wide) {
-                listOf(item.headerImageUrl, item.heroImageUrl, item.capsuleImageUrl)
+                wideCoverUrls(item)
             } else {
-                listOf(item.capsuleImageUrl, item.headerImageUrl, item.heroImageUrl)
+                portraitCoverUrls(item)
             }
             val url = urls.firstOrNull { it.isNotEmpty() }.orEmpty()
             val context = LocalContext.current
             // Entrance: the covers on screen roll in one after another (app start, tab switch).
-            Box(modifier = Modifier.shelfEntry(entry, index, clock)) {
+            Box(modifier = Modifier.shelfEntry(entry, index, clock).graphicsLayer { alpha = if (dimUninstalled && !item.isInstalled) 0.4f else 1f }) {
             CoverCard(
                 height = cardHeight,
                 aspectRatio = if (wide) WIDE_TILE_RATIO else 2f / 3f,
@@ -1913,8 +2016,14 @@ private val LogoTitleStyle = TextStyle(
 private fun GameLogo(item: LibraryItem) {
     val isSteam = item.gameSource == GameSource.STEAM && item.gameId != 0
     // Resolved off the main thread; null while looking it up, "" when the game has no logo image.
-    val logoUrl by produceState<String?>(if (isSteam) null else "", item.appId) {
-        value = if (isSteam) withContext(Dispatchers.IO) { GameLogos.steamLogoUrl(item.gameId) } else ""
+    // A logo the user picked in the art picker comes first.
+    val picked = item.customLogoUrl
+    val logoUrl by produceState<String?>(if (picked.isNotEmpty()) picked else if (isSteam) null else "", item.appId, picked) {
+        value = when {
+            picked.isNotEmpty() -> picked
+            isSteam -> withContext(Dispatchers.IO) { GameLogos.steamLogoUrl(item.gameId) }
+            else -> ""
+        }
     }
     val url = logoUrl ?: return
     Crossfade(targetState = item.appId to url, animationSpec = tween(250), label = "logo") { (appId, url) ->
@@ -2113,7 +2222,8 @@ private suspend fun preloadFirstImages(context: android.content.Context, library
     val requests = buildList {
         first.firstOrNull()?.let { add(it.heroImageUrl.ifEmpty { it.headerImageUrl.ifEmpty { it.capsuleImageUrl } } to PRELOAD_BACKDROP_PX) }
         first.forEachIndexed { index, item ->
-            add((if (index == 0) item.headerImageUrl.ifEmpty { item.heroImageUrl.ifEmpty { item.capsuleImageUrl } } else item.capsuleImageUrl.ifEmpty { item.headerImageUrl }) to PRELOAD_COVER_PX)
+            val urls = if (index == 0) wideCoverUrls(item) else portraitCoverUrls(item)
+            add(urls.firstOrNull { it.isNotEmpty() }.orEmpty() to PRELOAD_COVER_PX)
         }
     }.filter { it.first.isNotEmpty() }.distinctBy { it.first }
     requests.map { (url, px) ->
@@ -2121,4 +2231,34 @@ private suspend fun preloadFirstImages(context: android.content.Context, library
             runCatching { context.imageLoader.execute(ImageRequest.Builder(context).data(url).size(px).build()) }
         }
     }.awaitAll()
+}
+
+/** The filters panel's groups for a tab other than PC games: its sort and, for streaming, the scope. */
+@Composable
+private fun tabFilterGroups(view: TabView, withScope: Boolean, onChange: (TabView) -> Unit): List<TabFilterGroup> = buildList {
+    add(
+        TabFilterGroup(
+            label = stringResource(R.string.options_sort_by),
+            value = stringResource(view.sort.titleRes),
+            icon = Icons.Outlined.SwapVert,
+            options = TabSort.entries.map { sort ->
+                TabFilterOption(stringResource(sort.titleRes), view.sort == sort) { onChange(view.copy(sort = sort)) }
+            },
+        ),
+    )
+    if (withScope) {
+        add(
+            TabFilterGroup(
+                label = stringResource(R.string.rift_scope_title),
+                value = stringResource(if (view.showAll) R.string.rift_scope_all else R.string.rift_scope_installed),
+                icon = Icons.Outlined.FilterList,
+                options = listOf(false, true).map { all ->
+                    TabFilterOption(
+                        stringResource(if (all) R.string.rift_scope_all else R.string.rift_scope_installed),
+                        view.showAll == all,
+                    ) { onChange(view.copy(showAll = all)) }
+                },
+            ),
+        )
+    }
 }

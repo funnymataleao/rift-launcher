@@ -167,6 +167,13 @@ class RiftPrefs private constructor(
         get() = homePrefs.getInt(QUICK_ACCESS, dev.rift.launcher.home.RiftControls.DEFAULT_QUICK_ACCESS)
         set(value) = homePrefs.edit().putInt(QUICK_ACCESS, value).apply()
 
+    // --- Game art ---
+
+    /** The user's own SteamGridDB API key (steamgriddb.com/profile/preferences/api); empty when none. Stays on this device. */
+    var steamGridDbKey: String
+        get() = prefs.getString(STEAMGRIDDB_KEY, "") ?: ""
+        set(value) = prefs.edit().putString(STEAMGRIDDB_KEY, value.trim()).apply()
+
     // --- Emulator folders ---
 
     /** Content URI of the folder the user picked, empty when none. */
@@ -212,6 +219,7 @@ class RiftPrefs private constructor(
         private const val SHOW_BATTERY = "show_battery"
         private const val SHOW_NETWORK = "show_network"
         private const val QUICK_ACCESS = "quick_access_keycode"
+        private const val STEAMGRIDDB_KEY = "steamgriddb_api_key"
         private const val ROMS_URI = "emulators_roms_uri"
         private const val BIOS_URI = "emulators_bios_uri"
         private const val ESDE_URI = "emulators_esde_uri"

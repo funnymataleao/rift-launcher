@@ -14,6 +14,10 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
 import app.gamenative.db.dao.SteamAppDao
+import app.gamenative.db.dao.SteamLicenseDao
+import app.gamenative.enums.AppType
+import dev.rift.launcher.home.TabSort
+import dev.rift.launcher.home.TabView
 import com.limelight.nvstream.http.ComputerDetails
 import com.limelight.nvstream.http.NvApp
 import dagger.hilt.EntryPoint
@@ -38,8 +42,15 @@ class StreamService(val pc: ComputerDetails, val app: NvApp)
  * so the tab shows the same covers, art and logos as the PC games tab.
  */
 class PcStreamingTab internal constructor(internal val hosts: PcHosts) {
+    /** Each PC's apps: the saved list first, then the live one once the PC is online. */
     internal val apps = mutableStateMapOf<String, List<NvApp>>()
+
+    /** PCs whose apps were reloaded live while this screen was shown. */
+    internal val refreshed = mutableSetOf<String>()
     internal var steamByName by mutableStateOf<Map<String, SteamApp>>(emptyMap())
+
+    /** When each Steam game was added to the account (license date), by library app id. */
+    internal var addedAt by mutableStateOf<Map<String, Long>>(emptyMap())
 
     internal val paired: List<ComputerDetails>
         get() = hosts.hosts.values.filter { PcStreaming.isPaired(it) }.sortedBy { it.name }
@@ -47,7 +58,8 @@ class PcStreamingTab internal constructor(internal val hosts: PcHosts) {
     private val split by derivedStateOf {
         val games = mutableListOf<StreamGame>()
         val services = mutableListOf<StreamService>()
-        paired.filter { PcStreaming.isOnline(it) }.forEach { pc ->
+        // Asleep or unreachable PCs keep their games from the saved list; streaming wakes nothing.
+        paired.forEach { pc ->
             apps[pc.uuid].orEmpty().forEach { app ->
                 val steam = steamByName[normalizedTitle(app.appName)]
                 if (steam != null) {
@@ -68,9 +80,39 @@ class PcStreamingTab internal constructor(internal val hosts: PcHosts) {
 
     val items: List<LibraryItem> get() = games.map { it.item }
 
+    /**
+     * The tab's covers for the person's [view]: only the games on the paired PCs, or the whole Steam
+     * library with the ones the PC does not have marked not installed (shown dimmed), in the chosen order.
+     */
+    fun arrange(context: Context, view: TabView): List<LibraryItem> {
+        val hosted = games.map { it.item.copy(isInstalled = true) }
+        val shown = if (view.showAll) {
+            val ids = hosted.map { it.appId }.toSet()
+            hosted + steamByName.values
+                .filter { it.type == AppType.game && steamAppId(it) !in ids }
+                .distinctBy { it.id }
+                .map { it.toLibraryItem() }
+        } else {
+            hosted
+        }
+        val played = lastPlayed(context)
+        return when (view.sort) {
+            TabSort.NAME_ASC -> shown.sortedBy { it.name.lowercase() }
+            TabSort.NAME_DESC -> shown.sortedByDescending { it.name.lowercase() }
+            TabSort.DATE_ADDED -> shown.sortedWith(compareByDescending<LibraryItem> { addedAt[it.appId] ?: 0L }.thenBy { it.name.lowercase() })
+            TabSort.LAST_PLAYED -> shown.sortedWith(compareByDescending<LibraryItem> { played[it.appId] ?: 0L }.thenBy { it.name.lowercase() })
+        }
+    }
+
+    private fun usage(context: Context) = context.applicationContext.getSharedPreferences("rift_stream_usage", Context.MODE_PRIVATE)
+
+    private fun lastPlayed(context: Context): Map<String, Long> =
+        usage(context).all.mapNotNull { (k, v) -> (v as? Long)?.let { k to it } }.toMap()
+
     /** Starts the stream of the game shown by [item]. */
     fun launch(context: Context, item: LibraryItem): Boolean {
         val game = games.firstOrNull { it.item.appId == item.appId } ?: return false
+        usage(context).edit().putLong(item.appId, System.currentTimeMillis()).apply()
         return start(context, game.pc, game.app)
     }
 
@@ -92,6 +134,15 @@ fun rememberPcStreamingTab(): PcStreamingTab {
     val tab = remember(hosts) { PcStreamingTab(hosts) }
 
     LaunchedEffect(tab) {
+        tab.addedAt = withContext(Dispatchers.IO) {
+            runCatching {
+                val entry = EntryPointAccessors.fromApplication(context.applicationContext, StreamLibraryEntryPoint::class.java)
+                val created = entry.licenseDao().getAllLicenses().associate { it.packageId to it.timeCreated.time }
+                entry.steamAppDao().getAllOwnedAppsAsList().mapNotNull { app ->
+                    created[app.packageId]?.let { steamAppId(app) to it }
+                }.toMap()
+            }.getOrDefault(emptyMap())
+        }
         tab.steamByName = withContext(Dispatchers.IO) {
             runCatching {
                 EntryPointAccessors.fromApplication(context.applicationContext, StreamLibraryEntryPoint::class.java)
@@ -102,13 +153,22 @@ fun rememberPcStreamingTab(): PcStreamingTab {
         }
     }
 
-    // Apps load once per PC when it comes online.
+    LaunchedEffect(tab) {
+        val cached = withContext(Dispatchers.IO) { runCatching { PcStreaming.cachedApps(context) }.getOrDefault(emptyMap()) }
+        cached.forEach { (uuid, apps) -> if (tab.apps[uuid] == null) tab.apps[uuid] = apps }
+    }
+
+    // Apps reload once per PC when it comes online, and are saved for when it is not.
     val uniqueId = tab.hosts.uniqueId
     tab.paired.forEach { pc ->
         val online = PcStreaming.isOnline(pc)
         LaunchedEffect(pc.uuid, online, uniqueId) {
-            if (online && uniqueId != null && tab.apps[pc.uuid] == null) {
-                runCatching { PcStreaming.loadApps(context, pc, uniqueId) }.onSuccess { tab.apps[pc.uuid] = it }
+            val uuid = pc.uuid ?: return@LaunchedEffect
+            if (online && uniqueId != null && uuid !in tab.refreshed) {
+                runCatching { PcStreaming.loadApps(context, pc, uniqueId) }.onSuccess {
+                    tab.apps[uuid] = it
+                    tab.refreshed += uuid
+                }
             }
         }
     }
@@ -119,6 +179,7 @@ fun rememberPcStreamingTab(): PcStreamingTab {
 @InstallIn(SingletonComponent::class)
 interface StreamLibraryEntryPoint {
     fun steamAppDao(): SteamAppDao
+    fun licenseDao(): SteamLicenseDao
 }
 
 private fun steamAppId(app: SteamApp) = "${GameSource.STEAM.name}_${app.id}"
