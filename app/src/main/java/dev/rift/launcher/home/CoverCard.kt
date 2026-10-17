@@ -62,6 +62,9 @@ import kotlinx.coroutines.withContext
 
 private val FrameWidth = 1.dp
 private const val FRAME_SWEEP_MS = 1400
+
+/** The animated gradient frame on the focused cover is switched off for now (Denis); set to true to bring it back. */
+private const val COVER_FRAME_ENABLED = false
 private const val SHEEN_SWEEP_MS = 900
 private const val MAX_TILT_DEGREES = 9f
 
@@ -182,6 +185,7 @@ fun CoverCard(
  */
 @Composable
 private fun Modifier.coverFrame(focused: Boolean, colors: List<Color>, shape: Shape): Modifier {
+    if (!COVER_FRAME_ENABLED) return this
     val progress = remember { Animatable(0f) }
     LaunchedEffect(focused, colors) {
         progress.snapTo(0f)
