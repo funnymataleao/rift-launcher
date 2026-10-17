@@ -543,6 +543,14 @@ fun RiftHomeScreen(
     val focusedCloud = cloudHomeRow.firstOrNull { it.appId == focusedCloudId } ?: cloudHomeRow.firstOrNull()
     val emulatorHomeRow = emulatorItems.take(HOME_ROW_COUNT)
     val focusedEmulator = emulatorHomeRow.firstOrNull { it.appId == focusedEmulatorId } ?: emulatorHomeRow.firstOrNull()
+    // Coming back (from Settings, a game page, AI Help...) the lists load again, and the cover that had focus may
+    // not be in the first batch. Until it shows up the focus waits instead of landing on whatever is first (and
+    // then being remembered as the place); if it never shows up (the game is gone) the first cover takes over.
+    val pcSaved = focusedAppId == null || homeRow.any { it.appId == focusedAppId }
+    val androidSaved = focusedPackage == null || androidShown.any { it.packageName == focusedPackage }
+    val streamSaved = focusedStreamId == null || streamHomeRow.any { it.appId == focusedStreamId }
+    val cloudSaved = focusedCloudId == null || cloudHomeRow.any { it.appId == focusedCloudId }
+    val emulatorSaved = focusedEmulatorId == null || emulatorHomeRow.any { it.appId == focusedEmulatorId }
     // The library's games: every system, or the one picked with LB/RB.
     val emulatorLibraryItems = remember(emulatorItems, emulatorGames, emulatorLibraryTab) {
         val tab = emulatorLibraryTab
@@ -573,7 +581,12 @@ fun RiftHomeScreen(
                 RiftSection.Emulators -> emulatorLibraryItems
                 else -> library
             }
-            libraryPending = (libraryFocusedId?.takeIf { id -> items.any { it.appId == id } } ?: items.firstOrNull()?.appId)
+            val saved = libraryFocusedId
+            libraryPending = when {
+                saved == null -> items.firstOrNull()?.appId
+                items.any { it.appId == saved } -> saved
+                else -> items.firstOrNull()?.appId
+            }
             return
         }
         // The cover may be scrolled out of the row (a search changes it), so bring it into view first.
@@ -609,11 +622,11 @@ fun RiftHomeScreen(
             }
         }
         pendingFocusKey = when (target) {
-            RiftSection.PcGames -> if (libraryCardFocused && homeRow.isNotEmpty()) LIBRARY_CARD_KEY else focusedItem?.let(::focusKeyFor)
-            RiftSection.AndroidGames -> focusedAndroid?.let(::androidFocusKey)
-            RiftSection.PcStreaming -> if (streamCardFocused && streamHomeRow.isNotEmpty()) LIBRARY_CARD_KEY else focusedStream?.let(::focusKeyFor)
-            RiftSection.CloudStreaming -> if (cloudCardFocused && cloudHomeRow.isNotEmpty()) LIBRARY_CARD_KEY else focusedCloud?.let(::focusKeyFor)
-            RiftSection.Emulators -> if (emulatorCardFocused && emulatorHomeRow.isNotEmpty()) LIBRARY_CARD_KEY else focusedEmulator?.let(::focusKeyFor)
+            RiftSection.PcGames -> if (libraryCardFocused && homeRow.isNotEmpty()) LIBRARY_CARD_KEY else if (pcSaved) focusedItem?.let(::focusKeyFor) else null
+            RiftSection.AndroidGames -> if (androidSaved) focusedAndroid?.let(::androidFocusKey) else null
+            RiftSection.PcStreaming -> if (streamCardFocused && streamHomeRow.isNotEmpty()) LIBRARY_CARD_KEY else if (streamSaved) focusedStream?.let(::focusKeyFor) else null
+            RiftSection.CloudStreaming -> if (cloudCardFocused && cloudHomeRow.isNotEmpty()) LIBRARY_CARD_KEY else if (cloudSaved) focusedCloud?.let(::focusKeyFor) else null
+            RiftSection.Emulators -> if (emulatorCardFocused && emulatorHomeRow.isNotEmpty()) LIBRARY_CARD_KEY else if (emulatorSaved) focusedEmulator?.let(::focusKeyFor) else null
             null -> null
         }
     }
@@ -1396,7 +1409,7 @@ fun RiftHomeScreen(
                                 cardHeight = cardHeight,
                                 pendingFocusKey = pendingFocusKey,
                                 onFocusConsumed = { pendingFocusKey = null },
-                                onFocused = { focusedPackage = it.packageName },
+                                onFocused = { if (androidSaved) focusedPackage = it.packageName },
                                 onOpen = { openGame(it.toPageItem()) },
                                 entry = switchEntry,
                             )
@@ -1415,7 +1428,7 @@ fun RiftHomeScreen(
                                 pendingFocusKey = pendingFocusKey,
                                 onFocusConsumed = { pendingFocusKey = null },
                                 onFocused = {
-                                    focusedStreamId = it.appId
+                                    if (streamSaved) focusedStreamId = it.appId
                                     streamCardFocused = false
                                 },
                                 onOpen = { openGame(it, forStream = true) },
@@ -1440,7 +1453,7 @@ fun RiftHomeScreen(
                                 pendingFocusKey = pendingFocusKey,
                                 onFocusConsumed = { pendingFocusKey = null },
                                 onFocused = {
-                                    focusedEmulatorId = it.appId
+                                    if (emulatorSaved) focusedEmulatorId = it.appId
                                     emulatorCardFocused = false
                                 },
                                 onOpen = { item -> openGame(item) },
@@ -1467,7 +1480,7 @@ fun RiftHomeScreen(
                                 pendingFocusKey = pendingFocusKey,
                                 onFocusConsumed = { pendingFocusKey = null },
                                 onFocused = {
-                                    focusedCloudId = it.appId
+                                    if (cloudSaved) focusedCloudId = it.appId
                                     cloudCardFocused = false
                                 },
                                 onOpen = { openGame(it) },
@@ -1493,7 +1506,7 @@ fun RiftHomeScreen(
                                 pendingFocusKey = pendingFocusKey,
                                 onFocusConsumed = { pendingFocusKey = null },
                                 onFocused = {
-                                    focusedAppId = it.appId
+                                    if (pcSaved) focusedAppId = it.appId
                                     libraryCardFocused = false
                                 },
                                 // A opens the game page; games never start straight from the home (Denis).
@@ -1999,8 +2012,29 @@ fun RiftHomeScreen(
     }
 
     // Focus a cover once the section has something to show, so a gamepad works without touching the screen.
-    LaunchedEffect(section, library.isNotEmpty(), androidGames.isNotEmpty(), streamItems.isNotEmpty(), cloudItems.isNotEmpty(), emulatorItems.isNotEmpty()) {
+    LaunchedEffect(section, library.isNotEmpty(), androidGames.isNotEmpty(), streamItems.isNotEmpty(), cloudItems.isNotEmpty(), emulatorItems.isNotEmpty(), pcSaved, androidSaved, streamSaved, cloudSaved, emulatorSaved) {
         if (pendingFocusKey == null) focusSection(section)
+    }
+    // The remembered cover never came back (the game is gone): after a grace the first cover takes the focus.
+    val currentSaved = when (section) {
+        RiftSection.PcGames -> pcSaved
+        RiftSection.AndroidGames -> androidSaved
+        RiftSection.PcStreaming -> streamSaved
+        RiftSection.CloudStreaming -> cloudSaved
+        RiftSection.Emulators -> emulatorSaved
+        null -> true
+    }
+    LaunchedEffect(section, currentSaved) {
+        if (currentSaved) return@LaunchedEffect
+        delay(SOURCES_GRACE_MS)
+        when (section) {
+            RiftSection.PcGames -> focusedAppId = null
+            RiftSection.AndroidGames -> focusedPackage = null
+            RiftSection.PcStreaming -> focusedStreamId = null
+            RiftSection.CloudStreaming -> focusedCloudId = null
+            RiftSection.Emulators -> focusedEmulatorId = null
+            null -> Unit
+        }
     }
 }
 
