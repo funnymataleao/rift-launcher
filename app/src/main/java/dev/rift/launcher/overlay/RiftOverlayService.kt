@@ -3,6 +3,8 @@ package dev.rift.launcher.overlay
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.view.InputDevice
 import android.view.KeyEvent
@@ -66,6 +68,12 @@ class RiftOverlayService : AccessibilityService() {
                     runCatching { startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
                 }
             },
+            onGameMenu = {
+                hidePanel()
+                // Back reaches the game once the panel's window is gone: emulators open their own menu
+                // (with Exit), most Android games their pause menu.
+                Handler(Looper.getMainLooper()).postDelayed({ performGlobalAction(GLOBAL_ACTION_BACK) }, GAME_MENU_DELAY_MS)
+            },
             onDismissed = { panel = null },
         ).also { it.show() }
     }
@@ -92,5 +100,6 @@ class RiftOverlayService : AccessibilityService() {
 
     private companion object {
         const val SYSTEM_UI = "com.android.systemui"
+        const val GAME_MENU_DELAY_MS = 250L
     }
 }

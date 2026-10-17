@@ -410,6 +410,8 @@
     <string name="rift_overlay_back_to_rift">Back to Rift</string>
     <string name="rift_overlay_back_to_rift_summary">The game stays open in the background</string>
     <string name="rift_overlay_volume">Volume</string>
+    <string name="rift_overlay_game_menu">Game menu</string>
+    <string name="rift_overlay_game_menu_summary">Like the Back gesture: emulators open their menu with Exit</string>
     <string name="rift_settings_overlay">Panel in Android games</string>
     <string name="rift_settings_overlay_summary">Home on the gamepad opens Rift\'s panel in Android games and emulators. Turn on \"Rift panel in games\" in Accessibility.</string>
 </resources>
