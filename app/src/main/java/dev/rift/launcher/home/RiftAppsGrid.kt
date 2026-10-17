@@ -78,6 +78,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gamenative.R
+import dev.rift.launcher.ui.theme.RiftAccent
 import dev.rift.launcher.ui.theme.RiftColors
 import dev.rift.launcher.ui.theme.RiftAccent
 import dev.rift.launcher.ui.theme.RiftMotion
@@ -299,15 +300,14 @@ private fun AppSearchField(
         modifier = Modifier
             .width(360.dp)
             .height(52.dp)
-            .background(Color.White.copy(alpha = if (focused || typing) 0.14f else 0.08f), RiftShapes.full)
-            .border(1.dp, if (focused) Color.White.copy(alpha = 0.35f) else Color.Transparent, RiftShapes.full)
+            .background(if (focused && !typing) RiftAccent.current.main else Color.White.copy(alpha = if (typing) 0.14f else 0.08f), RiftShapes.full)
             .focusRequester(focusRequester)
             .then(if (typing) Modifier else Modifier.clickable(interactionSource = interaction, indication = null, onClick = onStart))
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(Icons.Outlined.Search, contentDescription = null, tint = RiftColors.OnSurfaceVariant, modifier = Modifier.size(20.dp))
+        Icon(Icons.Outlined.Search, contentDescription = null, tint = if (focused && !typing) RiftAccent.current.onAccent else RiftColors.OnSurfaceVariant, modifier = Modifier.size(20.dp))
         if (typing) {
             BasicTextField(
                 value = query,
@@ -322,7 +322,7 @@ private fun AppSearchField(
         } else {
             Text(
                 text = query.ifEmpty { stringResource(R.string.rift_search) },
-                color = if (query.isEmpty()) RiftColors.OnSurfaceVariant else RiftColors.OnSurface,
+                color = if (focused) RiftAccent.current.onAccent else if (query.isEmpty()) RiftColors.OnSurfaceVariant else RiftColors.OnSurface,
                 fontSize = 16.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -347,8 +347,7 @@ private fun AppTile(app: AndroidGame, focusRequester: FocusRequester?, onClick: 
                 scaleX = scale
                 scaleY = scale
             }
-            .background(if (focused) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.04f), RiftShapes.card)
-            .border(1.dp, if (focused) Color.White.copy(alpha = 0.35f) else Color.Transparent, RiftShapes.card)
+            .background(if (focused) RiftAccent.current.main else Color.White.copy(alpha = 0.04f), RiftShapes.card)
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(vertical = 16.dp, horizontal = 10.dp),
@@ -360,7 +359,7 @@ private fun AppTile(app: AndroidGame, focusRequester: FocusRequester?, onClick: 
         Spacer(modifier = Modifier.height(10.dp))
         Text(
             text = app.label,
-            color = if (focused) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
+            color = if (focused) RiftAccent.current.onAccent else RiftColors.OnSurfaceVariant,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             // One line for every tile, so all tiles are the same height.
