@@ -19,6 +19,11 @@ data class GameMeta(
     val beatMain: Long = 0L,
     val beatExtras: Long = 0L,
     val beatComplete: Long = 0L,
+    /** Where it came from: "igdb" or "steam". */
+    val source: String = "igdb",
+    /** The rating's wording when the source has one ("Very Positive"); empty = the page's own label. */
+    val ratingText: String = "",
+    val publisher: String = "",
 ) {
     val hasBeatTimes: Boolean get() = beatMain > 0 || beatExtras > 0 || beatComplete > 0
 
@@ -35,6 +40,9 @@ data class GameMeta(
         put("b1", beatMain)
         put("b2", beatExtras)
         put("b3", beatComplete)
+        put("src", source)
+        put("rt", ratingText)
+        put("pub", publisher)
         put("v", VERSION)
     }.toString()
 
@@ -55,6 +63,9 @@ data class GameMeta(
                 beatMain = o.optLong("b1"),
                 beatExtras = o.optLong("b2"),
                 beatComplete = o.optLong("b3"),
+                source = o.optString("src", "igdb"),
+                ratingText = o.optString("rt"),
+                publisher = o.optString("pub"),
             )
         } catch (e: org.json.JSONException) {
             null

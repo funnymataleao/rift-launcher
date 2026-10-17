@@ -424,7 +424,7 @@
     <string name="rift_settings_meta_get">How to get them</string>
     <string name="rift_settings_meta_get_summary">Opens the IGDB guide: sign in with Twitch, register an application, copy its Client ID and Secret</string>
     <string name="rift_settings_meta_remove">Remove the keys</string>
-    <string name="rift_settings_meta_note">With both set, the page of an Android or emulator game shows its description, rating, genres, tags, developer and release date from IGDB. They are saved on this device and sent only to twitch.tv and igdb.com.</string>
+    <string name="rift_settings_meta_note">Without IGDB keys, or for games IGDB does not know, Rift takes the description, genres, developer and release date from the Steam store page of the game with exactly the same name. With both keys set, the page of an Android or emulator game shows IGDB\'s description, rating, genres, tags, developer, release date and time to beat. Keys are saved on this device and sent only to twitch.tv and igdb.com.</string>
     <string name="rift_meta_rating">IGDB rating</string>
     <string name="rift_about_license_title">License</string>
     <string name="rift_about_license_value">GPL-3.0</string>
