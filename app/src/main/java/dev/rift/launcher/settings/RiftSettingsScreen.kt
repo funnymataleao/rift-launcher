@@ -31,6 +31,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberUpdatedState
+import android.content.ContextWrapper
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
@@ -97,6 +104,29 @@ fun RiftSettingsScreen(
     val contentEntry = remember { FocusRequester() }
     var contentHasFocus by remember { mutableStateOf(false) }
 
+    // Going to another app (a browser for a key, say) leaves a mark with this section: if the system drops
+    // Rift meanwhile, it comes back here. Coming back to this screen alive, or leaving it by Back, clears it.
+    val context = LocalContext.current
+    val currentSection = rememberUpdatedState(selected)
+    DisposableEffect(context) {
+        val activity = generateSequence(context) { (it as? ContextWrapper)?.baseContext }
+            .filterIsInstance<ComponentActivity>().firstOrNull()
+        val lifecycle = activity?.lifecycle
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_STOP -> SettingsReturn.mark(context, currentSection.value)
+                Lifecycle.Event.ON_START -> SettingsReturn.clear(context)
+                else -> Unit
+            }
+        }
+        lifecycle?.addObserver(observer)
+        onDispose {
+            lifecycle?.removeObserver(observer)
+            // Left through Back (the activity is still on screen); a destroyed activity keeps the mark.
+            if (lifecycle?.currentState?.isAtLeast(Lifecycle.State.STARTED) == true) SettingsReturn.clear(context)
+        }
+    }
+
     BackHandler {
         if (contentHasFocus) {
             runCatching { railItems[selectedIndex].requestFocus() }
@@ -151,7 +181,12 @@ fun RiftSettingsScreen(
     }
 
     // Start with the section list focused so a gamepad works without touching the screen.
-    LaunchedEffect(Unit) { runCatching { railItems[selectedIndex].requestFocus() } }
+    LaunchedEffect(Unit) {
+        // After a restart the focus goes into the page, where the person was.
+        val target = if (SettingsReturn.focusContentOnOpen) contentEntry else railItems[selectedIndex]
+        SettingsReturn.focusContentOnOpen = false
+        runCatching { target.requestFocus() }.onFailure { runCatching { railItems[selectedIndex].requestFocus() } }
+    }
 }
 
 @Composable

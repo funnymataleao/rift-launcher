@@ -42,7 +42,7 @@ internal fun AboutSettings() {
             title = stringResource(R.string.settings_info_source_title),
             subtitle = stringResource(R.string.settings_info_source_subtitle),
             icon = Icons.Rounded.Code,
-            onClick = { uriHandler.openUri(Constants.Misc.GITHUB_LINK) },
+            onClick = { uriHandler.openUri(Constants.Misc.RIFT_SOURCE_LINK) },
         )
         LinkRow(
             title = stringResource(R.string.settings_info_libraries_title),
