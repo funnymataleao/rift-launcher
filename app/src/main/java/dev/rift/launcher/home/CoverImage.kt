@@ -72,8 +72,9 @@ fun CoverImage(
 /**
  * The art for a 2:3 cover, best first. A picture the user picked comes before everything. Then Steam games
  * use Steam's own 600x900 library cover, built from the app id, so the cover is right from the first frame
- * and does not change when the library learns the game's art later; the wide header is the last resort
- * (never for a cloud game, whose wide art would sit on a tall card until the poster came).
+ * and does not change when the library learns the game's art later. Never a wide picture (header, hero):
+ * on a tall card it is cropped, then swapped for the real cover; a game with no tall cover yet shows the
+ * card's dark surface until one is found.
  */
 fun portraitCoverUrls(item: app.gamenative.data.LibraryItem): List<String> =
     // A cloud game always has the store's tall poster: it is retried rather than replaced by wide art.
@@ -86,9 +87,6 @@ fun portraitCoverUrls(item: app.gamenative.data.LibraryItem): List<String> =
             item.capsuleImageUrl,
             steamAsset(item, "library_600x900_2x.jpg"),
             steamAsset(item, "library_600x900.jpg", AKAMAI),
-            item.headerImageUrl,
-            steamAsset(item, "header.jpg", AKAMAI),
-            item.heroImageUrl,
         )
     }
 
