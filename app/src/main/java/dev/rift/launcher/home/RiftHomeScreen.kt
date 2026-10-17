@@ -2562,25 +2562,44 @@ private fun TopBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BumperButton(GamepadButton.LB.iconRes, "LB") { onStep(-1) }
-        SectionTabs(glass = glass, sections = sections, selected = selected, onSelect = onSelect)
-        BumperButton(GamepadButton.RB.iconRes, "RB") { onStep(1) }
-        // The search sits in the middle of what is left, the status icons in the right corner (Steam Big Picture).
-        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-            if (search != null) SearchField(search, searchFocus)
+        // The tabs take what the right corner leaves, so Wi-Fi, battery and the avatar are never squeezed out.
+        Box(modifier = Modifier.weight(1f, fill = false)) {
+            SectionTabs(glass = glass, sections = sections, selected = selected, onSelect = onSelect)
         }
-        StatusIcons(avatarFocus)
+        BumperButton(GamepadButton.RB.iconRes, "RB") { onStep(1) }
+        // The right corner (Steam Big Picture): search, then Wi-Fi, battery and the avatar.
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (search != null) SearchField(search, searchFocus)
+            StatusIcons(avatarFocus)
+        }
     }
 }
 
 /** Search in the middle of the top bar: a black glass pill, an icon and the query (or "Search"). */
 @Composable
 private fun SearchField(search: SearchState, pillFocus: FocusRequester) {
+    if (!search.typing && !search.open && search.query.isEmpty()) {
+        // Idle: just the round search icon, so it always fits next to the status icons.
+        PillButton(
+            onClick = search.onOpen,
+            background = { focused -> if (focused) RiftAccent.current.brush else solid(Color.Transparent) },
+            modifier = Modifier.clip(RiftShapes.full).blackGlass(RiftShapes.full),
+            square = true,
+            focusRequester = pillFocus,
+        ) { focused ->
+            Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.rift_search), tint = if (focused) RiftAccent.current.onAccent else RiftColors.OnSurfaceVariant, modifier = Modifier.size(22.dp))
+        }
+        return
+    }
     if (!search.typing) {
         // Not typing: a plain pill with the query; A opens the keyboard again.
         PillButton(
             onClick = search.onOpen,
             background = { focused -> if (focused) RiftAccent.current.brush else solid(Color.Transparent) },
-            modifier = Modifier.widthIn(max = 320.dp).height(RiftSizes.button).clip(RiftShapes.full).blackGlass(RiftShapes.full),
+            modifier = Modifier.widthIn(max = 260.dp).height(RiftSizes.button).clip(RiftShapes.full).blackGlass(RiftShapes.full),
             focusRequester = pillFocus,
         ) { focused ->
             Row(
@@ -2604,7 +2623,7 @@ private fun SearchField(search: SearchState, pillFocus: FocusRequester) {
     LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
     Row(
         modifier = Modifier
-            .widthIn(max = 320.dp)
+            .widthIn(max = 260.dp)
             .height(RiftSizes.button)
             .clip(RiftShapes.full)
             .blackGlass(RiftShapes.full)
