@@ -2823,13 +2823,29 @@ internal fun <T> GlassTabs(
                     },
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            tabs.forEach { tab ->
+        // The d-pad enters the row on the chosen tab; Left/Right then choose the next one at once, so exactly
+        // one tab is ever lit (the chosen one) and no A press is needed.
+        val requesters = remember(tabs) { tabs.associateWith { FocusRequester() } }
+        Row(
+            modifier = Modifier
+                .focusProperties { enter = { selected?.let { requesters[it] } ?: FocusRequester.Default } }
+                .focusGroup(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            tabs.forEachIndexed { index, tab ->
                 SectionTab(
                     title = title(tab),
                     selected = tab == selected,
                     onClick = { onSelect(tab) },
                     onPlaced = { places[tab] = it },
+                    focusRequester = requesters.getValue(tab),
+                    onStep = { step ->
+                        val next = tabs.getOrNull(index + step) ?: return@SectionTab false
+                        onSelect(next)
+                        runCatching { requesters.getValue(next).requestFocus() }
+                        true
+                    },
                 )
             }
         }
@@ -2837,7 +2853,14 @@ internal fun <T> GlassTabs(
 }
 
 @Composable
-private fun SectionTab(title: String, selected: Boolean, onClick: () -> Unit, onPlaced: (TabPlace) -> Unit) {
+private fun SectionTab(
+    title: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onPlaced: (TabPlace) -> Unit,
+    focusRequester: FocusRequester,
+    onStep: (Int) -> Boolean,
+) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     // Tab and title report their places in either order; the place is known once both have.
@@ -2857,6 +2880,16 @@ private fun SectionTab(title: String, selected: Boolean, onClick: () -> Unit, on
             }
             .clip(RiftShapes.full)
             .then(if (focused) Modifier.background(RiftAccent.current.brush) else Modifier)
+            .focusRequester(focusRequester)
+            .onPreviewKeyEvent { event ->
+                val step = when (event.nativeKeyEvent.keyCode) {
+                    KeyEvent.KEYCODE_DPAD_LEFT -> -1
+                    KeyEvent.KEYCODE_DPAD_RIGHT -> 1
+                    else -> return@onPreviewKeyEvent false
+                }
+                // Both halves of the press belong to the step; at the ends the press moves on as usual.
+                if (event.type == KeyEventType.KeyDown) onStep(step) else true
+            }
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = 18.dp),
         contentAlignment = Alignment.Center,

@@ -1,5 +1,8 @@
 package dev.rift.launcher.home
 
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.rounded.Settings
+import app.gamenative.ui.component.GamepadButton
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -126,6 +129,18 @@ private fun AppsGridContent(onDismiss: () -> Unit, focusRequester: FocusRequeste
     }
     fun nextSort() = setSort(AppsSort.entries[(sort.ordinal + 1) % AppsSort.entries.size])
     val firstFocus = remember { FocusRequester() }
+    // The d-pad enters the row of orders on the chosen one; Left/Right choose the neighbour at once.
+    val pillFocus = remember { AppsSort.entries.associateWith { FocusRequester() } }
+    var pillsFocused by remember { mutableStateOf(false) }
+    fun stepSort(step: Int, wrap: Boolean): Boolean {
+        val all = AppsSort.entries
+        val raw = sort.ordinal + step
+        val index = if (wrap) raw.mod(all.size) else raw
+        val next = all.getOrNull(index) ?: return false
+        setSort(next)
+        if (pillsFocused) runCatching { pillFocus.getValue(next).requestFocus() }
+        return true
+    }
     val searchFocus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     // Search: A on the field starts typing; B (or Down) hides the keyboard and goes back to the
@@ -163,9 +178,13 @@ private fun AppsGridContent(onDismiss: () -> Unit, focusRequester: FocusRequeste
             .focusGroup()
             .onPreviewKeyEvent { event ->
                 val code = event.nativeKeyEvent.keyCode
-                // X changes the order.
+                // X changes the order, LB/RB step through the orders like the tabs of the home.
                 if (code == KeyEvent.KEYCODE_BUTTON_X && !typing) {
                     if (event.type == KeyEventType.KeyUp) nextSort()
+                    return@onPreviewKeyEvent true
+                }
+                if (!typing && (code == KeyEvent.KEYCODE_BUTTON_L1 || code == KeyEvent.KEYCODE_BUTTON_R1)) {
+                    if (event.type == KeyEventType.KeyDown) stepSort(if (code == KeyEvent.KEYCODE_BUTTON_L1) -1 else 1, wrap = true)
                     return@onPreviewKeyEvent true
                 }
                 val leaveField = typing && code == KeyEvent.KEYCODE_DPAD_DOWN
@@ -189,11 +208,25 @@ private fun AppsGridContent(onDismiss: () -> Unit, focusRequester: FocusRequeste
                     fontWeight = FontWeight.Black,
                     modifier = Modifier.weight(1f),
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    AppsSort.entries.forEach { option ->
-                        SortPill(text = stringResource(option.labelRes), selected = option == sort, onClick = { setSort(option) })
+                BumperButton(GamepadButton.LB.iconRes, "LB") { stepSort(-1, wrap = true) }
+                Row(
+                    modifier = Modifier
+                        .onFocusChanged { pillsFocused = it.hasFocus }
+                        .focusProperties { enter = { pillFocus.getValue(sort) } }
+                        .focusGroup(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    AppsSort.entries.forEachIndexed { index, option ->
+                        SortPill(
+                            text = stringResource(option.labelRes),
+                            selected = option == sort,
+                            focusRequester = pillFocus.getValue(option),
+                            onClick = { setSort(option) },
+                            onStep = { step -> stepSort(step, wrap = false) },
+                        )
                     }
                 }
+                BumperButton(GamepadButton.RB.iconRes, "RB") { stepSort(1, wrap = true) }
                 Spacer(modifier = Modifier.width(16.dp))
                 AppSearchField(
                     query = query,
@@ -203,6 +236,12 @@ private fun AppsGridContent(onDismiss: () -> Unit, focusRequester: FocusRequeste
                     onQuery = { query = it },
                     onDone = ::stopTyping,
                 )
+                Spacer(modifier = Modifier.width(10.dp))
+                SettingsButton(onClick = {
+                    runCatching {
+                        context.startActivity(android.content.Intent(android.provider.Settings.ACTION_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }
+                })
             }
             Spacer(modifier = Modifier.height(20.dp))
             val list = shown
@@ -251,14 +290,22 @@ enum class AppsSort(val labelRes: Int) {
     }
 }
 
-/** One of the orders as a pill: the chosen one is filled with the accent and has dark text; the gamepad reaches all three. */
+/**
+ * One of the orders as a pill. Exactly one is lit: the chosen one (accent fill, dark text), and the d-pad only
+ * ever rests on the chosen one, so the focus and the choice cannot disagree. Left/Right choose the neighbour.
+ */
 @Composable
-private fun SortPill(text: String, selected: Boolean, onClick: () -> Unit) {
+private fun SortPill(
+    text: String,
+    selected: Boolean,
+    focusRequester: FocusRequester,
+    onClick: () -> Unit,
+    onStep: (Int) -> Boolean,
+) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val scale by animateFloatAsState(if (focused) 1.06f else 1f, RiftMotion.focusSpring(), label = "sortPillScale")
     val accent = RiftAccent.current
-    val filled = selected || focused
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -268,16 +315,54 @@ private fun SortPill(text: String, selected: Boolean, onClick: () -> Unit) {
                 scaleY = scale
             }
             .clip(RiftShapes.full)
-            .background(if (focused) accent.brush else if (selected) Brush.linearGradient(listOf(accent.main, accent.main)) else Brush.linearGradient(listOf(Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.08f))))
+            .background(if (selected) accent.brush else SolidColor(Color.White.copy(alpha = 0.08f)))
+            .focusRequester(focusRequester)
+            .onPreviewKeyEvent { event ->
+                val step = when (event.nativeKeyEvent.keyCode) {
+                    KeyEvent.KEYCODE_DPAD_LEFT -> -1
+                    KeyEvent.KEYCODE_DPAD_RIGHT -> 1
+                    else -> return@onPreviewKeyEvent false
+                }
+                // Both halves of the press belong to the step; at the ends the press moves on as usual.
+                if (event.type == KeyEventType.KeyDown) onStep(step) else true
+            }
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = 22.dp),
     ) {
         Text(
             text = text,
-            color = if (filled) accent.onAccent else RiftColors.OnSurface,
+            color = if (selected) accent.onAccent else RiftColors.OnSurface,
             fontSize = 15.sp,
             fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
             maxLines = 1,
+        )
+    }
+}
+
+/** A round gear on the same translucent plate as the order pills: opens Android's settings. */
+@Composable
+private fun SettingsButton(onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val scale by animateFloatAsState(if (focused) 1.06f else 1f, RiftMotion.focusSpring(), label = "gearScale")
+    val accent = RiftAccent.current
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(52.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(CircleShape)
+            .background(if (focused) accent.brush else SolidColor(Color.White.copy(alpha = 0.08f)))
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
+    ) {
+        Icon(
+            Icons.Rounded.Settings,
+            contentDescription = null,
+            tint = if (focused) accent.onAccent else RiftColors.OnSurface,
+            modifier = Modifier.size(24.dp),
         )
     }
 }
