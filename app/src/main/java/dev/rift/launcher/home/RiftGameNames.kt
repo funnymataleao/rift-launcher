@@ -36,6 +36,13 @@ object RiftGameNames {
         return state.asStateFlow()
     }
 
+    private fun originals(context: Context): SharedPreferences =
+        context.applicationContext.getSharedPreferences("rift_game_names_original", Context.MODE_PRIVATE)
+
+    /** The game's own name for [appId] when [shown] may already be a name the person gave; [shown] when it was never renamed. */
+    fun original(context: Context, appId: String, shown: String): String =
+        if (appId in names(context).value) originals(context).getString(appId, null) ?: shown else shown
+
     /** [original] unless the person renamed the game. Reads what [names] loaded, so the home loads it first. */
     fun display(appId: String, original: String): String = state.value[appId] ?: original
 
@@ -46,6 +53,7 @@ object RiftGameNames {
         val keep = clean.isNotEmpty() && clean != original
         if ((state.value[appId] ?: original) == (if (keep) clean else original)) return
         prefs(context).edit { if (keep) putString(appId, clean) else remove(appId) }
+        originals(context).edit { if (keep) putString(appId, original) else remove(appId) }
         state.value = if (keep) state.value + (appId to clean) else state.value - appId
         RiftAutoArt.forget(context, appId)
         GameArtStore.forgetAuto(context, appId)

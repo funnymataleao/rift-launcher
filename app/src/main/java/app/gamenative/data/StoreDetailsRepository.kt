@@ -25,6 +25,11 @@ import timber.log.Timber
  * Failures are intentionally non-fatal: the UI keeps showing metadata already synced into the library.
  */
 object StoreDetailsRepository {
+    /** Rift: forgets every store answer kept in memory, so the next page asks the stores again. */
+    fun clearCache() {
+        cache.clear()
+    }
+
     private const val CACHE_TTL_MS = 6L * 60 * 60 * 1000
     private const val MAX_CACHE_ENTRIES = 256
     private const val TAG = "StoreDetails"

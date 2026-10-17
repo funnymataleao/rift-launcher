@@ -1221,6 +1221,13 @@ abstract class BaseAppScreen {
             menuOptions.add(AppMenuOption(optionType = AppOptionMenuType.ChangeArt, onClick = { openArtPicker(libraryItem) }))
         }
 
+        // Rift: rename and game info, the same lines every tab's menu has.
+        dev.rift.launcher.meta.LocalRiftInfoActions.current?.let { actions ->
+            menuOptions.add(AppMenuOption(optionType = AppOptionMenuType.Rename, onClick = { actions.rename(libraryItem) }))
+            menuOptions.add(AppMenuOption(optionType = AppOptionMenuType.RefreshMeta, onClick = { actions.refresh(libraryItem) }))
+            menuOptions.add(AppMenuOption(optionType = AppOptionMenuType.ChooseMeta, onClick = { actions.choose(libraryItem) }))
+        }
+
         if (isInstalled) {
             // Options only available when game is installed
             getRunContainerOption(context, libraryItem, onClickPlay)?.let { menuOptions.add(it) }
@@ -1321,7 +1328,15 @@ abstract class BaseAppScreen {
             mutableStateOf(localStoreDetails)
         }
         val storeLocale = context.resources.configuration.locales[0]
-        LaunchedEffect(appId, localStoreDetails, storeLocale.toLanguageTag()) {
+        // Rift: game info the user chose by hand, or found from IGDB, Steam and Wikipedia when the store has none.
+        val riftMetaVersion by dev.rift.launcher.meta.RiftAutoMeta.version.collectAsState()
+        val riftMeta = remember(appId, riftMetaVersion) { dev.rift.launcher.meta.RiftAutoMeta.cached(context, appId) }
+        LaunchedEffect(appId, storeDetails.description.isBlank(), riftMetaVersion) {
+            if (storeDetails.description.isBlank() && riftMeta == null) {
+                dev.rift.launcher.meta.RiftAutoMeta.ensure(context, libraryItem, null)
+            }
+        }
+        LaunchedEffect(appId, localStoreDetails, storeLocale.toLanguageTag(), riftMetaVersion) {
             storeDetails = StoreDetailsRepository.getDetails(
                 libraryItem = libraryItem,
                 fallback = localStoreDetails,
@@ -1332,11 +1347,31 @@ abstract class BaseAppScreen {
         val pickedArt by dev.rift.launcher.art.GameArtStore.version.collectAsState()
         val pickedHero = remember(pickedArt, appId) { dev.rift.launcher.art.GameArtStore.get(context, appId, dev.rift.launcher.art.ArtKind.Hero) }
         val pickedIcon = remember(pickedArt, appId) { dev.rift.launcher.art.GameArtStore.get(context, appId, dev.rift.launcher.art.ArtKind.Icon) }
+        val storeMerged = storeDetails.mergedWith(localStoreDetails)
+        val riftPinned = riftMeta != null && dev.rift.launcher.meta.RiftAutoMeta.isPinned(context, appId)
+        val useRift = riftMeta != null && (riftPinned || storeMerged.description.isBlank())
+        val shownStore = if (useRift && riftMeta != null) {
+            app.gamenative.data.StoreGameDetails(
+                description = riftMeta.description,
+                reviewPercentage = riftMeta.rating,
+                reviewCount = riftMeta.ratingCount,
+                reviewSummary = riftMeta.ratingText.ifBlank { null },
+                tags = riftMeta.genres + riftMeta.tags,
+                screenshots = storeMerged.screenshots,
+                videos = storeMerged.videos,
+                source = riftMeta.source,
+            ).mergedWith(storeMerged).copy(source = riftMeta.source)
+        } else {
+            storeMerged
+        }
         val displayInfo = displayInfoBase.copy(
+            name = dev.rift.launcher.home.RiftGameNames.display(appId, displayInfoBase.name),
+            developer = if (riftPinned && riftMeta != null) riftMeta.developer.ifBlank { displayInfoBase.developer } else displayInfoBase.developer,
+            releaseDate = if (riftPinned && riftMeta != null && riftMeta.releaseDate > 0) riftMeta.releaseDate else displayInfoBase.releaseDate,
             heroImageUrl = pickedHero.ifEmpty { displayInfoBase.heroImageUrl },
             iconUrl = pickedIcon.ifEmpty { displayInfoBase.iconUrl },
             hltbStats = hltbStats,
-            storeDetails = storeDetails.mergedWith(localStoreDetails),
+            storeDetails = shownStore,
         )
 
         var communityCompatibility by remember(appId, displayInfo.name) {

@@ -52,7 +52,7 @@ object CloudLibrary {
 /** A cloud game as a library entry, so the home's covers, art and game page work as for any game. */
 fun CloudGame.toLibraryItem(logo: String = "") = LibraryItem(
     appId = CloudLibrary.APP_ID_PREFIX + productId,
-    name = title,
+    name = dev.rift.launcher.home.RiftGameNames.display(CloudLibrary.APP_ID_PREFIX + productId, title),
     capsuleImageUrl = poster,
     headerImageUrl = titledHero,
     heroImageUrl = hero,

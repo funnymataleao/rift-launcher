@@ -297,7 +297,7 @@ fun RiftHomeScreen(
     // Names the person gave to Emulators and Android games; loaded before the first list is made.
     val gameNames by RiftGameNames.names(context).collectAsStateWithLifecycle()
     val favoriteIds by FavoritesManager.favorites.collectAsStateWithLifecycle()
-    val loadedLibrary = remember(libraryState.appInfoList, pickedArt, uninstalledMode, hiddenGames) {
+    val loadedLibrary = remember(libraryState.appInfoList, pickedArt, uninstalledMode, hiddenGames, gameNames) {
         GameArtStore.apply(
             context,
             libraryState.appInfoList.filterNot {
@@ -305,7 +305,7 @@ fun RiftHomeScreen(
                     it.appId in hiddenGames ||
                     (uninstalledMode == UninstalledMode.HIDE && !it.isInstalled)
             },
-        )
+        ).map { item -> gameNames[item.appId]?.let { item.copy(name = it) } ?: item }
     }
     // While GameNative reloads the list (it empties it first), keep showing the last one: no flashes.
     var lastLibrary by remember { mutableStateOf(emptyList<LibraryItem>()) }
@@ -332,7 +332,7 @@ fun RiftHomeScreen(
     // Home streaming starts with the games last streamed from Rift, then the ones newest on the PC.
     var streamView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.PcStreaming, TabSort.LAST_PLAYED)) }
     var androidView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.AndroidGames)) }
-    val streamItems by remember(streamTab, streamView, streamUninstalledMode, pickedArt, hiddenGames) { derivedStateOf { GameArtStore.apply(context, streamTab?.arrange(context, streamView.copy(showAll = streamUninstalledMode != UninstalledMode.HIDE)).orEmpty().filterNot { it.appId in hiddenGames }) } }
+    val streamItems by remember(streamTab, streamView, streamUninstalledMode, pickedArt, hiddenGames, gameNames) { derivedStateOf { GameArtStore.apply(context, streamTab?.arrange(context, streamView.copy(showAll = streamUninstalledMode != UninstalledMode.HIDE)).orEmpty().filterNot { it.appId in hiddenGames }) } }
     val hasStreamGames = streamTab?.items?.any { it.appId !in hiddenGames } == true
     val cloudSignedIn by XcloudAccount.signedIn(context).collectAsStateWithLifecycle()
     // The cloud tab exists only while a cloud account is signed in and its catalog has games; the
@@ -340,7 +340,7 @@ fun RiftHomeScreen(
     val cloudTab = if (cloudSignedIn == true) rememberCloudStreamingTab() else null
     // The cloud tab starts on its own order (played from Rift, then Game Pass's most popular).
     var cloudView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.CloudStreaming, TabSort.LAST_PLAYED)) }
-    val cloudItems = remember(cloudTab, cloudView, hiddenGames, pickedArt) { GameArtStore.apply(context, cloudTab?.arrange(cloudView).orEmpty().filterNot { it.appId in hiddenGames }) }
+    val cloudItems = remember(cloudTab, cloudView, hiddenGames, pickedArt, gameNames) { GameArtStore.apply(context, cloudTab?.arrange(cloudView).orEmpty().filterNot { it.appId in hiddenGames }) }
     val hasCloudGames = cloudTab?.items?.any { it.appId !in hiddenGames } == true
     // The Emulators tab exists only while the systems set up in settings have games; the systems, their
     // emulator apps and folders live in settings. The folders are scanned again each time Rift comes back
@@ -767,6 +767,19 @@ fun RiftHomeScreen(
     }
     val latestOpenArt = rememberUpdatedState<(LibraryItem) -> Unit> { openArt(it) }
     val artOpener = remember<(LibraryItem) -> Unit> { { item -> latestOpenArt.value(item) } }
+    // The same game-info and name lines on GameNative's own game screens (PC games).
+    val latestRefreshMeta = rememberUpdatedState<(LibraryItem) -> Unit> { refreshMeta(it, null) }
+    val latestOpenMeta = rememberUpdatedState<(LibraryItem) -> Unit> { openMetaPicker(it, null) }
+    val latestRename = rememberUpdatedState<(LibraryItem) -> Unit> {
+        renameTarget = Triple(it.appId, it.name, RiftGameNames.original(context, it.appId, it.name))
+    }
+    val infoActions = remember {
+        dev.rift.launcher.meta.RiftInfoActions(
+            refresh = { latestRefreshMeta.value(it) },
+            choose = { latestOpenMeta.value(it) },
+            rename = { latestRename.value(it) },
+        )
+    }
     // Start on the other tabs: the short menu of that tab (null = closed); the last list stays for the fade-out.
     var startMenuItems by remember { mutableStateOf<List<RiftStartMenuItem>?>(null) }
     // The game being renamed: its id, the name it has now and its own name.
@@ -837,8 +850,11 @@ fun RiftHomeScreen(
         }
         SnackbarManager.show(context.getString(R.string.rift_meta_refreshing))
         homeScope.launch {
+            // A PC game's page shows the stores' own data first: they are asked again as well, and the page reads it anew.
+            app.gamenative.data.StoreDetailsRepository.clearCache()
             val meta = withContext(Dispatchers.IO) { RiftAutoMeta.refresh(context, item, platformId) }
-            if (meta != null) {
+            RiftAutoMeta.notifyChanged()
+            if (meta != null || section == RiftSection.PcGames) {
                 SnackbarManager.show(context.getString(R.string.rift_meta_refreshed))
             } else {
                 openMetaPicker(item, platformId)
@@ -879,6 +895,11 @@ fun RiftHomeScreen(
                     line(R.string.rift_menu_stream, Icons.Default.Cast) { openGame(item, forStream = true) },
                     line(R.string.rift_option_change_art, Icons.Default.ImageIcon) { openArt(item) },
                     favorite(item.appId, item.name),
+                    line(R.string.rift_option_rename, Icons.Default.Edit) {
+                        renameTarget = Triple(item.appId, item.name, RiftGameNames.original(context, item.appId, item.name))
+                    },
+                    line(R.string.rift_menu_refresh_meta, Icons.Default.Refresh) { refreshMeta(item, null) },
+                    line(R.string.rift_menu_pick_meta, Icons.Default.SearchFilled) { openMetaPicker(item, null) },
                     line(R.string.rift_menu_hide, Icons.Default.VisibilityOff) { hideGame(item.appId, item.name) },
                     cancel,
                 )
@@ -903,6 +924,11 @@ fun RiftHomeScreen(
                     line(R.string.rift_menu_play, Icons.Default.PlayArrow) { openGame(item) },
                     line(R.string.rift_option_change_art, Icons.Default.ImageIcon) { openArt(item) },
                     favorite(item.appId, item.name),
+                    line(R.string.rift_option_rename, Icons.Default.Edit) {
+                        renameTarget = Triple(item.appId, item.name, RiftGameNames.original(context, item.appId, item.name))
+                    },
+                    line(R.string.rift_menu_refresh_meta, Icons.Default.Refresh) { refreshMeta(item, null) },
+                    line(R.string.rift_menu_pick_meta, Icons.Default.SearchFilled) { openMetaPicker(item, null) },
                     line(R.string.rift_menu_hide, Icons.Default.VisibilityOff) { hideGame(item.appId, item.name) },
                     cancel,
                 )
@@ -1752,7 +1778,7 @@ fun RiftHomeScreen(
                 )
                 optionsItem?.let { item ->
                     key(optionsToken) {
-                        CompositionLocalProvider(LocalRiftOptionsOnly provides optionsOnly, LocalRiftArtPicker provides artOpener) {
+                        CompositionLocalProvider(LocalRiftOptionsOnly provides optionsOnly, LocalRiftArtPicker provides artOpener, dev.rift.launcher.meta.LocalRiftInfoActions provides infoActions) {
                             LibraryDetailPane(
                                 libraryItem = item,
                                 onClickPlay = { asContainer ->
@@ -1908,7 +1934,7 @@ fun RiftHomeScreen(
                 )
             } else {
             CompositionLocalProvider(LocalRiftStreamAction provides streamAction) {
-            CompositionLocalProvider(LocalRiftArtPicker provides artOpener) {
+            CompositionLocalProvider(LocalRiftArtPicker provides artOpener, dev.rift.launcher.meta.LocalRiftInfoActions provides infoActions) {
             LibraryDetailPane(
                 libraryItem = item,
                 onClickPlay = { asContainer ->

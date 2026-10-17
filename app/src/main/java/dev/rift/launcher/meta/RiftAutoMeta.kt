@@ -56,6 +56,11 @@ object RiftAutoMeta {
         prefs(context).edit { remove(appId); remove(TRIED + appId); remove(TRIED_IGDB + appId); remove(PIN + appId) }
     }
 
+    /** Tells open pages that what they show may have changed (a store's data was fetched again). */
+    fun notifyChanged() {
+        changes.value++
+    }
+
     /** Whether the user chose what is saved for [appId] by hand. */
     fun isPinned(context: Context, appId: String): Boolean = prefs(context).contains(PIN + appId)
 

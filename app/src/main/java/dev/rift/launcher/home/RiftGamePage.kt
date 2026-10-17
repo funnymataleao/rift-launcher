@@ -108,12 +108,19 @@ internal fun RiftGamePage(
     }
     var choosingEmulator by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
-    val options = remember(native, platformId, onChangeArt, onRefreshMeta, onPickMeta) {
+    val favorites by app.gamenative.data.FavoritesManager.favorites.collectAsStateWithLifecycle()
+    val isFavorite = game.appId in favorites
+    val options = remember(native, platformId, onChangeArt, onRefreshMeta, onPickMeta, isFavorite, game.appId, game.name) {
         if (!native) {
             emptyList()
         } else {
             buildList {
                 add(AppMenuOption(AppOptionMenuType.ChangeArt, onChangeArt))
+                add(
+                    AppMenuOption(if (isFavorite) AppOptionMenuType.RemoveFromFavorites else AppOptionMenuType.AddToFavorites) {
+                        app.gamenative.ui.screen.library.components.toggleFavorite(context, game.appId, game.name)
+                    },
+                )
                 if (platformId != null) add(AppMenuOption(AppOptionMenuType.ChooseEmulator) { choosingEmulator = true })
                 add(AppMenuOption(AppOptionMenuType.Rename) { renaming = true })
                 onRefreshMeta?.let { add(AppMenuOption(AppOptionMenuType.RefreshMeta, it)) }

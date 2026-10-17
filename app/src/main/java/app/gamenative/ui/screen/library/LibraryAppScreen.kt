@@ -2704,13 +2704,15 @@ internal fun AppScreenContent(
             modifier = Modifier.align(Alignment.CenterEnd),
             onPlay = if (isInstalled && riftStream == null) onStartAction else null,
             onProperties = { propertiesOpen = true },
-            onHide = if (riftOptionsOnly != null) {
+            onHide = if (riftOptionsOnly != null || riftStream?.showOptions == true) {
                 {
-                    val hide = riftOptionsOnly.onHide
+                    val hide = riftOptionsOnly?.onHide
                     if (hide != null) {
                         hide(displayInfo.appId, displayInfo.name)
                     } else {
+                        // Rift: from a game page the game is hidden and the page closes.
                         dev.rift.launcher.home.RiftHiddenGames.hide(context, displayInfo.appId, displayInfo.name)
+                        onBack()
                     }
                 }
             } else {
