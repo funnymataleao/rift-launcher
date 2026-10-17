@@ -38,7 +38,11 @@ class StreamService(val pc: ComputerDetails, val app: NvApp)
  * so the tab shows the same covers, art and logos as the PC games tab.
  */
 class PcStreamingTab internal constructor(internal val hosts: PcHosts) {
+    /** Each PC's apps: the saved list first, then the live one once the PC is online. */
     internal val apps = mutableStateMapOf<String, List<NvApp>>()
+
+    /** PCs whose apps were reloaded live while this screen was shown. */
+    internal val refreshed = mutableSetOf<String>()
     internal var steamByName by mutableStateOf<Map<String, SteamApp>>(emptyMap())
 
     internal val paired: List<ComputerDetails>
@@ -47,7 +51,8 @@ class PcStreamingTab internal constructor(internal val hosts: PcHosts) {
     private val split by derivedStateOf {
         val games = mutableListOf<StreamGame>()
         val services = mutableListOf<StreamService>()
-        paired.filter { PcStreaming.isOnline(it) }.forEach { pc ->
+        // Asleep or unreachable PCs keep their games from the saved list; streaming wakes nothing.
+        paired.forEach { pc ->
             apps[pc.uuid].orEmpty().forEach { app ->
                 val steam = steamByName[normalizedTitle(app.appName)]
                 if (steam != null) {
@@ -102,13 +107,22 @@ fun rememberPcStreamingTab(): PcStreamingTab {
         }
     }
 
-    // Apps load once per PC when it comes online.
+    LaunchedEffect(tab) {
+        val cached = withContext(Dispatchers.IO) { runCatching { PcStreaming.cachedApps(context) }.getOrDefault(emptyMap()) }
+        cached.forEach { (uuid, apps) -> if (tab.apps[uuid] == null) tab.apps[uuid] = apps }
+    }
+
+    // Apps reload once per PC when it comes online, and are saved for when it is not.
     val uniqueId = tab.hosts.uniqueId
     tab.paired.forEach { pc ->
         val online = PcStreaming.isOnline(pc)
         LaunchedEffect(pc.uuid, online, uniqueId) {
-            if (online && uniqueId != null && tab.apps[pc.uuid] == null) {
-                runCatching { PcStreaming.loadApps(context, pc, uniqueId) }.onSuccess { tab.apps[pc.uuid] = it }
+            val uuid = pc.uuid ?: return@LaunchedEffect
+            if (online && uniqueId != null && uuid !in tab.refreshed) {
+                runCatching { PcStreaming.loadApps(context, pc, uniqueId) }.onSuccess {
+                    tab.apps[uuid] = it
+                    tab.refreshed += uuid
+                }
             }
         }
     }
