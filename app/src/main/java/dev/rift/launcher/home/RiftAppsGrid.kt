@@ -80,7 +80,6 @@ import androidx.compose.ui.unit.sp
 import app.gamenative.R
 import dev.rift.launcher.ui.theme.RiftAccent
 import dev.rift.launcher.ui.theme.RiftColors
-import dev.rift.launcher.ui.theme.RiftAccent
 import dev.rift.launcher.ui.theme.RiftMotion
 import dev.rift.launcher.ui.theme.RiftShapes
 import kotlinx.coroutines.Dispatchers
