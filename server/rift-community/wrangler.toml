@@ -1,0 +1,17 @@
+# Cloudflare Worker for Rift's community configs. Deploy steps: README.md.
+name = "rift-community"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "rift-community"
+# Filled in by `wrangler d1 create rift-community` (README.md, step 2).
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[triggers]
+crons = ["17 * * * *"]
+
+# Secrets, set with `wrangler secret put`: HASH_SALT (random, hashes install ids and addresses),
+# ADMIN_TOKEN (random, for the /admin moderation routes).

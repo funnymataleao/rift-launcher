@@ -4,13 +4,13 @@ import android.content.Context
 import android.os.Build
 import app.gamenative.BuildConfig
 import app.gamenative.api.ApiResult
-import app.gamenative.api.GameRunApi
 import app.gamenative.data.GameSource
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import com.winlator.core.GPUInformation
+import dev.rift.launcher.community.RiftCommunity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -124,7 +124,12 @@ object GameFeedbackUtils {
 
             Timber.i("GameFeedbackUtils: Submitting game feedback: game=$gameName, device=${Build.MODEL}, rating=$rating, tags=${tags.joinToString()}, avgFps=$avgFps, sessionLengthSec=$sessionLengthSec")
 
-            val result = GameRunApi.submit(
+            // Rift: answers go to Rift's own community database, not to api.gamenative.app.
+            val result = RiftCommunity.submitGameRun(
+                context = context,
+                container = container,
+                gameStore = gameSource.name,
+                storeGameId = gameId.toString(),
                 gameName = gameName,
                 deviceModel = Build.MODEL,
                 deviceManufacturer = Build.MANUFACTURER,
