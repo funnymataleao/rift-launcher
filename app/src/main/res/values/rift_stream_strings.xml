@@ -40,6 +40,9 @@
     <string name="rift_stream_stage_failed">Failed at %1$s (code %2$d)</string>
     <string name="rift_stream_terminated">Connection lost (code %1$d)</string>
     <string name="rift_stream_no_decoder">This device has no hardware H.264 decoder.</string>
-    <string name="rift_stream_no_games">No PC games yet. In Vibepollo\'s web page, turn on Integrations → Steam library sync and your installed games appear on the home screen in the PC streaming tab.</string>
+    <string name="rift_stream_no_games">No PC games yet. To get them on the home screen in the PC streaming tab, with covers:\n1. Install Vibepollo on the PC and add the PC above.\n2. In Vibepollo\'s web page, open Applications → Setup Game Library Integration.\n3. Turn on Steam, Auto-sync and syncing all installed games, then save.</string>
     <string name="rift_stream_group_pc_apps">PC apps</string>
+    <string name="rift_stream_setup_title">PC games</string>
+    <string name="rift_stream_get_vibepollo">Download Vibepollo for your PC</string>
+    <string name="rift_stream_get_vibepollo_summary">Free streaming host that adds your Steam games by itself</string>
 </resources>
