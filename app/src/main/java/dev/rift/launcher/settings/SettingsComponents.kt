@@ -131,26 +131,26 @@ private fun Modifier.focusChrome(
 }
 
 @Composable
-private fun RowIcon(icon: ImageVector, focused: Boolean, tint: Color = LocalSettingsAccent.current.color) {
-    RowIconDisc(focused, tint) {
-        Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
+private fun RowIcon(icon: ImageVector, focused: Boolean, colors: IconColors) {
+    RowIconDisc(focused, colors) {
+        Icon(imageVector = icon, contentDescription = null, tint = colors.symbol, modifier = Modifier.size(24.dp))
     }
 }
 
 @Composable
-private fun RowIcon(icon: Painter, focused: Boolean, tint: Color = LocalSettingsAccent.current.color) {
-    RowIconDisc(focused, tint) {
-        Icon(painter = icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
+private fun RowIcon(icon: Painter, focused: Boolean, colors: IconColors) {
+    RowIconDisc(focused, colors) {
+        Icon(painter = icon, contentDescription = null, tint = colors.symbol, modifier = Modifier.size(24.dp))
     }
 }
 
 @Composable
-private fun RowIconDisc(focused: Boolean, tint: Color, content: @Composable () -> Unit) {
+private fun RowIconDisc(focused: Boolean, colors: IconColors, content: @Composable () -> Unit) {
     Box(
         modifier = Modifier
             .size(RowIconSize)
             .clip(CircleShape)
-            .background(tint.copy(alpha = if (focused) 0.32f else 0.2f)),
+            .background(if (focused) colors.disc else colors.disc.copy(alpha = 0.92f)),
         contentAlignment = Alignment.Center,
     ) {
         content()
@@ -221,9 +221,9 @@ private fun RowChrome(
             if (leading != null) {
                 leading()
             } else if (icon != null) {
-                RowIcon(icon, focused, tint = if (danger) RiftColors.Error else LocalSettingsAccent.current.color)
+                RowIcon(icon, focused, if (danger) iconColorsOf(RiftColors.Error) else LocalSettingsAccent.current.icon)
             } else if (iconPainter != null) {
-                RowIcon(iconPainter, focused, tint = LocalSettingsAccent.current.color)
+                RowIcon(iconPainter, focused, LocalSettingsAccent.current.icon)
             }
             RowTexts(title, subtitle, danger, Modifier.weight(1f))
             trailing()
@@ -381,7 +381,7 @@ internal fun InfoRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        if (icon != null) RowIcon(icon, focused = false)
+        if (icon != null) RowIcon(icon, focused = false, colors = LocalSettingsAccent.current.icon)
         RowTexts(title, null, danger = false, modifier = Modifier.weight(1f))
         Text(text = value, color = RiftColors.OnSurfaceVariant, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
     }
@@ -421,7 +421,7 @@ internal fun ChoiceChipsRow(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            if (icon != null) RowIcon(icon, focused = false)
+            if (icon != null) RowIcon(icon, focused = false, colors = LocalSettingsAccent.current.icon)
             RowTexts(title, subtitle, danger = false, modifier = Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
@@ -565,20 +565,20 @@ internal fun RiftRoundButton(
     }
 }
 
-/** A circular badge for a section: the section's soft colour on a tonal disc of the same colour. */
+/** A circular badge for a section: a saturated symbol on a light disc of the section's hue. */
 @Composable
 internal fun SectionBadge(icon: ImageVector, size: Dp = RiftSizes.button, accent: SettingsAccent = LocalSettingsAccent.current) {
     Box(
         modifier = Modifier
             .size(size)
             .clip(CircleShape)
-            .background(accent.color.copy(alpha = 0.2f)),
+            .background(accent.icon.disc),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = accent.color,
+            tint = accent.icon.symbol,
             modifier = Modifier.size(size * 0.5f),
         )
     }
@@ -595,7 +595,7 @@ internal fun BigActionCard(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val accent = LocalSettingsAccent.current.color
+    val accent = LocalSettingsAccent.current
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -603,8 +603,8 @@ internal fun BigActionCard(
             .focusChrome(
                 focused = focused,
                 shape = RowShape,
-                restColor = accent.copy(alpha = 0.12f).compositeOver(RiftColors.SurfaceContainer),
-                focusedColor = accent.copy(alpha = 0.2f).compositeOver(RiftColors.SurfaceContainerHigh),
+                restColor = accent.tint.copy(alpha = 0.10f).compositeOver(RiftColors.SurfaceContainer),
+                focusedColor = accent.tint.copy(alpha = 0.16f).compositeOver(RiftColors.SurfaceContainerHigh),
             )
             .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
             .padding(horizontal = 24.dp, vertical = 20.dp),
@@ -615,10 +615,10 @@ internal fun BigActionCard(
             modifier = Modifier
                 .size(72.dp)
                 .clip(CircleShape)
-                .background(accent.copy(alpha = 0.25f)),
+                .background(accent.icon.disc),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(imageVector = icon, contentDescription = null, tint = accent, modifier = Modifier.size(38.dp))
+            Icon(imageVector = icon, contentDescription = null, tint = accent.icon.symbol, modifier = Modifier.size(38.dp))
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(text = title, color = RiftColors.OnSurface, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)

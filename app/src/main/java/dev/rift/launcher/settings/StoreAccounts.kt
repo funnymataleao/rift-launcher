@@ -52,11 +52,11 @@ import timber.log.Timber
 
 private enum class Store(val accent: SettingsAccent) {
     Steam(SettingsAccent.Blue),
-    Epic(SettingsAccent.Sand),
-    Gog(SettingsAccent.Peach),
-    Amazon(SettingsAccent.Yellow),
-    Ea(SettingsAccent.Teal),
-    Rockstar(SettingsAccent.Terracotta),
+    Epic(SettingsAccent.Lilac),
+    Gog(SettingsAccent.Rose),
+    Amazon(SettingsAccent.Lemon),
+    Ea(SettingsAccent.Mint),
+    Rockstar(SettingsAccent.Peach),
 }
 
 private data class StoreStatus(val signedIn: Boolean, val account: String?)

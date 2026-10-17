@@ -185,5 +185,5 @@ private fun RiftSection.icon(): ImageVector = when (this) {
 private fun RiftSection.accent(): SettingsAccent = when (this) {
     RiftSection.PcGames -> SettingsAccent.Blue
     RiftSection.AndroidGames -> SettingsAccent.Green
-    RiftSection.PcStreaming -> SettingsAccent.Teal
+    RiftSection.PcStreaming -> SettingsAccent.Mint
 }

@@ -47,21 +47,21 @@ enum class RiftSettingsSection(
 ) {
     AndroidGames(RiftSettingsGroup.Sources, R.string.rift_settings_android_games, R.string.rift_settings_android_games_summary, Icons.Rounded.Android, SettingsAccent.Green),
     Accounts(RiftSettingsGroup.Sources, R.string.rift_settings_accounts, R.string.rift_settings_accounts_summary, Icons.Rounded.ManageAccounts, SettingsAccent.Blue),
-    Streaming(RiftSettingsGroup.Sources, R.string.rift_settings_streaming, R.string.rift_settings_streaming_summary, Icons.Rounded.Cast, SettingsAccent.Teal),
+    Streaming(RiftSettingsGroup.Sources, R.string.rift_settings_streaming, R.string.rift_settings_streaming_summary, Icons.Rounded.Cast, SettingsAccent.Mint),
     Emulators(RiftSettingsGroup.Sources, R.string.rift_settings_emulators, R.string.rift_settings_emulators_summary, Icons.Rounded.SportsEsports, SettingsAccent.Peach),
 
-    Interface(RiftSettingsGroup.Rift, R.string.rift_settings_interface, R.string.rift_settings_interface_summary, Icons.Rounded.Palette, SettingsAccent.Sky),
-    Tabs(RiftSettingsGroup.Rift, R.string.rift_settings_tabs, R.string.rift_settings_tabs_summary, Icons.Rounded.Tab, SettingsAccent.Peach),
-    Controller(RiftSettingsGroup.Rift, R.string.rift_settings_controller, R.string.rift_settings_controller_summary, Icons.Rounded.Gamepad, SettingsAccent.Sand),
-    Sound(RiftSettingsGroup.Rift, R.string.rift_settings_sound, R.string.rift_settings_sound_summary, Icons.Rounded.MusicNote, SettingsAccent.Yellow),
-    Home(RiftSettingsGroup.Rift, R.string.rift_settings_home, R.string.rift_settings_home_summary, Icons.Rounded.Home, SettingsAccent.Terracotta),
+    Interface(RiftSettingsGroup.Rift, R.string.rift_settings_interface, R.string.rift_settings_interface_summary, Icons.Rounded.Palette, SettingsAccent.Lilac),
+    Tabs(RiftSettingsGroup.Rift, R.string.rift_settings_tabs, R.string.rift_settings_tabs_summary, Icons.Rounded.Tab, SettingsAccent.Sky),
+    Controller(RiftSettingsGroup.Rift, R.string.rift_settings_controller, R.string.rift_settings_controller_summary, Icons.Rounded.Gamepad, SettingsAccent.Rose),
+    Sound(RiftSettingsGroup.Rift, R.string.rift_settings_sound, R.string.rift_settings_sound_summary, Icons.Rounded.MusicNote, SettingsAccent.Lemon),
+    Home(RiftSettingsGroup.Rift, R.string.rift_settings_home, R.string.rift_settings_home_summary, Icons.Rounded.Home, SettingsAccent.Peach),
 
     Graphics(RiftSettingsGroup.Windows, R.string.rift_settings_graphics, R.string.rift_settings_graphics_summary, Icons.Rounded.Videocam, SettingsAccent.Blue),
-    Display(RiftSettingsGroup.Windows, R.string.rift_settings_display, R.string.rift_settings_display_summary, Icons.Rounded.DesktopWindows, SettingsAccent.Teal),
-    Launch(RiftSettingsGroup.Windows, R.string.rift_settings_launch, R.string.rift_settings_launch_summary, Icons.Rounded.RocketLaunch, SettingsAccent.Terracotta),
+    Display(RiftSettingsGroup.Windows, R.string.rift_settings_display, R.string.rift_settings_display_summary, Icons.Rounded.DesktopWindows, SettingsAccent.Mint),
+    Launch(RiftSettingsGroup.Windows, R.string.rift_settings_launch, R.string.rift_settings_launch_summary, Icons.Rounded.RocketLaunch, SettingsAccent.Rose),
     Downloads(RiftSettingsGroup.Windows, R.string.rift_settings_downloads, R.string.rift_settings_downloads_summary, Icons.Rounded.CloudDownload, SettingsAccent.Green),
 
     Device(RiftSettingsGroup.System, R.string.rift_settings_device, R.string.rift_settings_device_summary, Icons.Rounded.Memory, SettingsAccent.Sky),
-    About(RiftSettingsGroup.System, R.string.rift_settings_about, R.string.rift_settings_about_summary, Icons.Rounded.Info, SettingsAccent.Sand),
-    Debug(RiftSettingsGroup.System, R.string.rift_settings_debug, R.string.rift_settings_debug_summary, Icons.Rounded.BugReport, SettingsAccent.Yellow),
+    About(RiftSettingsGroup.System, R.string.rift_settings_about, R.string.rift_settings_about_summary, Icons.Rounded.Info, SettingsAccent.Lilac),
+    Debug(RiftSettingsGroup.System, R.string.rift_settings_debug, R.string.rift_settings_debug_summary, Icons.Rounded.BugReport, SettingsAccent.Lemon),
 }
