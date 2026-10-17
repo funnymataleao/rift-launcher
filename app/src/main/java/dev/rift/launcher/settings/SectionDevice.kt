@@ -214,8 +214,7 @@ private fun ProfileRow(title: String, value: String, subtitle: String? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (focused) RiftColors.SurfaceContainerHigh else RiftColors.SurfaceContainer)
-            .border(if (focused) 3.dp else 0.dp, if (focused) Color.White else Color.Transparent)
+            .plateFill(focused)
             .focusable(interactionSource = interaction)
             .heightIn(min = 72.dp)
             .padding(horizontal = 18.dp, vertical = 14.dp),
@@ -223,15 +222,15 @@ private fun ProfileRow(title: String, value: String, subtitle: String? = null) {
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(text = title, color = RiftColors.OnSurface, fontSize = 18.5.sp, fontWeight = FontWeight.SemiBold)
+            Text(text = title, color = plateText(focused), fontSize = 18.5.sp, fontWeight = FontWeight.SemiBold)
             if (!subtitle.isNullOrBlank()) {
-                Text(text = subtitle, color = RiftColors.OnSurfaceVariant, fontSize = 15.sp, lineHeight = 20.sp)
+                Text(text = subtitle, color = plateSubtext(focused), fontSize = 15.sp, lineHeight = 20.sp)
             }
         }
         if (value.isNotBlank()) {
             Text(
                 text = value,
-                color = if (focused) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
+                color = plateSubtext(focused),
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.End,

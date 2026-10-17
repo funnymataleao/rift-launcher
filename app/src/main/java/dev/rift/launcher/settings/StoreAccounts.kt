@@ -9,7 +9,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.VideogameAsset
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -50,14 +49,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-private enum class Store(val accent: SettingsAccent) {
-    Steam(SettingsAccent.Blue),
-    Epic(SettingsAccent.Lilac),
-    Gog(SettingsAccent.Rose),
-    Amazon(SettingsAccent.Lemon),
-    Ea(SettingsAccent.Mint),
-    Rockstar(SettingsAccent.Peach),
-}
+private enum class Store { Steam, Epic, Gog, Amazon, Ea, Rockstar }
 
 private data class StoreStatus(val signedIn: Boolean, val account: String?)
 
@@ -238,26 +230,24 @@ private fun StoreCard(store: Store, status: StoreStatus, canSignIn: Boolean, onC
         Store.Gog -> painterResource(R.drawable.ic_gog)
         else -> null
     }
-    CompositionLocalProvider(LocalSettingsAccent provides store.accent) {
-        SettingsGroup {
-            LinkRow(
-                title = storeTitle(store),
-                subtitle = when {
-                    !status.signedIn -> stringResource(R.string.settings_accounts_signed_out)
-                    status.account != null -> status.account
-                    else -> stringResource(R.string.rift_settings_store_signed_in)
-                },
-                icon = vector,
-                iconPainter = painter,
-                value = when {
-                    status.signedIn -> stringResource(R.string.rift_settings_sign_out)
-                    canSignIn -> stringResource(R.string.rift_settings_sign_in)
-                    else -> null
-                },
-                enabled = status.signedIn || canSignIn,
-                onClick = onClick,
-            )
-        }
+    SettingsGroup {
+        LinkRow(
+            title = storeTitle(store),
+            subtitle = when {
+                !status.signedIn -> stringResource(R.string.settings_accounts_signed_out)
+                status.account != null -> status.account
+                else -> stringResource(R.string.rift_settings_store_signed_in)
+            },
+            icon = vector,
+            iconPainter = painter,
+            value = when {
+                status.signedIn -> stringResource(R.string.rift_settings_sign_out)
+                canSignIn -> stringResource(R.string.rift_settings_sign_in)
+                else -> null
+            },
+            enabled = status.signedIn || canSignIn,
+            onClick = onClick,
+        )
     }
 }
 

@@ -3,15 +3,16 @@ package dev.rift.launcher.ui.theme
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
 /**
@@ -32,15 +33,16 @@ object RiftColors {
     val OnSurfaceVariant = Color(0xFFA3A39A)
     val Outline = Color(0xFF6B6B63)
     val OutlineVariant = Color(0x17FFFFFF)
-    val Primary = Color(0xFFFFF44F)
-    val OnPrimary = Color(0xFF000000)
-    val Secondary = Color(0xFFF5E50A)
+    /** The user's accent (lemon until they pick another), see [RiftAccent]. */
+    val Primary: Color get() = RiftAccent.current.main
+    val OnPrimary: Color get() = RiftAccent.current.onAccent
+    val Secondary: Color get() = RiftAccent.current.main
     val Error = Color(0xFFFF6B6B)
     val Warning = Color(0xFFFFB84D)
     val Success = Color(0xFF4BE38A)
 
     /** Fallback glow when a cover's own colour is not known yet. */
-    val GlowFallback = Primary
+    val GlowFallback: Color get() = Primary
 }
 
 object RiftBrush {
@@ -85,7 +87,7 @@ object RiftMotion {
     const val HERO_CROSSFADE_MS = 600
 }
 
-private val RiftColorScheme = darkColorScheme(
+private fun riftColorScheme() = darkColorScheme(
     primary = RiftColors.Primary,
     onPrimary = RiftColors.OnPrimary,
     secondary = RiftColors.Secondary,
@@ -123,7 +125,7 @@ private val RiftColorScheme = darkColorScheme(
 )
 
 /** Side panels: translucent black over a blurred home screen, like frosted glass. */
-private val RiftGlassColorScheme = RiftColorScheme.copy(
+private fun riftGlassColorScheme() = riftColorScheme().copy(
     surface = Color.Black.copy(alpha = 0.7f),
     surfaceContainer = Color.Black.copy(alpha = 0.7f),
     // Cards inside the panels stay see-through too, just a little lighter than the glass.
@@ -136,11 +138,11 @@ private val RiftGlassColorScheme = RiftColorScheme.copy(
 )
 
 @Composable
-fun RiftTheme(content: @Composable () -> Unit) = RiftMaterialTheme(RiftColorScheme, content)
+fun RiftTheme(content: @Composable () -> Unit) = RiftMaterialTheme(glass = false, content)
 
 /** For GameNative's side panels shown over Rift; pair it with a blur on what is behind them. */
 @Composable
-fun RiftGlassTheme(content: @Composable () -> Unit) = RiftMaterialTheme(RiftGlassColorScheme, content)
+fun RiftGlassTheme(content: @Composable () -> Unit) = RiftMaterialTheme(glass = true, content)
 
 /**
  * Material 3 Expressive (Denis 2026-10-16): expressive motion scheme (springs) and shapes, in Rift's
@@ -149,7 +151,10 @@ fun RiftGlassTheme(content: @Composable () -> Unit) = RiftMaterialTheme(RiftGlas
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun RiftMaterialTheme(colorScheme: ColorScheme, content: @Composable () -> Unit) {
+private fun RiftMaterialTheme(glass: Boolean, content: @Composable () -> Unit) {
+    RiftAccent.ensureLoaded(LocalContext.current)
+    val accent = RiftAccent.current
+    val colorScheme = remember(accent, glass) { if (glass) riftGlassColorScheme() else riftColorScheme() }
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
         motionScheme = MotionScheme.expressive(),

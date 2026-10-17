@@ -16,7 +16,6 @@ import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -35,7 +34,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.Icon
@@ -48,8 +46,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -58,28 +56,40 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.rift.launcher.ui.theme.RiftAccent
 import dev.rift.launcher.ui.theme.RiftColors
 import dev.rift.launcher.ui.theme.RiftMotion
 import dev.rift.launcher.ui.theme.RiftShapes
 import dev.rift.launcher.ui.theme.RiftSizes
 
 /*
- * Building blocks of Rift's settings: a group of rows (a titled column of cards), switch, link, choice
- * chips and info rows, plus the round and pill buttons dialogs use. Everything is one size and shape
- * language with the home screen: a white ring and a small spring scale on focus, round buttons, and
- * the accent colour only on what is on or selected.
+ * Building blocks of Rift's settings: a group of plates (every row is a plate of its own), switch, link,
+ * choice chips and info rows, plus the round and pill buttons dialogs use. The plate that has focus is
+ * filled with the accent colour, with dark text and icons on it; there are no focus rings.
  */
 
-private val RowShape = RiftShapes.sheet
-
-/** The row highlight inside a card: the card's corner radius minus the 8dp inset, so the two stay concentric. */
-private val CardInnerShape = RoundedCornerShape(18.dp)
-private val RowMinHeight = 84.dp
+/** One shape for every plate, in the list on the left and the rows on the right. */
+internal val PlateShape = RiftShapes.card
+internal val PlateGap = 8.dp
+internal val RowMinHeight = 84.dp
 private val RowIconSize = 44.dp
 
+/** The fill of a plate: the accent colour (or gradient) while it has focus, otherwise [rest]. */
+@Composable
+internal fun Modifier.plateFill(focused: Boolean, shape: Shape = PlateShape, rest: Color = RiftColors.SurfaceContainer): Modifier =
+    clip(shape).then(
+        if (focused) Modifier.background(RiftAccent.current.brush) else Modifier.background(rest),
+    )
+
+/** Main text colour on a plate. */
+internal fun plateText(focused: Boolean): Color = if (focused) RiftAccent.current.onAccent else RiftColors.OnSurface
+
+/** Secondary text colour on a plate. */
+internal fun plateSubtext(focused: Boolean): Color =
+    if (focused) RiftAccent.current.onAccent.copy(alpha = 0.72f) else RiftColors.OnSurfaceVariant
+
 /**
- * A titled card of settings rows, like a group in macOS System Settings: a large heading, then rows in
- * one rounded card separated by hairlines.
+ * A titled group of settings rows: a large heading, then one plate per row.
  */
 @Composable
 internal fun SettingsGroup(
@@ -97,26 +107,18 @@ internal fun SettingsGroup(
                 modifier = Modifier.padding(start = 6.dp),
             )
         }
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RowShape)
-                .background(RiftColors.OutlineVariant)
-                .border(1.dp, RiftColors.OutlineVariant, RowShape),
-            verticalArrangement = Arrangement.spacedBy(1.dp),
-        ) {
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(PlateGap)) {
             content()
         }
     }
 }
 
-/** Standard colours and ring for anything that can take focus. */
+/** Plate look for anything that can take focus: a faint plate at rest, the accent fill while focused. */
 @Composable
 private fun Modifier.focusChrome(
     focused: Boolean,
-    shape: androidx.compose.ui.graphics.Shape,
+    shape: Shape,
     restColor: Color = RiftColors.SurfaceContainer,
-    focusedColor: Color = RiftColors.SurfaceContainerHigh,
     scaleOnFocus: Float = 1.02f,
 ): Modifier {
     val scale by animateFloatAsState(if (focused) scaleOnFocus else 1f, RiftMotion.focusSpring(), label = "settingsFocusScale")
@@ -125,32 +127,32 @@ private fun Modifier.focusChrome(
             scaleX = scale
             scaleY = scale
         }
-        .clip(shape)
-        .background(if (focused) focusedColor else restColor)
-        .border(if (focused) 2.dp else 1.dp, if (focused) Color.White.copy(alpha = 0.9f) else RiftColors.OutlineVariant, shape)
+        .plateFill(focused, shape, restColor)
 }
 
 @Composable
-private fun RowIcon(icon: ImageVector, focused: Boolean, colors: IconColors) {
-    RowIconDisc(focused, colors) {
+internal fun RowIcon(icon: ImageVector, focused: Boolean, danger: Boolean = false) {
+    val colors = iconColors(focused, danger)
+    RowIconDisc(colors) {
         Icon(imageVector = icon, contentDescription = null, tint = colors.symbol, modifier = Modifier.size(24.dp))
     }
 }
 
 @Composable
-private fun RowIcon(icon: Painter, focused: Boolean, colors: IconColors) {
-    RowIconDisc(focused, colors) {
+private fun RowIcon(icon: Painter, focused: Boolean) {
+    val colors = iconColors(focused)
+    RowIconDisc(colors) {
         Icon(painter = icon, contentDescription = null, tint = colors.symbol, modifier = Modifier.size(24.dp))
     }
 }
 
 @Composable
-private fun RowIconDisc(focused: Boolean, colors: IconColors, content: @Composable () -> Unit) {
+private fun RowIconDisc(colors: IconColors, content: @Composable () -> Unit) {
     Box(
         modifier = Modifier
             .size(RowIconSize)
             .clip(CircleShape)
-            .background(if (focused) colors.disc else colors.disc.copy(alpha = 0.92f)),
+            .background(colors.disc),
         contentAlignment = Alignment.Center,
     ) {
         content()
@@ -158,18 +160,18 @@ private fun RowIconDisc(focused: Boolean, colors: IconColors, content: @Composab
 }
 
 @Composable
-private fun RowTexts(title: String, subtitle: String?, danger: Boolean, modifier: Modifier = Modifier) {
+internal fun RowTexts(title: String, subtitle: String?, danger: Boolean, focused: Boolean, modifier: Modifier = Modifier) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(
             text = title,
-            color = if (danger) RiftColors.Error else RiftColors.OnSurface,
+            color = if (danger && !focused) RiftColors.Error else plateText(focused),
             fontSize = 18.5.sp,
             fontWeight = FontWeight.SemiBold,
         )
         if (!subtitle.isNullOrBlank()) {
             Text(
                 text = subtitle,
-                color = RiftColors.OnSurfaceVariant,
+                color = plateSubtext(focused),
                 fontSize = 15.sp,
                 lineHeight = 20.sp,
                 maxLines = 4,
@@ -193,41 +195,26 @@ private fun RowChrome(
     iconPainter: Painter? = null,
     trailing: @Composable RowScope.() -> Unit,
 ) {
-    Box(
+    Row(
         modifier = modifier
             .fillMaxWidth()
             .alpha(if (enabled) 1f else 0.45f)
-            .background(RiftColors.SurfaceContainer)
+            .plateFill(focused)
             .then(interactive)
-            .heightIn(min = RowMinHeight),
+            .heightIn(min = RowMinHeight)
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // The highlight (fill and thin ring) is its own rounded shape inside the row, away from the card's
-        // rounded corners, so the card's mask never cuts it, even on the first and last row.
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 6.dp)
-                .clip(CardInnerShape)
-                .background(if (focused) RiftColors.SurfaceContainerHigh else Color.Transparent)
-                .border(
-                    width = if (focused) 2.dp else 0.dp,
-                    color = if (focused) Color.White.copy(alpha = 0.9f) else Color.Transparent,
-                    shape = CardInnerShape,
-                )
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            if (leading != null) {
-                leading()
-            } else if (icon != null) {
-                RowIcon(icon, focused, if (danger) iconColorsOf(RiftColors.Error) else LocalSettingsAccent.current.icon)
-            } else if (iconPainter != null) {
-                RowIcon(iconPainter, focused, LocalSettingsAccent.current.icon)
-            }
-            RowTexts(title, subtitle, danger, Modifier.weight(1f))
-            trailing()
+        if (leading != null) {
+            leading()
+        } else if (icon != null) {
+            RowIcon(icon, focused, danger)
+        } else if (iconPainter != null) {
+            RowIcon(iconPainter, focused)
         }
+        RowTexts(title, subtitle, danger, focused, Modifier.weight(1f))
+        trailing()
     }
 }
 
@@ -263,16 +250,19 @@ internal fun SwitchRow(
             onValueChange = onCheckedChange,
         ),
     ) {
-        RiftSwitch(checked)
+        RiftSwitch(checked, focused)
     }
 }
 
 /**
- * Material 3 Expressive switch: the thumb grows and carries a check mark when on. Lemon outline, thumb and
+ * Material 3 Expressive switch: the thumb grows and carries a check mark when on. Accent outline, thumb and
  * a faint tint when on, a grey outline when off, so a switch stays a small accent on black.
  */
 @Composable
-private fun RiftSwitch(checked: Boolean) {
+private fun RiftSwitch(checked: Boolean, focused: Boolean) {
+    val accent = RiftAccent.current
+    // On the accent plate the switch turns dark, so it still reads.
+    val on = if (focused) accent.onAccent else accent.main
     Switch(
         checked = checked,
         onCheckedChange = null,
@@ -284,14 +274,14 @@ private fun RiftSwitch(checked: Boolean) {
             )
         },
         colors = SwitchDefaults.colors(
-            checkedThumbColor = RiftColors.Primary,
-            checkedTrackColor = RiftColors.Primary.copy(alpha = 0.26f),
-            checkedBorderColor = RiftColors.Primary,
-            checkedIconColor = RiftColors.OnPrimary,
-            uncheckedThumbColor = RiftColors.Outline,
-            uncheckedTrackColor = RiftColors.SurfaceContainerHigh,
-            uncheckedBorderColor = RiftColors.Outline,
-            uncheckedIconColor = RiftColors.SurfaceContainerHigh,
+            checkedThumbColor = on,
+            checkedTrackColor = on.copy(alpha = if (focused) 0.22f else 0.26f),
+            checkedBorderColor = on,
+            checkedIconColor = if (focused) accent.main else accent.onAccent,
+            uncheckedThumbColor = if (focused) accent.onAccent.copy(alpha = 0.6f) else RiftColors.Outline,
+            uncheckedTrackColor = if (focused) Color.Transparent else RiftColors.SurfaceContainerHigh,
+            uncheckedBorderColor = if (focused) accent.onAccent.copy(alpha = 0.6f) else RiftColors.Outline,
+            uncheckedIconColor = if (focused) accent.main else RiftColors.SurfaceContainerHigh,
         ),
     )
 }
@@ -347,7 +337,7 @@ internal fun LinkRow(
         if (!value.isNullOrBlank()) {
             Text(
                 text = value,
-                color = if (focused) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
+                color = plateSubtext(focused),
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -358,7 +348,7 @@ internal fun LinkRow(
         Icon(
             imageVector = Icons.Rounded.ChevronRight,
             contentDescription = null,
-            tint = RiftColors.OnSurfaceVariant,
+            tint = plateSubtext(focused),
             modifier = Modifier.size(26.dp),
         )
     }
@@ -375,14 +365,14 @@ internal fun InfoRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(RiftColors.SurfaceContainer)
+            .plateFill(focused = false)
             .heightIn(min = RowMinHeight)
             .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        if (icon != null) RowIcon(icon, focused = false, colors = LocalSettingsAccent.current.icon)
-        RowTexts(title, null, danger = false, modifier = Modifier.weight(1f))
+        if (icon != null) RowIcon(icon, focused = false)
+        RowTexts(title, null, danger = false, focused = false, modifier = Modifier.weight(1f))
         Text(text = value, color = RiftColors.OnSurfaceVariant, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
     }
 }
@@ -416,13 +406,13 @@ internal fun ChoiceChipsRow(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(RiftColors.SurfaceContainer)
+            .plateFill(focused = false)
             .padding(horizontal = 18.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            if (icon != null) RowIcon(icon, focused = false, colors = LocalSettingsAccent.current.icon)
-            RowTexts(title, subtitle, danger = false, modifier = Modifier.weight(1f))
+            if (icon != null) RowIcon(icon, focused = false)
+            RowTexts(title, subtitle, danger = false, focused = false, modifier = Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             options.forEachIndexed { index, label ->
@@ -453,6 +443,8 @@ internal fun RiftChip(
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val scale by animateFloatAsState(if (focused) 1.05f else 1f, RiftMotion.focusSpring(), label = "chipScale")
+    val accent = RiftAccent.current
+    // The focused chip is filled with the accent behind a see-through button, so a gradient shows.
     OutlinedToggleButton(
         checked = selected,
         onCheckedChange = { onClick() },
@@ -463,16 +455,16 @@ internal fun RiftChip(
             checkedShape = RiftShapes.full,
         ),
         colors = ToggleButtonDefaults.outlinedToggleButtonColors(
-            containerColor = RiftColors.Surface,
-            contentColor = RiftColors.OnSurfaceVariant,
-            checkedContainerColor = RiftColors.SurfaceContainerHigh,
-            checkedContentColor = RiftColors.OnSurface,
+            containerColor = if (focused) Color.Transparent else RiftColors.Surface,
+            contentColor = if (focused) accent.onAccent else RiftColors.OnSurfaceVariant,
+            checkedContainerColor = if (focused) Color.Transparent else RiftColors.SurfaceContainerHigh,
+            checkedContentColor = if (focused) accent.onAccent else RiftColors.OnSurface,
         ),
         border = BorderStroke(
-            width = if (focused) 2.dp else if (selected) 1.5.dp else 1.dp,
+            width = if (focused) 0.dp else if (selected) 1.5.dp else 1.dp,
             color = when {
-                focused -> Color.White
-                selected -> RiftColors.Primary
+                focused -> Color.Transparent
+                selected -> accent.main
                 else -> RiftColors.OutlineVariant
             },
         ),
@@ -483,7 +475,8 @@ internal fun RiftChip(
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-            },
+            }
+            .then(if (focused) Modifier.clip(RiftShapes.full).background(accent.brush) else Modifier),
     ) {
         Text(
             text = text,
@@ -511,6 +504,7 @@ internal fun RiftPillButton(
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val scale by animateFloatAsState(if (focused) 1.06f else 1f, RiftMotion.focusSpring(), label = "pillScale")
+    val accent = RiftAccent.current
     Button(
         onClick = onClick,
         shapes = ButtonDefaults.shapes(
@@ -518,10 +512,17 @@ internal fun RiftPillButton(
             pressedShape = RiftShapes.full,
         ),
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (primary) Color.White else RiftColors.SurfaceContainerHigh,
-            contentColor = if (primary) RiftColors.OnPrimary else RiftColors.OnSurface,
+            containerColor = when {
+                focused -> Color.Transparent
+                primary -> Color.White
+                else -> RiftColors.SurfaceContainerHigh
+            },
+            contentColor = when {
+                focused -> accent.onAccent
+                primary -> RiftColors.OnPrimary
+                else -> RiftColors.OnSurface
+            },
         ),
-        border = if (focused) BorderStroke(2.dp, if (primary) RiftColors.Primary else Color.White.copy(alpha = 0.9f)) else null,
         contentPadding = PaddingValues(horizontal = 26.dp),
         interactionSource = interaction,
         modifier = modifier
@@ -529,7 +530,8 @@ internal fun RiftPillButton(
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-            },
+            }
+            .then(if (focused) Modifier.clip(RiftShapes.full).background(accent.brush) else Modifier),
     ) {
         if (icon != null) {
             Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(20.dp))
@@ -555,30 +557,31 @@ internal fun RiftRoundButton(
             .focusChrome(
                 focused = focused,
                 shape = CircleShape,
-                restColor = RiftColors.Surface.copy(alpha = 0.7f),
+                restColor = RiftColors.SurfaceContainerHigh,
                 scaleOnFocus = 1.06f,
             )
             .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(imageVector = icon, contentDescription = description, tint = RiftColors.OnSurface)
+        Icon(imageVector = icon, contentDescription = description, tint = plateText(focused))
     }
 }
 
-/** A circular badge for a section: a saturated symbol on a light disc of the section's hue. */
+/** A circular badge for a section: a light symbol on a faint disc. */
 @Composable
-internal fun SectionBadge(icon: ImageVector, size: Dp = RiftSizes.button, accent: SettingsAccent = LocalSettingsAccent.current) {
+internal fun SectionBadge(icon: ImageVector, size: Dp = RiftSizes.button, focused: Boolean = false) {
+    val colors = iconColors(focused)
     Box(
         modifier = Modifier
             .size(size)
             .clip(CircleShape)
-            .background(accent.icon.disc),
+            .background(colors.disc),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = accent.icon.symbol,
+            tint = colors.symbol,
             modifier = Modifier.size(size * 0.5f),
         )
     }
@@ -595,17 +598,12 @@ internal fun BigActionCard(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val accent = LocalSettingsAccent.current
+    val colors = iconColors(focused)
     Row(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 120.dp)
-            .focusChrome(
-                focused = focused,
-                shape = RowShape,
-                restColor = accent.tint.copy(alpha = 0.10f).compositeOver(RiftColors.SurfaceContainer),
-                focusedColor = accent.tint.copy(alpha = 0.16f).compositeOver(RiftColors.SurfaceContainerHigh),
-            )
+            .focusChrome(focused = focused, shape = PlateShape)
             .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
             .padding(horizontal = 24.dp, vertical = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -615,19 +613,19 @@ internal fun BigActionCard(
             modifier = Modifier
                 .size(72.dp)
                 .clip(CircleShape)
-                .background(accent.icon.disc),
+                .background(colors.disc),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(imageVector = icon, contentDescription = null, tint = accent.icon.symbol, modifier = Modifier.size(38.dp))
+            Icon(imageVector = icon, contentDescription = null, tint = colors.symbol, modifier = Modifier.size(38.dp))
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(text = title, color = RiftColors.OnSurface, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
-            Text(text = subtitle, color = RiftColors.OnSurfaceVariant, fontSize = 16.sp, lineHeight = 22.sp)
+            Text(text = title, color = plateText(focused), fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+            Text(text = subtitle, color = plateSubtext(focused), fontSize = 16.sp, lineHeight = 22.sp)
         }
         Icon(
             imageVector = Icons.Rounded.ChevronRight,
             contentDescription = null,
-            tint = RiftColors.OnSurfaceVariant,
+            tint = plateSubtext(focused),
             modifier = Modifier.size(30.dp),
         )
     }

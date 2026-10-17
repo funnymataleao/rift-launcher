@@ -31,7 +31,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
@@ -67,6 +66,8 @@ import dev.rift.launcher.ui.theme.RiftShapes
 import dev.rift.launcher.ui.theme.RiftSizes
 import dev.rift.launcher.ui.theme.RiftTheme
 
+private val RailInset = 8.dp
+private val RailItemHeight = 52.dp
 private val RailWidth = 372.dp
 private val ContentMaxWidth = 860.dp
 
@@ -230,45 +231,42 @@ private fun RailItem(
         RiftMotion.focusSpring(),
         label = "railScale",
     )
+    val colors = iconColors(focused)
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(RiftSizes.button)
+            .height(RailItemHeight)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(RiftShapes.full)
-            .background(
-                when {
-                    selected -> RiftColors.SurfaceContainerHigh
-                    focused -> RiftColors.SurfaceContainer
-                    else -> Color.Transparent
-                },
+            .plateFill(
+                focused = focused,
+                rest = if (selected) RiftColors.SurfaceContainerHigh else Color.Transparent,
             )
-            .border(if (focused) 2.dp else 0.dp, if (focused) Color.White.copy(alpha = 0.9f) else Color.Transparent, RiftShapes.full)
             .clickable(interactionSource = interaction, indication = null, role = Role.Tab, onClick = onClick)
-            .padding(horizontal = 18.dp),
+            // The icon disc fills the height minus one inset, so left, top and bottom are the same.
+            .padding(start = RailInset, end = 18.dp, top = RailInset, bottom = RailInset),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
+                .size(RailItemHeight - RailInset * 2)
                 .clip(CircleShape)
-                .background(section.accent.icon.disc),
+                .background(colors.disc),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = section.icon,
                 contentDescription = null,
-                tint = section.accent.icon.symbol,
+                tint = colors.symbol,
                 modifier = Modifier.size(22.dp),
             )
         }
         Text(
             text = stringResource(section.titleRes),
-            color = if (selected) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
+            color = if (focused) plateText(true) else if (selected) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
             fontSize = 18.5.sp,
             fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
             maxLines = 1,
@@ -279,7 +277,7 @@ private fun RailItem(
                 modifier = Modifier
                     .size(8.dp)
                     .clip(CircleShape)
-                    .background(RiftColors.Primary),
+                    .background(if (focused) plateText(true) else RiftColors.Primary),
             )
         }
     }
@@ -306,7 +304,7 @@ private fun SectionPane(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            SectionBadge(section.icon, size = 68.dp, accent = section.accent)
+            SectionBadge(section.icon, size = 68.dp)
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = stringResource(section.titleRes),
@@ -333,7 +331,6 @@ private fun SectionPane(
                     // selected section in the list, like B, not to whatever sits across from the row.
                     .focusProperties { left = returnTo },
             ) {
-                CompositionLocalProvider(LocalSettingsAccent provides section.accent) {
                 Column(
                     modifier = Modifier
                         .widthIn(max = ContentMaxWidth)
@@ -363,7 +360,6 @@ private fun SectionPane(
                         RiftSettingsSection.About -> AboutSettings()
                         RiftSettingsSection.Debug -> DebugSettings()
                     }
-                }
                 }
             }
         }
