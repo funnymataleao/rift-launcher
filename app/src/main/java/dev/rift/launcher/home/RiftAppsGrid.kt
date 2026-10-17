@@ -111,8 +111,7 @@ fun RiftAppsGrid(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
-@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 private fun AppsGridContent(onDismiss: () -> Unit, focusRequester: FocusRequester, onFocusChanged: (Boolean) -> Unit) {
     val context = LocalContext.current

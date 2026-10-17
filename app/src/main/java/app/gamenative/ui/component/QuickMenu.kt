@@ -2096,6 +2096,7 @@ internal fun QuickMenuTabButton(
     onSelected: () -> Unit,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
+    quietSelection: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -2103,12 +2104,18 @@ internal fun QuickMenuTabButton(
     LaunchedEffect(isFocused) {
         inputBypass.reportActivate(interactionSource, if (isFocused) onSelected else null)
     }
+    // Rift: with [quietSelection] the open tab is a grey disc and only focus takes the accent.
+    val lit = isFocused || (selected && !quietSelection)
 
     // Rift: a round button; the open tab is filled with the accent and its icon turns dark.
     Box(
         modifier = modifier
             .size(48.dp)
-            .plateFill(focused = selected || isFocused, shape = CircleShape, rest = Color.Transparent)
+            .plateFill(
+                focused = lit,
+                shape = CircleShape,
+                rest = if (selected) Color.White.copy(alpha = 0.10f) else Color.Transparent,
+            )
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
@@ -2136,7 +2143,11 @@ internal fun QuickMenuTabButton(
         Icon(
             imageVector = icon,
             contentDescription = stringResource(contentDescriptionResId),
-            tint = if (selected || isFocused) plateText(true) else MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = when {
+                lit -> plateText(true)
+                selected -> MaterialTheme.colorScheme.onSurface
+                else -> MaterialTheme.colorScheme.onSurfaceVariant
+            },
             modifier = Modifier.size(24.dp),
         )
     }

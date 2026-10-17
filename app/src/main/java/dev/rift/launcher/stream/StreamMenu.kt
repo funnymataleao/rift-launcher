@@ -84,6 +84,9 @@ object StreamMenuRow {
     const val BITRATE = "bitrate"
     const val CODEC = "codec"
     const val HDR = "hdr"
+
+    /** The first row of a cloud game's settings, where the panel opens. */
+    const val CLOUD_FIRST = "cloud_first"
 }
 
 /**
@@ -224,14 +227,19 @@ fun StreamMenu(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            tabs.forEach { option ->
-                                QuickMenuTabButton(
-                                    icon = option.icon,
-                                    contentDescriptionResId = option.title,
-                                    selected = tab == option,
-                                    accentColor = accent,
-                                    onSelected = { tab = option },
-                                )
+                            // One tab needs no buttons; with more, only the focused thing is filled with
+                            // the accent and the open tab stays a quiet grey.
+                            if (tabs.size > 1) {
+                                tabs.forEach { option ->
+                                    QuickMenuTabButton(
+                                        icon = option.icon,
+                                        contentDescriptionResId = option.title,
+                                        selected = tab == option,
+                                        accentColor = accent,
+                                        onSelected = { tab = option },
+                                        quietSelection = true,
+                                    )
+                                }
                             }
                         }
                         Spacer(modifier = Modifier.height(12.dp))
@@ -268,6 +276,7 @@ private enum class StreamTab(val title: Int, val icon: ImageVector) {
     companion object {
         fun of(row: String) = when (row) {
             StreamMenuRow.OVERLAY, StreamMenuRow.VIBRATION -> STREAM
+            StreamMenuRow.CLOUD_FIRST -> CLOUD
             StreamMenuRow.END -> null
             else -> PICTURE
         }
@@ -429,7 +438,7 @@ internal fun <T> StepRow(
 
 /** A few fixed [choices] as pills in a row: the d-pad moves between them, A picks one. */
 @Composable
-private fun <T> ChoiceRow(
+internal fun <T> ChoiceRow(
     title: String,
     choices: List<T>,
     value: T,
