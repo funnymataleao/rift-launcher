@@ -241,9 +241,10 @@ async function bestConfig(request, env) {
     .bind(key)
     .all();
   const { matchType, run } = pickBestConfig(
-    results.map((row) => ({ ...row, tags: JSON.parse(row.tags) })),
+    results.map((row) => ({ ...row, tags: JSON.parse(row.tags), config: JSON.parse(row.configs) })),
     gpuName,
     store,
+    { modernBuild: body?.modernBuild === true },
   );
   if (!run) return json(noMatch);
   return json({

@@ -1,14 +1,19 @@
 package dev.rift.launcher.community
 
 import android.content.Context
+import android.os.Build
+import app.gamenative.BuildConfig
 import app.gamenative.api.ApiResult
+import app.gamenative.api.CommunityConfigService
 import app.gamenative.api.GameRunApi
 import app.gamenative.api.sanitizeCommunityConfig
+import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.Net
 import com.winlator.container.Container
 import dev.rift.launcher.settings.RiftPrefs
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -34,6 +39,59 @@ object RiftCommunity {
 
     private const val LOCAL_DIR = ".rift/feedback"
     private const val LOCAL_KEPT = 30
+
+    /** Reads Rift's database with GameNative's own client (same routes and JSON); null until deployed. */
+    val configService: CommunityConfigService? by lazy {
+        BASE_URL.takeIf { it.isNotEmpty() }?.let { CommunityConfigService(baseUrl = it) }
+    }
+
+    private val bestConfigCache = ConcurrentHashMap<String, BestConfigService.BestConfigResponse>()
+
+    /**
+     * Rift's best config for the game on this GPU (same request and answer as GameNative's
+     * /api/best-config), or null when the server is not set up, cannot be reached or has nothing.
+     */
+    suspend fun fetchBestConfig(
+        gameName: String,
+        gpuName: String,
+        gameStore: String,
+    ): BestConfigService.BestConfigResponse? = withContext(Dispatchers.IO) {
+        if (BASE_URL.isEmpty()) return@withContext null
+        val cacheKey = "${gameName}_${gpuName}_$gameStore"
+        bestConfigCache[cacheKey]?.let { return@withContext it }
+        val request = JSONObject().apply {
+            put("gameName", gameName)
+            put("gpuName", gpuName)
+            put("game_store", gameStore)
+            put("model", Build.MODEL)
+            put("modernBuild", BuildConfig.MODERN_ANDROID)
+        }
+        val call = Request.Builder()
+            .url("$BASE_URL/api/best-config")
+            .post(request.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+        try {
+            Net.http.newCall(call).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Timber.tag("RiftCommunity").w("Best config: HTTP ${response.code}")
+                    return@withContext null
+                }
+                val json = JSONObject(response.body?.string().orEmpty())
+                val matchType = json.optString("matchType", "no_match")
+                if (matchType == "no_match") return@withContext null
+                BestConfigService.BestConfigResponse(
+                    bestConfig = Json.parseToJsonElement(json.getJSONObject("bestConfig").toString()).jsonObject,
+                    matchType = matchType,
+                    matchedGpu = json.optString("matchedGpu"),
+                    matchedDeviceId = json.optInt("matchedDeviceId"),
+                    matchedStore = json.optString("matchedStore", gameStore),
+                ).also { bestConfigCache[cacheKey] = it }
+            }
+        } catch (e: Exception) {
+            Timber.tag("RiftCommunity").w(e, "Best config: ${e.message}")
+            null
+        }
+    }
 
     suspend fun submitGameRun(
         context: Context,

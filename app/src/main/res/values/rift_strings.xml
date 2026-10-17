@@ -366,4 +366,6 @@
     <string name="rift_community_share_title">Share game ratings with Rift</string>
     <string name="rift_community_share_subtitle">After a game, your stars, issues, note and the game\'s settings go to Rift\'s open config database, with no name or account. They are always kept on this tablet too.</string>
     <string name="rift_community_feedback_note">Your rating and the game\'s settings go to Rift\'s open config database, with no name or account. Turn it off in Settings › About › Privacy.</string>
+    <string name="rift_community_source_rift">Rift database</string>
+    <string name="rift_community_source_gamenative">GameNative database</string>
 </resources>
