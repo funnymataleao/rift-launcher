@@ -109,15 +109,19 @@ private fun GamePageGroup() {
                 prefs.gamePageBackground = mode
             },
         )
-        SwitchRow(
+        // Rift: two choices as pills (Denis 17.10); the same saved value as the page's Mute button.
+        ChoiceChipsRow(
             title = stringResource(R.string.rift_game_page_trailer_sound),
             subtitle = stringResource(R.string.rift_game_page_trailer_sound_summary),
             icon = Icons.Rounded.VolumeUp,
-            checked = sound,
-            enabled = mode == "trailer",
-            onCheckedChange = {
-                sound = it
-                prefs.gamePageTrailerSound = it
+            options = listOf(
+                stringResource(R.string.rift_game_page_sound_on),
+                stringResource(R.string.rift_game_page_sound_off),
+            ),
+            selectedIndex = if (sound) 0 else 1,
+            onSelect = {
+                sound = it == 0
+                prefs.gamePageTrailerSound = sound
             },
         )
         SwitchRow(
