@@ -149,6 +149,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -187,7 +188,6 @@ import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.StoreGameDetails
 import app.gamenative.service.SteamService
-import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.DownloadDisplayDetails
 import app.gamenative.ui.data.GameDisplayInfo
@@ -286,9 +286,11 @@ private fun PrimaryActionButton(
         label = "downloadProgress",
     )
 
-    // Rift: lemon pill with dark content in every state (no blue/green/cyan).
-    val buttonColor = dev.rift.launcher.ui.theme.RiftColors.Primary
-    val contentColor = dev.rift.launcher.ui.theme.RiftColors.OnPrimary
+    // Rift: two states only, as everywhere on a gamepad (Denis 17.10): in focus the accent fill with dark
+    // text and icon, otherwise the same grey as the other buttons. No outline.
+    // The focus fill is the user's accent brush, so a gradient accent shows as a gradient (Denis 17.10).
+    val buttonFill = if (isFocused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.1f))
+    val contentColor = if (isFocused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else Color.White
 
     // Rift: every button on the game page is one height (RiftSizes.button); Play is a wider pill.
     Box(
@@ -297,10 +299,7 @@ private fun PrimaryActionButton(
             .widthIn(min = 180.dp)
             .scale(scale)
             .clip(RoundedCornerShape(50))
-            .background(
-                if (enabled) buttonColor else buttonColor.copy(alpha = 0.5f),
-            )
-            .focusRing(interactionSource, RoundedCornerShape(50), width = 2.dp)
+            .background(buttonFill, alpha = if (enabled) 1f else 0.5f)
             .focusRequester(focusRequester)
             .selectable(
                 selected = isFocused,
@@ -402,14 +401,7 @@ private fun ActionIconButton(
             .scale(scale)
             .size(dev.rift.launcher.ui.theme.RiftSizes.button)
             .clip(CircleShape)
-            .background(
-                if (isFocused) {
-                    Color.White.copy(alpha = 0.2f)
-                } else {
-                    Color.White.copy(alpha = 0.1f)
-                },
-            )
-            .focusRing(interactionSource, CircleShape, width = 2.dp)
+            .background(if (isFocused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.1f)))
             .selectable(
                 selected = isFocused,
                 interactionSource = interactionSource,
@@ -421,7 +413,7 @@ private fun ActionIconButton(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = Color.White,
+            tint = if (isFocused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else Color.White,
             modifier = Modifier.size(24.dp),
         )
     }
@@ -452,8 +444,7 @@ private fun ActionPillButton(
             .scale(scale)
             .height(dev.rift.launcher.ui.theme.RiftSizes.button)
             .clip(RoundedCornerShape(50))
-            .background(Color.White.copy(alpha = if (isFocused) 0.2f else 0.1f))
-            .focusRing(interactionSource, RoundedCornerShape(50), width = 2.dp)
+            .background(if (isFocused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.1f)))
             .selectable(
                 selected = isFocused,
                 interactionSource = interactionSource,
@@ -464,11 +455,12 @@ private fun ActionPillButton(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(imageVector = icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+        val content = if (isFocused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else Color.White
+        Icon(imageVector = icon, contentDescription = null, tint = content, modifier = Modifier.size(22.dp))
         Text(
             text = text,
             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-            color = Color.White,
+            color = content,
             maxLines = 1,
         )
     }
@@ -877,8 +869,7 @@ private fun GamePageBackPill(onClick: () -> Unit, modifier: Modifier = Modifier)
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(50))
-            .background(Color.White.copy(alpha = if (isFocused) 0.2f else 0.08f))
-            .focusRing(interactionSource, RoundedCornerShape(50), width = 2.dp)
+            .background(if (isFocused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.08f)))
             .selectable(selected = isFocused, interactionSource = interactionSource, indication = null, onClick = onClick)
             .padding(start = 6.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -893,7 +884,7 @@ private fun GamePageBackPill(onClick: () -> Unit, modifier: Modifier = Modifier)
         Text(
             text = stringResource(R.string.rift_game_back_library),
             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-            color = Color.White,
+            color = if (isFocused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else Color.White,
         )
     }
 }
@@ -924,8 +915,10 @@ private fun GamePageSectionTabs(
     focusable: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    // Two states: while a tab has focus only that tab is filled; otherwise the current section is.
+    var rowFocused by remember { mutableStateOf(false) }
     Row(
-        modifier = modifier,
+        modifier = modifier.onFocusChanged { rowFocused = it.hasFocus },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -934,10 +927,9 @@ private fun GamePageSectionTabs(
         sections.forEach { section ->
             val interactionSource = remember { MutableInteractionSource() }
             val isFocused by interactionSource.collectIsFocusedAsState()
-            val selected = section == current
+            val selected = if (rowFocused) isFocused else section == current
             val tabModifier = if (focusable) {
                 Modifier
-                    .focusRing(interactionSource, RoundedCornerShape(50), width = 2.dp)
                     .selectable(
                         selected = selected,
                         interactionSource = interactionSource,
@@ -956,13 +948,7 @@ private fun GamePageSectionTabs(
                 maxLines = 1,
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
-                    .background(
-                        when {
-                            selected -> dev.rift.launcher.ui.theme.RiftColors.Primary
-                            isFocused -> Color.White.copy(alpha = 0.14f)
-                            else -> Color.Transparent
-                        },
-                    )
+                    .background(if (selected) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.Transparent))
                     .then(tabModifier)
                     .padding(horizontal = 18.dp, vertical = 9.dp),
             )
@@ -1345,7 +1331,7 @@ private fun GamePageMediaRow(
             val interactionSource = remember { MutableInteractionSource() }
             val isFocused by interactionSource.collectIsFocusedAsState()
             val scale by animateFloatAsState(
-                targetValue = if (isFocused) 1.04f else 1f,
+                targetValue = if (isFocused) 1.06f else 1f,
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioMediumBouncy,
                     stiffness = Spring.StiffnessMedium,
@@ -1361,7 +1347,6 @@ private fun GamePageMediaRow(
                     .scale(scale)
                     .clip(RoundedCornerShape(22.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainer)
-                    .focusRing(interactionSource, RoundedCornerShape(22.dp), width = 3.dp)
                     .selectable(
                         selected = isFocused,
                         interactionSource = interactionSource,
@@ -1375,18 +1360,20 @@ private fun GamePageMediaRow(
                     imageOptions = ImageOptions(contentDescription = gameName, contentScale = ContentScale.Crop),
                     modifier = Modifier.fillMaxSize(),
                 )
+                // Rift: no outline; the tile in focus is lifted and bright, the others are dimmed.
+                if (!isFocused) Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.38f)))
                 if (item.isVideo) {
                     Box(
                         modifier = Modifier
                             .size(60.dp)
                             .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.55f)),
+                            .background(if (isFocused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.Black.copy(alpha = 0.55f))),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
                             contentDescription = null,
-                            tint = dev.rift.launcher.ui.theme.RiftColors.Primary,
+                            tint = if (isFocused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else dev.rift.launcher.ui.theme.RiftColors.Primary,
                             modifier = Modifier.size(32.dp),
                         )
                     }
@@ -2780,14 +2767,17 @@ private fun AchievementProgressBar(current: Float, max: Float, textStyle: TextSt
 private fun AchievementRow(ach: Achievement, focusRequester: FocusRequester? = null, onClick: () -> Unit) {
     val shape = RoundedCornerShape(12.dp)
     val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+    // Rift: in focus the row is filled with the accent and its text goes dark; no outline.
     Surface(
         shape = shape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = if (focused) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = if (focused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
             .fillMaxWidth()
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .focusRing(interactionSource, shape),
+            .then(if (focused) Modifier.clip(shape).background(dev.rift.launcher.ui.theme.RiftAccent.current.brush) else Modifier)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
     ) {
         Row(
             modifier = Modifier
@@ -2809,7 +2799,7 @@ private fun AchievementRow(ach: Achievement, focusRequester: FocusRequester? = n
                     Text(
                         text = ach.description,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = androidx.compose.material3.LocalContentColor.current.copy(alpha = 0.72f),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -2819,7 +2809,7 @@ private fun AchievementRow(ach: Achievement, focusRequester: FocusRequester? = n
                     Text(
                         text = stringResource(R.string.achievements_unlocked_at, unlockedAt.first, unlockedAt.second),
                         style = MaterialTheme.typography.labelSmall,
-                        color = PluviaTheme.colors.statusInstalled,
+                        color = if (androidx.compose.material3.LocalContentColor.current == dev.rift.launcher.ui.theme.RiftColors.OnPrimary) androidx.compose.material3.LocalContentColor.current else PluviaTheme.colors.statusInstalled,
                     )
                 } else if (ach.hasProgress) {
                     AchievementProgressBar(
@@ -2838,13 +2828,15 @@ private fun AchievementRow(ach: Achievement, focusRequester: FocusRequester? = n
 private fun HiddenAchievementsSummary(count: Int, onClick: () -> Unit) {
     val shape = RoundedCornerShape(12.dp)
     val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
     Surface(
         shape = shape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = if (focused) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = if (focused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .focusRing(interactionSource, shape),
+            .then(if (focused) Modifier.clip(shape).background(dev.rift.launcher.ui.theme.RiftAccent.current.brush) else Modifier)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
     ) {
         Row(
             modifier = Modifier
@@ -2878,7 +2870,7 @@ private fun HiddenAchievementsSummary(count: Int, onClick: () -> Unit) {
                 Text(
                     text = stringResource(R.string.achievements_hidden_subtitle),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = androidx.compose.material3.LocalContentColor.current.copy(alpha = 0.72f),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -3049,11 +3041,7 @@ private fun GamePageAchievements(achievements: List<Achievement>, wide: Boolean)
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(18.dp))
-                        .background(
-                            if (focused) dev.rift.launcher.ui.theme.RiftColors.SurfaceContainerHigh
-                            else dev.rift.launcher.ui.theme.RiftColors.SurfaceContainer,
-                        )
-                        .focusRing(interactionSource, RoundedCornerShape(18.dp), width = 3.dp)
+                        .background(if (focused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(dev.rift.launcher.ui.theme.RiftColors.SurfaceContainer))
                         .selectable(selected = focused, interactionSource = interactionSource, indication = null) { detail = ach }
                         .padding(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -3061,10 +3049,10 @@ private fun GamePageAchievements(achievements: List<Achievement>, wide: Boolean)
                 ) {
                     AchievementIcon(ach, size = 52.dp, corner = 12.dp)
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(ach.label, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(ach.label, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = if (focused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         val line = ach.getFormattedUnlockDateTime()?.first ?: ach.description
                         if (line.isNotBlank()) {
-                            Text(line, style = MaterialTheme.typography.bodySmall, color = dev.rift.launcher.ui.theme.RiftColors.OnSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(line, style = MaterialTheme.typography.bodySmall, color = if (focused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary.copy(alpha = 0.75f) else dev.rift.launcher.ui.theme.RiftColors.OnSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }
@@ -3084,10 +3072,13 @@ private fun GamePageAchievements(achievements: List<Achievement>, wide: Boolean)
                         Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                             row.forEach { ach ->
                                 val interactionSource = remember { MutableInteractionSource() }
+                                val iconFocused by interactionSource.collectIsFocusedAsState()
+                                // No outline: the icon in focus grows and lights up, the rest stay dim.
                                 Box(
                                     modifier = Modifier
+                                        .scale(if (iconFocused) 1.14f else 1f)
+                                        .alpha(if (iconFocused) 1f else 0.6f)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .focusRing(interactionSource, RoundedCornerShape(12.dp), width = 2.dp)
                                         .selectable(selected = false, interactionSource = interactionSource, indication = null) { detail = ach },
                                 ) {
                                     AchievementIcon(ach, size = icon, corner = 12.dp, masked = ach.hidden)
