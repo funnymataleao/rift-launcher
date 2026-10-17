@@ -32,10 +32,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -171,8 +171,8 @@ private fun AddPcScreen(onClose: () -> Unit) {
                     modifier = Modifier.size(52.dp),
                     shape = dev.rift.launcher.ui.theme.RiftShapes.full,
                     contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.rift_stream_back), tint = RiftColors.OnSurface)
+                ) { focused ->
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.rift_stream_back), tint = focusedContent(focused))
                 }
                 Spacer(Modifier.width(20.dp))
                 Column {
@@ -229,14 +229,16 @@ private fun AddPcScreen(onClose: () -> Unit) {
 private fun HostRow(pc: ComputerDetails, focusRequester: FocusRequester?, onClick: () -> Unit) {
     val online = PcStreaming.isOnline(pc)
     val paired = PcStreaming.isPaired(pc)
-    FocusSurface(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 84.dp), focusRequester = focusRequester) {
+    FocusSurface(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 84.dp), focusRequester = focusRequester) { focused ->
+        val content = focusedContent(focused)
+        val secondary = if (focused) RiftColors.OnPrimary.copy(alpha = 0.75f) else RiftColors.OnSurfaceVariant
         Row(modifier = Modifier.padding(horizontal = 22.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.Computer, contentDescription = null, tint = RiftColors.OnSurface, modifier = Modifier.size(36.dp))
+            Icon(Icons.Outlined.Computer, contentDescription = null, tint = content, modifier = Modifier.size(36.dp))
             Spacer(Modifier.width(18.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(pc.name ?: "PC", color = RiftColors.OnSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text(pc.name ?: "PC", color = content, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    StatusDot(online)
+                    StatusDot(online, focused = focused)
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = when {
@@ -245,12 +247,12 @@ private fun HostRow(pc: ComputerDetails, focusRequester: FocusRequester?, onClic
                             paired -> stringResource(R.string.rift_stream_state_paired)
                             else -> stringResource(R.string.rift_stream_state_not_paired)
                         },
-                        color = RiftColors.OnSurfaceVariant,
+                        color = secondary,
                         fontSize = 16.sp,
                     )
                 }
             }
-            if (paired) Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = RiftColors.Primary)
+            if (paired) Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = if (focused) RiftColors.OnPrimary else RiftColors.Primary)
         }
     }
 }
@@ -285,7 +287,7 @@ private fun PairPanel(step: PairStep, onClose: () -> Unit, onRetry: () -> Unit) 
                 Spacer(Modifier.height(10.dp))
                 Text(stringResource(R.string.rift_stream_paired_help), color = RiftColors.OnSurfaceVariant, fontSize = 19.sp)
                 Spacer(Modifier.height(28.dp))
-                StreamPillButton(stringResource(R.string.rift_stream_done), onClick = onClose, primary = true)
+                StreamPillButton(stringResource(R.string.rift_stream_done), onClick = onClose)
             }
             is PairStep.Failed -> {
                 Text(stringResource(R.string.rift_stream_pair_error_title), color = RiftColors.Error, fontSize = 26.sp, fontWeight = FontWeight.Bold)
@@ -306,30 +308,33 @@ private fun IpDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
         containerColor = RiftColors.SurfaceContainer,
         title = { Text(stringResource(R.string.rift_stream_ip_title), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = RiftColors.OnSurface) },
         text = {
-            OutlinedTextField(
+            // Two states like every Rift control: accent fill while typing, grey otherwise; no outline.
+            TextField(
                 value = text,
                 onValueChange = { text = it },
                 singleLine = true,
                 placeholder = { Text("192.168.1.10") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = RiftColors.Primary,
-                    cursorColor = RiftColors.Primary,
-                    focusedTextColor = RiftColors.OnSurface,
+                shape = dev.rift.launcher.ui.theme.RiftShapes.card,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = RiftColors.Primary,
+                    unfocusedContainerColor = RiftColors.SurfaceContainerHigh,
+                    focusedTextColor = RiftColors.OnPrimary,
                     unfocusedTextColor = RiftColors.OnSurface,
+                    focusedPlaceholderColor = RiftColors.OnPrimary.copy(alpha = 0.5f),
+                    unfocusedPlaceholderColor = RiftColors.OnSurfaceVariant,
+                    cursorColor = RiftColors.OnPrimary,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
                 ),
                 textStyle = androidx.compose.ui.text.TextStyle(fontSize = 22.sp),
             )
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(text) }) {
-                Text(stringResource(R.string.rift_stream_ip_add), color = RiftColors.Primary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            }
+            StreamPillButton(stringResource(R.string.rift_stream_ip_add), onClick = { onConfirm(text) })
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.rift_stream_cancel), color = RiftColors.OnSurface, fontSize = 18.sp)
-            }
+            StreamPillButton(stringResource(R.string.rift_stream_cancel), onClick = onDismiss)
         },
     )
 }
