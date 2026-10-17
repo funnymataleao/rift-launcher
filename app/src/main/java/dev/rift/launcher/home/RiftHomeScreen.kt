@@ -1894,7 +1894,7 @@ private fun PcLibraryGrid(
         itemsIndexed(items, key = { _, item -> item.appId }) { index, item ->
             val urls = portraitCoverUrls(item)
             val url = urls.firstOrNull { it.isNotEmpty() }.orEmpty()
-            BoxWithConstraints(modifier = Modifier.shelfEntry(ShelfEntry.Library, index, clock).viewGap()) {
+            BoxWithConstraints(modifier = Modifier.shelfEntry(ShelfEntry.Library, index, clock)) {
                 CoverCard(
                     height = maxWidth * 1.5f,
                     paletteKey = url,

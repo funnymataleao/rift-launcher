@@ -327,7 +327,6 @@ private fun AppTile(app: AndroidGame, focusRequester: FocusRequester?, onClick: 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .viewGap()
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
