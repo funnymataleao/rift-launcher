@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.OutlinedToggleButton
@@ -253,6 +255,64 @@ internal fun SwitchRow(
         ),
     ) {
         RiftSwitch(checked, focused)
+    }
+}
+
+/** A row with a check box, for picking several items at once. The whole row toggles. */
+@Composable
+internal fun CheckRow(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    icon: ImageVector? = null,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val accent = RiftAccent.current
+    // On the accent plate the box turns dark, so it still reads.
+    val on = if (focused) accent.onAccent else accent.main
+    RowChrome(
+        title = title,
+        subtitle = subtitle,
+        icon = icon,
+        focused = focused,
+        enabled = true,
+        danger = false,
+        modifier = modifier,
+        interactive = Modifier.toggleable(
+            value = checked,
+            interactionSource = interaction,
+            indication = null,
+            role = Role.Checkbox,
+            onValueChange = onCheckedChange,
+        ),
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = null,
+            colors = CheckboxDefaults.colors(
+                checkedColor = on,
+                uncheckedColor = if (focused) accent.onAccent.copy(alpha = 0.6f) else RiftColors.Outline,
+                checkmarkColor = if (focused) accent.main else accent.onAccent,
+            ),
+        )
+    }
+}
+
+/** Tabs at the top of a section: the chosen one is a full pill, as in [ChoiceChipsRow]. */
+@Composable
+internal fun SectionTabs(tabs: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = modifier.fillMaxWidth()) {
+        tabs.forEachIndexed { index, label ->
+            RiftChip(
+                text = label,
+                selected = index == selectedIndex,
+                onClick = { onSelect(index) },
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 

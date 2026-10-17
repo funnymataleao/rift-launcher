@@ -55,4 +55,11 @@
     <string name="rift_stream_settings">Настройки стрима</string>
     <string name="rift_stream_no_video">ПК не присылает картинку. Похоже, сессия игры на ПК зависла.</string>
     <string name="rift_stream_relaunch">Закрыть игру на ПК и запустить заново</string>
+    <string name="rift_settings_stream_tab_settings">Настройки</string>
+    <string name="rift_settings_stream_tab_games">Игры</string>
+    <string name="rift_settings_group_stream_advanced">Дополнительно</string>
+    <string name="rift_stream_group_games">Игры на ПК</string>
+    <string name="rift_stream_games_note">Отметьте игры, чтобы скрыть их из Rift. Вернуть скрытые можно в Настройки → «Скрытые игры».</string>
+    <string name="rift_stream_hide_selected">Скрыть выбранные (%1$d)</string>
+    <string name="rift_stream_settings_picture_note">Изменение переподключит стрим на пару секунд.</string>
 </resources>
