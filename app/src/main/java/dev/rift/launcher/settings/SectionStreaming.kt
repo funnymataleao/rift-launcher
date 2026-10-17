@@ -105,11 +105,13 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
                 prefs.streamResolution = resolution
             },
         )
-        val rates = listOf(30, 60, 90, 120, 144, 165)
+        // 0: the screen's own rate, the highest the tablet shows.
+        val rates = listOf(0, 30, 60, 90, 120, 144, 165)
+        val screen = stringResource(R.string.rift_settings_stream_device_screen)
         ChoiceChipsRow(
             title = stringResource(R.string.rift_settings_stream_fps),
             icon = Icons.Rounded.Speed,
-            options = rates.map { "$it" },
+            options = rates.map { if (it == 0) screen else "$it" },
             selectedIndex = rates.indexOf(fps),
             onSelect = {
                 fps = rates[it]

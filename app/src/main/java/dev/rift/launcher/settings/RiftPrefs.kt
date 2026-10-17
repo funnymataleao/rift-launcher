@@ -30,8 +30,9 @@ class RiftPrefs private constructor(
         get() = prefs.getString(STREAM_RESOLUTION, "device") ?: "device"
         set(value) = prefs.edit().putString(STREAM_RESOLUTION, value).apply()
 
+    /** 0 for the screen's own (highest) refresh rate. */
     var streamFps: Int
-        get() = prefs.getInt(STREAM_FPS, 60)
+        get() = prefs.getInt(STREAM_FPS, 0)
         set(value) = prefs.edit().putInt(STREAM_FPS, value).apply()
 
     /** Megabits per second; 0 lets the app choose from resolution and frame rate. */
@@ -78,7 +79,7 @@ class RiftPrefs private constructor(
 
     /** Apollo/Vibepollo virtual display: the host makes a screen of exactly the stream's size. */
     var streamVirtualDisplay: Boolean
-        get() = prefs.getBoolean(STREAM_VIRTUAL_DISPLAY, false)
+        get() = prefs.getBoolean(STREAM_VIRTUAL_DISPLAY, true)
         set(value) = prefs.edit().putBoolean(STREAM_VIRTUAL_DISPLAY, value).apply()
 
     var streamAdaptiveResolution: Boolean

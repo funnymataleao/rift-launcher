@@ -15,7 +15,8 @@ class StreamSettings(context: Context) {
 
     /** "1280x720", "1920x1080", "2560x1440", "3840x2160" or "device" (the screen's own size). */
     val resolution: String get() = prefs.getString("stream_resolution", "device") ?: "device"
-    val fps: Int get() = prefs.getInt("stream_fps", 60)
+    /** 0 for the screen's own (highest) refresh rate. */
+    val fps: Int get() = prefs.getInt("stream_fps", 0)
 
     /** Mbps; 0 picks a bitrate from resolution and frame rate. */
     val bitrateMbps: Int get() = prefs.getInt("stream_bitrate_mbps", 0)
@@ -37,7 +38,7 @@ class StreamSettings(context: Context) {
 
     /** Let the host change game settings to fit the stream (SOPS). */
     val optimizeGameSettings: Boolean get() = prefs.getBoolean("stream_optimize_game_settings", true)
-    val virtualDisplay: Boolean get() = prefs.getBoolean("stream_virtual_display", false)
+    val virtualDisplay: Boolean get() = prefs.getBoolean("stream_virtual_display", true)
     val adaptiveResolution: Boolean get() = prefs.getBoolean("stream_adaptive_resolution", false)
 
     /** "auto", "local" or "remote". */
@@ -62,7 +63,7 @@ class StreamSettings(context: Context) {
             return width to height
         }
 
-        /** Moonlight's default bitrate table, scaled by frame rate. */
+        /** Moonlight's default bitrate table, scaled by frame rate (more gently above 60, as Moonlight does). */
         fun autoBitrateKbps(width: Int, height: Int, fps: Int): Int {
             val pixels = width.toLong() * height
             val base = when {
@@ -71,7 +72,9 @@ class StreamSettings(context: Context) {
                 pixels <= 2560L * 1600 -> 20000
                 else -> 40000
             }
-            return (base * (fps.coerceAtLeast(30) / 30f)).toInt().coerceAtMost(150000)
+            val rate = fps.coerceAtLeast(30).toFloat()
+            val factor = (if (rate <= 60f) rate else kotlin.math.sqrt(rate / 60f) * 60f) / 30f
+            return (base * factor).toInt().coerceAtMost(150000)
         }
     }
 }

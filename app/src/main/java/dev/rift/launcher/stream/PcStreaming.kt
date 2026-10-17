@@ -128,7 +128,7 @@ object PcStreaming {
     fun startStream(context: Context, pc: ComputerDetails, app: NvApp, uniqueId: String) {
         val address = pc.activeAddress
         if (isOnline(pc) && address != null) {
-            launchStream(context, pc, address, pc.httpsPort, app, uniqueId)
+            launchStream(context, pc, address, pc.httpsPort, pc.vDisplaySupported && pc.vDisplayDriverReady, app, uniqueId)
             return
         }
         if (checking) return
@@ -140,7 +140,7 @@ object PcStreaming {
             withContext(Dispatchers.Main) {
                 checking = false
                 when (reach) {
-                    is Reach.Online -> launchStream(context, pc, reach.address, reach.httpsPort, app, uniqueId)
+                    is Reach.Online -> launchStream(context, pc, reach.address, reach.httpsPort, reach.virtualDisplay, app, uniqueId)
                     is Reach.NoHttps -> SnackbarManager.show(context.getString(R.string.rift_stream_pc_no_https, pc.name, reach.httpsPort))
                     Reach.Offline -> SnackbarManager.show(context.getString(R.string.rift_stream_pc_offline, pc.name))
                 }
@@ -152,7 +152,7 @@ object PcStreaming {
     private var checking = false
 
     private sealed interface Reach {
-        class Online(val address: ComputerDetails.AddressTuple, val httpsPort: Int) : Reach
+        class Online(val address: ComputerDetails.AddressTuple, val httpsPort: Int, val virtualDisplay: Boolean) : Reach
 
         /** The host answers over plain HTTP but not on its HTTPS port, which streaming needs. */
         class NoHttps(val httpsPort: Int) : Reach
@@ -166,7 +166,7 @@ object PcStreaming {
         var noHttps: Reach? = null
         for (address in listOfNotNull(pc.activeAddress, pc.localAddress, pc.manualAddress, pc.remoteAddress, pc.ipv6Address).distinct()) {
             runCatching { NvHTTP(address, 0, uniqueId, pc.serverCert, crypto).getComputerDetails(false) }
-                .onSuccess { if (it.uuid == pc.uuid) return Reach.Online(address, it.httpsPort) }
+                .onSuccess { if (it.uuid == pc.uuid) return Reach.Online(address, it.httpsPort, it.vDisplaySupported && it.vDisplayDriverReady) }
                 .onFailure { Log.i(TAG, "${pc.name} at $address over HTTPS: $it") }
             if (noHttps == null) {
                 runCatching { NvHTTP(address, 0, uniqueId, null, crypto).getComputerDetails(false) }
@@ -182,7 +182,15 @@ object PcStreaming {
         return noHttps ?: Reach.Offline
     }
 
-    private fun launchStream(context: Context, pc: ComputerDetails, address: ComputerDetails.AddressTuple, httpsPort: Int, app: NvApp, uniqueId: String) {
+    private fun launchStream(
+        context: Context,
+        pc: ComputerDetails,
+        address: ComputerDetails.AddressTuple,
+        httpsPort: Int,
+        virtualDisplay: Boolean,
+        app: NvApp,
+        uniqueId: String,
+    ) {
         context.startActivity(
             Intent(context, StreamActivity::class.java).apply {
                 putExtra(StreamActivity.EXTRA_HOST, address.address)
@@ -195,6 +203,7 @@ object PcStreaming {
                 putExtra(StreamActivity.EXTRA_APP_ID, app.appId)
                 putExtra(StreamActivity.EXTRA_APP_UUID, app.appUUID)
                 putExtra(StreamActivity.EXTRA_APP_HDR, app.isHdrSupported)
+                putExtra(StreamActivity.EXTRA_VIRTUAL_DISPLAY_READY, virtualDisplay)
                 if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             },
         )
