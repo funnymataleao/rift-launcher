@@ -5,6 +5,13 @@ import android.graphics.Bitmap
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.foundation.focusGroup
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -292,6 +299,8 @@ fun RiftHomeScreen(
 
     /** Puts focus back on the cover this section had last. */
     fun focusSection(target: RiftSection?) {
+        // The game page has its own focus; the home picks its cover again when the page closes.
+        if (openedAppId != null) return
         // The cover may be scrolled out of the row (a search changes it), so bring it into view first.
         if (target == RiftSection.PcGames) {
             val index = focusedItem?.let(library::indexOf) ?: -1
@@ -317,24 +326,19 @@ fun RiftHomeScreen(
         selectSection(sections[(sections.indexOf(section) + step).mod(sections.size)])
     }
 
+    // The game page opens over the home instead of replacing it, so the home keeps its state, its
+    // backdrop and its focus, and both ways are one smooth fade and scale (Denis: the jump was jarring).
     val opened = openedAppId?.let { id -> library.firstOrNull { it.appId == id } ?: lastOpenedItem?.takeIf { it.appId == id } }
-    if (opened != null) {
-        BackHandler { openedAppId = null }
-        LibraryDetailPane(
-            libraryItem = opened,
-            onClickPlay = { asContainer ->
-                sounds.play(RiftSound.Launch)
-                onClickPlay(opened.appId, asContainer)
-            },
-            onTestGraphics = { onTestGraphics(opened.appId) },
-            onPlayWithDiagnostics = { onPlayWithDiagnostics(opened.appId) },
-            onAiDebugRun = { onAiDebugRun(opened.appId) },
-            onBack = {
-                pendingFocusKey = focusKeyFor(opened)
-                openedAppId = null
-            },
-        )
-        return
+    var pageItem by remember { mutableStateOf<LibraryItem?>(null) }
+    if (opened != null) pageItem = opened
+    val pageState = remember { MutableTransitionState(false) }
+    pageState.targetState = opened != null
+    // Once the page fully covers the home, the home is not drawn at all.
+    val homeCovered = pageState.currentState && pageState.isIdle
+    fun closePage() {
+        val item = opened ?: return
+        openedAppId = null
+        pendingFocusKey = focusKeyFor(item)
     }
 
     // B on the home does nothing, like Big Picture (and a HOME launcher has nowhere to go back to).
@@ -401,7 +405,7 @@ fun RiftHomeScreen(
         // key reaches the screen at all: take the view's focus back first.
         if (!composeView.hasFocus()) composeView.requestFocus()
         // Behind the apps grid the covers must not take focus; the grid keeps its own.
-        if (appsOpen) return
+        if (appsOpen || openedAppId != null) return
         // Across a frame, so the cover sees its focus request change even if it was the last one.
         pendingFocusKey = null
         homeScope.launch {
@@ -409,7 +413,7 @@ fun RiftHomeScreen(
             focusSection(section)
         }
     }
-    LaunchedEffect(Unit) { runCatching { rootFocus.requestFocus() } }
+    LaunchedEffect(Unit) { if (openedAppId == null) runCatching { rootFocus.requestFocus() } }
     // Safety net at the activity level (GameNative's key event bus sees every key first): any press
     // while nothing in this screen has focus puts focus back on a cover and is not passed on.
     DisposableEffect(composeView) {
@@ -442,11 +446,13 @@ fun RiftHomeScreen(
     val blur by animateDpAsState(if (overlayOpen) 28.dp else 0.dp, tween(300), label = "backdropBlur")
 
     val rightStick = rememberRightStick()
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
     RiftTheme {
       CompositionLocalProvider(LocalRightStick provides rightStick) {
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
+                .graphicsLayer { alpha = if (homeCovered) 0f else 1f }
                 .background(RiftColors.Background)
                 .riftKeySounds(sidebarOpen = overlayOpen)
                 .onPreviewKeyEvent { event ->
@@ -736,6 +742,34 @@ fun RiftHomeScreen(
         }
       }
     }
+    pageItem?.let { item ->
+        AnimatedVisibility(
+            visibleState = pageState,
+            enter = fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec()) +
+                scaleIn(MaterialTheme.motionScheme.defaultSpatialSpec(), initialScale = PAGE_START_SCALE),
+            exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) +
+                scaleOut(MaterialTheme.motionScheme.fastSpatialSpec(), targetScale = PAGE_START_SCALE),
+            modifier = Modifier
+                .fillMaxSize()
+                // Focus stays on the page while it is open; on the way out the home takes it back.
+                .focusProperties { this.onExit = { if (openedAppId != null) cancelFocusChange() } }
+                .focusGroup(),
+        ) {
+            BackHandler(enabled = openedAppId != null) { closePage() }
+            LibraryDetailPane(
+                libraryItem = item,
+                onClickPlay = { asContainer ->
+                    sounds.play(RiftSound.Launch)
+                    onClickPlay(item.appId, asContainer)
+                },
+                onTestGraphics = { onTestGraphics(item.appId) },
+                onPlayWithDiagnostics = { onPlayWithDiagnostics(item.appId) },
+                onAiDebugRun = { onAiDebugRun(item.appId) },
+                onBack = { closePage() },
+            )
+        }
+    }
+    }
 
     // Focus a cover once the section has something to show, so a gamepad works without touching the screen.
     LaunchedEffect(section, library.isNotEmpty(), androidGames.isNotEmpty()) {
@@ -744,6 +778,9 @@ fun RiftHomeScreen(
 }
 
 private fun focusKeyFor(item: LibraryItem): String = item.appId
+
+/** The game page grows from slightly smaller than the screen and shrinks back to it. */
+private const val PAGE_START_SCALE = 0.94f
 
 /** Steam's library header art ratio (460×215), used for the first, wide tile. */
 private const val WIDE_TILE_RATIO = 460f / 215f
@@ -857,11 +894,13 @@ private fun PcGamesShelf(
         itemsIndexed(shown, key = { _, item -> item.appId }) { index, item ->
             // The first tile is the wide one (library header art), the rest are 2:3 covers.
             val wide = index == 0
-            val url = if (wide) {
-                item.headerImageUrl.ifEmpty { item.heroImageUrl.ifEmpty { item.capsuleImageUrl } }
+            // Preferred art first, the other kinds as fallbacks when one is missing or fails to load.
+            val urls = if (wide) {
+                listOf(item.headerImageUrl, item.heroImageUrl, item.capsuleImageUrl)
             } else {
-                item.capsuleImageUrl.ifEmpty { item.headerImageUrl }
+                listOf(item.capsuleImageUrl, item.headerImageUrl, item.heroImageUrl)
             }
+            val url = urls.firstOrNull { it.isNotEmpty() }.orEmpty()
             val context = LocalContext.current
             // Entrance: the covers on screen roll in from the right one after another.
             val appear = remember { Animatable(if (rollIn) 0f else 1f) }
@@ -901,13 +940,7 @@ private fun PcGamesShelf(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.align(Alignment.Center).padding(12.dp),
                     )
-                    CoilImage(
-                        modifier = Modifier.fillMaxSize(),
-                        imageModel = { url },
-                        imageOptions = ImageOptions(contentScale = ContentScale.Crop, contentDescription = item.name),
-                        loading = {},
-                        failure = {},
-                    )
+                    CoverImage(urls = urls, contentDescription = item.name)
                 },
                 badge = { CoverBadges(item, libraryState) },
             )
