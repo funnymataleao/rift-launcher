@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Rift: cloud streaming tab (Xbox Cloud Gaming with Better xCloud) -->
-    <string name="rift_section_cloud_streaming">Cloud streaming</string>
+    <string name="rift_section_cloud_streaming">Cloud Streaming</string>
     <string name="rift_cloud_play">Play in the cloud</string>
     <string name="rift_cloud_service_xcloud">Xbox Cloud Gaming</string>
     <string name="rift_cloud_service_game_pass">Xbox Game Pass</string>
