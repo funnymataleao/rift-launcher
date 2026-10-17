@@ -41,8 +41,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
-import app.gamenative.ui.component.GamepadButton
-import app.gamenative.PrefManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.focusProperties
@@ -66,6 +64,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -79,6 +79,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gamenative.R
 import dev.rift.launcher.ui.theme.RiftColors
+import dev.rift.launcher.ui.theme.RiftAccent
+import dev.rift.launcher.ui.theme.RiftMotion
 import dev.rift.launcher.ui.theme.RiftShapes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -118,10 +120,11 @@ private fun AppsGridContent(onDismiss: () -> Unit, focusRequester: FocusRequeste
         value = withContext(Dispatchers.IO) { AndroidGames.lastOpened(context) }
     }
     var sort by remember { mutableStateOf(AppsSort.load(context)) }
-    fun nextSort() {
-        sort = AppsSort.entries[(sort.ordinal + 1) % AppsSort.entries.size]
+    fun setSort(option: AppsSort) {
+        sort = option
         AppsSort.save(context, sort)
     }
+    fun nextSort() = setSort(AppsSort.entries[(sort.ordinal + 1) % AppsSort.entries.size])
     val firstFocus = remember { FocusRequester() }
     val searchFocus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -186,8 +189,12 @@ private fun AppsGridContent(onDismiss: () -> Unit, focusRequester: FocusRequeste
                     fontWeight = FontWeight.Black,
                     modifier = Modifier.weight(1f),
                 )
-                SortChip(sort = sort, onClick = ::nextSort)
-                Spacer(modifier = Modifier.width(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    AppsSort.entries.forEach { option ->
+                        SortPill(text = stringResource(option.labelRes), selected = option == sort, onClick = { setSort(option) })
+                    }
+                }
+                Spacer(modifier = Modifier.width(16.dp))
                 AppSearchField(
                     query = query,
                     typing = typing,
@@ -244,25 +251,34 @@ enum class AppsSort(val labelRes: Int) {
     }
 }
 
-/** The current order as a small chip with the X prompt; X (or a tap) switches it. */
+/** One of the orders as a pill: the chosen one is filled with the accent and has dark text; the gamepad reaches all three. */
 @Composable
-private fun SortChip(sort: AppsSort, onClick: () -> Unit) {
-    Row(
+private fun SortPill(text: String, selected: Boolean, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val scale by animateFloatAsState(if (focused) 1.06f else 1f, RiftMotion.focusSpring(), label = "sortPillScale")
+    val accent = RiftAccent.current
+    val filled = selected || focused
+    Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier
             .height(52.dp)
-            .background(Color.White.copy(alpha = 0.08f), RiftShapes.full)
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-            .focusProperties { canFocus = false }
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(RiftShapes.full)
+            .background(if (focused) accent.brush else if (selected) Brush.linearGradient(listOf(accent.main, accent.main)) else Brush.linearGradient(listOf(Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.08f))))
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            .padding(horizontal = 22.dp),
     ) {
-        Image(
-            painter = painterResource(if (PrefManager.swapFaceButtons) GamepadButton.Y.iconRes else GamepadButton.X.iconRes),
-            contentDescription = null,
-            modifier = Modifier.size(24.dp),
+        Text(
+            text = text,
+            color = if (filled) accent.onAccent else RiftColors.OnSurface,
+            fontSize = 15.sp,
+            fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
+            maxLines = 1,
         )
-        Text(text = stringResource(sort.labelRes), color = RiftColors.OnSurface, fontSize = 15.sp, fontWeight = FontWeight.Medium)
     }
 }
 
