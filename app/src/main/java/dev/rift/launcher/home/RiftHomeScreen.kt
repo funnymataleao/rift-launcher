@@ -97,7 +97,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.scale
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -2653,15 +2655,17 @@ private fun TopBar(
     avatarFocus: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
-    // One row, like Steam Big Picture: the bumpers and the section tabs on the left, a round search button and the
-    // status icons in the right corner. Searching hides the bumpers and tabs and opens a wide field in their place,
-    // from the first cover's left edge to the search button.
-    val gap = with(LocalDensity.current) { 10.dp.roundToPx() }
-    // Between RB and the search button: clearly apart, the button belongs to the corner.
-    val cornerGap = with(LocalDensity.current) { 28.dp.roundToPx() }
-    val pad = with(LocalDensity.current) { ScreenPadding.roundToPx() }
+    // One row, like Steam Big Picture: the bumpers and the section tabs on the left, the round search and the status
+    // icons in the right corner. Searching hides the bumpers and tabs, and the search itself grows leftwards into a
+    // wide field up to the first cover's left edge: one element, its magnifier stays at the right end.
+    val density = LocalDensity.current
+    val gap = with(density) { 10.dp.roundToPx() }
+    // Between RB and the search: clearly apart, the search belongs to the corner.
+    val cornerGap = with(density) { 28.dp.roundToPx() }
+    val pad = with(density) { ScreenPadding.roundToPx() }
+    val searchSize = with(density) { RiftSizes.button.roundToPx() }
     // The bumper's picture sits a little inside its touch box; its edge, not the box, lines up with the covers.
-    val bumperInset = with(LocalDensity.current) { 8.dp.roundToPx() }
+    val bumperInset = with(density) { 8.dp.roundToPx() }
     val open = search?.open == true
     val progress = animateFloatAsState(if (open) 1f else 0f, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "searchOpen")
     Layout(
@@ -2670,28 +2674,26 @@ private fun TopBar(
             BumperButton(GamepadButton.LB.iconRes, "LB") { onStep(-1) }
             Box { SectionTabs(glass = glass, sections = sections, selected = selected, onSelect = onSelect) }
             BumperButton(GamepadButton.RB.iconRes, "RB") { onStep(1) }
-            Box { if (search != null) SearchButton(search, searchFocus) }
-            Box { if (search != null) SearchField(search) }
+            Box { if (search != null) SearchPill(search, glass, searchFocus, progress) }
             StatusIcons(avatarFocus)
         },
     ) { measurables, constraints ->
         val loose = constraints.copy(minWidth = 0, minHeight = 0)
-        val icons = measurables[5].measure(loose)
-        val searchBtn = measurables[3].measure(loose)
+        val icons = measurables[4].measure(loose)
         val lb = measurables[0].measure(loose)
         val rb = measurables[2].measure(loose)
-        val inner = constraints.maxWidth - 2 * pad
         val iconsX = constraints.maxWidth - pad - icons.width
-        val btnX = iconsX - gap - searchBtn.width
-        // The tabs get what the bumpers, the search button and the corner leave.
-        val tabsMax = (btnX - cornerGap - rb.width - gap - (pad - bumperInset + lb.width + gap)).coerceAtLeast(0)
+        // The search's right end (where its magnifier stays), then the corner.
+        val searchRight = iconsX - gap
+        val searchLeft = searchRight - searchSize
+        // The tabs get what the bumpers, the search and the corner leave.
+        val tabsMax = (searchLeft - cornerGap - rb.width - gap - (pad - bumperInset + lb.width + gap)).coerceAtLeast(0)
         val tabs = measurables[1].measure(loose.copy(maxWidth = tabsMax))
         val p = progress.value
-        val fieldRight = btnX - gap
-        val fieldFull = (fieldRight - pad).coerceAtLeast(0)
-        val fieldWidth = (fieldFull * p).toInt()
-        val field = measurables[4].measure(loose.copy(minWidth = fieldWidth, maxWidth = fieldWidth))
-        val height = maxOf(icons.height, lb.height, tabs.height, searchBtn.height, field.height)
+        val fullWidth = (searchRight - pad).coerceAtLeast(searchSize)
+        val searchWidth = (searchSize + (fullWidth - searchSize) * p).toInt()
+        val searchBox = measurables[3].measure(Constraints.fixed(searchWidth, searchSize))
+        val height = maxOf(icons.height, lb.height, tabs.height, searchBox.height)
         layout(constraints.maxWidth, height) {
             // Everything hangs from the same top line, so the tabs, the search and the avatar share the inset.
             var x = pad - bumperInset
@@ -2699,70 +2701,86 @@ private fun TopBar(
             lb.placeRelativeWithLayer(x, 0, 0f, fade); x += lb.width + gap
             tabs.placeRelativeWithLayer(x, 0, 0f, fade); x += tabs.width + gap
             rb.placeRelativeWithLayer(x, 0, 0f, fade)
-            if (fieldWidth > 0) field.placeRelativeWithLayer(fieldRight - fieldWidth, (height - field.height) / 2, 1f) { alpha = progress.value }
-            searchBtn.placeRelative(btnX, 0)
+            searchBox.placeRelative(searchRight - searchWidth, 0)
             icons.placeRelative(iconsX, 0)
         }
     }
 }
 
-/** The round search button of the top bar: a magnifier on a translucent round plate, like the other round buttons. */
+/**
+ * The search of the top bar: a round glass button with a magnifier that, while searching, grows leftwards into the
+ * wide field ("Search" appears inside, the keyboard opens). Always a pill, never a square, whatever the state.
+ */
 @Composable
-private fun SearchButton(search: SearchState, pillFocus: FocusRequester) {
-    PillButton(
-        onClick = search.onOpen,
-        background = { focused -> if (focused) RiftAccent.current.brush else solid(Color.Black.copy(alpha = 0.35f)) },
-        square = true,
-        focusRequester = pillFocus,
-    ) { focused ->
-        Icon(
-            Icons.Outlined.Search,
-            contentDescription = stringResource(R.string.rift_search),
-            tint = if (focused) RiftAccent.current.onAccent else RiftColors.OnSurface,
-            modifier = Modifier.size(24.dp),
-        )
-    }
-}
-
-/** The wide search field that takes the tabs' place while searching; the keyboard opens with it. */
-@Composable
-private fun SearchField(search: SearchState) {
-    val focusRequester = remember { FocusRequester() }
+private fun SearchPill(search: SearchState, glass: GraphicsLayer, pillFocus: FocusRequester, progress: State<Float>) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val fieldFocus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
+    val view = LocalView.current
     LaunchedEffect(search.typing) {
-        if (search.typing) {
-            runCatching { focusRequester.requestFocus() }
-            keyboard?.show()
+        if (!search.typing) return@LaunchedEffect
+        // The field takes focus once it is open and placed; then the keyboard is asked for, twice (the controller
+        // and the input method itself) because a pad that looks like a hardware keyboard makes the system shy.
+        delay(180)
+        var tries = 0
+        while (tries < 8 && runCatching { fieldFocus.requestFocus() }.isFailure) {
+            tries++
+            delay(60)
         }
+        keyboard?.show()
+        val imm = view.context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+        imm?.showSoftInput(view, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
     }
-    Row(
+    val shape = RiftShapes.full
+    Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .height(RiftSizes.button)
-            .clip(RiftShapes.full)
-            .background(Color.Black.copy(alpha = 0.55f))
-            .padding(horizontal = 20.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .fillMaxSize()
+            .scale(if (focused) 1.04f else 1f)
+            .clip(shape)
+            .blackGlass(shape, backdrop = glass)
+            .background(if (focused) RiftAccent.current.brush else solid(Color.Transparent))
+            .focusRequester(pillFocus)
+            .clickable(interactionSource = interaction, indication = null, onClick = search.onOpen),
     ) {
-        Icon(Icons.Outlined.Search, contentDescription = null, tint = RiftColors.OnSurfaceVariant, modifier = Modifier.size(22.dp))
-        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-            if (search.query.isEmpty()) {
-                Text(stringResource(R.string.rift_search), color = RiftColors.OnSurfaceVariant, fontSize = 18.sp, maxLines = 1)
-            }
-            BasicTextField(
-                value = search.query,
-                onValueChange = search.onQuery,
-                singleLine = true,
-                textStyle = TextStyle(color = RiftColors.OnSurface, fontSize = 18.sp),
-                cursorBrush = solid(RiftColors.Primary),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { search.onDone() }),
+        Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .focusProperties { canFocus = search.typing }
-                    .focusRequester(focusRequester),
-            )
+                    .weight(1f)
+                    .padding(start = 22.dp)
+                    .graphicsLayer { alpha = ((progress.value - 0.35f) / 0.65f).coerceIn(0f, 1f) },
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                if (search.query.isEmpty()) {
+                    Text(
+                        stringResource(R.string.rift_search),
+                        color = if (focused) RiftAccent.current.onAccent else RiftColors.OnSurfaceVariant,
+                        fontSize = 18.sp,
+                        maxLines = 1,
+                    )
+                }
+                BasicTextField(
+                    value = search.query,
+                    onValueChange = search.onQuery,
+                    singleLine = true,
+                    textStyle = TextStyle(color = RiftColors.OnSurface, fontSize = 18.sp),
+                    cursorBrush = solid(RiftColors.Primary),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { search.onDone() }),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusProperties { canFocus = search.typing }
+                        .focusRequester(fieldFocus),
+                )
+            }
+            Box(modifier = Modifier.size(RiftSizes.button), contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Outlined.Search,
+                    contentDescription = stringResource(R.string.rift_search),
+                    tint = if (focused) RiftAccent.current.onAccent else RiftColors.OnSurface,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
         }
     }
 }
