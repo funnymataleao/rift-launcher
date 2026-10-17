@@ -112,8 +112,14 @@ object SteamGridDbClient {
         try {
             http.newCall(request).execute().use { response ->
                 when {
-                    response.code == 401 || response.code == 403 -> throw ArtError.BadKey
-                    response.code == 404 -> throw ArtError.NotFound
+                    response.code == 401 || response.code == 403 -> {
+                        Timber.tag(TAG).w("HTTP %d for %s (key refused)", response.code, url)
+                        throw ArtError.BadKey
+                    }
+                    response.code == 404 -> {
+                        Timber.tag(TAG).i("HTTP 404 for %s (not on SteamGridDB)", url)
+                        throw ArtError.NotFound
+                    }
                     response.code == 400 -> {
                         Timber.tag(TAG).w("HTTP 400 for %s: %s", url, response.body.string().take(300))
                         throw ArtError.BadRequest
@@ -123,7 +129,9 @@ object SteamGridDbClient {
                         throw ArtError.Network
                     }
                 }
-                JSONObject(response.body.string())
+                val body = response.body.string()
+                Timber.tag(TAG).i("HTTP %d for %s (%d bytes)", response.code, url, body.length)
+                JSONObject(body)
             }
         } catch (e: IOException) {
             Timber.tag(TAG).w(e, "SteamGridDB request failed: %s", url)

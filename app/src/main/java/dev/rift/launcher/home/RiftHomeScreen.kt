@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
+import timber.log.Timber
 import kotlinx.coroutines.flow.first
 import app.gamenative.ui.enums.SortOption
 import androidx.compose.runtime.mutableStateMapOf
@@ -324,7 +325,7 @@ fun RiftHomeScreen(
     val cloudTab = if (cloudSignedIn == true) rememberCloudStreamingTab() else null
     // The cloud tab starts on its own order (played from Rift, then Game Pass's most popular).
     var cloudView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.CloudStreaming, TabSort.LAST_PLAYED)) }
-    val cloudItems = remember(cloudTab, cloudView, hiddenGames) { cloudTab?.arrange(cloudView).orEmpty().filterNot { it.appId in hiddenGames } }
+    val cloudItems = remember(cloudTab, cloudView, hiddenGames, pickedArt) { GameArtStore.apply(context, cloudTab?.arrange(cloudView).orEmpty().filterNot { it.appId in hiddenGames }) }
     val hasCloudGames = cloudTab?.items?.any { it.appId !in hiddenGames } == true
     // The Emulators tab exists only while the systems set up in settings have games; the systems, their
     // emulator apps and folders live in settings. The folders are scanned again each time Rift comes back
@@ -462,6 +463,8 @@ fun RiftHomeScreen(
         GameArtStore.autoFill(context, order, artKey)
     }
     val focusedAndroid = androidShown.firstOrNull { it.packageName == focusedPackage } ?: androidShown.firstOrNull()
+    // The focused Android game with the pictures found or picked for it: banner behind, logo over it.
+    val focusedAndroidItem = remember(focusedAndroid, pickedArt) { focusedAndroid?.let { GameArtStore.apply(context, it.toArtItem()) } }
     // Like PC games (Denis): the row has the latest games and ends in "Open library", not hundreds of covers.
     val streamHomeRow = streamItems.take(HOME_ROW_COUNT)
     val streamLibraryItems = when (streamLibraryTab) {
@@ -1169,11 +1172,12 @@ fun RiftHomeScreen(
                             scaleY = 1.12f - 0.12f * p
                         },
                 ) {
-                    if (section == RiftSection.AndroidGames) AndroidBackdrop(focusedAndroid) else HeroBackdrop(
+                    if (section == RiftSection.AndroidGames && focusedAndroidItem?.heroImageUrl.isNullOrEmpty()) AndroidBackdrop(focusedAndroid) else HeroBackdrop(
                         item = when (section) {
                             RiftSection.PcStreaming -> focusedStream
                             RiftSection.CloudStreaming -> focusedCloud
                             RiftSection.Emulators -> focusedEmulator
+                            RiftSection.AndroidGames -> focusedAndroidItem
                             else -> focusedItem.takeIf { section == RiftSection.PcGames }
                         },
                     )
@@ -1216,7 +1220,7 @@ fun RiftHomeScreen(
                             modifier = Modifier.weight(1f),
                         )
                         section == RiftSection.AndroidGames -> {
-                            AndroidHero(game = focusedAndroid, modifier = Modifier.weight(1f))
+                            AndroidHero(item = focusedAndroidItem, modifier = Modifier.weight(1f))
                             AndroidShelf(
                                 games = androidShown,
                                 listState = androidRowState,
@@ -2239,22 +2243,16 @@ private fun AndroidBackdrop(game: AndroidGame?) {
 }
 
 @Composable
-private fun AndroidHero(game: AndroidGame?, modifier: Modifier = Modifier) {
+private fun AndroidHero(item: LibraryItem?, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = ScreenPadding),
         verticalArrangement = Arrangement.Bottom,
     ) {
-        if (game == null) return@Column
-        Text(
-            text = game.label.uppercase(),
-            color = RiftColors.OnSurface,
-            style = LogoTitleStyle,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.widthIn(max = LogoWidth),
-        )
+        if (item == null) return@Column
+        // The logo picked or found for the game; its name in the title style when it has none.
+        GameLogo(item = item)
         Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = stringResource(R.string.rift_source_android),
@@ -2631,6 +2629,7 @@ private fun GameLogo(item: LibraryItem) {
         }
     }
     val url = logoUrl ?: return
+    LaunchedEffect(item.appId, url) { Timber.tag("RiftArt").i("Logo for %s: %s", item.appId, url.ifEmpty { "none (name shown)" }) }
     Crossfade(targetState = item.appId to url, animationSpec = tween(250), label = "logo") { (appId, url) ->
         var logoFailed by remember(appId) { mutableStateOf(url.isEmpty()) }
         Box(modifier = Modifier.width(LogoWidth).height(LogoHeight), contentAlignment = Alignment.BottomStart) {
