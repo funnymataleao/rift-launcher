@@ -224,6 +224,7 @@ import dev.rift.launcher.sound.RiftSound
 import dev.rift.launcher.sound.rememberRiftSoundPlayer
 import dev.rift.launcher.sound.riftKeySounds
 import dev.rift.launcher.stream.PcStreaming
+import dev.rift.launcher.stream.PcStreamingTab
 import dev.rift.launcher.stream.rememberPcStreamingTab
 import dev.rift.launcher.ui.theme.RiftBrush
 import dev.rift.launcher.ui.theme.RiftColors
@@ -502,6 +503,12 @@ fun RiftHomeScreen(
             }
         }
         GameArtStore.autoFill(context, order, artKey)
+    }
+    // Streamed games the Steam account does not own (Steam Tools...) have no Steam art either: found the same way.
+    val hostGames = streamTab?.items.orEmpty().filter { PcStreamingTab.isHostGame(it.appId) }
+    LaunchedEffect(hostGames, artKey) {
+        if (artKey.isBlank() || hostGames.isEmpty()) return@LaunchedEffect
+        GameArtStore.autoFill(context, hostGames.map { it to listOf(ArtKind.Capsule, ArtKind.Wide, ArtKind.Hero, ArtKind.Logo) }, artKey)
     }
     val focusedAndroid = androidShown.firstOrNull { it.packageName == focusedPackage } ?: androidShown.firstOrNull()
     // The focused Android game with the pictures found or picked for it: banner behind, logo over it.
@@ -1776,6 +1783,18 @@ fun RiftHomeScreen(
                     onBack = { closePage() },
                     onChangeArt = { openArt(item) },
                     platformId = EmulatorLibrary.game(item.appId)?.platformId,
+                )
+            } else if (PcStreamingTab.isHostGame(item.appId) && streamTab != null) {
+                // A streamed game the Steam account does not own: Rift's own page, Play streams it.
+                RiftGamePage(
+                    item = item,
+                    originalName = streamTab.hostName(item) ?: item.name,
+                    onPlay = {
+                        sounds.play(RiftSound.Launch)
+                        streamTab.launch(context, item)
+                    },
+                    onBack = { closePage() },
+                    onChangeArt = { openArt(item) },
                 )
             } else if (item.appId.startsWith("ANDROID_")) {
                 RiftGamePage(
