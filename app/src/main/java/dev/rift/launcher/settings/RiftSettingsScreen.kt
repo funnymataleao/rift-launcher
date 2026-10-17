@@ -256,13 +256,13 @@ private fun RailItem(
             modifier = Modifier
                 .size(36.dp)
                 .clip(CircleShape)
-                .background(section.accent.color.copy(alpha = 0.2f)),
+                .background(section.accent.icon.disc),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = section.icon,
                 contentDescription = null,
-                tint = section.accent.color,
+                tint = section.accent.icon.symbol,
                 modifier = Modifier.size(22.dp),
             )
         }
