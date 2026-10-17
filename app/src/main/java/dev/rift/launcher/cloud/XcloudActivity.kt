@@ -114,6 +114,9 @@ class XcloudActivity : ComponentActivity() {
     /** A button chosen in Rift's settings that also opens the panel, besides Home. */
     private var menuKey = KeyEvent.KEYCODE_UNKNOWN
 
+    /** Whether the game's stream showed up, so leaving the game's page means the game is over. */
+    private var streamShown = false
+
     /** The gamepad last used, to press its Home for the page ([openXboxMenu]). */
     private var lastGamepad: Int? = null
 
@@ -299,6 +302,12 @@ class XcloudActivity : ComponentActivity() {
 
         override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
             if (!documentStartScript && url.startsWith(ORIGIN)) pendingScript?.let { view.evaluateJavascript(it, null) }
+            closeIfGameLeft(url)
+        }
+
+        // xbox.com changes its address without loading a page when xCloud's own "Quit game" ends the session.
+        override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
+            closeIfGameLeft(url)
         }
 
         override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
@@ -340,6 +349,7 @@ class XcloudActivity : ComponentActivity() {
                 return
             }
             Log.i(LOG_TAG, "Page went full screen")
+            streamShown = true
             fullScreenView = view
             fullScreenCallback = callback
             view.setBackgroundColor(Color.BLACK)
@@ -372,6 +382,18 @@ class XcloudActivity : ComponentActivity() {
         // Without a poster of its own the WebView draws its stock one (an Android robot) over a video that
         // has no picture yet; the stream's own black background is what should show.
         override fun getDefaultVideoPoster(): Bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+    }
+
+    /**
+     * The game was quit inside xCloud (its guide's "Quit game", the Xbox menu's "Back to home"): xbox.com
+     * then shows its Game Pass pages, which have no way back to Rift. Like "End stream", the browser
+     * closes and Rift is back where the game was started from.
+     */
+    private fun closeIfGameLeft(url: String) {
+        if (signInMode || !streamShown || isFinishing) return
+        if (!url.startsWith(ORIGIN) || url.contains("/play/launch/")) return
+        Log.i(LOG_TAG, "Game left for $url, closing")
+        finish()
     }
 
     /** Where the page's input goes: the full-screen stream when there is one, else the page. */
