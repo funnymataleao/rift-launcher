@@ -69,9 +69,10 @@ class PcStreamingTab internal constructor(internal val hosts: PcHosts) {
             apps[pc.uuid].orEmpty().forEach { app ->
                 val title = normalizedTitle(app.appName)
                 val steam = steamByName[title]
+                // Tools first: SteamVR and Proton are in the Steam account too, but are not games.
                 val item = when {
-                    steam != null -> steam.toLibraryItem()
                     isHostEntry(app, title) -> null
+                    steam != null -> steam.toLibraryItem()
                     else -> hostItem(app, title)
                 }
                 if (item == null) {
@@ -153,14 +154,19 @@ class PcStreamingTab internal constructor(internal val hosts: PcHosts) {
             "desktop", "steam", "steambigpicture", "steambigpicturemode", "bigpicture", "bigpicturemode",
             "playnite", "playnitefullscreen", "playnitefullscreenmode",
             "xbox", "gamepass", "xboxgamepass", "epicgames", "epicgameslauncher", "eaapp", "origin",
-            "ubisoftconnect", "goggalaxy", "battlenet", "virtualdisplay", "remoteinput",
+            "ubisoftconnect", "goggalaxy", "battlenet", "virtualdisplay", "remoteinput", "remotemonitor",
+            // Tools Steam lists next to the games.
+            "steamvr", "steamworkscommonredistributables", "losslessscaling", "wallpaperengine",
         )
+
+        /** Steam's compatibility tools, whatever their version: Proton 9.0, Proton Experimental, Steam Linux Runtime 3.0... */
+        private val HOST_TOOL_PREFIXES = listOf("proton", "steamlinuxruntime")
 
         /** A game the Steam account does not own: its cover, art and page come from SteamGridDB and IGDB by name. */
         fun isHostGame(appId: String): Boolean = appId.startsWith(HOST_PREFIX)
 
         private fun isHostEntry(app: NvApp, title: String): Boolean =
-            title.isEmpty() || title in HOST_ENTRIES || NvApp.REMOTE_INPUT_UUID.equals(app.appUUID, ignoreCase = true)
+            title.isEmpty() || title in HOST_ENTRIES || HOST_TOOL_PREFIXES.any(title::startsWith) || NvApp.REMOTE_INPUT_UUID.equals(app.appUUID, ignoreCase = true)
 
         private fun hostItem(app: NvApp, title: String): LibraryItem {
             val appId = HOST_PREFIX + title
