@@ -526,7 +526,16 @@ fun RiftHomeScreen(
 
     fun switchSection(step: Int) {
         if (sections.size < 2 || section == null) return
-        selectSection(sections[(sections.indexOf(section) + step).mod(sections.size)])
+        val target = sections[(sections.indexOf(section) + step).mod(sections.size)]
+        // Switching with LB/RB always lands on the first card of the tab, not where it was left (Denis).
+        when (target) {
+            RiftSection.PcGames -> { focusedAppId = null; libraryCardFocused = false; homeScope.launch { pcRowState.scrollToItem(0) } }
+            RiftSection.PcStreaming -> { focusedStreamId = null; homeScope.launch { streamRowState.scrollToItem(0) } }
+            RiftSection.AndroidGames -> { focusedPackage = null; homeScope.launch { androidRowState.scrollToItem(0) } }
+            RiftSection.Emulators -> { focusedEmulatorId = null; emulatorCardFocused = false; homeScope.launch { emulatorRowState.scrollToItem(0) } }
+            RiftSection.CloudStreaming -> { focusedCloudId = null; cloudCardFocused = false; homeScope.launch { cloudRowState.scrollToItem(0) } }
+        }
+        selectSection(target)
         // Wrapping round still slides the way the bumper points.
         switchDirection = if (step > 0) 1 else -1
     }
