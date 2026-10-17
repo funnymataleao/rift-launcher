@@ -432,4 +432,11 @@
     <string name="rift_about_licenses_summary">The projects Rift is built on and their licenses</string>
     <string name="rift_licenses_title">Components</string>
     <string name="rift_licenses_source">Source code</string>
+    <!-- Game page hero -->
+    <string name="rift_game_rating">rating</string>
+    <string name="rift_game_beat_main">%1$s h main story</string>
+    <string name="rift_game_trailer">Trailer</string>
+    <string name="rift_game_achievements">Achievements</string>
+    <string name="rift_game_last_played">Last played</string>
+    <string name="rift_game_played">You played</string>
 </resources>

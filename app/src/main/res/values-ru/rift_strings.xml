@@ -427,4 +427,11 @@
     <string name="rift_about_licenses_summary">Проекты, на которых построен Rift, и их лицензии</string>
     <string name="rift_licenses_title">Компоненты</string>
     <string name="rift_licenses_source">Исходный код</string>
+    <!-- Страница игры, первый экран -->
+    <string name="rift_game_rating">рейтинг</string>
+    <string name="rift_game_beat_main">%1$s ч по сюжету</string>
+    <string name="rift_game_trailer">Трейлер</string>
+    <string name="rift_game_achievements">Достижения</string>
+    <string name="rift_game_last_played">Последний запуск</string>
+    <string name="rift_game_played">Вы играли</string>
 </resources>
