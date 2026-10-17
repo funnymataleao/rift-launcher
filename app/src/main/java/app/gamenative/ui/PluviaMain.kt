@@ -121,6 +121,8 @@ import app.gamenative.ui.screen.DebugPaywallScreen
 import app.gamenative.ui.screen.HomeScreen
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.login.UserLoginScreen
+import dev.rift.launcher.assistant.chat.RIFT_ASSISTANT_ROUTE
+import dev.rift.launcher.assistant.chat.RiftAssistantScreen
 import dev.rift.launcher.settings.RiftSettingsScreen
 import dev.rift.launcher.stream.PcStreaming
 import app.gamenative.ui.screen.support.SnackbarActionContent
@@ -983,7 +985,7 @@ fun PluviaMain(
     // A running game and the sign-in screen are left alone.
     val onHomePressed: (AndroidEvent.HomePressed) -> Unit = {
         val route = navController.currentDestination?.route
-        if (route == PluviaScreen.Settings.route || route == PluviaScreen.Support.route) {
+        if (route == PluviaScreen.Settings.route || route == PluviaScreen.Support.route || route == RIFT_ASSISTANT_ROUTE) {
             navController.popBackStack(PluviaScreen.Home.route + "?offline={offline}", inclusive = false)
         }
     }
@@ -2241,6 +2243,11 @@ fun PluviaMain(
                         onSteamSignIn = { navController.navigate(PluviaScreen.LoginUser.route) },
                         onSteamSignOut = { SteamService.logOut() },
                     )
+                }
+
+                // Rift: its own assistant page ("AI Help" in the side panel), with the user's own AI provider.
+                composable(route = RIFT_ASSISTANT_ROUTE) {
+                    RiftAssistantScreen(onBack = { navController.navigateUp() })
                 }
 
                 composable(route = PluviaScreen.Support.route) {

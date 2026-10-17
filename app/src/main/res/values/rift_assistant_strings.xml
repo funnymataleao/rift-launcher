@@ -121,4 +121,33 @@
     <string name="rift_optimize_limit">This month\'s token limit is reached. You can change it in Settings › AI assistant.</string>
     <string name="rift_optimize_no_container">The game has no container yet. Start it once, then try again.</string>
     <string name="rift_optimize_invalid">The model answered twice with settings Rift can\'t apply. Try again or pick another model.</string>
+    <!-- Assistant page (chat) -->
+    <string name="rift_chat_not_configured">Connect a provider first: choose it and paste your API key.</string>
+    <string name="rift_chat_setup_intro">Choose a provider and paste your own API key. Then talk to the assistant here, by text or by voice.</string>
+    <string name="rift_chat_to_chat">Go to chat</string>
+    <string name="rift_chat_setup">Connection</string>
+    <string name="rift_chat_new">New chat</string>
+    <string name="rift_chat_game_none">No game</string>
+    <string name="rift_chat_game">Game: %1$s</string>
+    <string name="rift_chat_pick_game">Which game is it about?</string>
+    <string name="rift_chat_empty">Ask about a game or the device. Hold Y to speak.</string>
+    <string name="rift_chat_placeholder">Message…</string>
+    <string name="rift_chat_send">Send</string>
+    <string name="rift_chat_voice">Voice</string>
+    <string name="rift_chat_listening">Listening…</string>
+    <string name="rift_chat_collecting">Gathering what Rift knows about the device and the game…</string>
+    <string name="rift_chat_thinking">Thinking…</string>
+    <string name="rift_chat_you">You</string>
+    <string name="rift_chat_assistant">Assistant</string>
+    <string name="rift_chat_truncated">The answer was cut at the length limit (Settings › AI assistant › Limits).</string>
+    <string name="rift_chat_rejected">The proposed settings did not pass Rift\'s check, so they are not shown:</string>
+    <string name="rift_chat_voice_unavailable">Speech recognition is not available on this device.</string>
+    <string name="rift_chat_voice_not_heard">Didn\'t catch that. Try again.</string>
+    <string name="rift_chat_voice_failed">Speech recognition did not work.</string>
+    <string name="rift_chat_voice_permission">Allow the microphone to talk to the assistant.</string>
+    <string name="rift_chat_chip_optimize">Optimize this game</string>
+    <string name="rift_chat_chip_slow">Why is it slow?</string>
+    <string name="rift_chat_chip_crash">Why does it crash?</string>
+    <string name="rift_chat_chip_drivers">Any newer drivers?</string>
+    <string name="rift_chat_chip_community">Compare with the community</string>
 </resources>

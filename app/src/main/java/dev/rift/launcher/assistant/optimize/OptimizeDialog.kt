@@ -94,25 +94,7 @@ private fun OptimizeDialog(target: RiftOptimizeRequest.Target, onDismiss: () -> 
                 is OptimizeResult.Proposed -> {
                     val proposal = current.proposal
                     if (proposal.summary.isNotBlank()) Body(proposal.summary)
-                    Note(stringResource(R.string.rift_optimize_model, proposal.model, riskLabel(proposal.risk)))
-                    SuggestionCard(
-                        message = SupportApi.Message(
-                            id = proposal.id,
-                            kind = "assistant",
-                            text = proposal.summary,
-                            createdAt = proposal.id,
-                            authorName = null,
-                            isReport = false,
-                            attachments = emptyList(),
-                            notice = null,
-                            suggestion = proposal.suggestion,
-                        ),
-                        suggestion = proposal.suggestion,
-                        appId = proposal.appId,
-                        conversationId = Optimizer.CONVERSATION_ID,
-                        // No test runs are offered (rerun is always false), so this is never called.
-                        onStartDebugRun = {},
-                    )
+                    ProposalCard(proposal)
                 }
                 is OptimizeResult.NothingToChange -> {
                     Body(stringResource(R.string.rift_optimize_nothing))
@@ -131,6 +113,35 @@ private fun OptimizeDialog(target: RiftOptimizeRequest.Target, onDismiss: () -> 
                 }
             }
         }
+    }
+}
+
+/**
+ * A checked proposal in GameNative's own suggestion card, which applies it (downloading missing components first)
+ * and offers the rollback. Used by this dialog and by the assistant page.
+ */
+@Composable
+internal fun ProposalCard(proposal: OptimizeProposal) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Note(stringResource(R.string.rift_optimize_model, proposal.model, riskLabel(proposal.risk)))
+        SuggestionCard(
+            message = SupportApi.Message(
+                id = proposal.id,
+                kind = "assistant",
+                text = proposal.summary,
+                createdAt = proposal.id,
+                authorName = null,
+                isReport = false,
+                attachments = emptyList(),
+                notice = null,
+                suggestion = proposal.suggestion,
+            ),
+            suggestion = proposal.suggestion,
+            appId = proposal.appId,
+            conversationId = Optimizer.CONVERSATION_ID,
+            // No test runs are offered (rerun is always false), so this is never called.
+            onStartDebugRun = {},
+        )
     }
 }
 
