@@ -28,6 +28,7 @@ import dev.rift.launcher.settings.RiftPrefs
 object ExternalGameSession {
     private const val KEY_PACKAGE = "overlay_game_package"
     private const val KEY_RESUME = "overlay_game_resume"
+    private const val KEY_STARTED_AT = "overlay_game_started_at"
     private const val KEY_ON_SCREEN = "overlay_game_on_screen"
     private const val KEY_HINT_PENDING = "overlay_service_hint_pending"
     private const val KEY_HINT_SHOWN = "overlay_service_hint_shown"
@@ -43,6 +44,7 @@ object ExternalGameSession {
     fun started(context: Context, packageName: String) {
         AndroidGames.prefs(context).edit {
             putString(KEY_PACKAGE, packageName)
+            putLong(KEY_STARTED_AT, System.currentTimeMillis())
             remove(KEY_RESUME)
             putBoolean(KEY_ON_SCREEN, true)
             putBoolean(KEY_HINT_PENDING, true)
@@ -60,6 +62,9 @@ object ExternalGameSession {
     }
 
     fun packageName(context: Context): String? = AndroidGames.prefs(context).getString(KEY_PACKAGE, null)
+
+    /** When Rift started the last game: tells one session from the next. */
+    fun startedAt(context: Context): Long = AndroidGames.prefs(context).getLong(KEY_STARTED_AT, 0L)
 
     /** Whether the game was the last thing the person had on screen, as far as Rift can tell. */
     fun isOnScreen(context: Context): Boolean =
@@ -100,14 +105,18 @@ object ExternalGameSession {
     fun isGameApp(context: Context, packageName: String): Boolean {
         if (packageName == context.packageName) return false
         if (packageName == packageName(context)) return true
-        if (EmulatorCatalog.platforms.any { platform -> platform.emulators.any { it.matches(packageName) } }) return true
-        // An emulator picked in Rift's settings that Rift does not know by name (a renamed yuzu fork, say).
-        if (runCatching { RiftPrefs.of(context).emulatorPlatforms.any { it.emulatorPackage == packageName } }.getOrDefault(false)) return true
+        if (isEmulator(context, packageName)) return true
         if (packageName in AndroidGames.selectedPackages(context)) return true
         return runCatching {
             val info = context.packageManager.getApplicationInfo(packageName, 0)
             info.category == ApplicationInfo.CATEGORY_GAME || info.flags and ApplicationInfo.FLAG_IS_GAME != 0
         }.getOrDefault(false)
+    }
+
+    /** Whether [packageName] is an emulator: one Rift knows, or one picked in Rift's settings (a renamed yuzu fork, say). */
+    fun isEmulator(context: Context, packageName: String): Boolean {
+        if (EmulatorCatalog.platforms.any { platform -> platform.emulators.any { it.matches(packageName) } }) return true
+        return runCatching { RiftPrefs.of(context).emulatorPlatforms.any { it.emulatorPackage == packageName } }.getOrDefault(false)
     }
 
     /** Ends [gamePackage] once Rift is in front of it; a second try follows in case the first came before the game was in the background. */

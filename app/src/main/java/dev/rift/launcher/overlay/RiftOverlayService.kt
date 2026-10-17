@@ -2,6 +2,7 @@ package dev.rift.launcher.overlay
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.ComponentName
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
@@ -24,6 +25,10 @@ class RiftOverlayService : AccessibilityService() {
     // The game or emulator in front: the one Rift started, or any emulator or game app, also one opened without Rift.
     private var gameInFront: String? = null
 
+    // The emulator's game screen in the session Rift started ([ExternalGameSession.startedAt]), once it has shown.
+    private var watchedSession = 0L
+    private var gameScreen: String? = null
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         // Turned on while a game Rift started is on screen: no window change will tell, so listen from the start.
@@ -41,6 +46,7 @@ class RiftOverlayService : AccessibilityService() {
         // Our own panel, the status bar and the keyboard come and go over the game.
         if (pkg == packageName && panel != null) return
         if (pkg == SYSTEM_UI || pkg == inputMethodPackage()) return
+        if (backToRiftFromEmulatorMenu(pkg, event.className?.toString())) return
         val inGame = pkg != packageName && ExternalGameSession.isGameApp(this, pkg)
         if (inGame != filtering) Log.i(TAG, "in front: $pkg, game: $inGame")
         gameInFront = if (inGame) pkg else null
@@ -100,6 +106,45 @@ class RiftOverlayService : AccessibilityService() {
             onDismissed = { panel = null },
         ).also { it.show() }
     }
+
+    /**
+     * The game Rift started in an emulator was quit with the emulator's own menu, and the emulator went back to its
+     * main screen: Rift comes back instead, as after "Close game" (Denis 2026-10-17). Only the emulator's main screen
+     * (its launcher activity) counts, and only after its game screen was on: settings opened from a game stay.
+     */
+    private fun backToRiftFromEmulatorMenu(pkg: String, className: String?): Boolean {
+        val session = ExternalGameSession.startedAt(this)
+        if (session != watchedSession) {
+            watchedSession = session
+            gameScreen = null
+        }
+        if (className == null || pkg != ExternalGameSession.packageName(this) || !ExternalGameSession.isOnScreen(this)) return false
+        if (!ExternalGameSession.isEmulator(this, pkg)) return false
+        // A dialog or a popup of the emulator is not a screen.
+        val screen = activityName(pkg, className) ?: return false
+        val mainScreen = packageManager.getLaunchIntentForPackage(pkg)?.component?.let { activityName(pkg, it.className) }
+        if (screen != mainScreen) {
+            if (gameScreen == null) {
+                gameScreen = screen
+                Log.i(TAG, "game screen of $pkg: $screen")
+            }
+            return false
+        }
+        if (gameScreen == null) return false
+        Log.i(TAG, "$pkg back on its main screen $screen after $gameScreen: back to Rift")
+        gameScreen = null
+        hidePanel()
+        setFiltering(false)
+        gameInFront = null
+        ExternalGameSession.leftGame(this)
+        ExternalGameSession.openRift(this)
+        return true
+    }
+
+    /** The activity [className] of [pkg] stands for (an alias's target), or null when it is not an activity. */
+    private fun activityName(pkg: String, className: String): String? =
+        runCatching { packageManager.getActivityInfo(ComponentName(pkg, className), 0) }.getOrNull()
+            ?.let { it.targetActivity ?: it.name }
 
     private fun hidePanel() {
         panel?.dismiss()
