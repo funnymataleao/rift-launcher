@@ -647,9 +647,18 @@ fun RiftHomeScreen(
     var filterGroupIndex by remember { mutableStateOf<Int?>(null) }
     var lastFilterItems by remember { mutableStateOf<List<RiftStartMenuItem>>(emptyList()) }
     LaunchedEffect(libraryOpen) { if (!libraryOpen) { libraryFiltersOpen = false; filterGroupIndex = null } }
+    // The library's own menus hand the cursor back to the game it was on when they close.
+    val libraryMenuOpen = libraryFiltersOpen || startMenuItems != null
+    var wasLibraryMenuOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(libraryMenuOpen) {
+        if (wasLibraryMenuOpen && !libraryMenuOpen && libraryOpen && optionsItem == null && artItem == null && openedAppId == null) {
+            libraryPending = libraryFocusedId
+        }
+        wasLibraryMenuOpen = libraryMenuOpen
+    }
     var lastStartMenuItems by remember { mutableStateOf<List<RiftStartMenuItem>>(emptyList()) }
     if (startMenuItems != null) lastStartMenuItems = startMenuItems!!
-    fun otherTabMenu(): List<RiftStartMenuItem>? {
+    fun otherTabMenu(picked: LibraryItem? = null): List<RiftStartMenuItem>? {
         fun line(@androidx.annotation.StringRes label: Int, action: () -> Unit) =
             RiftStartMenuItem(context.getString(label)) { startMenuItems = null; action() }
         val cancel = line(R.string.rift_menu_cancel) {}
@@ -657,21 +666,21 @@ fun RiftHomeScreen(
             RiftSection.AndroidGames -> focusedAndroid?.let { game ->
                 listOf(line(R.string.rift_menu_play) { AndroidGames.launch(context, game) }, cancel)
             }
-            RiftSection.PcStreaming -> focusedStream?.let { item ->
+            RiftSection.PcStreaming -> (picked ?: focusedStream)?.let { item ->
                 listOf(
                     line(R.string.rift_menu_stream) { openGame(item, forStream = true) },
                     line(R.string.rift_option_change_art) { openArt(item) },
                     cancel,
                 )
             }
-            RiftSection.Emulators -> focusedEmulator?.let { item ->
+            RiftSection.Emulators -> (picked ?: focusedEmulator)?.let { item ->
                 listOf(
                     line(R.string.rift_menu_play) { EmulatorLibrary.game(item.appId)?.let { EmulatorLibrary.launch(context, it) } },
                     line(R.string.rift_option_change_art) { openArt(item) },
                     cancel,
                 )
             }
-            RiftSection.CloudStreaming -> focusedCloud?.let { item ->
+            RiftSection.CloudStreaming -> (picked ?: focusedCloud)?.let { item ->
                 listOf(
                     line(R.string.rift_menu_play) { openGame(item) },
                     line(R.string.rift_option_change_art) { openArt(item) },
@@ -1205,7 +1214,7 @@ fun RiftHomeScreen(
                 }
                 else -> null
             }
-            // Start in a library: a small menu with the filters and sort of that tab (the Select panel's groups).
+            // Select in a library: a small menu with the filters and sort of that tab (the Select panel's groups).
             val libraryFilterGroups: List<TabFilterGroup> = if (section == RiftSection.PcGames) {
                 listOf(
                     TabFilterGroup(
@@ -1223,20 +1232,35 @@ fun RiftHomeScreen(
             } else {
                 tabGroups.orEmpty()
             }
-            // In every library: Start opens the filters, Y the art of the game under the cursor.
-            fun libraryKey(code: Int, items: List<LibraryItem>): Boolean = when (code) {
-                KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_MENU -> {
-                    if (libraryFilterGroups.isNotEmpty()) {
-                        filterGroupIndex = null
-                        libraryFiltersOpen = true
+            // In every library: Select opens the filters, Start the game's menu, Y the art of the game under the cursor.
+            fun libraryKey(code: Int, items: List<LibraryItem>): Boolean {
+                val item = items.firstOrNull { it.appId == libraryFocusedId }
+                return when (code) {
+                    KeyEvent.KEYCODE_BUTTON_SELECT -> {
+                        if (libraryFilterGroups.isNotEmpty()) {
+                            filterGroupIndex = null
+                            libraryFiltersOpen = true
+                        }
+                        true
                     }
-                    true
+                    KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_MENU -> {
+                        if (item != null) {
+                            if (section == RiftSection.PcGames) {
+                                optionsOnly.panelOpen = true
+                                optionsToken++
+                                optionsItem = item
+                            } else {
+                                startMenuItems = otherTabMenu(item)
+                            }
+                        }
+                        true
+                    }
+                    KeyEvent.KEYCODE_BUTTON_Y -> {
+                        item?.let(::openArt)
+                        true
+                    }
+                    else -> false
                 }
-                KeyEvent.KEYCODE_BUTTON_Y -> {
-                    items.firstOrNull { it.appId == libraryFocusedId }?.let(::openArt)
-                    true
-                }
-                else -> false
             }
             // Big Picture's library: all the PC games in a grid, one tab per store with games.
             val libraryTabs = pcLibraryTabs(libraryState)
@@ -1254,7 +1278,7 @@ fun RiftHomeScreen(
                     }
                 },
                 onDismiss = ::closeLibrary,
-                keepFocusInside = { !libraryFiltersOpen && openedAppId == null && optionsItem == null && artItem == null },
+                keepFocusInside = { !libraryFiltersOpen && startMenuItems == null && openedAppId == null && optionsItem == null && artItem == null },
                 onKeyDown = { code -> libraryKey(code, library) },
             ) {
                 PcLibraryGrid(
@@ -1294,7 +1318,7 @@ fun RiftHomeScreen(
                     }
                 },
                 onDismiss = ::closeLibrary,
-                keepFocusInside = { !libraryFiltersOpen && openedAppId == null && artItem == null },
+                keepFocusInside = { !libraryFiltersOpen && startMenuItems == null && openedAppId == null && artItem == null },
                 onKeyDown = { code -> libraryKey(code, streamLibraryItems) },
             ) {
                 PcLibraryGrid(
@@ -1322,7 +1346,7 @@ fun RiftHomeScreen(
                 selectedKey = CLOUD_XCLOUD_TAB,
                 onSelectTab = {},
                 onDismiss = ::closeLibrary,
-                keepFocusInside = { !libraryFiltersOpen && openedAppId == null },
+                keepFocusInside = { !libraryFiltersOpen && startMenuItems == null && openedAppId == null },
                 onKeyDown = { code -> libraryKey(code, cloudItems) },
             ) {
                 PcLibraryGrid(
@@ -1352,7 +1376,7 @@ fun RiftHomeScreen(
                     libraryTabSwitch++
                 },
                 onDismiss = ::closeLibrary,
-                keepFocusInside = { !libraryFiltersOpen && openedAppId == null },
+                keepFocusInside = { !libraryFiltersOpen && startMenuItems == null && openedAppId == null },
                 onKeyDown = { code -> libraryKey(code, emulatorItems) },
             ) {
                 PcLibraryGrid(
