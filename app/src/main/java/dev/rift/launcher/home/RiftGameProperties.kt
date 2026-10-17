@@ -143,7 +143,7 @@ fun RiftGameProperties(
                     .weight(1f)
                     .fillMaxHeight()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp, vertical = 24.dp)
+                    .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 64.dp)
                     .focusGroup(),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {

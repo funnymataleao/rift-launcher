@@ -1826,6 +1826,7 @@ private fun pcLibraryTabs(state: LibraryState): List<LibraryTabSpec> {
 }
 
 /** The library grid of PC games: the home's covers without reflections, focus kept across tab switches. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PcLibraryGrid(
     items: List<LibraryItem>,
@@ -1873,6 +1874,11 @@ private fun PcLibraryGrid(
     // Opening and every tab switch: the covers rise in one after another once the list is there,
     // on one clock for the grid (a tile composed late or reused can never stay unseen).
     val clock = key(tabSwitch) { rememberShelfClock(ShelfEntry.Library, started = entryReady) }
+    // The focused row stays whole above the footer and below the tabs, not flush with the screen's edge.
+    val edgeMargin = with(LocalDensity.current) { 24.dp.toPx() }
+    val bottomMargin = with(LocalDensity.current) { (FooterHeight + 40.dp).toPx() }
+    val spec = remember(edgeMargin, bottomMargin) { KeepInView(edgeMargin, bottomMargin) }
+    CompositionLocalProvider(LocalBringIntoViewSpec provides spec) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(LibraryCoverWidth),
         state = gridState,
@@ -1904,6 +1910,7 @@ private fun PcLibraryGrid(
                 )
             }
         }
+    }
     }
 }
 
@@ -2793,10 +2800,10 @@ private fun Hint(icons: List<Int>, label: String) {
  * Big Picture style, instead of jumping it to the edge.
  */
 @OptIn(ExperimentalFoundationApi::class)
-private class KeepInView(private val margin: Float) : BringIntoViewSpec {
+internal class KeepInView(private val margin: Float, private val endMargin: Float = margin) : BringIntoViewSpec {
     override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
         val start = margin
-        val end = containerSize - margin
+        val end = containerSize - endMargin
         return when {
             size > end - start || offset < start -> offset - start
             offset + size > end -> offset + size - end

@@ -31,7 +31,11 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -102,7 +106,7 @@ fun RiftAppsGrid(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
 private fun AppsGridContent(onDismiss: () -> Unit, focusRequester: FocusRequester, onFocusChanged: (Boolean) -> Unit) {
     val context = LocalContext.current
@@ -198,6 +202,9 @@ private fun AppsGridContent(onDismiss: () -> Unit, focusRequester: FocusRequeste
             if (list == null) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingIndicator(color = RiftColors.OnSurface) }
             } else {
+                val density = LocalDensity.current
+                val spec = remember(density) { KeepInView(with(density) { 24.dp.toPx() }, with(density) { 100.dp.toPx() }) }
+                CompositionLocalProvider(LocalBringIntoViewSpec provides spec) {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 132.dp),
                     // Room above and below, so the first and last rows (and a focused, slightly larger tile) show whole.
@@ -213,6 +220,7 @@ private fun AppsGridContent(onDismiss: () -> Unit, focusRequester: FocusRequeste
                             onClick = { AndroidGames.launch(context, app) },
                         )
                     }
+                }
                 }
             }
         }
