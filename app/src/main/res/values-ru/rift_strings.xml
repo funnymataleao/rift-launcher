@@ -565,4 +565,12 @@
     <string name="rift_install_not_enough_space">Недостаточно свободного места</string>
     <string name="rift_install_item_sizes">Загрузка %1$s • на диске %2$s</string>
     <string name="rift_install_dlc">DLC</string>
+    <string name="rift_downloads_title">Загрузки</string>
+    <string name="rift_downloads_hint">A — пауза или продолжение. Удерживайте A, чтобы отменить загрузку и удалить файлы.</string>
+    <string name="rift_downloads_group_active">В процессе</string>
+    <string name="rift_downloads_group_finished">Завершённые</string>
+    <string name="rift_downloads_empty_title">Загрузок пока нет</string>
+    <string name="rift_downloads_empty_body">Игры, которые вы устанавливаете из Steam, Epic, GOG или Amazon, появятся здесь вместе с прогрессом.</string>
+    <string name="rift_downloads_cancel_all_message">Отменить все загрузки и удалить уже скачанные файлы?</string>
+    <string name="rift_downloads_open">Загрузки</string>
 </resources>
