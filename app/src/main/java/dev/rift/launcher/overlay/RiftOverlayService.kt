@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.util.Log
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
@@ -23,6 +24,17 @@ class RiftOverlayService : AccessibilityService() {
     // The game or emulator in front: the one Rift started, or any emulator or game app, also one opened without Rift.
     private var gameInFront: String? = null
 
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        // Turned on while a game Rift started is on screen: no window change will tell, so listen from the start.
+        val game = ExternalGameSession.packageName(this)
+        if (game != null && ExternalGameSession.isOnScreen(this)) {
+            gameInFront = game
+            setFiltering(true)
+        }
+        Log.i(TAG, "connected, game on screen: $gameInFront")
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
@@ -30,6 +42,7 @@ class RiftOverlayService : AccessibilityService() {
         if (pkg == packageName && panel != null) return
         if (pkg == SYSTEM_UI || pkg == inputMethodPackage()) return
         val inGame = pkg != packageName && ExternalGameSession.isGameApp(this, pkg)
+        if (inGame != filtering) Log.i(TAG, "in front: $pkg, game: $inGame")
         gameInFront = if (inGame) pkg else null
         setFiltering(inGame)
         if (!inGame) hidePanel()
@@ -38,6 +51,7 @@ class RiftOverlayService : AccessibilityService() {
     override fun onKeyEvent(event: KeyEvent): Boolean {
         if (!filtering || !isOpenButton(event)) return false
         if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+            Log.i(TAG, "${KeyEvent.keyCodeToString(event.keyCode)} over $gameInFront, panel ${if (panel == null) "opens" else "closes"}")
             if (panel == null) showPanel() else hidePanel()
         }
         return true
@@ -108,6 +122,7 @@ class RiftOverlayService : AccessibilityService() {
         Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)?.substringBefore('/')
 
     private companion object {
+        const val TAG = "RiftOverlay"
         const val SYSTEM_UI = "com.android.systemui"
         const val GAME_MENU_DELAY_MS = 250L
     }

@@ -14,6 +14,7 @@ import app.gamenative.R
 import app.gamenative.ui.util.SnackbarManager
 import dev.rift.launcher.home.AndroidGames
 import dev.rift.launcher.settings.EmulatorCatalog
+import dev.rift.launcher.settings.RiftPrefs
 
 /**
  * The Android game or emulator Rift started last. While that app is on screen, [RiftOverlayService]
@@ -100,6 +101,8 @@ object ExternalGameSession {
         if (packageName == context.packageName) return false
         if (packageName == packageName(context)) return true
         if (EmulatorCatalog.platforms.any { platform -> platform.emulators.any { it.matches(packageName) } }) return true
+        // An emulator picked in Rift's settings that Rift does not know by name (a renamed yuzu fork, say).
+        if (runCatching { RiftPrefs.of(context).emulatorPlatforms.any { it.emulatorPackage == packageName } }.getOrDefault(false)) return true
         if (packageName in AndroidGames.selectedPackages(context)) return true
         return runCatching {
             val info = context.packageManager.getApplicationInfo(packageName, 0)
