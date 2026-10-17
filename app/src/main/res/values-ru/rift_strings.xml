@@ -505,4 +505,13 @@
     <string name="rift_game_page_loop_summary">Иначе после трейлера остаётся арт</string>
     <string name="rift_game_mute">Без звука</string>
     <string name="rift_game_unmute">Включить звук</string>
+    <string name="rift_game_media_title">Трейлеры и скриншоты</string>
+    <string name="rift_game_back_library">Библиотека</string>
+    <string name="rift_game_ach_unlocked_percent">получено · %1$d%%</string>
+    <string name="rift_game_ach_last">Последнее</string>
+    <string name="rift_game_ach_left">Осталось</string>
+    <string name="rift_game_ach_source">Из вашего аккаунта Steam</string>
+    <string name="rift_game_ach_unlocked">Полученные</string>
+    <string name="rift_game_ach_locked">Ещё не получены · %1$d</string>
+    <string name="rift_game_ach_all">Все достижения · %1$d</string>
 </resources>

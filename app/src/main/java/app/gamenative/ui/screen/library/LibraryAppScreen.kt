@@ -107,6 +107,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -853,12 +854,41 @@ private fun FullscreenStoreMediaDialog(
 
 @OptIn(ExperimentalLayoutApi::class)
 /** Rift: the game page's sections under the hero, in page order; LB/RB and the tabs jump between them. */
-private enum class GamePageSection(val labelRes: Int) {
-    Overview(R.string.rift_game_section_overview),
-    Media(R.string.rift_game_section_media),
-    Achievements(R.string.rift_game_achievements),
-    Compatibility(R.string.rift_game_section_compatibility),
-    Details(R.string.rift_game_section_details),
+private enum class GamePageSection(val labelRes: Int, val titleRes: Int) {
+    Overview(R.string.rift_game_section_overview, R.string.rift_game_about),
+    Media(R.string.rift_game_section_media, R.string.rift_game_media_title),
+    Achievements(R.string.rift_game_achievements, R.string.rift_game_achievements),
+    Compatibility(R.string.rift_game_section_compatibility, R.string.rift_game_section_compatibility),
+    Details(R.string.rift_game_section_details, R.string.rift_game_section_details),
+}
+
+/** Rift: the top-left "B Библиотека" pill that leaves the page. */
+@Composable
+private fun GamePageBackPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color.White.copy(alpha = if (isFocused) 0.2f else 0.08f))
+            .focusRing(interactionSource, RoundedCornerShape(50), width = 2.dp)
+            .selectable(selected = isFocused, interactionSource = interactionSource, indication = null, onClick = onClick)
+            .padding(start = 6.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            modifier = Modifier.size(26.dp).clip(CircleShape).background(Color.White),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("B", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold), color = Color.Black)
+        }
+        Text(
+            text = stringResource(R.string.rift_game_back_library),
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = Color.White,
+        )
+    }
 }
 
 /** Rift: a small LB / RB glyph next to the section tabs. */
@@ -950,7 +980,7 @@ private fun GamePageSectionBlock(
             .padding(bottom = 40.dp),
     ) {
         Text(
-            text = stringResource(section.labelRes).uppercase(Locale.getDefault()),
+            text = stringResource(section.titleRes).uppercase(Locale.getDefault()),
             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 14.dp),
@@ -966,6 +996,8 @@ private fun GamePageStickyHeader(
     sections: List<GamePageSection>,
     current: GamePageSection,
     onSelect: (GamePageSection) -> Unit,
+    playLabel: String? = null,
+    onPlay: () -> Unit = {},
 ) {
     val sidePadding = if (LocalConfiguration.current.screenWidthDp >= 840) 48.dp else 20.dp
     Row(
@@ -989,9 +1021,36 @@ private fun GamePageStickyHeader(
             color = Color.White,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.widthIn(max = 360.dp),
         )
-        GamePageSectionTabs(sections = sections, current = current, onSelect = onSelect, focusable = false)
+        // Rift: a small white Play next to the name, touch-only like the tabs.
+        if (playLabel != null) {
+            Row(
+                modifier = Modifier
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.White)
+                    .focusProperties { canFocus = false }
+                    .clickable(onClick = onPlay)
+                    .padding(start = 14.dp, end = 20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.Black, modifier = Modifier.size(20.dp))
+                Text(playLabel, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold), color = Color.Black)
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        GamePageSectionTabs(
+            sections = sections,
+            current = current,
+            onSelect = onSelect,
+            focusable = false,
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(Color.White.copy(alpha = 0.07f))
+                .padding(5.dp),
+        )
     }
 }
 
@@ -1004,11 +1063,6 @@ private fun GamePageOverview(info: GameDisplayInfo, wide: Boolean) {
     val about: @Composable (Modifier) -> Unit = { modifier ->
         Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (details.description.isNotBlank()) {
-                Text(
-                    text = stringResource(R.string.rift_game_about),
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
                 Text(
                     text = details.description,
                     style = MaterialTheme.typography.bodyLarge,
@@ -1238,11 +1292,12 @@ private fun GamePageMediaRow(
                 ),
                 label = "mediaTileScale",
             )
+            // Rift: as in the mockup, the first tile (the trailer) is wider than the rest, all 236 dp high.
             Box(
                 modifier = Modifier
                     .padding(vertical = 8.dp)
-                    .height(200.dp)
-                    .aspectRatio(16f / 9f)
+                    .height(236.dp)
+                    .width(if (index == 0) 420.dp else 300.dp)
                     .scale(scale)
                     .clip(RoundedCornerShape(22.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainer)
@@ -1275,6 +1330,17 @@ private fun GamePageMediaRow(
                             modifier = Modifier.size(32.dp),
                         )
                     }
+                    Text(
+                        text = stringResource(R.string.rift_game_trailer),
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(14.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(Color.Black.copy(alpha = 0.55f))
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
                 }
             }
         }
@@ -1819,7 +1885,8 @@ internal fun AppScreenContent(
             val configuration = LocalConfiguration.current
             val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
             val sidePadding = if (configuration.screenWidthDp >= 840) 48.dp else 20.dp
-            val heroHeight = (configuration.screenHeightDp.dp - 64.dp).coerceAtLeast(420.dp)
+            // Rift: the section tabs sit at the bottom of the first screen, right under the action row.
+            val heroHeight = (configuration.screenHeightDp.dp - 96.dp).coerceAtLeast(420.dp)
             // Rift: Settings → Внешний вид → Страница игры picks the background; the trailer starts 3 s
             // after the page opens and the art stays when there is no trailer, it ended, or Wi-Fi is required.
             val pagePrefs = remember { dev.rift.launcher.settings.RiftPrefs.of(context) }
@@ -1930,9 +1997,7 @@ internal fun AppScreenContent(
                 // itself, however, has to stay tappable, so it's pushed inwards by whichever
                 // is larger of the status bar inset or the cutout inset on each affected
                 // edge before the visual 16dp padding is applied.
-                ActionIconButton(
-                    icon = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.back),
+                GamePageBackPill(
                     onClick = onBack,
                     modifier = Modifier
                         .windowInsetsPadding(
@@ -2400,7 +2465,7 @@ internal fun AppScreenContent(
                 }
                 if (!achievements.isNullOrEmpty()) {
                     GamePageSectionBlock(GamePageSection.Achievements, sectionOffsets, scrollState) {
-                        AchievementsRow(achievements = achievements)
+                        GamePageAchievements(achievements = achievements, wide = configuration.screenWidthDp >= 840)
                     }
                 }
                 if (GamePageSection.Compatibility in pageSections) {
@@ -2565,6 +2630,12 @@ internal fun AppScreenContent(
                 sections = pageSections,
                 current = currentSection,
                 onSelect = goToSection,
+                playLabel = when {
+                    riftStream != null -> stringResource(riftStream.labelRes)
+                    isInstalled -> stringResource(R.string.rift_play)
+                    else -> null
+                },
+                onPlay = { riftStream?.onStream?.invoke() ?: onDownloadInstallClick() },
             )
         }
         }
@@ -2955,6 +3026,170 @@ private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
             }
         },
     )
+}
+
+/**
+ * Rift: achievements as in the mockup: a summary card with the unlocked ring on the left, the unlocked
+ * ones as a two-column grid and the locked ones as small icons on the right. Any tile opens the full list.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun GamePageAchievements(achievements: List<Achievement>, wide: Boolean) {
+    var showAll by remember { mutableStateOf(false) }
+    var detail by remember { mutableStateOf<Achievement?>(null) }
+    val unlocked = remember(achievements) { achievements.filter { it.isUnlocked }.sortedByDescending { it.unlockTimestamp } }
+    val locked = remember(achievements) { achievements.filter { !it.isUnlocked } }
+    val total = achievements.size
+    val percent = if (total > 0) unlocked.size * 100 / total else 0
+    val summary: @Composable (Modifier) -> Unit = { modifier ->
+        Column(
+            modifier = modifier
+                .clip(RoundedCornerShape(26.dp))
+                .background(dev.rift.launcher.ui.theme.RiftColors.Surface)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Box(modifier = Modifier.size(168.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(
+                    progress = { if (total > 0) unlocked.size / total.toFloat() else 0f },
+                    modifier = Modifier.fillMaxSize(),
+                    color = dev.rift.launcher.ui.theme.RiftColors.Primary,
+                    trackColor = dev.rift.launcher.ui.theme.RiftColors.SurfaceContainerHigh,
+                    strokeWidth = 12.dp,
+                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = androidx.compose.ui.text.buildAnnotatedString {
+                            append(unlocked.size.toString())
+                            pushStyle(androidx.compose.ui.text.SpanStyle(color = dev.rift.launcher.ui.theme.RiftColors.Outline, fontSize = 26.sp))
+                            append("/$total")
+                            pop()
+                        },
+                        style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold, fontFeatureSettings = "tnum"),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = stringResource(R.string.rift_game_ach_unlocked_percent, percent),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = dev.rift.launcher.ui.theme.RiftColors.OnSurfaceVariant,
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                listOf(
+                    stringResource(R.string.rift_game_ach_last) to (unlocked.firstOrNull()?.getFormattedUnlockDateTime()?.first ?: "–"),
+                    stringResource(R.string.rift_game_ach_left) to locked.size.toString(),
+                ).forEach { (label, value) ->
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(dev.rift.launcher.ui.theme.RiftColors.SurfaceContainer)
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(
+                            label.uppercase(Locale.getDefault()),
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp),
+                            color = dev.rift.launcher.ui.theme.RiftColors.OnSurfaceVariant,
+                        )
+                        Text(value, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+                    }
+                }
+            }
+            Text(
+                text = stringResource(R.string.rift_game_ach_source),
+                style = MaterialTheme.typography.bodySmall,
+                color = dev.rift.launcher.ui.theme.RiftColors.Outline,
+            )
+        }
+    }
+    val lists: @Composable (Modifier) -> Unit = { modifier ->
+        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            if (unlocked.isNotEmpty()) {
+                Text(
+                    stringResource(R.string.rift_game_ach_unlocked).uppercase(Locale.getDefault()),
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp),
+                    color = dev.rift.launcher.ui.theme.RiftColors.OnSurfaceVariant,
+                )
+                unlocked.take(6).chunked(2).forEach { pair ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                        pair.forEach { ach ->
+                            val interactionSource = remember { MutableInteractionSource() }
+                            val focused by interactionSource.collectIsFocusedAsState()
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(
+                                        if (focused) dev.rift.launcher.ui.theme.RiftColors.SurfaceContainerHigh
+                                        else dev.rift.launcher.ui.theme.RiftColors.SurfaceContainer,
+                                    )
+                                    .focusRing(interactionSource, RoundedCornerShape(20.dp), width = 3.dp)
+                                    .selectable(selected = focused, interactionSource = interactionSource, indication = null) { detail = ach }
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            ) {
+                                AchievementIcon(ach, size = 64.dp, corner = 14.dp)
+                                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    Text(ach.label, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    if (ach.description.isNotBlank()) {
+                                        Text(ach.description, style = MaterialTheme.typography.bodySmall, color = dev.rift.launcher.ui.theme.RiftColors.OnSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                    }
+                                    ach.getFormattedUnlockDateTime()?.let {
+                                        Text(it.first, style = MaterialTheme.typography.labelSmall, color = dev.rift.launcher.ui.theme.RiftColors.Outline)
+                                    }
+                                }
+                            }
+                        }
+                        if (pair.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
+            }
+            if (locked.isNotEmpty()) {
+                Text(
+                    stringResource(R.string.rift_game_ach_locked, locked.size).uppercase(Locale.getDefault()),
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp),
+                    color = dev.rift.launcher.ui.theme.RiftColors.OnSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    locked.take(24).forEach { ach ->
+                        val interactionSource = remember { MutableInteractionSource() }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .focusRing(interactionSource, RoundedCornerShape(12.dp), width = 2.dp)
+                                .selectable(selected = false, interactionSource = interactionSource, indication = null) { detail = ach },
+                        ) {
+                            AchievementIcon(ach, size = 54.dp, corner = 12.dp, masked = ach.hidden)
+                        }
+                    }
+                }
+            }
+            ActionPillButton(
+                icon = Icons.Filled.EmojiEvents,
+                text = stringResource(R.string.rift_game_ach_all, total),
+                onClick = { showAll = true },
+            )
+        }
+    }
+    if (wide) {
+        Row(horizontalArrangement = Arrangement.spacedBy(24.dp), modifier = Modifier.fillMaxWidth()) {
+            summary(Modifier.width(340.dp))
+            lists(Modifier.weight(1f))
+        }
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            summary(Modifier.fillMaxWidth())
+            lists(Modifier.fillMaxWidth())
+        }
+    }
+    if (showAll) AchievementsDialog(achievements = achievements, onDismiss = { showAll = false })
+    detail?.let { AchievementDetailDialog(ach = it, onDismiss = { detail = null }) }
 }
 
 @Composable

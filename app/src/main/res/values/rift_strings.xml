@@ -510,4 +510,13 @@
     <string name="rift_game_page_loop_summary">Otherwise the art stays after the trailer</string>
     <string name="rift_game_mute">Mute</string>
     <string name="rift_game_unmute">Unmute</string>
+    <string name="rift_game_media_title">Trailers and screenshots</string>
+    <string name="rift_game_back_library">Library</string>
+    <string name="rift_game_ach_unlocked_percent">unlocked · %1$d%%</string>
+    <string name="rift_game_ach_last">Latest</string>
+    <string name="rift_game_ach_left">Left</string>
+    <string name="rift_game_ach_source">From your Steam account</string>
+    <string name="rift_game_ach_unlocked">Unlocked</string>
+    <string name="rift_game_ach_locked">Not unlocked yet · %1$d</string>
+    <string name="rift_game_ach_all">All achievements · %1$d</string>
 </resources>
