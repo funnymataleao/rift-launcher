@@ -14,7 +14,7 @@ class StreamSettings(context: Context) {
         context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     /** "1280x720", "1920x1080", "2560x1440", "3840x2160" or "device" (the screen's own size). */
-    val resolution: String get() = prefs.getString("stream_resolution", "1920x1080") ?: "1920x1080"
+    val resolution: String get() = prefs.getString("stream_resolution", "device") ?: "device"
     val fps: Int get() = prefs.getInt("stream_fps", 60)
 
     /** Mbps; 0 picks a bitrate from resolution and frame rate. */
