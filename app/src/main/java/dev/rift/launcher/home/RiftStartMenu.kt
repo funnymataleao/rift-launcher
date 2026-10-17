@@ -203,6 +203,7 @@ fun RiftGameStartMenu(
     options: List<AppMenuOption>,
     onPlay: (() -> Unit)?,
     onProperties: (() -> Unit)?,
+    onHide: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val main = listOf(
@@ -217,6 +218,9 @@ fun RiftGameStartMenu(
         }
         main.forEach { option ->
             add(RiftStartMenuItem(stringResource(option.optionType.title)) { option.onClick(); onDismiss() })
+        }
+        if (onHide != null) {
+            add(RiftStartMenuItem(stringResource(R.string.rift_menu_hide)) { onHide(); onDismiss() })
         }
         if (onProperties != null) {
             add(RiftStartMenuItem(stringResource(R.string.rift_menu_properties)) { onProperties(); onDismiss() })

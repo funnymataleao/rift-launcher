@@ -376,6 +376,7 @@ private fun SectionPane(
                         RiftSettingsSection.Cloud -> CloudSettings()
                         RiftSettingsSection.Downloads -> DownloadsSettings()
                         RiftSettingsSection.Tabs -> TabsSettings()
+                        RiftSettingsSection.HiddenGames -> HiddenGamesSettings()
                         RiftSettingsSection.Accounts -> AccountsSettings(onSteamSignIn, onSteamSignOut)
                         RiftSettingsSection.Assistant -> AssistantSettings()
                         RiftSettingsSection.Device -> DeviceSettings()

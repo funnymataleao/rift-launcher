@@ -266,11 +266,14 @@ fun RiftHomeScreen(
     val pickedArt by GameArtStore.version.collectAsStateWithLifecycle()
     val uninstalledMode by rememberUninstalledMode(RiftSection.PcGames)
     val streamUninstalledMode by rememberUninstalledMode(RiftSection.PcStreaming)
-    val loadedLibrary = remember(libraryState.appInfoList, pickedArt, uninstalledMode) {
+    // Games the person hid (Start menu) are gone from every tab and library.
+    val hiddenGames by RiftHiddenGames.hidden(context).collectAsStateWithLifecycle()
+    val loadedLibrary = remember(libraryState.appInfoList, pickedArt, uninstalledMode, hiddenGames) {
         GameArtStore.apply(
             context,
             libraryState.appInfoList.filterNot {
                 it.isRecommended || it.isFeatured || it.isRecTeaser || it.isRecLoading ||
+                    it.appId in hiddenGames ||
                     (uninstalledMode == UninstalledMode.HIDE && !it.isInstalled)
             },
         )
@@ -280,7 +283,7 @@ fun RiftHomeScreen(
     val library = if (loadedLibrary.isEmpty() && libraryState.isLoading) lastLibrary else loadedLibrary
     SideEffect { if (loadedLibrary.isNotEmpty() || !libraryState.isLoading) lastLibrary = loadedLibrary }
     // Android games the user added in settings; reloads when that list changes.
-    val androidGames by produceState(emptyList<AndroidGame>()) {
+    val allAndroidGames by produceState(emptyList<AndroidGame>()) {
         suspend fun load() {
             value = withContext(Dispatchers.IO) { runCatching { AndroidGames.selected(context) }.getOrDefault(emptyList()) }
         }
@@ -292,6 +295,7 @@ fun RiftHomeScreen(
         prefs.registerOnSharedPreferenceChangeListener(listener)
         awaitDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
+    val androidGames = remember(allAndroidGames, hiddenGames) { allAndroidGames.filterNot { it.toArtItem().appId in hiddenGames } }
     val pairedPcs by PcStreaming.pairedHosts(context).collectAsStateWithLifecycle()
     // The PC streaming tab exists only while it has games to show; setup hints live in settings.
     val streamTab = if (pairedPcs.isNotEmpty()) rememberPcStreamingTab() else null
@@ -299,16 +303,16 @@ fun RiftHomeScreen(
     // Home streaming starts with the games last streamed from Rift, then the ones newest on the PC.
     var streamView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.PcStreaming, TabSort.LAST_PLAYED)) }
     var androidView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.AndroidGames)) }
-    val streamItems by remember(streamTab, streamView, streamUninstalledMode, pickedArt) { derivedStateOf { GameArtStore.apply(context, streamTab?.arrange(context, streamView.copy(showAll = streamUninstalledMode != UninstalledMode.HIDE)).orEmpty()) } }
-    val hasStreamGames = streamTab?.items?.isNotEmpty() == true
+    val streamItems by remember(streamTab, streamView, streamUninstalledMode, pickedArt, hiddenGames) { derivedStateOf { GameArtStore.apply(context, streamTab?.arrange(context, streamView.copy(showAll = streamUninstalledMode != UninstalledMode.HIDE)).orEmpty().filterNot { it.appId in hiddenGames }) } }
+    val hasStreamGames = streamTab?.items?.any { it.appId !in hiddenGames } == true
     val cloudSignedIn by XcloudAccount.signedIn(context).collectAsStateWithLifecycle()
     // The cloud tab exists only while a cloud account is signed in and its catalog has games; the
     // sign-in and the hints live in settings.
     val cloudTab = if (cloudSignedIn == true) rememberCloudStreamingTab() else null
     // The cloud tab starts on its own order (played from Rift, then Game Pass's most popular).
     var cloudView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.CloudStreaming, TabSort.LAST_PLAYED)) }
-    val cloudItems = remember(cloudTab, cloudView) { cloudTab?.arrange(cloudView).orEmpty() }
-    val hasCloudGames = cloudTab?.items?.isNotEmpty() == true
+    val cloudItems = remember(cloudTab, cloudView, hiddenGames) { cloudTab?.arrange(cloudView).orEmpty().filterNot { it.appId in hiddenGames } }
+    val hasCloudGames = cloudTab?.items?.any { it.appId !in hiddenGames } == true
     // The Emulators tab exists only while the systems set up in settings have games; the systems, their
     // emulator apps and folders live in settings. The folders are scanned again each time Rift comes back
     // to the front, so a new game, a new system or a newly installed emulator shows up without a restart.
@@ -327,10 +331,10 @@ fun RiftHomeScreen(
         onDispose { homeLifecycle.lifecycle.removeObserver(observer) }
     }
     var emulatorView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.Emulators, TabSort.LAST_PLAYED)) }
-    val emulatorItems by remember(emulatorGames, emulatorView, pickedArt) {
-        derivedStateOf { GameArtStore.apply(context, EmulatorLibrary.arrange(context, emulatorGames, emulatorView)) }
+    val emulatorItems by remember(emulatorGames, emulatorView, pickedArt, hiddenGames) {
+        derivedStateOf { GameArtStore.apply(context, EmulatorLibrary.arrange(context, emulatorGames, emulatorView).filterNot { it.appId in hiddenGames }) }
     }
-    val hasEmulatorGames = emulatorGames.isNotEmpty()
+    val hasEmulatorGames = emulatorGames.any { it.appId !in hiddenGames }
     val sections = remember(library, androidGames, hasStreamGames, hasCloudGames, hasEmulatorGames) {
         RiftSections.configured(context, library, androidGames, hasStreamGames, hasCloudGames, hasEmulatorGames)
     }
@@ -708,6 +712,7 @@ fun RiftHomeScreen(
                 listOf(
                     line(R.string.rift_menu_play) { AndroidGames.launch(context, game) },
                     line(R.string.rift_option_change_art) { openArt(game.toArtItem()) },
+                    line(R.string.rift_menu_hide) { RiftHiddenGames.hide(context, game.toArtItem().appId, game.label) },
                     cancel,
                 )
             }
@@ -715,6 +720,7 @@ fun RiftHomeScreen(
                 listOf(
                     line(R.string.rift_menu_stream) { openGame(item, forStream = true) },
                     line(R.string.rift_option_change_art) { openArt(item) },
+                    line(R.string.rift_menu_hide) { RiftHiddenGames.hide(context, item.appId, item.name) },
                     cancel,
                 )
             }
@@ -722,6 +728,7 @@ fun RiftHomeScreen(
                 listOf(
                     line(R.string.rift_menu_play) { EmulatorLibrary.game(item.appId)?.let { EmulatorLibrary.launch(context, it) } },
                     line(R.string.rift_option_change_art) { openArt(item) },
+                    line(R.string.rift_menu_hide) { RiftHiddenGames.hide(context, item.appId, item.name) },
                     cancel,
                 )
             }
@@ -729,6 +736,7 @@ fun RiftHomeScreen(
                 listOf(
                     line(R.string.rift_menu_play) { openGame(item) },
                     line(R.string.rift_option_change_art) { openArt(item) },
+                    line(R.string.rift_menu_hide) { RiftHiddenGames.hide(context, item.appId, item.name) },
                     cancel,
                 )
             }
