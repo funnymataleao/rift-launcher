@@ -761,6 +761,13 @@ fun RiftHomeScreen(
         viewModel.onIsSearching(false)
         focusSection(section)
     }
+    fun openSearch() {
+        if (RiftSection.PcGames !in sections) return
+        if (section != RiftSection.PcGames) selectSection(RiftSection.PcGames)
+        if (!searchOpen) viewModel.onIsSearching(true)
+        searchOpen = true
+        searchTyping = true
+    }
     BackHandler(enabled = searchOpen) { if (searchTyping) stopTyping() else closeSearch() }
 
     // Select: GameNative's library filter panel. Start: its system menu. Both over a blurred screen.
@@ -1211,6 +1218,11 @@ fun RiftHomeScreen(
                         }
                         return@onPreviewKeyEvent true
                     }
+                    // X: the search (the PC games', from any tab), the keyboard opens at once.
+                    if (native.keyCode == KeyEvent.KEYCODE_BUTTON_X && !searchOpen && !systemMenuOpen && !viewModel.state.value.isOptionsPanelOpen && RiftSection.PcGames in sections) {
+                        if (event.type == KeyEventType.KeyUp) openSearch()
+                        return@onPreviewKeyEvent true
+                    }
                     // Select: short press opens the filter panel, a long press the quick access panel.
                     if (native.keyCode == KeyEvent.KEYCODE_BUTTON_SELECT) {
                         when {
@@ -1376,11 +1388,7 @@ fun RiftHomeScreen(
                                 open = searchOpen,
                                 typing = searchTyping,
                                 query = libraryState.searchQuery,
-                                onOpen = {
-                                    if (!searchOpen) viewModel.onIsSearching(true)
-                                    searchOpen = true
-                                    searchTyping = true
-                                },
+                                onOpen = ::openSearch,
                                 onQuery = viewModel::onSearchQuery,
                                 onDone = ::stopTyping,
                             )
@@ -1390,12 +1398,7 @@ fun RiftHomeScreen(
                                 open = false,
                                 typing = false,
                                 query = "",
-                                onOpen = {
-                                    selectSection(RiftSection.PcGames)
-                                    viewModel.onIsSearching(true)
-                                    searchOpen = true
-                                    searchTyping = true
-                                },
+                                onOpen = ::openSearch,
                                 onQuery = {},
                                 onDone = {},
                             )
@@ -2652,122 +2655,115 @@ private fun TopBar(
     avatarFocus: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
-    // Big Picture style: the section tabs between the bumpers, the search in the middle of what is left, the
-    // status icons in the right corner. The corner is measured first and keeps its room; the tabs shrink.
+    // One row, like Steam Big Picture: the bumpers and the section tabs on the left, a round search button and the
+    // status icons in the right corner. Searching hides the bumpers and tabs and opens a wide field in their place,
+    // from the first cover's left edge to the search button.
     val gap = with(LocalDensity.current) { 10.dp.roundToPx() }
-    val minSearch = with(LocalDensity.current) { 240.dp.roundToPx() }
-    val rowGapPx = with(LocalDensity.current) { 8.dp.roundToPx() }
     val pad = with(LocalDensity.current) { ScreenPadding.roundToPx() }
     // The bumper's picture sits a little inside its touch box; its edge, not the box, lines up with the covers.
     val bumperInset = with(LocalDensity.current) { 8.dp.roundToPx() }
+    val open = search?.open == true
+    val progress = animateFloatAsState(if (open) 1f else 0f, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "searchOpen")
     Layout(
         modifier = modifier.fillMaxWidth().padding(top = ScreenPadding, bottom = 18.dp),
         content = {
             BumperButton(GamepadButton.LB.iconRes, "LB") { onStep(-1) }
             Box { SectionTabs(glass = glass, sections = sections, selected = selected, onSelect = onSelect) }
             BumperButton(GamepadButton.RB.iconRes, "RB") { onStep(1) }
-            Box { if (search != null) SearchField(search, searchFocus) }
+            Box { if (search != null) SearchButton(search, searchFocus) }
+            Box { if (search != null) SearchField(search) }
             StatusIcons(avatarFocus)
         },
     ) { measurables, constraints ->
         val loose = constraints.copy(minWidth = 0, minHeight = 0)
-        val icons = measurables[4].measure(loose)
+        val icons = measurables[5].measure(loose)
+        val searchBtn = measurables[3].measure(loose)
         val lb = measurables[0].measure(loose)
         val rb = measurables[2].measure(loose)
         val inner = constraints.maxWidth - 2 * pad
         val iconsX = constraints.maxWidth - pad - icons.width
-        // The tabs get what the bumpers and the corner leave (plus a little room for the search).
-        val tabsMax = (inner + bumperInset - lb.width - rb.width - icons.width - 3 * gap).coerceAtLeast(0)
-        val tabsOneRow = measurables[1].measure(loose.copy(maxWidth = tabsMax))
-        val leftEnd = pad - bumperInset + lb.width + gap + tabsOneRow.width + gap + rb.width
-        val free = (iconsX - gap - (leftEnd + gap)).coerceAtLeast(0)
-        if (free >= minSearch || search == null) {
-            // One row: bumpers and tabs, the search in the middle of what is left, the corner.
-            val searchBox = measurables[3].measure(loose.copy(maxWidth = free))
-            val height = maxOf(icons.height, lb.height, tabsOneRow.height, searchBox.height)
-            layout(constraints.maxWidth, height) {
-                // Everything hangs from the same top line, so the tabs, the search and the avatar share the inset.
-                var x = pad - bumperInset
-                lb.placeRelative(x, 0); x += lb.width + gap
-                tabsOneRow.placeRelative(x, 0); x += tabsOneRow.width + gap
-                rb.placeRelative(x, 0)
-                val centre = leftEnd + gap + free / 2
-                searchBox.placeRelative(centre - searchBox.width / 2, 0)
-                icons.placeRelative(iconsX, 0)
-            }
-        } else {
-            // Too many tabs for one row with a search of a decent width: the search keeps the middle of the first
-            // row with the corner, the tabs (all of them, between the bumpers) take a row of their own below.
-            val tabs = measurables[1].measure(loose.copy(maxWidth = (inner + bumperInset - lb.width - rb.width - 2 * gap).coerceAtLeast(0)))
-            val searchFree = (iconsX - gap - (pad + gap)).coerceAtLeast(0)
-            val searchBox = measurables[3].measure(loose.copy(maxWidth = searchFree))
-            val firstRow = maxOf(icons.height, searchBox.height)
-            val secondRow = maxOf(lb.height, tabs.height)
-            layout(constraints.maxWidth, firstRow + rowGapPx + secondRow) {
-                val centre = pad + gap + searchFree / 2
-                searchBox.placeRelative(centre - searchBox.width / 2, (firstRow - searchBox.height) / 2)
-                icons.placeRelative(iconsX, (firstRow - icons.height) / 2)
-                var x = pad - bumperInset
-                val y = firstRow + rowGapPx
-                lb.placeRelative(x, y + (secondRow - lb.height) / 2); x += lb.width + gap
-                tabs.placeRelative(x, y + (secondRow - tabs.height) / 2); x += tabs.width + gap
-                rb.placeRelative(x, y + (secondRow - rb.height) / 2)
-            }
+        val btnX = iconsX - gap - searchBtn.width
+        // The tabs get what the bumpers, the search button and the corner leave.
+        val tabsMax = (btnX - gap - (pad - bumperInset) - lb.width - rb.width - 2 * gap).coerceAtLeast(0)
+        val tabs = measurables[1].measure(loose.copy(maxWidth = tabsMax))
+        val p = progress.value
+        val fieldRight = btnX - gap
+        val fieldFull = (fieldRight - pad).coerceAtLeast(0)
+        val fieldWidth = (fieldFull * p).toInt()
+        val field = measurables[4].measure(loose.copy(minWidth = fieldWidth, maxWidth = fieldWidth))
+        val height = maxOf(icons.height, lb.height, tabs.height, searchBtn.height, field.height)
+        layout(constraints.maxWidth, height) {
+            // Everything hangs from the same top line, so the tabs, the search and the avatar share the inset.
+            var x = pad - bumperInset
+            val fade: androidx.compose.ui.graphics.GraphicsLayerScope.() -> Unit = { alpha = 1f - progress.value }
+            lb.placeRelativeWithLayer(x, 0, 0f, fade); x += lb.width + gap
+            tabs.placeRelativeWithLayer(x, 0, 0f, fade); x += tabs.width + gap
+            rb.placeRelativeWithLayer(x, 0, 0f, fade)
+            if (fieldWidth > 0) field.placeRelativeWithLayer(fieldRight - fieldWidth, (height - field.height) / 2, 1f) { alpha = progress.value }
+            searchBtn.placeRelative(btnX, 0)
+            icons.placeRelative(iconsX, 0)
         }
     }
 }
 
-/** Search in the middle of the top bar: a black glass pill, an icon and the query (or "Search"). */
+/** The round search button of the top bar: a magnifier on a translucent round plate, like the other round buttons. */
 @Composable
-private fun SearchField(search: SearchState, pillFocus: FocusRequester) {
-    if (!search.typing) {
-        // Not typing: a plain pill with the query; A opens the keyboard again.
-        PillButton(
-            onClick = search.onOpen,
-            background = { focused -> if (focused) RiftAccent.current.brush else solid(Color.Transparent) },
-            modifier = Modifier.widthIn(max = 320.dp).height(RiftSizes.button).clip(RiftShapes.full).blackGlass(RiftShapes.full),
-            focusRequester = pillFocus,
-        ) { focused ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.rift_search), tint = if (focused) RiftAccent.current.onAccent else RiftColors.OnSurfaceVariant.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
-                Text(
-                    text = search.query.ifEmpty { stringResource(R.string.rift_search) },
-                    color = if (focused) RiftAccent.current.onAccent else if (search.query.isEmpty()) RiftColors.OnSurfaceVariant else RiftColors.OnSurface,
-                    fontSize = 16.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-        return
+private fun SearchButton(search: SearchState, pillFocus: FocusRequester) {
+    PillButton(
+        onClick = search.onOpen,
+        background = { focused -> if (focused) RiftAccent.current.brush else solid(Color.Black.copy(alpha = 0.35f)) },
+        square = true,
+        focusRequester = pillFocus,
+    ) { focused ->
+        Icon(
+            Icons.Outlined.Search,
+            contentDescription = stringResource(R.string.rift_search),
+            tint = if (focused) RiftAccent.current.onAccent else RiftColors.OnSurface,
+            modifier = Modifier.size(24.dp),
+        )
     }
+}
+
+/** The wide search field that takes the tabs' place while searching; the keyboard opens with it. */
+@Composable
+private fun SearchField(search: SearchState) {
     val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(search.typing) {
+        if (search.typing) {
+            runCatching { focusRequester.requestFocus() }
+            keyboard?.show()
+        }
+    }
     Row(
         modifier = Modifier
-            .widthIn(max = 320.dp)
+            .fillMaxWidth()
             .height(RiftSizes.button)
             .clip(RiftShapes.full)
-            .blackGlass(RiftShapes.full)
-            .padding(horizontal = 18.dp),
+            .background(Color.Black.copy(alpha = 0.55f))
+            .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(Icons.Outlined.Search, contentDescription = null, tint = RiftColors.OnSurfaceVariant.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
-        BasicTextField(
-            value = search.query,
-            onValueChange = search.onQuery,
-            singleLine = true,
-            textStyle = TextStyle(color = RiftColors.OnSurface, fontSize = 16.sp),
-            cursorBrush = solid(RiftColors.Primary),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(onSearch = { search.onDone() }),
-            modifier = Modifier.weight(1f).focusRequester(focusRequester),
-        )
+        Icon(Icons.Outlined.Search, contentDescription = null, tint = RiftColors.OnSurfaceVariant, modifier = Modifier.size(22.dp))
+        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            if (search.query.isEmpty()) {
+                Text(stringResource(R.string.rift_search), color = RiftColors.OnSurfaceVariant, fontSize = 18.sp, maxLines = 1)
+            }
+            BasicTextField(
+                value = search.query,
+                onValueChange = search.onQuery,
+                singleLine = true,
+                textStyle = TextStyle(color = RiftColors.OnSurface, fontSize = 18.sp),
+                cursorBrush = solid(RiftColors.Primary),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { search.onDone() }),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusProperties { canFocus = search.typing }
+                    .focusRequester(focusRequester),
+            )
+        }
     }
 }
 

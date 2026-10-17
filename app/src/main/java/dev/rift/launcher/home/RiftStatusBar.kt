@@ -146,16 +146,17 @@ private fun ProfileIcon(focusRequester: FocusRequester) {
                     Icon(Icons.Rounded.Person, contentDescription = null, tint = RiftColors.OnSurface, modifier = Modifier.size(26.dp))
                 }
             }
-            if (SteamService.isLoggedIn) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(14.dp)
-                        .background(RiftColors.Background, CircleShape)
-                        .padding(2.dp)
-                        .background(statusDotColor(status), CircleShape),
-                )
-            }
+        }
+        // The status dot is a sibling of the clipped avatar, so it sits whole over the avatar's edge.
+        if (SteamService.isLoggedIn) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(14.dp)
+                    .background(RiftColors.Background, CircleShape)
+                    .padding(2.dp)
+                    .background(statusDotColor(status), CircleShape),
+            )
         }
         StatusPickerMenu(
             expanded = pickerOpen,
