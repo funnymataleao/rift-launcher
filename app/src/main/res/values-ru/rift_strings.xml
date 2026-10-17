@@ -388,4 +388,6 @@
     <string name="rift_settings_packs_remove_title">Удалить «%1$s»?</string>
     <string name="rift_settings_packs_remove_message">Пак будет удалён с устройства, потом его можно скачать снова.</string>
     <string name="rift_settings_packs_remove">Удалить</string>
+    <string name="rift_community_source_rift">База Rift</string>
+    <string name="rift_community_source_gamenative">База GameNative</string>
 </resources>

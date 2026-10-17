@@ -229,11 +229,15 @@ export function configFingerprint(config) {
 }
 
 /**
- * Picks the best config for a GPU from candidate runs (each with device_gpu, rating, tags, avg_fps,
- * created_at, game_store). Same match types as GameNative's /api/best-config.
+ * Picks the best config for a GPU from candidate runs (each with config, device_gpu, rating, tags,
+ * avg_fps, created_at, game_store). Same match types as GameNative's /api/best-config.
  */
-export function pickBestConfig(runs, gpuName, store) {
-  const usable = runs.filter((run) => run.rating >= 4 && !run.tags.some((tag) => FAILURE_TAGS.has(tag)));
+export function pickBestConfig(runs, gpuName, store, { modernBuild = false } = {}) {
+  // The modern build cannot run glibc containers.
+  const runnable = (run) => !modernBuild || String(run.config?.containerVariant ?? '').toLowerCase() !== 'glibc';
+  const usable = runs.filter(
+    (run) => run.rating >= 4 && !run.tags.some((tag) => FAILURE_TAGS.has(tag)) && runnable(run),
+  );
   const currentKey = gpuKey(gpuName);
   const currentFamily = gpuFamily(gpuName);
   const tiers = [

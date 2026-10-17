@@ -76,6 +76,7 @@ import app.gamenative.api.communityIdentityKey
 import app.gamenative.api.sortCommunityRuns
 import app.gamenative.utils.BestConfigService
 import com.winlator.core.GPUInformation
+import dev.rift.launcher.community.RiftCommunity
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -109,8 +110,14 @@ fun CommunityConfigsDialog(
     initialHardwareScope: CommunityHardwareScope = CommunityHardwareScope.CURRENT_DEVICE,
     canApply: Boolean = true,
     service: CommunityConfigService = CommunityConfigService.shared,
+    riftService: CommunityConfigService? = RiftCommunity.configService,
 ) {
     if (!visible) return
+
+    // Rift: configs come from Rift's own database first; GameNative's when Rift has not seen the game.
+    var fromRift by remember(gameName) { mutableStateOf(riftService != null) }
+    var sourceChosen by remember(gameName) { mutableStateOf(false) }
+    val activeService = riftService?.takeIf { fromRift } ?: service
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -131,7 +138,7 @@ fun CommunityConfigsDialog(
     var configRefreshKey by remember(gameName) { mutableIntStateOf(0) }
     var requestGeneration by remember(gameName) { mutableIntStateOf(0) }
 
-    LaunchedEffect(visible, gameName, lookupKey) {
+    LaunchedEffect(visible, gameName, lookupKey, fromRift) {
         val generation = ++requestGeneration
         loading = true
         loadingMore = false
@@ -147,7 +154,7 @@ fun CommunityConfigsDialog(
             }
             val gpu = renderer.takeIf { canonicalCommunityGpu(it).isNotEmpty() }.orEmpty()
             val devices = try {
-                service.findDevices(
+                activeService.findDevices(
                     manufacturer = Build.MANUFACTURER,
                     model = Build.MODEL,
                     gpu = gpu,
@@ -158,8 +165,12 @@ fun CommunityConfigsDialog(
             } catch (_: Exception) {
                 emptyList()
             }
-            val game = service.findGame(gameName)
+            val game = activeService.findGame(gameName)
             if (generation != requestGeneration) return@LaunchedEffect
+            if (game == null && fromRift && !sourceChosen) {
+                fromRift = false
+                return@LaunchedEffect
+            }
 
             detectedGpu = gpu
             detectedDevices = devices
@@ -178,7 +189,9 @@ fun CommunityConfigsDialog(
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
-            if (generation == requestGeneration) {
+            if (generation == requestGeneration && fromRift && !sourceChosen) {
+                fromRift = false
+            } else if (generation == requestGeneration) {
                 errorMessage = context.getString(
                     R.string.community_config_load_failed,
                     error.message ?: context.getString(R.string.community_config_unknown_error),
@@ -213,9 +226,9 @@ fun CommunityConfigsDialog(
         }
         try {
             val result = if (hardwareScope == CommunityHardwareScope.COMPATIBLE_GPUS) {
-                service.fetchCompatibleConfigs(game.id, detectedGpu, sort, page = 0)
+                activeService.fetchCompatibleConfigs(game.id, detectedGpu, sort, page = 0)
             } else {
-                service.fetchConfigs(
+                activeService.fetchConfigs(
                     gameId = game.id,
                     gpu = detectedGpu.takeIf { hardwareScope == CommunityHardwareScope.CURRENT_GPU },
                     sort = sort,
@@ -268,9 +281,9 @@ fun CommunityConfigsDialog(
             errorMessage = null
             try {
                 val result = if (requestedScope == CommunityHardwareScope.COMPATIBLE_GPUS) {
-                    service.fetchCompatibleConfigs(game.id, requestedGpu.orEmpty(), requestedSort, requestedPage)
+                    activeService.fetchCompatibleConfigs(game.id, requestedGpu.orEmpty(), requestedSort, requestedPage)
                 } else {
-                    service.fetchConfigs(
+                    activeService.fetchConfigs(
                         gameId = game.id,
                         gpu = requestedGpu,
                         sort = requestedSort,
@@ -327,7 +340,7 @@ fun CommunityConfigsDialog(
                     actions = {
                         IconButton(
                             onClick = {
-                                service.clearConfigCache()
+                                activeService.clearConfigCache()
                                 configRefreshKey++
                             },
                             enabled = !loading && !loadingMore,
@@ -350,6 +363,16 @@ fun CommunityConfigsDialog(
                     gpuName = detectedGpu,
                     total = total,
                 )
+                if (riftService != null) {
+                    CommunitySourceControl(
+                        fromRift = fromRift,
+                        enabled = !loading && !loadingMore,
+                        onSelected = {
+                            sourceChosen = true
+                            fromRift = it
+                        },
+                    )
+                }
                 CommunityConfigControls(
                     sort = sort,
                     hardwareScope = hardwareScope,
@@ -370,7 +393,7 @@ fun CommunityConfigsDialog(
                                 if (resolvedGame == null) {
                                     lookupKey++
                                 } else {
-                                    service.clearConfigCache()
+                                    activeService.clearConfigCache()
                                     configRefreshKey++
                                 }
                             },
@@ -530,6 +553,36 @@ private fun CommunityConfigControls(
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 content(Modifier.weight(1f))
             }
+        }
+    }
+}
+
+/** Rift: which community database the list comes from. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CommunitySourceControl(
+    fromRift: Boolean,
+    enabled: Boolean,
+    onSelected: (Boolean) -> Unit,
+) {
+    SingleChoiceSegmentedButtonRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp),
+    ) {
+        listOf(true, false).forEachIndexed { index, rift ->
+            SegmentedButton(
+                selected = fromRift == rift,
+                onClick = { onSelected(rift) },
+                enabled = enabled,
+                shape = SegmentedButtonDefaults.itemShape(index, 2),
+                label = {
+                    Text(
+                        stringResource(if (rift) R.string.rift_community_source_rift else R.string.rift_community_source_gamenative),
+                        maxLines = 1,
+                    )
+                },
+            )
         }
     }
 }

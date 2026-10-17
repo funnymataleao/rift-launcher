@@ -15,6 +15,7 @@ import com.winlator.core.DefaultVersion
 import com.winlator.core.GPUInformation
 import com.winlator.core.KeyValueSet
 import com.winlator.fexcore.FEXCorePresetManager
+import dev.rift.launcher.community.RiftCommunity
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
@@ -76,10 +77,26 @@ object BestConfigService {
             !emulator.equals("FEXCore", ignoreCase = true)
 
     /**
+     * Rift: the best config from Rift's own community database when it has one for this GPU or its
+     * family, otherwise GameNative's; Rift's config for another GPU only when GameNative has none.
+     */
+    suspend fun fetchBestConfig(
+        context: Context,
+        gameName: String,
+        gpuName: String,
+        gameStore: String,
+    ): BestConfigResponse? {
+        val rift = RiftCommunity.fetchBestConfig(gameName, gpuName, gameStore)
+        if (rift != null && rift.matchType != "fallback_match") return rift
+        val gameNative = fetchGameNativeBestConfig(context, gameName, gpuName, gameStore)
+        return if (gameNative == null || gameNative.matchType == "no_match") rift ?: gameNative else gameNative
+    }
+
+    /**
      * Fetches best configuration for a game.
      * Returns cached response if available, otherwise makes API call.
      */
-    suspend fun fetchBestConfig(
+    private suspend fun fetchGameNativeBestConfig(
         context: Context,
         gameName: String,
         gpuName: String,

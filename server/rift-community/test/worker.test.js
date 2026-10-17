@@ -119,6 +119,14 @@ test('best config prefers the same GPU, then the Adreno family, and skips failed
   assert.equal(result.body.matchType, 'exact_gpu_match');
   assert.deepEqual(result.body.bestConfig, { wineVersion: 'exact' });
 
+  await post({ installId: 'install-d-000000000000', gpuName: 'Adreno (TM) 740', configs: { wineVersion: 'old', containerVariant: 'glibc' }, rating: 5 });
+  result = await best('Adreno (TM) 740');
+  assert.deepEqual(result.body.bestConfig, { wineVersion: 'old', containerVariant: 'glibc' });
+  result = await call(e, 'POST', '/api/best-config', {
+    body: { gameName: 'Hollow Knight', gpuName: 'Adreno (TM) 740', game_store: 'STEAM', modernBuild: true },
+  });
+  assert.deepEqual(result.body.bestConfig, { wineVersion: 'exact' });
+
   result = await best('Mali-G720');
   assert.equal(result.body.matchType, 'fallback_match');
 
