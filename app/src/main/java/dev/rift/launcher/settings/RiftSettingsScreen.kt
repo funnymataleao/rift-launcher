@@ -26,7 +26,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -91,7 +90,7 @@ fun RiftSettingsScreen(
     onSteamSignOut: (() -> Unit)? = null,
 ) {
     val sections = remember { RiftSettingsSection.entries }
-    var selectedIndex by rememberSaveable { mutableIntStateOf(RiftSettingsSection.takeRequested()?.ordinal ?: 0) }
+    var selectedIndex by rememberSaveable { mutableIntStateOf((RiftSettingsSection.takeRequested() ?: RiftSettingsSection.AndroidGames).ordinal) }
     val selected = sections[selectedIndex]
 
     val railItems = remember { List(sections.size) { FocusRequester() } }
@@ -136,7 +135,6 @@ fun RiftSettingsScreen(
                         selectedIndex = index
                         runCatching { contentEntry.requestFocus() }
                     },
-                    onBack = onBack,
                 )
                 SectionPane(
                     section = selected,
@@ -164,7 +162,6 @@ private fun SectionRail(
     contentEntry: FocusRequester,
     onFocused: (Int) -> Unit,
     onSelect: (Int) -> Unit,
-    onBack: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -173,26 +170,9 @@ private fun SectionRail(
             .widthIn(min = RailWidth, max = RailWidth)
             .verticalScroll(rememberScrollState())
             .focusGroup()
-            .padding(top = 20.dp, bottom = 24.dp),
+            .padding(top = 12.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(bottom = 14.dp),
-        ) {
-            RiftRoundButton(
-                icon = Icons.AutoMirrored.Rounded.ArrowBack,
-                description = stringResource(R.string.back),
-                onClick = onBack,
-            )
-            Text(
-                text = stringResource(R.string.rift_settings),
-                color = RiftColors.OnSurface,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.ExtraBold,
-            )
-        }
         sections.forEachIndexed { index, section ->
             if (index == 0 || sections[index - 1].group != section.group) {
                 Text(
