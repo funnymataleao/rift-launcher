@@ -3,6 +3,22 @@ package app.gamenative.ui.component.dialog
 import android.os.Build
 import android.text.format.DateUtils
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import app.gamenative.ui.component.focusRing
+import dev.rift.launcher.ui.theme.RiftColors
+import dev.rift.launcher.ui.theme.RiftSizes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -134,6 +150,8 @@ fun CommunityConfigsDialog(
     var loadingMore by remember(gameName) { mutableStateOf(false) }
     var errorMessage by remember(gameName) { mutableStateOf<String?>(null) }
     var selectedRun by remember(gameName) { mutableStateOf<CommunityConfigRun?>(null) }
+    // Rift: the run shown in the detail pane on wide screens (the focused row).
+    var highlightedRun by remember(gameName) { mutableStateOf<CommunityConfigRun?>(null) }
     var lookupKey by remember(gameName) { mutableIntStateOf(0) }
     var configRefreshKey by remember(gameName) { mutableIntStateOf(0) }
     var requestGeneration by remember(gameName) { mutableIntStateOf(0) }
@@ -351,10 +369,31 @@ fun CommunityConfigsDialog(
                 )
             },
         ) { paddingValues ->
+            val controlsEnabled = !loading && !loadingMore
+            val scopeOptions = CommunityHardwareScope.entries.filter {
+                if (it == CommunityHardwareScope.CURRENT_DEVICE) detectedDevices.isNotEmpty() else detectedGpu.isNotBlank()
+            }
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
+                    .padding(paddingValues)
+                    // Rift: LB/RB switch the hardware filter, Y switches the sort.
+                    .onPreviewKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyDown || !controlsEnabled) return@onPreviewKeyEvent false
+                        when (event.nativeKeyEvent.keyCode) {
+                            android.view.KeyEvent.KEYCODE_BUTTON_L1, android.view.KeyEvent.KEYCODE_BUTTON_R1 -> {
+                                val index = scopeOptions.indexOf(hardwareScope)
+                                val step = if (event.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_BUTTON_R1) 1 else -1
+                                scopeOptions.getOrNull(index + step)?.let { hardwareScope = it }
+                                true
+                            }
+                            android.view.KeyEvent.KEYCODE_BUTTON_Y -> {
+                                sort = if (sort == CommunityConfigSort.HIGHEST_RATED) CommunityConfigSort.NEWEST else CommunityConfigSort.HIGHEST_RATED
+                                true
+                            }
+                            else -> false
+                        }
+                    },
             ) {
                 CommunityConfigHeader(
                     gameName = resolvedGame?.name ?: gameName,
@@ -373,12 +412,11 @@ fun CommunityConfigsDialog(
                         },
                     )
                 }
-                CommunityConfigControls(
+                RiftConfigFilters(
                     sort = sort,
                     hardwareScope = hardwareScope,
-                    deviceAvailable = detectedDevices.isNotEmpty(),
-                    gpuAvailable = detectedGpu.isNotBlank(),
-                    enabled = !loading && !loadingMore,
+                    scopeOptions = scopeOptions,
+                    enabled = controlsEnabled,
                     onSortChange = { sort = it },
                     onHardwareScopeChange = { hardwareScope = it },
                 )
@@ -417,16 +455,33 @@ fun CommunityConfigsDialog(
                             onLoadMore = ::loadMore,
                             modifier = Modifier.align(Alignment.Center),
                         )
-                        else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        else -> BoxWithConstraints(Modifier.fillMaxSize()) {
+                        val wide = maxWidth >= 840.dp
+                        val shownRun = highlightedRun?.takeIf { it in runs } ?: runs.first()
+                        Row(Modifier.fillMaxSize()) {
+                        LazyColumn(
+                            modifier = Modifier.weight(if (wide) 0.46f else 1f).fillMaxHeight(),
+                            contentPadding = if (wide) PaddingValues(start = 24.dp, end = 12.dp, top = 12.dp, bottom = 48.dp) else PaddingValues(bottom = 48.dp),
+                            verticalArrangement = Arrangement.spacedBy(if (wide) 8.dp else 0.dp),
+                        ) {
                             items(
                                 items = runs,
                                 key = { it.communityIdentityKey() },
                             ) { run ->
-                                CommunityConfigListItem(
-                                    run = run,
-                                    onClick = { selectedRun = run },
-                                )
-                                HorizontalDivider()
+                                if (wide) {
+                                    RiftConfigRow(
+                                        run = run,
+                                        selected = run == shownRun,
+                                        onFocused = { highlightedRun = run },
+                                        onClick = { selectedRun = run },
+                                    )
+                                } else {
+                                    CommunityConfigListItem(
+                                        run = run,
+                                        onClick = { selectedRun = run },
+                                    )
+                                    HorizontalDivider()
+                                }
                             }
                             if (errorMessage != null) {
                                 item(key = "pagination-error") {
@@ -459,6 +514,16 @@ fun CommunityConfigsDialog(
                                     }
                                 }
                             }
+                        }
+                        if (wide) {
+                            RiftConfigDetailPane(
+                                run = shownRun,
+                                canApply = canApply,
+                                onApply = { selectedRun = shownRun },
+                                modifier = Modifier.weight(0.54f).fillMaxHeight(),
+                            )
+                        }
+                        }
                         }
                     }
                 }
@@ -517,46 +582,6 @@ private fun CommunityConfigHeader(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CommunityConfigControls(
-    sort: CommunityConfigSort,
-    hardwareScope: CommunityHardwareScope,
-    deviceAvailable: Boolean,
-    gpuAvailable: Boolean,
-    enabled: Boolean,
-    onSortChange: (CommunityConfigSort) -> Unit,
-    onHardwareScopeChange: (CommunityHardwareScope) -> Unit,
-) {
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        val compact = maxWidth < 600.dp
-        val content: @Composable (Modifier) -> Unit = { modifier ->
-            CommunitySortControl(sort, enabled, onSortChange, modifier)
-            CommunityHardwareControl(
-                hardwareScope,
-                deviceAvailable,
-                gpuAvailable,
-                enabled,
-                onHardwareScopeChange,
-                modifier,
-            )
-        }
-        if (compact) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                content(Modifier.fillMaxWidth())
-            }
-        } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                content(Modifier.weight(1f))
-            }
-        }
-    }
-}
-
 /** Rift: which community database the list comes from. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -579,80 +604,6 @@ private fun CommunitySourceControl(
                 label = {
                     Text(
                         stringResource(if (rift) R.string.rift_community_source_rift else R.string.rift_community_source_gamenative),
-                        maxLines = 1,
-                    )
-                },
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CommunitySortControl(
-    selected: CommunityConfigSort,
-    enabled: Boolean,
-    onSelected: (CommunityConfigSort) -> Unit,
-    modifier: Modifier,
-) {
-    val options = CommunityConfigSort.entries
-    SingleChoiceSegmentedButtonRow(modifier = modifier) {
-        options.forEachIndexed { index, option ->
-            SegmentedButton(
-                selected = selected == option,
-                onClick = { onSelected(option) },
-                enabled = enabled,
-                shape = SegmentedButtonDefaults.itemShape(index, options.size),
-                label = {
-                    Text(
-                        if (option == CommunityConfigSort.HIGHEST_RATED) {
-                            stringResource(R.string.community_config_highest_rated)
-                        } else {
-                            stringResource(R.string.community_config_newest)
-                        },
-                        maxLines = 1,
-                    )
-                },
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CommunityHardwareControl(
-    selected: CommunityHardwareScope,
-    deviceAvailable: Boolean,
-    gpuAvailable: Boolean,
-    enabled: Boolean,
-    onSelected: (CommunityHardwareScope) -> Unit,
-    modifier: Modifier,
-) {
-    val options = CommunityHardwareScope.entries
-    SingleChoiceSegmentedButtonRow(modifier = modifier) {
-        options.forEachIndexed { index, option ->
-            SegmentedButton(
-                selected = selected == option,
-                onClick = { onSelected(option) },
-                enabled = enabled && when (option) {
-                    CommunityHardwareScope.CURRENT_DEVICE -> deviceAvailable
-                    CommunityHardwareScope.CURRENT_GPU -> gpuAvailable
-                    CommunityHardwareScope.COMPATIBLE_GPUS -> gpuAvailable
-                },
-                shape = SegmentedButtonDefaults.itemShape(index, options.size),
-                label = {
-                    Text(
-                        when (option) {
-                            CommunityHardwareScope.CURRENT_DEVICE -> {
-                                stringResource(R.string.community_config_same_device)
-                            }
-                            CommunityHardwareScope.CURRENT_GPU -> {
-                                stringResource(R.string.community_config_this_gpu)
-                            }
-                            CommunityHardwareScope.COMPATIBLE_GPUS -> {
-                                stringResource(R.string.community_config_compatible_gpus)
-                            }
-                        },
                         maxLines = 1,
                     )
                 },
@@ -1129,4 +1080,247 @@ private fun formatCommunityConfigDate(value: String): String {
             .atZoneSameInstant(ZoneId.systemDefault())
             .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
     }.getOrDefault(value.substringBefore('T'))
+}
+
+/** Rift: hardware filter pills between LB/RB glyphs, sort pills with a Y glyph. */
+@Composable
+private fun RiftConfigFilters(
+    sort: CommunityConfigSort,
+    hardwareScope: CommunityHardwareScope,
+    scopeOptions: List<CommunityHardwareScope>,
+    enabled: Boolean,
+    onSortChange: (CommunityConfigSort) -> Unit,
+    onHardwareScopeChange: (CommunityHardwareScope) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        RiftButtonGlyph("LB")
+        CommunityHardwareScope.entries.forEach { option ->
+            RiftFilterPill(
+                text = stringResource(
+                    when (option) {
+                        CommunityHardwareScope.CURRENT_DEVICE -> R.string.community_config_same_device
+                        CommunityHardwareScope.CURRENT_GPU -> R.string.community_config_this_gpu
+                        CommunityHardwareScope.COMPATIBLE_GPUS -> R.string.community_config_compatible_gpus
+                    },
+                ),
+                selected = hardwareScope == option,
+                enabled = enabled && option in scopeOptions,
+                onClick = { onHardwareScopeChange(option) },
+            )
+        }
+        RiftButtonGlyph("RB")
+        Spacer(Modifier.width(24.dp))
+        RiftButtonGlyph("Y")
+        CommunityConfigSort.entries.forEach { option ->
+            RiftFilterPill(
+                text = stringResource(
+                    if (option == CommunityConfigSort.HIGHEST_RATED) R.string.community_config_highest_rated else R.string.community_config_newest,
+                ),
+                selected = sort == option,
+                enabled = enabled,
+                onClick = { onSortChange(option) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun RiftButtonGlyph(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
+        color = RiftColors.OnSurface,
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color.White.copy(alpha = 0.14f))
+            .padding(horizontal = 7.dp, vertical = 3.dp),
+    )
+}
+
+@Composable
+private fun RiftFilterPill(text: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+    val shape = RoundedCornerShape(50)
+    Box(
+        modifier = Modifier
+            .height(44.dp)
+            .clip(shape)
+            .background(
+                when {
+                    selected -> RiftColors.Primary
+                    focused -> Color.White.copy(alpha = 0.2f)
+                    else -> Color.White.copy(alpha = 0.07f)
+                },
+            )
+            .focusRing(interactionSource, shape, width = 2.dp)
+            .selectable(selected = selected, enabled = enabled, interactionSource = interactionSource, indication = null, onClick = onClick)
+            .padding(horizontal = 18.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold),
+            color = when {
+                selected -> RiftColors.OnPrimary
+                enabled -> RiftColors.OnSurface
+                else -> RiftColors.Outline
+            },
+            maxLines = 1,
+        )
+    }
+}
+
+/** Rift: one profile in the list, every row the same height; focusing it shows it in the detail pane. */
+@Composable
+private fun RiftConfigRow(
+    run: CommunityConfigRun,
+    selected: Boolean,
+    onFocused: () -> Unit,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+    LaunchedEffect(focused) { if (focused) onFocused() }
+    val shape = RoundedCornerShape(18.dp)
+    val secondary = buildList {
+        run.averageFps?.let { add(stringResource(R.string.community_config_fps_value, String.format(Locale.getDefault(), "%.1f", it))) }
+        run.configString("wineVersion").takeIf { it.isNotBlank() }?.let(::add)
+        formatCommunityConfigDate(run.createdAt).takeIf { it.isNotBlank() }?.let(::add)
+    }.joinToString(" · ")
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(76.dp)
+            .clip(shape)
+            .background(if (selected || focused) RiftColors.SurfaceContainer else RiftColors.Surface)
+            .focusRing(interactionSource, shape, width = 2.dp)
+            .selectable(selected = selected, interactionSource = interactionSource, indication = null, onClick = onClick)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(50))
+                .background(if (selected) RiftColors.Primary else Color.White.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = run.rating.toString(),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                color = if (selected) RiftColors.OnPrimary else RiftColors.OnSurface,
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = listOf(run.device.model, run.device.gpu).filter { it.isNotBlank() }.joinToString(" · ")
+                    .ifBlank { stringResource(R.string.community_config_unknown) },
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = RiftColors.OnSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (secondary.isNotBlank()) {
+                Text(
+                    text = secondary,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = RiftColors.OnSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = RiftColors.OnSurfaceVariant)
+    }
+}
+
+/** Rift: the right half of the profiles screen, the focused profile in full with Apply. */
+@Composable
+private fun RiftConfigDetailPane(
+    run: CommunityConfigRun,
+    canApply: Boolean,
+    onApply: () -> Unit,
+    modifier: Modifier,
+) {
+    Column(
+        modifier = modifier
+            .padding(start = 12.dp, end = 24.dp, top = 12.dp, bottom = 24.dp)
+            .clip(RoundedCornerShape(26.dp))
+            .background(RiftColors.Surface)
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                text = run.rating.toString(),
+                style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                color = RiftColors.Primary,
+            )
+            Text(
+                text = listOfNotNull(
+                    stringResource(R.string.rift_compat_of_five),
+                    run.averageFps?.let { stringResource(R.string.community_config_fps_value, String.format(Locale.getDefault(), "%.1f", it)) },
+                    run.sessionLengthSeconds?.let { DateUtils.formatElapsedTime(it) },
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.bodyMedium,
+                color = RiftColors.OnSurfaceVariant,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
+        }
+        Column(
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            CommunityConfigDetailRow(
+                stringResource(R.string.community_config_device),
+                run.device.model.ifBlank { stringResource(R.string.community_config_unknown) },
+            )
+            CommunityConfigDetailRow(
+                stringResource(R.string.community_config_gpu),
+                run.device.gpu.ifBlank { stringResource(R.string.community_config_gpu_unknown) },
+            )
+            run.device.androidVersion.takeIf { it.isNotBlank() }?.let {
+                CommunityConfigDetailRow(stringResource(R.string.community_config_android), it)
+            }
+            formatCommunityConfigDate(run.createdAt).takeIf { it.isNotBlank() }?.let {
+                CommunityConfigDetailRow(stringResource(R.string.community_config_submitted), it)
+            }
+            HorizontalDivider(color = RiftColors.OutlineVariant)
+            communityConfigSummary(run).forEach { (label, value) -> CommunityConfigDetailRow(label, value) }
+            if (run.tags.isNotEmpty()) {
+                HorizontalDivider(color = RiftColors.OutlineVariant)
+                Text(run.tags.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = RiftColors.OnSurfaceVariant)
+            }
+            if (run.notes.isNotBlank()) {
+                Text(run.notes, style = MaterialTheme.typography.bodyMedium, color = RiftColors.OnSurface)
+            }
+        }
+        val interactionSource = remember { MutableInteractionSource() }
+        val shape = RoundedCornerShape(50)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(RiftSizes.button)
+                .clip(shape)
+                .background(if (canApply) RiftColors.Primary else Color.White.copy(alpha = 0.1f))
+                .focusRing(interactionSource, shape, width = 2.dp)
+                .selectable(selected = false, interactionSource = interactionSource, indication = null, onClick = onApply),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = stringResource(R.string.rift_compat_apply),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
+                color = if (canApply) RiftColors.OnPrimary else RiftColors.OnSurface,
+            )
+        }
+    }
 }
