@@ -278,4 +278,6 @@
     <string name="rift_settings_tab_reset_name">Restore the name</string>
     <string name="rift_settings_tab_save">Save</string>
     <string name="rift_settings_tab_rename_hint">Up to 24 characters. An empty name brings the original back.</string>
+    <string name="rift_library_all">All games</string>
+    <string name="rift_library_open">Open library</string>
 </resources>

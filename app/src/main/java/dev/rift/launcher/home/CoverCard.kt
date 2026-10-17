@@ -90,6 +90,7 @@ fun CoverCard(
     onClick: () -> Unit,
     cover: @Composable BoxScope.() -> Unit,
     badge: @Composable BoxScope.() -> Unit = {},
+    reflection: Boolean = true,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
@@ -160,14 +161,16 @@ fun CoverCard(
             cover()
             badge()
         }
-        Spacer(modifier = Modifier.height(10.dp))
-        CoverReflection(
-            picture = picture,
-            coverHeight = height,
-            height = height * REFLECTION_SHARE,
-            focused = focused,
-            scale = scale,
-        )
+        if (reflection) {
+            Spacer(modifier = Modifier.height(10.dp))
+            CoverReflection(
+                picture = picture,
+                coverHeight = height,
+                height = height * REFLECTION_SHARE,
+                focused = focused,
+                scale = scale,
+            )
+        }
     }
 }
 

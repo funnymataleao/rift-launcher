@@ -111,6 +111,10 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
                 }
             }
         }
+        // The PCs answered but none of their apps is a Steam game: the home tab stays hidden until there is one.
+        if (streamTab.apps.isNotEmpty() && streamTab.games.isEmpty()) {
+            NoteText(stringResource(R.string.rift_stream_no_games))
+        }
     }
     BigActionCard(
         title = stringResource(R.string.rift_settings_stream_add_pc),

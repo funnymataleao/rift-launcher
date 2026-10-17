@@ -44,12 +44,12 @@ object RiftSections {
         context: Context,
         pcLibrary: List<LibraryItem>,
         androidGames: List<AndroidGame>,
-        pairedPcs: List<String> = emptyList(),
+        hasStreamGames: Boolean = false,
     ): List<RiftSection> = buildList {
         if (PlatformAuthUtils.isSignedInToAnyPlatform(context) || pcLibrary.isNotEmpty()) {
             add(RiftSection.PcGames)
         }
         if (androidGames.isNotEmpty()) add(RiftSection.AndroidGames)
-        if (pairedPcs.isNotEmpty()) add(RiftSection.PcStreaming)
+        if (hasStreamGames) add(RiftSection.PcStreaming)
     }.let { RiftTabPrefs.arrange(context, it) }
 }
