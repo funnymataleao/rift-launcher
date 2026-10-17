@@ -551,4 +551,6 @@
     <string name="rift_meta_query_title">Поиск игры</string>
     <string name="rift_meta_query_hint">Введите название игры так, как оно опубликовано, например «Batman Forever».</string>
     <string name="rift_meta_src_wikipedia">Википедия</string>
+    <string name="epic_install_size_calculating">Вычисляется…</string>
+    <string name="epic_install_size_unknown">Неизвестно</string>
 </resources>

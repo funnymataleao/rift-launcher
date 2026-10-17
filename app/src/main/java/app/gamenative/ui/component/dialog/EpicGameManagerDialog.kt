@@ -28,6 +28,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,6 +60,7 @@ import com.winlator.core.StringUtils
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,37 +79,48 @@ fun EpicGameManagerDialog(
     val displayInfo = onGetDisplayInfo(context)
     val gameId = displayInfo.gameId
 
+    // Manifest sizes come from the network and can take long or fail; the list and the
+    // Install button must not wait for them (Rift: install stayed disabled with 0 bytes).
+    var sizesLoading by remember { mutableStateOf(false) }
+
     LaunchedEffect(visible) {
         scrollState.animateScrollTo(0)
 
         allDownloadableGames.clear()
         selectedGameIds.clear()
 
-        // Get base game
+        // Base game is always selected and can't be deselected
         val baseGame = EpicService.getEpicGameOf(gameId)
-        if (baseGame != null) {
-            // Fetch manifest to get accurate sizes
-            val sizes = EpicService.fetchManifestSizes(context, baseGame.id ?: 0)
-            val updatedGame = baseGame.copy(
-                downloadSize = sizes.downloadSize,
-                installSize = sizes.installSize
-            )
-            allDownloadableGames.add(updatedGame)
-            // Base game is always selected and can't be deselected
-            selectedGameIds[updatedGame.id ?: 0] = true
+        if (baseGame == null) {
+            Timber.tag("Epic").w("Game manager: no Epic game for gameId=$gameId")
+        } else {
+            allDownloadableGames.add(baseGame)
+            selectedGameIds[baseGame.id ?: 0] = true
         }
 
-        // Get DLCs and fetch their manifest sizes
         val dlcs = EpicService.getDLCForGame(gameId)
         dlcs.forEach { dlc ->
-            // Fetch manifest to get accurate sizes for each DLC
-            val sizes = EpicService.fetchManifestSizes(context, dlc.id ?: 0)
-            val updatedDlc = dlc.copy(
-                downloadSize = sizes.downloadSize,
-                installSize = sizes.installSize
-            )
-            allDownloadableGames.add(updatedDlc)
-            selectedGameIds[updatedDlc.id ?: 0] = true
+            allDownloadableGames.add(dlc)
+            selectedGameIds[dlc.id ?: 0] = true
+        }
+
+        // Fetch manifests for accurate sizes, updating each entry as it arrives
+        sizesLoading = true
+        try {
+            allDownloadableGames.toList().forEach { game ->
+                val id = game.id ?: return@forEach
+                val sizes = EpicService.fetchManifestSizes(context, id)
+                if (sizes.downloadSize <= 0L && sizes.installSize <= 0L) return@forEach
+                val index = allDownloadableGames.indexOfFirst { it.id == id }
+                if (index >= 0) {
+                    allDownloadableGames[index] = game.copy(
+                        downloadSize = sizes.downloadSize,
+                        installSize = sizes.installSize,
+                    )
+                }
+            }
+        } finally {
+            sizesLoading = false
         }
     }
 
@@ -134,15 +148,18 @@ fun EpicGameManagerDialog(
         )
     }
 
-    val installSizeInfo by remember(selectedGameIds.toMap()) {
+    val installSizeInfo by remember(selectedGameIds.toMap(), allDownloadableGames.toList()) {
         derivedStateOf { getInstallSizeInfo() }
     }
 
     fun installSizeDisplay(): String {
+        val unknown = context.getString(
+            if (sizesLoading) R.string.epic_install_size_calculating else R.string.epic_install_size_unknown,
+        )
         return context.getString(
             R.string.steam_install_space,
-            installSizeInfo.downloadSize,
-            installSizeInfo.installSize,
+            if (installSizeInfo.installBytes > 0L) installSizeInfo.downloadSize else unknown,
+            if (installSizeInfo.installBytes > 0L) installSizeInfo.installSize else unknown,
             installSizeInfo.availableSpace
         )
     }
@@ -284,10 +301,17 @@ fun EpicGameManagerDialog(
                                                 text = game.title
                                             )
                                             // Add size display
-                                            val downloadSize = StringUtils.formatBytes(game.downloadSize)
-                                            val installSize = StringUtils.formatBytes(game.installSize)
+                                            val sizeText = if (game.installSize > 0L) {
+                                                val downloadSize = StringUtils.formatBytes(game.downloadSize)
+                                                val installSize = StringUtils.formatBytes(game.installSize)
+                                                "$downloadSize download • $installSize install"
+                                            } else {
+                                                stringResource(
+                                                    if (sizesLoading) R.string.epic_install_size_calculating else R.string.epic_install_size_unknown,
+                                                )
+                                            }
                                             Text(
-                                                text = "$downloadSize download • $installSize install",
+                                                text = sizeText,
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                             )

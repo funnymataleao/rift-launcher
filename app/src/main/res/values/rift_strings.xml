@@ -556,4 +556,6 @@
     <string name="rift_meta_query_title">Search for the game</string>
     <string name="rift_meta_query_hint">Type the game\'s name as it is published, for example “Batman Forever”.</string>
     <string name="rift_meta_src_wikipedia">Wikipedia</string>
+    <string name="epic_install_size_calculating">Calculating…</string>
+    <string name="epic_install_size_unknown">Unknown</string>
 </resources>
