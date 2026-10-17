@@ -59,6 +59,8 @@ internal fun VideoHero(
     onEnded: () -> Unit = {},
     // Rift: fill the whole area and crop the edges (the game page's first screen), no black bars.
     fill: Boolean = false,
+    // Rift: something else is on screen over the page; the video holds where it is and goes on afterwards.
+    paused: Boolean = false,
 ) {
     val youTubeId = remember(videoUrl) { videoUrl?.let(::extractYouTubeId) }
     var manuallyStarted by remember(videoUrl) { mutableStateOf(false) }
@@ -77,6 +79,7 @@ internal fun VideoHero(
             muted = muted,
             autoplay = autoplay,
             fill = fill,
+            paused = paused,
         )
         active && videoUrl != null && (autoplay || manuallyStarted) -> ExoVideoHero(
             videoUrl = videoUrl,
@@ -87,6 +90,7 @@ internal fun VideoHero(
             loop = loop,
             onEnded = onEnded,
             fill = fill,
+            paused = paused,
         )
         active && videoUrl != null -> VideoPlaceholder(
             contentDescription = contentDescription,
@@ -116,8 +120,10 @@ private fun ExoVideoHero(
     loop: Boolean = true,
     onEnded: () -> Unit = {},
     fill: Boolean = false,
+    paused: Boolean = false,
 ) {
     val context = LocalContext.current
+    val currentPaused by androidx.compose.runtime.rememberUpdatedState(paused)
     val currentOnEnded by androidx.compose.runtime.rememberUpdatedState(onEnded)
     val lifecycleOwner = LocalLifecycleOwner.current
     var showFallback by remember(videoUrl) { mutableStateOf(true) }
@@ -151,6 +157,10 @@ private fun ExoVideoHero(
         }
     }
 
+    LaunchedEffect(exoPlayer, paused) {
+        if (paused) exoPlayer.pause() else exoPlayer.play()
+    }
+
     DisposableEffect(exoPlayer, lifecycleOwner) {
         var resumeAfterLifecyclePause = false
         val listener = object : Player.Listener {
@@ -175,7 +185,7 @@ private fun ExoVideoHero(
                     resumeAfterLifecyclePause = exoPlayer.playWhenReady
                     exoPlayer.pause()
                 }
-                Lifecycle.Event.ON_RESUME -> if (resumeAfterLifecyclePause) exoPlayer.play()
+                Lifecycle.Event.ON_RESUME -> if (resumeAfterLifecyclePause && !currentPaused) exoPlayer.play()
                 else -> {}
             }
         }
@@ -255,6 +265,7 @@ private fun YouTubeHero(
     muted: Boolean,
     autoplay: Boolean,
     fill: Boolean = false,
+    paused: Boolean = false,
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
@@ -326,11 +337,15 @@ private fun YouTubeHero(
                 }
             }
 
+            val currentPaused by androidx.compose.runtime.rememberUpdatedState(paused)
+            LaunchedEffect(webView, paused) {
+                if (paused) webView.onPause() else webView.onResume()
+            }
             DisposableEffect(webView, lifecycleOwner) {
                 val observer = LifecycleEventObserver { _, event ->
                     when (event) {
                         Lifecycle.Event.ON_PAUSE -> webView.onPause()
-                        Lifecycle.Event.ON_RESUME -> webView.onResume()
+                        Lifecycle.Event.ON_RESUME -> if (!currentPaused) webView.onResume()
                         else -> {}
                     }
                 }

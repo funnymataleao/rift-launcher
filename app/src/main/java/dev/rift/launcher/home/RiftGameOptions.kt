@@ -26,6 +26,14 @@ class RiftOptionsOnly {
 val LocalRiftOptionsOnly = staticCompositionLocalOf<RiftOptionsOnly?> { null }
 
 /**
+ * The home's own screens drawn over an open game page (Change Art, game info): while one is up,
+ * the page's trailer pauses and is silent, and it goes on when the screen closes.
+ */
+object RiftPageCover {
+    var covered by mutableStateOf(false)
+}
+
+/**
  * A game page opened from the PC streaming tab: its main button streams the game from the PC
  * instead of installing or playing it here, and the page's local-game actions are hidden.
  * The cloud tab uses it too, with its own [labelRes] and [icon]; a cloud game has no copy on the

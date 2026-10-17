@@ -10,6 +10,7 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.foundation.ScrollState
 import android.content.Intent
 import android.content.res.Configuration
@@ -710,6 +711,7 @@ private fun StoreMediaPage(
     muted: Boolean = !fullscreen,
     loop: Boolean = true,
     onEnded: () -> Unit = {},
+    paused: Boolean = false,
 ) {
     if (item.isVideo) {
         VideoHero(
@@ -723,6 +725,7 @@ private fun StoreMediaPage(
             loop = loop,
             onEnded = onEnded,
             fill = !fullscreen,
+            paused = paused,
             modifier = modifier.background(Color.Black),
         )
     } else {
@@ -2085,8 +2088,13 @@ internal fun AppScreenContent(
             }
             // Rift: while the trailer plays with sound, the launcher music fades out; it comes back when
             // the trailer is muted, scrolled away or ended, and when the page closes.
+            // Rift: anything opened over the page (install, Change Art, container settings, the Start menu,
+            // properties, any dialog or a game launching) pauses the trailer and its sound; it goes on on return.
+            val windowFocused = LocalWindowInfo.current.isWindowFocused
+            val pageObscured = !windowFocused || optionsMenuVisible || propertiesOpen || dialogOpen ||
+                dev.rift.launcher.home.RiftPageCover.covered
             val trailerAudible = fullscreenHeroPage != null ||
-                (heroBackground?.isVideo == true && trailerSound && trailerAllowed && heroPlaybackVisible)
+                (heroBackground?.isVideo == true && trailerSound && trailerAllowed && heroPlaybackVisible && !pageObscured)
             val musicHold = remember { Any() }
             LaunchedEffect(trailerAudible) {
                 if (trailerAudible) dev.rift.launcher.sound.RiftMusic.hold(musicHold) else dev.rift.launcher.sound.RiftMusic.release(musicHold)
@@ -2128,6 +2136,7 @@ internal fun AppScreenContent(
                             gameName = displayInfo.name,
                             videoFallback = videoFallback,
                             active = fullscreenHeroPage == null && heroPlaybackVisible,
+                            paused = pageObscured,
                             fullscreen = false,
                             autoplay = trailerAllowed,
                             muted = !trailerSound,
