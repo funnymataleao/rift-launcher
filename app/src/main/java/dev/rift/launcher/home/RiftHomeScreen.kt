@@ -44,6 +44,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -1484,6 +1485,7 @@ private fun PcLibraryGrid(
 }
 
 private val LibraryCoverWidth = 150.dp
+private val StoreBadgeSize = 26.dp
 
 /**
  * A cover's picture. No title on the cover (Denis: the art already has it); the name shows only
@@ -1538,25 +1540,18 @@ internal fun BoxScope.CoverBadges(item: LibraryItem, libraryState: LibraryState)
         )
         status != null -> CompatibilityBadge(status = status, showLabel = true, modifier = badgeModifier)
     }
-    Row(
+    // Only the store's icon, on a round dark disc (Denis): whether a game is installed shows
+    // through the filters and the not-installed choice, not a dot here.
+    Box(
         modifier = Modifier
             .align(Alignment.TopEnd)
             .padding(6.dp)
-            .clip(RiftShapes.full)
-            .background(Color.Black.copy(alpha = 0.55f))
-            .padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .size(StoreBadgeSize)
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = 0.55f)),
+        contentAlignment = Alignment.Center,
     ) {
-        if (item.isInstalled) {
-            Box(
-                modifier = Modifier
-                    .padding(start = 4.dp)
-                    .size(6.dp)
-                    .clip(RiftShapes.full)
-                    .background(RiftColors.Success),
-            )
-        }
-        // Store icons take the content colour; white so they read on the dark pill.
+        // Store icons take the content colour; white so they read on the dark disc.
         CompositionLocalProvider(LocalContentColor provides Color.White) {
             GameSourceIcon(gameSource = item.gameSource, iconSize = 12, alignmentBoxSize = 20)
         }
