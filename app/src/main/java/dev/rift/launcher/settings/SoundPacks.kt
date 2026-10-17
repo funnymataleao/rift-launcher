@@ -64,7 +64,13 @@ internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit, hold: () -> 
     val previewing = PackPreview.playing
     val first = remember { androidx.compose.ui.focus.FocusRequester() }
     var refocus by remember { mutableStateOf(0) }
-    LaunchedEffect(refocus) { runCatching { first.requestFocus() } }
+    var focusId by remember { mutableStateOf<String?>(null) }
+    val rowFocus = remember { mutableMapOf<String, androidx.compose.ui.focus.FocusRequester>() }
+    LaunchedEffect(refocus) {
+        kotlinx.coroutines.yield()
+        runCatching { (focusId?.let { rowFocus[it] } ?: first).requestFocus() }
+        focusId = null
+    }
 
     DisposableEffect(Unit) { onDispose { PackPreview.stop(context) } }
 
@@ -132,6 +138,7 @@ internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit, hold: () -> 
         )
         installed.forEach { pack ->
             PackRow(
+                modifier = Modifier.focusRequester(rowFocus.getOrPut(pack.id) { androidx.compose.ui.focus.FocusRequester() }),
                 title = pack.name,
                 subtitle = pack.author.takeIf { it.isNotBlank() },
                 icon = if (music) Icons.Rounded.MusicNote else Icons.Rounded.Check,
@@ -154,8 +161,9 @@ internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit, hold: () -> 
                     .filter { it.isNotBlank() }.joinToString(" · "),
                 icon = Icons.Rounded.CloudDownload,
                 value = stringResource(if (busyId == pack.id) R.string.rift_settings_packs_downloading else R.string.rift_settings_packs_download),
-                enabled = busyId == null,
                 onClick = {
+                    if (busyId != null) return@PackRow
+                    timber.log.Timber.tag("RiftPreview").i("Download %s started", pack.id)
                     busyId = pack.id
                     scope.launch {
                         try {
@@ -163,9 +171,12 @@ internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit, hold: () -> 
                             hold()
                             installed = InstalledPacks.list(context).filter { it.music == music }
                             select(pack.id)
+                            focusId = pack.id
                             refocus += 1
                             failed = false
+                            timber.log.Timber.tag("RiftPreview").i("Download %s done", pack.id)
                         } catch (e: PackError) {
+                            timber.log.Timber.tag("RiftPreview").w(e, "Download %s failed", pack.id)
                             failed = true
                         }
                         busyId = null
@@ -187,7 +198,6 @@ internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit, hold: () -> 
                         else -> R.string.rift_settings_packs_more
                     },
                 ),
-                enabled = !loading,
                 onClick = { if (failed) failed = false; loadMore() },
             )
         }
@@ -218,6 +228,7 @@ internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit, hold: () -> 
 /** A pack row with its play button on the right: D-pad right reaches the button, A on the row chooses or downloads. */
 @Composable
 private fun PackRow(
+    modifier: Modifier = Modifier,
     title: String,
     subtitle: String?,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -225,12 +236,11 @@ private fun PackRow(
     onClick: () -> Unit,
     playing: Boolean,
     onPreview: () -> Unit,
-    enabled: Boolean = true,
     busy: Boolean = false,
     onLongClick: (() -> Unit)? = null,
 ) {
     Row(
-        modifier = Modifier.keepInView(),
+        modifier = modifier.keepInView(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -240,7 +250,6 @@ private fun PackRow(
             subtitle = subtitle,
             icon = icon,
             value = value,
-            enabled = enabled,
             onClick = onClick,
             onLongClick = onLongClick,
         )
