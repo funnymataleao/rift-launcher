@@ -959,6 +959,21 @@ private fun GamePageSectionTabs(
     }
 }
 
+/**
+ * Rift: when focus enters this block with the d-pad, scroll the page so the whole block shows (the media row,
+ * the achievement cards, the compatibility cards), not just the focused tile's top edge (Denis 17.10).
+ * Moving within the block (left/right in the media row) does not re-trigger it.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun Modifier.keepWholeOnFocus(): Modifier {
+    val requester = remember { BringIntoViewRequester() }
+    val scope = rememberCoroutineScope()
+    return this
+        .bringIntoViewRequester(requester)
+        .onFocusChanged { if (it.hasFocus) scope.launch { requester.bringIntoView() } }
+}
+
 /** Rift: one section of the page: a small caps title, then its content. Records where it starts in the scroll. */
 @Composable
 private fun GamePageSectionBlock(
@@ -2551,24 +2566,29 @@ internal fun AppScreenContent(
                 }
                 if (GamePageSection.Media in pageSections) {
                     GamePageSectionBlock(GamePageSection.Media, sectionOffsets, scrollState) {
-                        GamePageMediaRow(
-                            media = heroMedia,
-                            sidePadding = sidePadding,
-                            videoFallback = videoFallback,
-                            gameName = displayInfo.name,
-                            onOpen = { fullscreenHeroPage = it },
-                        )
+                        Box(Modifier.keepWholeOnFocus()) {
+                            GamePageMediaRow(
+                                media = heroMedia,
+                                sidePadding = sidePadding,
+                                videoFallback = videoFallback,
+                                gameName = displayInfo.name,
+                                onOpen = { fullscreenHeroPage = it },
+                            )
+                        }
                     }
                 }
                 if (!achievements.isNullOrEmpty()) {
                     GamePageSectionBlock(GamePageSection.Achievements, sectionOffsets, scrollState) {
-                        GamePageAchievements(achievements = achievements, wide = configuration.screenWidthDp >= 840)
+                        Box(Modifier.keepWholeOnFocus()) {
+                            GamePageAchievements(achievements = achievements, wide = configuration.screenWidthDp >= 840)
+                        }
                     }
                 }
                 if (GamePageSection.Compatibility in pageSections) {
                     GamePageSectionBlock(GamePageSection.Compatibility, sectionOffsets, scrollState) {
                 // Rift: Wine compatibility is about GameNative's own (PC Games) games; streaming, cloud, Android and emulator pages have none.
                 if (riftStream == null) {
+                Box(Modifier.keepWholeOnFocus()) {
                 app.gamenative.ui.component.RiftCompatibilityCards(
                     summary = communityCompatibility.summary,
                     loading = communityCompatibility.loading,
@@ -2585,6 +2605,7 @@ internal fun AppScreenContent(
                     onApplyBest = communityCompatibility.onApplyBest,
                     wide = LocalConfiguration.current.screenWidthDp >= 840,
                 )
+                }
                 Spacer(modifier = Modifier.height(16.dp))
                 }
 
