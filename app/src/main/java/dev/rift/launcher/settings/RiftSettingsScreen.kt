@@ -352,6 +352,7 @@ private fun SectionPane(
                         RiftSettingsSection.Streaming -> StreamingSettings(onOpenPcPairing)
                         RiftSettingsSection.Downloads -> DownloadsSettings()
                         RiftSettingsSection.Accounts -> AccountsSettings()
+                        RiftSettingsSection.Device -> DeviceSettings()
                         RiftSettingsSection.About -> AboutSettings()
                         RiftSettingsSection.Debug -> DebugSettings()
                     }
