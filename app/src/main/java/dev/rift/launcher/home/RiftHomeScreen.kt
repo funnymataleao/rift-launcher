@@ -1039,7 +1039,7 @@ private fun PcLibraryGrid(
         modifier = Modifier.fillMaxSize(),
     ) {
         itemsIndexed(items, key = { _, item -> item.appId }) { index, item ->
-            val urls = listOf(item.capsuleImageUrl, item.headerImageUrl, item.heroImageUrl)
+            val urls = portraitCoverUrls(item)
             val url = urls.firstOrNull { it.isNotEmpty() }.orEmpty()
             BoxWithConstraints {
                 CoverCard(
@@ -1201,9 +1201,9 @@ private fun PcGamesShelf(
             val wide = index == 0
             // Preferred art first, the other kinds as fallbacks when one is missing or fails to load.
             val urls = if (wide) {
-                listOf(item.headerImageUrl, item.heroImageUrl, item.capsuleImageUrl)
+                wideCoverUrls(item)
             } else {
-                listOf(item.capsuleImageUrl, item.headerImageUrl, item.heroImageUrl)
+                portraitCoverUrls(item)
             }
             val url = urls.firstOrNull { it.isNotEmpty() }.orEmpty()
             val context = LocalContext.current
@@ -1988,7 +1988,8 @@ private suspend fun preloadFirstImages(context: android.content.Context, library
     val requests = buildList {
         first.firstOrNull()?.let { add(it.heroImageUrl.ifEmpty { it.headerImageUrl.ifEmpty { it.capsuleImageUrl } } to PRELOAD_BACKDROP_PX) }
         first.forEachIndexed { index, item ->
-            add((if (index == 0) item.headerImageUrl.ifEmpty { item.heroImageUrl.ifEmpty { item.capsuleImageUrl } } else item.capsuleImageUrl.ifEmpty { item.headerImageUrl }) to PRELOAD_COVER_PX)
+            val urls = if (index == 0) wideCoverUrls(item) else portraitCoverUrls(item)
+            add(urls.firstOrNull { it.isNotEmpty() }.orEmpty() to PRELOAD_COVER_PX)
         }
     }.filter { it.first.isNotEmpty() }.distinctBy { it.first }
     requests.map { (url, px) ->
