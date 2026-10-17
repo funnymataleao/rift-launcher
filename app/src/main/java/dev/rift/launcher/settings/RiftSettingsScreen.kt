@@ -231,7 +231,6 @@ private fun SectionRail(
             .padding(start = 32.dp, end = 12.dp)
             .width(railWidth)
             .verticalScroll(rememberScrollState())
-            .settingsFocusMargin()
             .focusGroup()
             .padding(top = 12.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -359,7 +358,6 @@ private fun SectionPane(
                         .widthIn(max = ContentMaxWidth)
                         .fillMaxHeight()
                         .verticalScroll(rememberScrollState())
-                        .settingsFocusMargin()
                         .padding(top = 16.dp, bottom = 56.dp, start = 4.dp, end = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(GroupGap),
                 ) {

@@ -159,6 +159,7 @@ private fun RiftMaterialTheme(glass: Boolean, content: @Composable () -> Unit) {
         colorScheme = colorScheme,
         motionScheme = MotionScheme.expressive(),
         shapes = RiftShapes.material,
-        content = content,
-    )
+    ) {
+        RiftFocusMargin(content)
+    }
 }

@@ -129,8 +129,7 @@ internal fun RiftChoiceDialog(
         Column(
             modifier = Modifier
                 .heightIn(max = 440.dp)
-                .verticalScroll(rememberScrollState())
-                .settingsFocusMargin(),
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             options.forEachIndexed { index, label ->
@@ -173,8 +172,7 @@ internal fun RiftMultiChoiceDialog(
         Column(
             modifier = Modifier
                 .heightIn(max = 400.dp)
-                .verticalScroll(rememberScrollState())
-                .settingsFocusMargin(),
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             options.forEachIndexed { index, label ->
