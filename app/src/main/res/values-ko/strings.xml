@@ -1002,7 +1002,6 @@
     <string name="settings_accounts_signed_out">로그인하지 않음</string>
     <string name="settings_accounts_ea_title">EA 계정</string>
     <string name="settings_accounts_rockstar_title">Rockstar 계정</string>
-    <string name="gamenative_account_title">Rift 계정</string>
     <string name="gamenative_account_sign_in">로그인</string>
     <string name="gamenative_account_sign_in_subtitle">로그인하면 요금제를 확인하고 구독을 관리할 수 있습니다.</string>
     <string name="gamenative_account_loading">계정 정보를 불러오는 중입니다.</string>
@@ -1020,7 +1019,6 @@
     <string name="gamenative_account_managed_kofi">요금제가 Ko-fi를 통해 제공됩니다. Ko-fi에서 관리하세요.</string>
     <string name="gamenative_account_manage_subscription_failed">결제 페이지를 열지 못했습니다. 나중에 다시 시도하세요.</string>
     <string name="gamenative_account_sign_out">로그아웃</string>
-    <string name="gamenative_account_sign_out_subtitle">이 기기에서 Rift 계정을 로그아웃합니다.</string>
     <string name="gamenative_account_discord">Discord</string>
     <string name="gamenative_account_discord_not_connected">연결되지 않음 › 연결</string>
     <string name="gamenative_account_discord_connected">연결됨 › 연결 해제</string>
@@ -1033,7 +1031,6 @@
     <string name="gamenative_account_discord_link_failed">지금은 Discord에 연결할 수 없습니다. 연결을 확인하고 다시 시도하세요.</string>
     <string name="gamenative_account_discord_link_connected_as">%1$s(으)로 연결됨</string>
     <string name="gamenative_account_discord_link_no_browser">Discord를 열 브라우저를 찾을 수 없습니다. 다른 기기로 코드를 스캔하세요.</string>
-    <string name="gamenative_sign_in_title">Rift에 로그인</string>
     <string name="gamenative_sign_in_scan">휴대폰으로 이 코드를 스캔하여 로그인하세요. 이 기기에서 로그인할 수도 있습니다.</string>
     <string name="gamenative_sign_in_code">코드: %1$s</string>
     <string name="gamenative_sign_in_this_device">이 기기에서 로그인</string>
@@ -1042,13 +1039,10 @@
     <string name="gamenative_sign_in_expired">이 로그인 코드가 만료되었습니다. 다시 시도를 선택하여 새 코드를 받으세요.</string>
     <string name="gamenative_sign_in_failed">지금은 로그인할 수 없습니다. 연결을 확인하고 다시 시도하세요.</string>
     <string name="gamenative_sign_in_try_again">다시 시도</string>
-    <string name="gamenative_sign_in_success">Rift에 로그인했습니다.</string>
     <string name="gamenative_sign_in_no_browser">로그인 페이지를 열 브라우저를 찾지 못했습니다. 대신 다른 기기로 코드를 스캔하세요.</string>
     <string name="support_title">AI 도움말</string>
-    <string name="support_subtitle">Rift AI 지원과의 대화</string>
     <string name="support_refresh">새로 고침</string>
     <string name="support_signed_out_title">게임 문제 도움 받기</string>
-    <string name="support_signed_out_body">Rift 계정에 로그인하면 지원 대화를 확인하고 게임 문제에 대해 AI와 대화할 수 있습니다.</string>
     <string name="support_signed_out_discord">Discord에서도 도움을 받을 수 있습니다</string>
     <string name="support_empty_title">아직 대화가 없습니다</string>
     <string name="support_empty_body">대화를 시작하려면 라이브러리의 게임에서 “AI 도움 받기”를 선택하세요. 문제가 발생할 때까지 플레이한 뒤 게임을 닫고 무엇이 잘못되었는지 설명하세요.</string>
@@ -1060,7 +1054,6 @@
     <string name="support_last_activity">마지막 활동 %1$s</string>
     <string name="support_problem_network">연결할 수 없습니다. 연결을 확인한 후 다시 시도하세요.</string>
     <string name="support_problem_unavailable">앱 내 지원 채팅은 아직 사용할 수 없습니다. 그때까지 AI 도움은 Discord에서 계속됩니다.</string>
-    <string name="support_problem_unauthorized">Rift 계정을 확인할 수 없습니다. 나중에 다시 시도하거나 설정에서 로그아웃한 뒤 다시 로그인하세요.</string>
     <string name="support_problem_rate_limited">짧은 시간에 많이 보냈습니다. 잠시 기다린 후 다시 시도하세요.</string>
     <string name="support_problem_not_found">이 대화를 찾을 수 없습니다.</string>
     <string name="support_problem_server">저희 쪽에서 문제가 발생했습니다. 몇 분 후에 다시 시도하세요.</string>
@@ -1071,9 +1064,6 @@
     <string name="support_problem_already_answered">이미 결과를 알려 주셨습니다.</string>
     <string name="support_label_you">나</string>
     <string name="support_label_report">내 보고서</string>
-    <string name="support_label_ai">Rift AI</string>
-    <string name="support_label_staff">%1$s · Rift 팀</string>
-    <string name="support_label_team">Rift 팀</string>
     <string name="support_analysing_first">AI가 로그를 분석하고 있습니다. 보통 몇 분 정도 걸립니다. 이 화면을 나가도 되며, 돌아오면 답변이 여기에 있습니다.</string>
     <string name="support_analysing_followup">답변을 기다리는 중입니다. 보통 몇 분 정도 걸립니다.</string>
     <string name="support_outcome_question">문제가 해결되었나요?</string>
@@ -1090,7 +1080,6 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro 보고서는 대기열을 건너뜁니다.</string>
     <string name="support_limit_title">오늘의 공정 사용 한도 도달</string>
-    <string name="support_upgrade_reason_required">AI 답변에는 Rift 구독이 필요합니다. 이미 Discord 또는 Ko-fi에서 구독 중이라면 설정에서 Discord를 연결하세요.</string>
     <string name="support_see_plans">플랜 보기</string>
     <string name="support_plan_basic_title">$5/월 · Basic</string>
     <string name="support_plan_basic_body">게임을 실행되게, 또는 더 잘 실행되게.</string>
@@ -1169,13 +1158,11 @@
     <string name="settings_info_send_tip_title">멤버 되기</string>
     <string name="settings_info_send_tip_subtitle">게임 실행 AI 지원, 릴리스 조기 이용 등</string>
     <string name="settings_info_ask_tip_title">멤버십 안내</string>
-    <string name="settings_info_ask_tip_subtitle">Rift 멤버가 될 수 있는 안내를 가끔 표시합니다</string>
     <string name="settings_info_source_title">소스 코드</string>
     <string name="settings_info_source_subtitle">이 프로젝트의 소스 코드 보기</string>
     <string name="settings_info_libraries_title">사용된 라이브러리</string>
     <string name="settings_info_libraries_subtitle">Rift Launcher를 가능하게 하는 기술 보기</string>
     <string name="settings_info_privacy_title">개인정보 보호정책</string>
-    <string name="settings_info_privacy_subtitle">Rift의 개인정보 보호정책 링크 열기</string>
     <string name="settings_info_usage_analytics_title">사용 분석</string>
     <string name="settings_info_usage_analytics_subtitle">개인 정보는 절대 추적하지 않습니다. 이 기능을 비활성화하면 비필수 분석이 중지되지만, 호환성 향상을 위한 정당한 이익으로서 핵심 게임 성능 데이터는 계속 수집됩니다.</string>
 
@@ -1283,7 +1270,6 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">최근 충돌</string>
     <string name="main_recent_crash_message">죄송합니다!\n최근 발생한 문제에 대해 알려주시면 감사하겠습니다.\n앱 설정에서 가장 최근의 충돌 로그를 보고 내보낼 수 있으며 프로젝트 저장소에 Github 이슈로 첨부할 수 있습니다.\nGithub 저장소 링크도 설정에 있습니다!</string>
-    <string name="main_thank_you_title">Rift를 즐기고 계신가요?</string>
     <string name="main_thank_you_message">지금 멤버가 되세요. 멤버 혜택:\n\n• 게임 실행을 위한 AI 지원\n• 새 릴리스 조기 이용\n• Discord 프리미엄 역할 및 전용 채널\n• …그 외 다수\n\n월 $5부터</string>
     <string name="main_join_kofi">멤버 되기</string>
     <string name="pitch_session_title">%1$s 재미있으신가요?</string>
@@ -1755,7 +1741,6 @@
     <string name="review_mostly_negative">대체로 부정적</string>
     <string name="review_overwhelmingly_negative">압도적으로 부정적</string>
     <string name="settings_interface_show_recommendations_title">게임 추천 표시</string>
-    <string name="settings_interface_show_recommendations_subtitle">맞춤 추천을 표시합니다. 켜 두면 Rift를 지원하는 데 도움이 됩니다.</string>
     <string name="settings_interface_library_tabs_title">라이브러리 탭</string>
     <string name="settings_interface_library_tabs_subtitle">라이브러리에 표시할 스토어 탭을 선택하세요.</string>
     <string name="settings_interface_library_tabs_none">스토어 탭 없음</string>
@@ -1994,7 +1979,6 @@
     <string name="nexus_oauth_invalid_callback">Rift Launcher가 잘못된 Nexus Mods 로그인 응답을 거부했습니다.</string>
     <string name="nexus_oauth_sign_in_required">Nexus 온라인 기능을 사용하기 전에 Nexus Mods 계정을 연결하세요.</string>
     <string name="nexus_oauth_session_unavailable">Nexus 인증을 일시적으로 사용할 수 없습니다. 다시 시도하세요.</string>
-    <string name="nexus_integration_temporarily_unavailable">Rift를 Nexus Mods에 등록하는 동안 Nexus Mods 지원이 일시적으로 비활성화되었습니다. 이미 설치된 모드는 계속 관리할 수 있습니다.</string>
     <string name="nexus_invalid_nxm_callback">이 Nexus 인증은 유효하지 않거나 만료되었거나 이미 사용되었거나, 더 이상 활성 Rift Launcher 요청과 일치하지 않습니다. Nexus 모드 관리에서 다운로드를 다시 시작하세요.</string>
     <string name="nexus_nxm_callback_received">Nexus 다운로드 인증을 받았습니다. 다운로드가 자동으로 재개되지 않으면 Nexus 모드 관리로 돌아가세요.</string>
     <string name="nexus_nxm_no_active_target">대상 게임의 Nexus 모드 관리를 연 다음 Nexus Mods에서 Mod Manager Download를 다시 탭하세요.</string>
@@ -2080,7 +2064,6 @@
     <string name="debug_prerun_title">AI 도움 받기</string>
     <string name="debug_prerun_message_1">디버그 로깅으로 게임을 실행하고, 종료 시 로그를 Discord의 AI에 공유합니다. 문제가 발생할 때까지 게임을 플레이하세요.</string>
     <string name="debug_prerun_message_2">AI 답변은 구독자 전용입니다.</string>
-    <string name="debug_prerun_message_1_app">디버그 로깅으로 게임을 실행합니다. 종료하면 로그가 AI에 전송되고, 답변은 Discord로 전달됩니다. Rift 계정으로 로그인하면 앱에서 받을 수 있습니다. 문제가 발생할 때까지 플레이하세요.</string>
     <string name="debug_prerun_message_2_app">첫 분석은 무료입니다. 추가 답변에는 플랜이 필요합니다.</string>
     <string name="debug_prerun_message_1_neutral">게임이 디버그 로깅으로 실행됩니다. 종료하면 로그가 AI에 전송됩니다. 문제가 발생할 때까지 플레이하세요.</string>
     <string name="debug_trial_note">무료 체험 이용 가능.</string>
@@ -2787,14 +2770,12 @@
     <string name="settings_hide_ai_title">AI 기능 숨기기</string>
     <string name="settings_hide_ai_subtitle">선택 사항인 AI 디버그 도움말을 숨깁니다</string>
     <string name="settings_info_boot_ads_title">스폰서 로딩 화면</string>
-    <string name="settings_info_boot_ads_subtitle">이 옵션을 켜 두면 Rift 개발을 지원하는 데 도움이 됩니다. 게임 실행이 느려지거나 사용자에게 어떤 영향도 주지 않습니다.</string>
     <string name="settings_info_boot_recs_title">로딩 화면에 게임 추천 표시</string>
     <string name="settings_info_boot_recs_subtitle">스폰서 카드가 없을 때 게임이 부팅되는 동안 마음에 들 만한 게임을 표시합니다.</string>
     <string name="boot_rec_badge">회원님을 위한 추천</string>
     <string name="boot_ad_close_cd">이 카드 닫기</string>
     <string name="boot_ad_sheet_title_sponsored">스폰서 카드 안내</string>
     <string name="boot_ad_sheet_title_rec">추천 안내</string>
-    <string name="boot_ad_sheet_body_sponsored">스폰서 카드는 Rift의 전업 개발을 지원합니다. 설정에서 언제든지 변경할 수 있습니다.</string>
     <string name="boot_ad_sheet_body_rec">추천은 플레이한 게임을 바탕으로 선택됩니다. 설정에서 언제든지 변경할 수 있습니다.</string>
     <string name="boot_ad_close_one">이것만 닫기</string>
     <string name="boot_ad_turn_off_sponsored">스폰서 카드 끄기</string>
@@ -2988,7 +2969,6 @@
     <string name="support_reply_ready">AI 도움말 답변이 준비되었습니다</string>
     <string name="support_reply_open">열기</string>
     <string name="support_wait_channel_name">AI 도움말 답변 상태</string>
-    <string name="support_wait_channel_description">Rift가 보고서에 대한 답변을 기다리는 동안 표시됩니다.</string>
     <string name="support_replies_channel_name">AI 도움말 답변</string>
     <string name="support_replies_channel_description">보고서에 대한 답변이 준비되면 알려 드립니다.</string>
     <string name="support_wait_title">AI 도움말 답변을 기다리는 중</string>

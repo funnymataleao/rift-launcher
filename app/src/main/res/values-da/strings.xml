@@ -817,7 +817,6 @@
     <string name="settings_accounts_signed_out">Ikke logget ind</string>
     <string name="settings_accounts_ea_title">EA-konto</string>
     <string name="settings_accounts_rockstar_title">Rockstar-konto</string>
-    <string name="gamenative_account_title">Rift-konto</string>
     <string name="gamenative_account_sign_in">Log ind</string>
     <string name="gamenative_account_sign_in_subtitle">Log ind for at se dit abonnement og administrere det.</string>
     <string name="gamenative_account_loading">Indlæser dine kontooplysninger.</string>
@@ -835,7 +834,6 @@
     <string name="gamenative_account_managed_kofi">Dit abonnement kommer fra Ko-fi. Administrer det på Ko-fi.</string>
     <string name="gamenative_account_manage_subscription_failed">Betalingssiden kunne ikke åbnes. Prøv igen senere.</string>
     <string name="gamenative_account_sign_out">Log ud</string>
-    <string name="gamenative_account_sign_out_subtitle">Log ud af din Rift-konto på denne enhed.</string>
     <string name="gamenative_account_discord">Discord</string>
     <string name="gamenative_account_discord_not_connected">Ikke forbundet › Forbind</string>
     <string name="gamenative_account_discord_connected">Forbundet › Afbryd</string>
@@ -848,7 +846,6 @@
     <string name="gamenative_account_discord_link_failed">Forbindelse til Discord er ikke tilgængelig lige nu. Tjek din forbindelse, og prøv igen.</string>
     <string name="gamenative_account_discord_link_connected_as">Forbundet som %1$s</string>
     <string name="gamenative_account_discord_link_no_browser">Der blev ikke fundet en browser til at åbne Discord. Scan koden med en anden enhed i stedet.</string>
-    <string name="gamenative_sign_in_title">Log ind på Rift</string>
     <string name="gamenative_sign_in_scan">Scan denne kode med din telefon for at logge ind. Du kan også logge ind på denne enhed.</string>
     <string name="gamenative_sign_in_code">Kode: %1$s</string>
     <string name="gamenative_sign_in_this_device">Log ind på denne enhed</string>
@@ -857,13 +854,10 @@
     <string name="gamenative_sign_in_expired">Denne login-kode er udløbet. Vælg Prøv igen for at få en ny kode.</string>
     <string name="gamenative_sign_in_failed">Login er ikke tilgængeligt lige nu. Tjek din forbindelse, og prøv igen.</string>
     <string name="gamenative_sign_in_try_again">Prøv igen</string>
-    <string name="gamenative_sign_in_success">Du er logget ind på Rift.</string>
     <string name="gamenative_sign_in_no_browser">Der blev ikke fundet en browser til at åbne login-siden. Scan koden med en anden enhed i stedet.</string>
     <string name="support_title">AI-hjælp</string>
-    <string name="support_subtitle">Dine samtaler med Rifts AI-support</string>
     <string name="support_refresh">Opdater</string>
     <string name="support_signed_out_title">Få hjælp med dine spil</string>
-    <string name="support_signed_out_body">Log ind på din Rift-konto for at se dine supportsamtaler og tale med vores AI om problemer med dine spil.</string>
     <string name="support_signed_out_discord">Du kan også få hjælp i vores Discord</string>
     <string name="support_empty_title">Ingen samtaler endnu</string>
     <string name="support_empty_body">Vælg “Få AI-hjælp” på et spil i dit bibliotek for at starte en. Spil, indtil problemet opstår, luk spillet, og beskriv derefter, hvad der gik galt.</string>
@@ -875,7 +869,6 @@
     <string name="support_last_activity">Seneste aktivitet %1$s</string>
     <string name="support_problem_network">Der kunne ikke oprettes forbindelse. Tjek din forbindelse, og prøv igen.</string>
     <string name="support_problem_unavailable">Supportchat i appen er ikke tilgængelig endnu. Indtil da foregår AI-hjælpen på vores Discord.</string>
-    <string name="support_problem_unauthorized">Din Rift-konto kunne ikke bekræftes. Prøv igen senere, eller log ud og ind igen under Indstillinger.</string>
     <string name="support_problem_rate_limited">Du har sendt meget på kort tid. Vent lidt, og prøv igen.</string>
     <string name="support_problem_not_found">Denne samtale blev ikke fundet.</string>
     <string name="support_problem_server">Der gik noget galt hos os. Prøv igen om nogle minutter.</string>
@@ -886,9 +879,6 @@
     <string name="support_problem_already_answered">Du har allerede fortalt os, hvordan det gik.</string>
     <string name="support_label_you">Dig</string>
     <string name="support_label_report">Din rapport</string>
-    <string name="support_label_ai">Rift AI</string>
-    <string name="support_label_staff">%1$s · Rift-teamet</string>
-    <string name="support_label_team">Rift-teamet</string>
     <string name="support_analysing_first">Vores AI analyserer dine logfiler. Det tager som regel et par minutter. Du kan forlade denne skærm, og svaret vil være her, når du kommer tilbage.</string>
     <string name="support_analysing_followup">Venter på svar. Det tager som regel et par minutter.</string>
     <string name="support_outcome_question">Løste dette problemet?</string>
@@ -906,7 +896,6 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro-rapporter springer køen over.</string>
     <string name="support_limit_title">Dagens fair-use-grænse er nået</string>
-    <string name="support_upgrade_reason_required">AI-svar kræver et Rift-abonnement. Hvis du allerede abonnerer via Discord eller Ko-fi, så forbind Discord i Indstillinger.</string>
     <string name="support_see_plans">Se planer</string>
     <string name="support_plan_basic_title">$5/måned · Basic</string>
     <string name="support_plan_basic_body">Få dine spil til at køre, eller til at køre bedre.</string>
@@ -985,13 +974,11 @@
     <string name="settings_info_send_tip_title">Bliv medlem</string>
     <string name="settings_info_send_tip_subtitle">AI-hjælp til dine spil, tidlig adgang til udgivelser og mere</string>
     <string name="settings_info_ask_tip_title">Medlemstilbud</string>
-    <string name="settings_info_ask_tip_subtitle">Vis lejlighedsvise tilbud om at blive Rift-medlem</string>
     <string name="settings_info_source_title">Kildekode</string>
     <string name="settings_info_source_subtitle">Se kildekoden til dette projekt</string>
     <string name="settings_info_libraries_title">Anvendte biblioteker</string>
     <string name="settings_info_libraries_subtitle">Se hvilke teknologier der gør Rift Launcher mulig</string>
     <string name="settings_info_privacy_title">Privatlivspolitik</string>
-    <string name="settings_info_privacy_subtitle">Åbner et link til Rifts privatlivspolitik</string>
     <string name="settings_info_usage_analytics_title">Brugsanalyse</string>
     <string name="settings_info_usage_analytics_subtitle">Vi sporer aldrig personlige oplysninger. Deaktivering stopper ikke-essentiel analyse, men grundlæggende spilydelsesdata indsamles stadig som en berettiget interesse for at forbedre kompatibilitet.</string>
 
@@ -1104,7 +1091,6 @@
     <!-- TODO: Manual review - PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Nylig crash</string>
     <string name="main_recent_crash_message">Beklager det!\nDet ville være dejligt at vide om det nylige problem, du har haft.\nDu kan se og eksportere den nyeste crash-log i appens indstillinger og vedhæfte den som et Github-problem i projektets repository.\nLink til Github-repo er også i indstillinger!</string>
-    <string name="main_thank_you_title">Nyder du Rift?</string>
     <string name="main_thank_you_message">Bliv medlem i dag. Medlemmer får:\n\n• AI-hjælp til at få dine spil til at køre\n• Tidlig adgang til nye udgivelser\n• Premium-roller og eksklusive kanaler på Discord\n• …og mere\n\nFra $5/måned</string>
     <string name="main_join_kofi">Bliv medlem</string>
     <string name="pitch_session_title">Nyder du %1$s?</string>
@@ -1653,7 +1639,6 @@
     <string name="review_mostly_negative">Overvejende negativ</string>
     <string name="review_overwhelmingly_negative">Overvældende negativ</string>
     <string name="settings_interface_show_recommendations_title">Vis spilanbefalinger</string>
-    <string name="settings_interface_show_recommendations_subtitle">Vis personlige anbefalinger. At holde dette slået til hjælper med at støtte Rift.</string>
     <string name="settings_interface_library_tabs_title">Bibliotekfaner</string>
     <string name="settings_interface_library_tabs_subtitle">Vælg, hvilke butiksfaner der vises i biblioteket.</string>
     <string name="settings_interface_library_tabs_none">Ingen butiksfaner</string>
@@ -1868,7 +1853,6 @@
     <string name="nexus_oauth_invalid_callback">Rift Launcher afviste et ugyldigt svar fra Nexus Mods-login.</string>
     <string name="nexus_oauth_sign_in_required">Opret forbindelse til en Nexus Mods-konto, før du bruger Nexus-onlinefunktioner.</string>
     <string name="nexus_oauth_session_unavailable">Nexus-godkendelse er midlertidigt utilgængelig. Prøv igen.</string>
-    <string name="nexus_integration_temporarily_unavailable">Understøttelse af Nexus Mods er midlertidigt deaktiveret, mens Rift bliver registreret hos Nexus Mods. Allerede installerede mods kan stadig administreres.</string>
     <string name="nexus_invalid_nxm_callback">Denne Nexus-godkendelse er ugyldig, udløbet, allerede brugt eller svarer ikke længere til en aktiv Rift Launcher-anmodning. Start downloadingen fra Administrer Nexus-mods igen.</string>
     <string name="nexus_nxm_callback_received">Godkendelse af Nexus-download modtaget. Gå tilbage til Administrer Nexus-mods, hvis downloadingen ikke genoptages automatisk.</string>
     <string name="nexus_nxm_no_active_target">Åbn Administrer Nexus-mods for destinationsspillet, og tryk derefter på Mod Manager Download på Nexus Mods igen.</string>
@@ -1954,7 +1938,6 @@
     <string name="debug_prerun_title">Få AI-hjælp</string>
     <string name="debug_prerun_message_1">Kører spillet med debug-logning og deler loggen med vores AI på Discord, når du afslutter. Spil, indtil du oplever problemet.</string>
     <string name="debug_prerun_message_2">AI-svar er kun for abonnenter.</string>
-    <string name="debug_prerun_message_1_app">Kører spillet med debug-logning. Når du afslutter, sendes loggen til vores AI, og svaret kommer i vores Discord eller i appen, hvis du logger ind med en Rift-konto. Kør spillet, indtil problemet opstår.</string>
     <string name="debug_prerun_message_2_app">Den første analyse er gratis. Opfølgende svar kræver en plan.</string>
     <string name="debug_prerun_message_1_neutral">Spillet kører med debug-logning. Når du afslutter, sendes loggen til vores AI. Spil, indtil problemet opstår.</string>
     <string name="debug_trial_note">Gratis prøveperiode tilgængelig.</string>
@@ -2664,14 +2647,12 @@
     <string name="settings_hide_ai_title">Skjul AI-funktioner</string>
     <string name="settings_hide_ai_subtitle">Skjuler den valgfrie AI-fejlfindingshjælp</string>
     <string name="settings_info_boot_ads_title">Sponsorerede indlæsningsskærme</string>
-    <string name="settings_info_boot_ads_subtitle">At lade dette være slået til hjælper med at støtte udviklingen af Rift. Det gør aldrig spilstart langsommere og påvirker dig ikke på nogen måde.</string>
     <string name="settings_info_boot_recs_title">Spilanbefalinger på indlæsningsskærme</string>
     <string name="settings_info_boot_recs_subtitle">Vis et spil, du måske kan lide, mens et spil starter, når der ikke er et sponsorkort.</string>
     <string name="boot_rec_badge">Anbefalet til dig</string>
     <string name="boot_ad_close_cd">Luk dette kort</string>
     <string name="boot_ad_sheet_title_sponsored">Om sponsorkort</string>
     <string name="boot_ad_sheet_title_rec">Om anbefalinger</string>
-    <string name="boot_ad_sheet_body_sponsored">Sponsorkort er med til at finansiere fuldtidsarbejdet på Rift. Du kan altid ændre dette i Indstillinger.</string>
     <string name="boot_ad_sheet_body_rec">Anbefalinger vælges ud fra de spil, du spiller. Du kan altid ændre dette i Indstillinger.</string>
     <string name="boot_ad_close_one">Luk dette</string>
     <string name="boot_ad_turn_off_sponsored">Slå sponsorkort fra</string>
@@ -2874,7 +2855,6 @@
     <string name="support_reply_ready">Dit svar fra AI-hjælp er klar</string>
     <string name="support_reply_open">Åbn</string>
     <string name="support_wait_channel_name">Status for svar fra AI-hjælp</string>
-    <string name="support_wait_channel_description">Vises, mens Rift venter på et svar på din rapport.</string>
     <string name="support_replies_channel_name">Svar fra AI-hjælp</string>
     <string name="support_replies_channel_description">Fortæller dig, når et svar på din rapport er klar.</string>
     <string name="support_wait_title">Venter på svaret fra AI-hjælp</string>

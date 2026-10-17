@@ -2052,7 +2052,7 @@ fun PluviaMain(
                                     message = context.getString(R.string.main_recent_crash_message),
                                     confirmBtnText = context.getString(R.string.ok),
                                 )
-                            } else if (!(PrefManager.tipped || BuildConfig.GOLD) &&
+                            } else if (!Constants.Misc.HIDE_UPSTREAM_SERVICES && !(PrefManager.tipped || BuildConfig.GOLD) &&
                                 PrefManager.hasAttemptedGameLaunch &&
                                 !MainViewModel.gamePlayedThisSession &&
                                 System.currentTimeMillis() - PrefManager.lastLaunchPitchTime >= LAUNCH_PITCH_COOLDOWN_MS

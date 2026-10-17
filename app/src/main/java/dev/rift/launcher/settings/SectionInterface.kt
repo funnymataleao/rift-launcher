@@ -193,11 +193,8 @@ private fun LookGroup() {
 
 @Composable
 private fun LibraryGroup() {
-    var showRecommendations by rememberSaveable { mutableStateOf(PrefManager.showRecommendations) }
     var showHidden by rememberSaveable { mutableStateOf(PrefManager.showHiddenGamesByDefault) }
     var hideAi by rememberSaveable { mutableStateOf(PrefManager.hideAiFeatures) }
-    var bootAds by rememberSaveable { mutableStateOf(PrefManager.bootScreenAdsEnabled) }
-    var bootRecs by rememberSaveable { mutableStateOf(PrefManager.bootScreenRecommendationsEnabled) }
     var importAsSteam by rememberSaveable { mutableStateOf(PrefManager.importCustomGameAsSteamGame) }
     var libraryTabs by remember { mutableStateOf(PrefManager.libraryTabs) }
     var tabsDialog by rememberSaveable { mutableStateOf(false) }
@@ -237,24 +234,6 @@ private fun LibraryGroup() {
             onClick = { tabsDialog = true },
         )
         SwitchRow(
-            title = stringResource(R.string.settings_interface_show_recommendations_title),
-            subtitle = stringResource(R.string.settings_interface_show_recommendations_subtitle),
-            icon = Icons.Rounded.Recommend,
-            checked = showRecommendations,
-            onCheckedChange = { enabled ->
-                showRecommendations = enabled
-                PrefManager.showRecommendations = enabled
-                PluviaApp.events.emit(AndroidEvent.RecommendationToggleChanged)
-                if (PrefManager.usageAnalyticsEnabled) {
-                    PostHog.capture(
-                        event = "\$set",
-                        properties = mapOf("\$set" to mapOf("recommendation_enabled" to enabled)),
-                    )
-                    if (!enabled) PostHog.capture("recommendation_disabled")
-                }
-            },
-        )
-        SwitchRow(
             title = stringResource(R.string.settings_interface_show_hidden_games_title),
             subtitle = stringResource(R.string.settings_interface_show_hidden_games_subtitle),
             icon = Icons.Rounded.VisibilityOff,
@@ -273,26 +252,6 @@ private fun LibraryGroup() {
             onCheckedChange = {
                 hideAi = it
                 PrefManager.hideAiFeatures = it
-            },
-        )
-        SwitchRow(
-            title = stringResource(R.string.settings_info_boot_ads_title),
-            subtitle = stringResource(R.string.settings_info_boot_ads_subtitle),
-            icon = Icons.Rounded.Campaign,
-            checked = bootAds,
-            onCheckedChange = {
-                bootAds = it
-                PrefManager.bootScreenAdsEnabled = it
-            },
-        )
-        SwitchRow(
-            title = stringResource(R.string.settings_info_boot_recs_title),
-            subtitle = stringResource(R.string.settings_info_boot_recs_subtitle),
-            icon = Icons.Rounded.Recommend,
-            checked = bootRecs,
-            onCheckedChange = {
-                bootRecs = it
-                PrefManager.bootScreenRecommendationsEnabled = it
             },
         )
         SwitchRow(

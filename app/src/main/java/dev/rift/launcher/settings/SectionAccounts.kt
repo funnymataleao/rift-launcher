@@ -39,9 +39,9 @@ import kotlinx.coroutines.withContext
 @Composable
 internal fun AccountsSettings(onSteamSignIn: (() -> Unit)? = null, onSteamSignOut: (() -> Unit)? = null) {
     StoreAccountsSettings(onSteamSignIn, onSteamSignOut)
-    GameNativeAccountGroup()
 }
 
+@Suppress("unused")
 @Composable
 private fun GameNativeAccountGroup() {
     val context = LocalContext.current

@@ -1002,7 +1002,6 @@
     <string name="settings_accounts_signed_out">Neautentificat</string>
     <string name="settings_accounts_ea_title">Cont EA</string>
     <string name="settings_accounts_rockstar_title">Cont Rockstar</string>
-    <string name="gamenative_account_title">Cont Rift</string>
     <string name="gamenative_account_sign_in">Conectare</string>
     <string name="gamenative_account_sign_in_subtitle">Conectează-te pentru a vedea planul tău și a-ți gestiona abonamentul.</string>
     <string name="gamenative_account_loading">Se încarcă detaliile contului.</string>
@@ -1020,7 +1019,6 @@
     <string name="gamenative_account_managed_kofi">Planul tău vine de pe Ko-fi. Gestionează-l pe Ko-fi.</string>
     <string name="gamenative_account_manage_subscription_failed">Pagina de facturare nu a putut fi deschisă. Încearcă din nou mai târziu.</string>
     <string name="gamenative_account_sign_out">Deconectare</string>
-    <string name="gamenative_account_sign_out_subtitle">Deconectează-te de la contul Rift pe acest dispozitiv.</string>
     <string name="gamenative_account_discord">Discord</string>
     <string name="gamenative_account_discord_not_connected">Neconectat › Conectează</string>
     <string name="gamenative_account_discord_connected">Conectat › Deconectează</string>
@@ -1033,7 +1031,6 @@
     <string name="gamenative_account_discord_link_failed">Conectarea Discord nu este disponibilă acum. Verifică conexiunea și încearcă din nou.</string>
     <string name="gamenative_account_discord_link_connected_as">Conectat ca %1$s</string>
     <string name="gamenative_account_discord_link_no_browser">Nu a fost găsit niciun browser pentru a deschide Discord. Scanează codul cu alt dispozitiv.</string>
-    <string name="gamenative_sign_in_title">Conectează-te la Rift</string>
     <string name="gamenative_sign_in_scan">Scanează acest cod cu telefonul pentru a te conecta. Te poți conecta și pe acest dispozitiv.</string>
     <string name="gamenative_sign_in_code">Cod: %1$s</string>
     <string name="gamenative_sign_in_this_device">Conectează-te pe acest dispozitiv</string>
@@ -1042,13 +1039,10 @@
     <string name="gamenative_sign_in_expired">Acest cod de conectare a expirat. Selectează Încearcă din nou pentru a primi un cod nou.</string>
     <string name="gamenative_sign_in_failed">Conectarea nu este disponibilă acum. Verifică conexiunea și încearcă din nou.</string>
     <string name="gamenative_sign_in_try_again">Încearcă din nou</string>
-    <string name="gamenative_sign_in_success">Te-ai conectat la Rift.</string>
     <string name="gamenative_sign_in_no_browser">Nu a fost găsit niciun browser pentru a deschide pagina de conectare. Scanează codul cu alt dispozitiv.</string>
     <string name="support_title">Ajutor AI</string>
-    <string name="support_subtitle">Conversațiile tale cu asistența AI Rift</string>
     <string name="support_refresh">Reîmprospătează</string>
     <string name="support_signed_out_title">Primește ajutor pentru jocurile tale</string>
-    <string name="support_signed_out_body">Conectează-te la contul Rift ca să vezi conversațiile de asistență și să vorbești cu AI-ul nostru despre problemele cu jocurile tale.</string>
     <string name="support_signed_out_discord">Poți primi ajutor și pe Discordul nostru</string>
     <string name="support_empty_title">Nicio conversație încă</string>
     <string name="support_empty_body">Pentru a începe una, alege „Primește ajutor de la AI” la un joc din bibliotecă. Joacă până apare problema, închide jocul și apoi descrie ce nu a mers.</string>
@@ -1060,7 +1054,6 @@
     <string name="support_last_activity">Ultima activitate %1$s</string>
     <string name="support_problem_network">Nu s-a putut realiza conexiunea. Verifică-ți conexiunea și încearcă din nou.</string>
     <string name="support_problem_unavailable">Chatul de asistență din aplicație nu este încă disponibil. Până atunci, ajutorul AI continuă pe Discordul nostru.</string>
-    <string name="support_problem_unauthorized">Contul tău Rift nu a putut fi confirmat. Încearcă din nou mai târziu sau deconectează-te și conectează-te din nou din Setări.</string>
     <string name="support_problem_rate_limited">Ai trimis mult într-un timp scurt. Așteaptă puțin și încearcă din nou.</string>
     <string name="support_problem_not_found">Această conversație nu a fost găsită.</string>
     <string name="support_problem_server">Ceva nu a mers bine la noi. Încearcă din nou în câteva minute.</string>
@@ -1071,9 +1064,6 @@
     <string name="support_problem_already_answered">Ne-ai spus deja cum a mers.</string>
     <string name="support_label_you">Tu</string>
     <string name="support_label_report">Raportul tău</string>
-    <string name="support_label_ai">Rift AI</string>
-    <string name="support_label_staff">%1$s · Echipa Rift</string>
-    <string name="support_label_team">Echipa Rift</string>
     <string name="support_analysing_first">AI-ul nostru îți analizează jurnalele. De obicei durează câteva minute. Poți părăsi acest ecran, iar răspunsul va fi aici când revii.</string>
     <string name="support_analysing_followup">Se așteaptă un răspuns. De obicei durează câteva minute.</string>
     <string name="support_outcome_question">Asta a rezolvat problema?</string>
@@ -1092,7 +1082,6 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Rapoartele Pro sar peste coadă.</string>
     <string name="support_limit_title">Limita zilnică de utilizare corectă a fost atinsă</string>
-    <string name="support_upgrade_reason_required">Răspunsurile AI necesită un abonament Rift. Dacă ai deja un abonament pe Discord sau Ko-fi, conectează Discord în Setări.</string>
     <string name="support_see_plans">Vezi planurile</string>
     <string name="support_plan_basic_title">$5/lună · Basic</string>
     <string name="support_plan_basic_body">Fă-ți jocurile să ruleze sau să ruleze mai bine.</string>
@@ -1173,13 +1162,11 @@
     <string name="settings_info_send_tip_title">Devino membru</string>
     <string name="settings_info_send_tip_subtitle">Ajutor cu AI pentru jocurile tale, acces anticipat la versiuni și altele</string>
     <string name="settings_info_ask_tip_title">Oferte de membru</string>
-    <string name="settings_info_ask_tip_subtitle">Afișează ocazional oferte pentru a deveni membru Rift</string>
 	<string name="settings_info_source_title">Cod sursă</string>
 	<string name="settings_info_source_subtitle">Vezi codul sursă al acestui proiect</string>
 	<string name="settings_info_libraries_title">Biblioteci utilizate</string>
 	<string name="settings_info_libraries_subtitle">Vezi tehnologiile care fac Rift Launcher posibil</string>
 	<string name="settings_info_privacy_title">Politica de confidențialitate</string>
-	<string name="settings_info_privacy_subtitle">Deschide linkul către politica de confidențialitate Rift</string>
 	<string name="settings_info_usage_analytics_title">Analiză utilizare</string>
 	<string name="settings_info_usage_analytics_subtitle">Nu urmărim niciodată informații personale. Dezactivarea oprește analizele neesențiale, însă datele de bază privind performanța jocurilor sunt în continuare colectate ca interes legitim pentru a îmbunătăți compatibilitatea.</string>
 
@@ -1289,7 +1276,6 @@
 	<!-- PluviaMain: Crash & Support -->
 	<string name="main_recent_crash_title">Crash recent</string>
 	<string name="main_recent_crash_message">Ne pare rău!\nAr fi util să știm ce problemă ai întâmpinat.\nPoți vizualiza și exporta cel mai recent crash log din setările aplicației și îl poți atașa ca issue pe Github în repository-ul proiectului.\nLinkul către repo este tot în setări!</string>
-    <string name="main_thank_you_title">Îți place Rift?</string>
     <string name="main_thank_you_message">Devino membru astăzi. Membrii primesc:\n\n• Ajutor cu AI pentru a-ți face jocurile să funcționeze\n• Acces anticipat la versiuni noi\n• Roluri premium și canale exclusive pe Discord\n• …și altele\n\nDe la 5 $/lună</string>
     <string name="main_join_kofi">Devino membru</string>
     <string name="pitch_session_title">Îți place %1$s?</string>
@@ -1762,7 +1748,6 @@
     <string name="review_mostly_negative">Majoritar negativ</string>
     <string name="review_overwhelmingly_negative">Copleșitor de negativ</string>
     <string name="settings_interface_show_recommendations_title">Afișează recomandări de jocuri</string>
-    <string name="settings_interface_show_recommendations_subtitle">Afișează recomandări personalizate. Menținerea activă ajută la susținerea Rift.</string>
     <string name="settings_interface_library_tabs_title">File bibliotecă</string>
     <string name="settings_interface_library_tabs_subtitle">Alege ce file de magazine apar în bibliotecă.</string>
     <string name="settings_interface_library_tabs_none">Fără file de magazine</string>
@@ -1977,7 +1962,6 @@
     <string name="nexus_oauth_invalid_callback">Rift Launcher a respins un răspuns nevalid de autentificare de la Nexus Mods.</string>
     <string name="nexus_oauth_sign_in_required">Conectează un cont Nexus Mods înainte de a utiliza funcțiile Nexus online.</string>
     <string name="nexus_oauth_session_unavailable">Autorizarea Nexus este indisponibilă temporar. Încearcă din nou.</string>
-    <string name="nexus_integration_temporarily_unavailable">Suportul pentru Nexus Mods a fost dezactivat temporar cât timp Rift este în curs de înregistrare la Nexus Mods. Modurile deja instalate pot fi gestionate în continuare.</string>
     <string name="nexus_invalid_nxm_callback">Această autorizare Nexus este nevalidă, a expirat, a fost deja utilizată sau nu mai corespunde unei solicitări Rift Launcher active. Pornește din nou descărcarea din „Gestionează modurile Nexus”.</string>
     <string name="nexus_nxm_callback_received">Autorizarea descărcării Nexus a fost primită. Revino la „Gestionează modurile Nexus” dacă descărcarea nu se reia automat.</string>
     <string name="nexus_nxm_no_active_target">Deschide „Gestionează modurile Nexus” pentru jocul de destinație, apoi atinge din nou Mod Manager Download pe Nexus Mods.</string>
@@ -2063,7 +2047,6 @@
     <string name="debug_prerun_title">Primește ajutor de la AI</string>
     <string name="debug_prerun_message_1">Rulează jocul cu jurnal de depanare și partajează jurnalul cu AI-ul nostru pe Discord la ieșire. Joacă până când apare problema.</string>
     <string name="debug_prerun_message_2">Răspunsurile AI sunt doar pentru abonați.</string>
-    <string name="debug_prerun_message_1_app">Rulează jocul cu jurnal de depanare. Când ieși, jurnalul ajunge la AI-ul nostru, iar răspunsul vine pe Discordul nostru sau în aplicație, dacă te conectezi cu un cont Rift. Joacă până când apare problema.</string>
     <string name="debug_prerun_message_2_app">Prima analiză este gratuită. Răspunsurile ulterioare necesită un plan.</string>
     <string name="debug_prerun_message_1_neutral">Jocul rulează cu jurnal de depanare. Când ieși, jurnalul ajunge la AI-ul nostru. Joacă până când apare problema.</string>
     <string name="debug_trial_note">Perioadă de probă gratuită disponibilă.</string>
@@ -2776,14 +2759,12 @@
     <string name="settings_hide_ai_title">Ascunde funcțiile AI</string>
     <string name="settings_hide_ai_subtitle">Ascunde ajutorul opțional de depanare cu AI</string>
     <string name="settings_info_boot_ads_title">Ecrane de încărcare sponsorizate</string>
-    <string name="settings_info_boot_ads_subtitle">Păstrarea acestei opțiuni activate ajută la susținerea dezvoltării Rift. Nu încetinește niciodată pornirea jocurilor și nu te afectează în niciun fel.</string>
     <string name="settings_info_boot_recs_title">Recomandări de jocuri pe ecranele de încărcare</string>
     <string name="settings_info_boot_recs_subtitle">Afișează un joc care ți-ar putea plăcea în timp ce un joc pornește, când nu există un card sponsor.</string>
     <string name="boot_rec_badge">Recomandat pentru tine</string>
     <string name="boot_ad_close_cd">Închide acest card</string>
     <string name="boot_ad_sheet_title_sponsored">Despre cardurile sponsorizate</string>
     <string name="boot_ad_sheet_title_rec">Despre recomandări</string>
-    <string name="boot_ad_sheet_body_sponsored">Cardurile sponsorizate ajută la finanțarea muncii cu normă întreagă la Rift. Poți schimba asta oricând din Setări.</string>
     <string name="boot_ad_sheet_body_rec">Recomandările sunt alese în funcție de jocurile pe care le joci. Poți schimba asta oricând din Setări.</string>
     <string name="boot_ad_close_one">Închide acesta</string>
     <string name="boot_ad_turn_off_sponsored">Dezactivează cardurile sponsorizate</string>
@@ -3019,7 +3000,6 @@
     <string name="support_reply_ready">Răspunsul de la Ajutor AI este gata</string>
     <string name="support_reply_open">Deschide</string>
     <string name="support_wait_channel_name">Starea răspunsului de la Ajutor AI</string>
-    <string name="support_wait_channel_description">Apare cât timp Rift așteaptă un răspuns la raportul tău.</string>
     <string name="support_replies_channel_name">Răspunsuri de la Ajutor AI</string>
     <string name="support_replies_channel_description">Te anunță când răspunsul la raportul tău este gata.</string>
     <string name="support_wait_title">Se așteaptă răspunsul de la Ajutor AI</string>

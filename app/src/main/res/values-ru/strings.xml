@@ -873,7 +873,6 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="main_save_conflict_title">Конфликт сохранений</string>
     <string name="main_save_conflict_upgrade_v1_title">Выберите версию сохранения</string>
     <string name="main_save_conflict_upgrade_v1_message">Мы исправили обработку путей облачных сохранений для этой игры и обнаружили различия между локальным и облачным сохранением.\n\nЛокальное сохранение:\n\t%1$s\nОблачное сохранение:\n\t%2$s</string>
-    <string name="main_thank_you_title">Нравится Rift?</string>
     <string name="main_thank_you_message">Станьте участником сегодня. Участники получают:\n\n• Помощь ИИ с запуском игр\n• Ранний доступ к новым версиям\n• Премиум-роли и эксклюзивные каналы в Discord\n• …и не только\n\nОт $5/мес.</string>
     <string name="main_join_kofi">Стать участником</string>
     <string name="pitch_session_title">Нравится %1$s?</string>
@@ -1178,7 +1177,6 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="settings_accounts_signed_out">Вход не выполнен</string>
     <string name="settings_accounts_ea_title">Учётная запись EA</string>
     <string name="settings_accounts_rockstar_title">Учётная запись Rockstar</string>
-    <string name="gamenative_account_title">Аккаунт Rift</string>
     <string name="gamenative_account_sign_in">Войти</string>
     <string name="gamenative_account_sign_in_subtitle">Войдите, чтобы увидеть свой тариф и управлять подпиской.</string>
     <string name="gamenative_account_loading">Загрузка данных аккаунта.</string>
@@ -1196,7 +1194,6 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="gamenative_account_managed_kofi">Ваш тариф предоставлен через Ko-fi. Управляйте им на Ko-fi.</string>
     <string name="gamenative_account_manage_subscription_failed">Не удалось открыть страницу оплаты. Повторите попытку позже.</string>
     <string name="gamenative_account_sign_out">Выйти</string>
-    <string name="gamenative_account_sign_out_subtitle">Выйти из аккаунта Rift на этом устройстве.</string>
     <string name="gamenative_account_discord">Discord</string>
     <string name="gamenative_account_discord_not_connected">Не подключено › Подключить</string>
     <string name="gamenative_account_discord_connected">Подключено › Отключить</string>
@@ -1209,7 +1206,6 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="gamenative_account_discord_link_failed">Подключение Discord сейчас недоступно. Проверьте соединение и попробуйте снова.</string>
     <string name="gamenative_account_discord_link_connected_as">Подключено как %1$s</string>
     <string name="gamenative_account_discord_link_no_browser">Не найден браузер для открытия Discord. Отсканируйте код другим устройством.</string>
-    <string name="gamenative_sign_in_title">Вход в Rift</string>
     <string name="gamenative_sign_in_scan">Отсканируйте этот код телефоном, чтобы войти. Также можно войти на этом устройстве.</string>
     <string name="gamenative_sign_in_code">Код: %1$s</string>
     <string name="gamenative_sign_in_this_device">Войти на этом устройстве</string>
@@ -1218,13 +1214,10 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="gamenative_sign_in_expired">Срок действия этого кода истёк. Выберите «Повторить», чтобы получить новый код.</string>
     <string name="gamenative_sign_in_failed">Вход сейчас недоступен. Проверьте подключение и повторите попытку.</string>
     <string name="gamenative_sign_in_try_again">Повторить</string>
-    <string name="gamenative_sign_in_success">Вы вошли в Rift.</string>
     <string name="gamenative_sign_in_no_browser">Не найден браузер для открытия страницы входа. Отсканируйте код другим устройством.</string>
     <string name="support_title">Помощь AI</string>
-    <string name="support_subtitle">Ваши разговоры с AI-поддержкой Rift</string>
     <string name="support_refresh">Обновить</string>
     <string name="support_signed_out_title">Помощь с вашими играми</string>
-    <string name="support_signed_out_body">Войдите в аккаунт Rift, чтобы видеть свои разговоры с поддержкой и обсуждать с нашим AI проблемы с играми.</string>
     <string name="support_signed_out_discord">Помощь также можно получить в нашем Discord</string>
     <string name="support_empty_title">Разговоров пока нет</string>
     <string name="support_empty_body">Чтобы начать, выберите «Получить помощь AI» у игры в библиотеке. Играйте, пока не возникнет проблема, закройте игру, а затем опишите, что пошло не так.</string>
@@ -1236,7 +1229,6 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="support_last_activity">Последняя активность %1$s</string>
     <string name="support_problem_network">Не удалось подключиться. Проверьте соединение и попробуйте снова.</string>
     <string name="support_problem_unavailable">Чат поддержки в приложении пока недоступен. До тех пор помощь AI продолжается в нашем Discord.</string>
-    <string name="support_problem_unauthorized">Не удалось подтвердить ваш аккаунт Rift. Попробуйте позже или выйдите и снова войдите в настройках.</string>
     <string name="support_problem_rate_limited">Вы отправили слишком много за короткое время. Подождите немного и попробуйте снова.</string>
     <string name="support_problem_not_found">Этот разговор не найден.</string>
     <string name="support_problem_server">На нашей стороне произошла ошибка. Попробуйте снова через несколько минут.</string>
@@ -1247,9 +1239,6 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="support_problem_already_answered">Вы уже сообщили нам результат.</string>
     <string name="support_label_you">Вы</string>
     <string name="support_label_report">Ваш отчёт</string>
-    <string name="support_label_ai">Rift AI</string>
-    <string name="support_label_staff">%1$s · Команда Rift</string>
-    <string name="support_label_team">Команда Rift</string>
     <string name="support_analysing_first">Наш AI анализирует ваши логи. Обычно это занимает несколько минут. Вы можете уйти с этого экрана — ответ будет здесь, когда вы вернётесь.</string>
     <string name="support_analysing_followup">Ожидание ответа. Обычно это занимает несколько минут.</string>
     <string name="support_outcome_question">Это решило проблему?</string>
@@ -1269,7 +1258,6 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Отчёты Pro проходят без очереди.</string>
     <string name="support_limit_title">Дневной лимит честного использования исчерпан</string>
-    <string name="support_upgrade_reason_required">Для ответов AI нужна подписка Rift. Если вы уже оформили подписку в Discord или на Ko-fi, подключите Discord в настройках.</string>
     <string name="support_see_plans">Посмотреть планы</string>
     <string name="support_plan_basic_title">$5/месяц · Basic</string>
     <string name="support_plan_basic_body">Запустите свои игры или заставьте их работать лучше.</string>
@@ -1312,7 +1300,6 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="settings_emulation_wine_proton_manager_title">Менеджер Wine/Proton</string>
     <string name="settings_info_libraries_subtitle">Узнайте, какие технологии делают Rift Launcher возможным</string>
     <string name="settings_info_libraries_title">Используемые библиотеки</string>
-    <string name="settings_info_privacy_subtitle">Открывает ссылку на политику конфиденциальности Rift</string>
     <string name="settings_info_privacy_title">Политика конфиденциальности</string>
     <string name="settings_info_usage_analytics_title">Аналитика использования</string>
     <string name="settings_info_usage_analytics_subtitle">Мы никогда не отслеживаем личную информацию. Отключение останавливает несущественную аналитику, однако основные данные о производительности игр по-прежнему собираются как законный интерес для улучшения совместимости.</string>
@@ -1320,7 +1307,6 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="settings_info_send_tip_title">Стать участником</string>
     <string name="settings_info_send_tip_subtitle">Помощь ИИ с запуском игр, ранний доступ к версиям и другое</string>
     <string name="settings_info_ask_tip_title">Предложения о членстве</string>
-    <string name="settings_info_ask_tip_subtitle">Иногда показывать предложения стать участником Rift</string>
     <string name="settings_info_source_title">Исходный код</string>
     <string name="settings_info_title">Информация</string>
     <string name="settings_interface_download_server_title">Сервер загрузки Steam</string>
@@ -1708,7 +1694,6 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="review_mostly_negative">В основном отрицательные</string>
     <string name="review_overwhelmingly_negative">Крайне отрицательные</string>
     <string name="settings_interface_show_recommendations_title">Показывать рекомендации игр</string>
-    <string name="settings_interface_show_recommendations_subtitle">Показывает персональные рекомендации. Оставив это включённым, вы помогаете поддержать Rift.</string>
     <string name="settings_interface_library_tabs_title">Вкладки библиотеки</string>
     <string name="settings_interface_library_tabs_subtitle">Выберите, какие вкладки магазинов отображать в библиотеке.</string>
     <string name="settings_interface_library_tabs_none">Нет вкладок магазинов</string>
@@ -1923,7 +1908,6 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="nexus_oauth_invalid_callback">Rift Launcher отклонил недействительный ответ на вход от Nexus Mods.</string>
     <string name="nexus_oauth_sign_in_required">Подключите учётную запись Nexus Mods, прежде чем использовать онлайн-функции Nexus.</string>
     <string name="nexus_oauth_session_unavailable">Авторизация Nexus временно недоступна. Повторите попытку.</string>
-    <string name="nexus_integration_temporarily_unavailable">Поддержка Nexus Mods временно отключена, пока Rift проходит регистрацию в Nexus Mods. Уже установленными модами по-прежнему можно управлять.</string>
     <string name="nexus_invalid_nxm_callback">Эта авторизация Nexus недействительна, истекла, уже использована или больше не соответствует активному запросу Rift Launcher. Снова начните загрузку в разделе «Управление модами Nexus».</string>
     <string name="nexus_nxm_callback_received">Авторизация загрузки Nexus получена. Вернитесь в раздел «Управление модами Nexus», если загрузка не возобновится автоматически.</string>
     <string name="nexus_nxm_no_active_target">Откройте раздел «Управление модами Nexus» для нужной игры, затем снова нажмите Mod Manager Download на Nexus Mods.</string>
@@ -2009,7 +1993,6 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="debug_prerun_title">Получить помощь AI</string>
     <string name="debug_prerun_message_1">Запускает игру с отладочным журналом и после выхода отправляет журнал нашему AI в Discord. Играйте, пока не возникнет проблема.</string>
     <string name="debug_prerun_message_2">Ответы AI доступны только подписчикам.</string>
-    <string name="debug_prerun_message_1_app">Запускает игру с отладочным журналом. После выхода журнал отправляется нашему AI, а ответ придёт в наш Discord или в приложение, если вы войдёте в аккаунт Rift. Играйте, пока не возникнет проблема.</string>
     <string name="debug_prerun_message_2_app">Первый анализ бесплатный. Для дальнейших ответов нужен план.</string>
     <string name="debug_prerun_message_1_neutral">Игра запускается с отладочным журналом. После выхода журнал отправляется нашему AI. Играйте, пока не возникнет проблема.</string>
     <string name="debug_trial_note">Доступен бесплатный пробный период.</string>
@@ -2725,14 +2708,12 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="settings_hide_ai_title">Скрыть функции ИИ</string>
     <string name="settings_hide_ai_subtitle">Скрывает необязательную помощь ИИ в отладке</string>
     <string name="settings_info_boot_ads_title">Спонсорские экраны загрузки</string>
-    <string name="settings_info_boot_ads_subtitle">Если оставить это включённым, вы поддержите разработку Rift. Это никогда не замедляет запуск игр и никак на вас не влияет.</string>
     <string name="settings_info_boot_recs_title">Рекомендации игр на экранах загрузки</string>
     <string name="settings_info_boot_recs_subtitle">Показывать игру, которая может вам понравиться, во время запуска, если нет карточки спонсора.</string>
     <string name="boot_rec_badge">Рекомендовано для вас</string>
     <string name="boot_ad_close_cd">Закрыть эту карточку</string>
     <string name="boot_ad_sheet_title_sponsored">О спонсорских карточках</string>
     <string name="boot_ad_sheet_title_rec">О рекомендациях</string>
-    <string name="boot_ad_sheet_body_sponsored">Спонсорские карточки помогают финансировать работу над Rift на полную ставку. Это можно изменить в любой момент в Настройках.</string>
     <string name="boot_ad_sheet_body_rec">Рекомендации подбираются по играм, в которые вы играете. Это можно изменить в любой момент в Настройках.</string>
     <string name="boot_ad_close_one">Закрыть эту</string>
     <string name="boot_ad_turn_off_sponsored">Отключить спонсорские карточки</string>
@@ -2953,7 +2934,6 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="support_reply_ready">Ответ в разделе «Помощь AI» готов</string>
     <string name="support_reply_open">Открыть</string>
     <string name="support_wait_channel_name">Статус ответа «Помощь AI»</string>
-    <string name="support_wait_channel_description">Показывается, пока Rift ждёт ответа на ваш отчёт.</string>
     <string name="support_replies_channel_name">Ответы «Помощь AI»</string>
     <string name="support_replies_channel_description">Сообщает, когда ответ на ваш отчёт готов.</string>
     <string name="support_wait_title">Ожидание ответа «Помощь AI»</string>

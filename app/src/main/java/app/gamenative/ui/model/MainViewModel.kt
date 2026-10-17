@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
+import app.gamenative.Constants
 import app.gamenative.PrefManager
 import app.gamenative.data.BootAdRepository
 import app.gamenative.data.GameProcessInfo
@@ -100,7 +101,7 @@ class MainViewModel @Inject constructor(
     private var pendingWarmPitch: Pair<String, Boolean>? = null
 
     private fun warmPitchAllowed(): Boolean {
-        if (PrefManager.tipped || BuildConfig.GOLD) return false
+        if (Constants.Misc.HIDE_UPSTREAM_SERVICES || PrefManager.tipped || BuildConfig.GOLD) return false
         return System.currentTimeMillis() - PrefManager.lastWarmPitchTime >= WARM_PITCH_COOLDOWN_MS
     }
 
@@ -776,7 +777,7 @@ class MainViewModel @Inject constructor(
                 try {
                     // Show feedback for all stores except custom games.
                     val feedbackGameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
-                    if (feedbackGameSource != GameSource.CUSTOM_GAME) {
+                    if (feedbackGameSource != GameSource.CUSTOM_GAME && !Constants.Misc.HIDE_UPSTREAM_SERVICES) {
                         val container = ContainerUtils.getContainer(context, appId)
 
                         val shown = container.getExtra("discord_support_prompt_shown", "false") == "true"
@@ -829,7 +830,7 @@ class MainViewModel @Inject constructor(
     }
 
     private suspend fun offerAiDebugRun(context: Context, appId: String, trigger: String): Boolean {
-        if (PrefManager.hideAiFeatures) return false
+        if (Constants.Misc.HIDE_UPSTREAM_SERVICES || PrefManager.hideAiFeatures) return false
         return try {
             val container = ContainerUtils.getContainer(context, appId)
             val now = System.currentTimeMillis()

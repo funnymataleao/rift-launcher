@@ -1019,7 +1019,6 @@
     <string name="settings_accounts_signed_out">Non connecté</string>
     <string name="settings_accounts_ea_title">Compte EA</string>
     <string name="settings_accounts_rockstar_title">Compte Rockstar</string>
-    <string name="gamenative_account_title">Compte Rift</string>
     <string name="gamenative_account_sign_in">Se connecter</string>
     <string name="gamenative_account_sign_in_subtitle">Connectez-vous pour voir votre offre et gérer votre abonnement.</string>
     <string name="gamenative_account_loading">Chargement des informations de votre compte.</string>
@@ -1037,7 +1036,6 @@
     <string name="gamenative_account_managed_kofi">Votre offre vient de Ko-fi. Gérez-la sur Ko-fi.</string>
     <string name="gamenative_account_manage_subscription_failed">La page de facturation n\'a pas pu être ouverte. Veuillez réessayer plus tard.</string>
     <string name="gamenative_account_sign_out">Se déconnecter</string>
-    <string name="gamenative_account_sign_out_subtitle">Déconnectez votre compte Rift de cet appareil.</string>
     <string name="gamenative_account_discord">Discord</string>
     <string name="gamenative_account_discord_not_connected">Non connecté › Connecter</string>
     <string name="gamenative_account_discord_connected">Connecté › Déconnecter</string>
@@ -1050,7 +1048,6 @@
     <string name="gamenative_account_discord_link_failed">La connexion à Discord n\'est pas disponible pour le moment. Vérifiez votre connexion et réessayez.</string>
     <string name="gamenative_account_discord_link_connected_as">Connecté en tant que %1$s</string>
     <string name="gamenative_account_discord_link_no_browser">Aucun navigateur trouvé pour ouvrir Discord. Scannez plutôt le code avec un autre appareil.</string>
-    <string name="gamenative_sign_in_title">Se connecter à Rift</string>
     <string name="gamenative_sign_in_scan">Scannez ce code avec votre téléphone pour vous connecter. Vous pouvez aussi vous connecter sur cet appareil.</string>
     <string name="gamenative_sign_in_code">Code : %1$s</string>
     <string name="gamenative_sign_in_this_device">Se connecter sur cet appareil</string>
@@ -1059,13 +1056,10 @@
     <string name="gamenative_sign_in_expired">Ce code de connexion a expiré. Sélectionnez Réessayer pour obtenir un nouveau code.</string>
     <string name="gamenative_sign_in_failed">La connexion n\'est pas disponible pour le moment. Vérifiez votre connexion et réessayez.</string>
     <string name="gamenative_sign_in_try_again">Réessayer</string>
-    <string name="gamenative_sign_in_success">Vous êtes connecté à Rift.</string>
     <string name="gamenative_sign_in_no_browser">Aucun navigateur n\'a été trouvé pour ouvrir la page de connexion. Scannez plutôt le code avec un autre appareil.</string>
     <string name="support_title">Aide AI</string>
-    <string name="support_subtitle">Vos conversations avec l\'assistance AI de Rift</string>
     <string name="support_refresh">Actualiser</string>
     <string name="support_signed_out_title">Obtenez de l\'aide pour vos jeux</string>
-    <string name="support_signed_out_body">Connectez-vous à votre compte Rift pour voir vos conversations d\'assistance et parler à notre AI des problèmes avec vos jeux.</string>
     <string name="support_signed_out_discord">Vous pouvez aussi obtenir de l\'aide sur notre Discord</string>
     <string name="support_empty_title">Aucune conversation pour l\'instant</string>
     <string name="support_empty_body">Pour en commencer une, choisissez « Obtenez l\'aide de l\'AI » sur un jeu de votre bibliothèque. Jouez jusqu\'à ce que le problème se produise, fermez le jeu, puis décrivez ce qui s\'est mal passé.</string>
@@ -1077,7 +1071,6 @@
     <string name="support_last_activity">Dernière activité %1$s</string>
     <string name="support_problem_network">Connexion impossible. Vérifiez votre connexion et réessayez.</string>
     <string name="support_problem_unavailable">Le chat d\'assistance dans l\'app n\'est pas encore disponible. En attendant, l\'aide de l\'AI se poursuit sur notre Discord.</string>
-    <string name="support_problem_unauthorized">Votre compte Rift n\'a pas pu être confirmé. Réessayez plus tard, ou déconnectez-vous puis reconnectez-vous dans les Paramètres.</string>
     <string name="support_problem_rate_limited">Vous avez envoyé beaucoup en peu de temps. Patientez un moment et réessayez.</string>
     <string name="support_problem_not_found">Cette conversation est introuvable.</string>
     <string name="support_problem_server">Un problème est survenu de notre côté. Réessayez dans quelques minutes.</string>
@@ -1088,9 +1081,6 @@
     <string name="support_problem_already_answered">Vous nous avez déjà indiqué le résultat.</string>
     <string name="support_label_you">Vous</string>
     <string name="support_label_report">Votre rapport</string>
-    <string name="support_label_ai">Rift AI</string>
-    <string name="support_label_staff">%1$s · Équipe Rift</string>
-    <string name="support_label_team">Équipe Rift</string>
     <string name="support_analysing_first">Notre AI analyse vos journaux. Cela prend généralement quelques minutes. Vous pouvez quitter cet écran : la réponse sera ici à votre retour.</string>
     <string name="support_analysing_followup">En attente de réponse. Cela prend généralement quelques minutes.</string>
     <string name="support_outcome_question">Cela a-t-il résolu le problème ?</string>
@@ -1108,7 +1098,6 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Les rapports Pro passent avant la file d\'attente.</string>
     <string name="support_limit_title">Limite d\'usage raisonnable du jour atteinte</string>
-    <string name="support_upgrade_reason_required">Les réponses de l\'AI nécessitent un abonnement Rift. Si vous êtes déjà abonné via Discord ou Ko-fi, connectez Discord dans les Paramètres.</string>
     <string name="support_see_plans">Voir les abonnements</string>
     <string name="support_plan_basic_title">$5/mois · Basic</string>
     <string name="support_plan_basic_body">Faites fonctionner vos jeux, ou faites-les mieux tourner.</string>
@@ -1189,13 +1178,11 @@
     <string name="settings_info_send_tip_title">Devenir membre</string>
     <string name="settings_info_send_tip_subtitle">Aide par IA pour vos jeux, accès anticipé aux versions et plus encore</string>
     <string name="settings_info_ask_tip_title">Offres d\'adhésion</string>
-    <string name="settings_info_ask_tip_subtitle">Afficher occasionnellement des offres pour devenir membre de Rift</string>
     <string name="settings_info_source_title">Code source</string>
     <string name="settings_info_source_subtitle">Voir le code source de ce projet</string>
     <string name="settings_info_libraries_title">Bibliothèques utilisées</string>
     <string name="settings_info_libraries_subtitle">Voir les technologies qui rendent Rift Launcher possible</string>
     <string name="settings_info_privacy_title">Politique de confidentialité</string>
-    <string name="settings_info_privacy_subtitle">Ouvre un lien vers la politique de confidentialité de Rift</string>
     <string name="settings_info_usage_analytics_title">Analyses d\'utilisation</string>
     <string name="settings_info_usage_analytics_subtitle">Nous ne collectons jamais de données personnelles. La désactivation arrête les analyses non essentielles, cependant les données de performance de jeu sont toujours collectées dans le cadre d\'un intérêt légitime pour améliorer la compatibilité.</string>
 
@@ -1306,7 +1293,6 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Plantage récent</string>
     <string name="main_recent_crash_message">Désolé pour ça !\nIl serait utile de connaître le problème récent que vous avez rencontré.\nVous pouvez consulter et exporter le journal de plantage le plus récent dans les paramètres de l\'application et le joindre comme problème Github dans le dépôt du projet.\nLe lien vers le dépôt Github se trouve également dans les paramètres !</string>
-    <string name="main_thank_you_title">Vous appréciez Rift ?</string>
     <string name="main_thank_you_message">Devenez membre dès aujourd\'hui. Les membres bénéficient de :\n\n• Aide par IA pour faire fonctionner vos jeux\n• Accès anticipé aux nouvelles versions\n• Rôles premium et salons exclusifs sur Discord\n• …et plus encore\n\nÀ partir de 5 $/mois</string>
     <string name="main_join_kofi">Devenir membre</string>
     <string name="pitch_session_title">Vous appréciez %1$s ?</string>
@@ -1801,7 +1787,6 @@
     <string name="review_mostly_negative">Plutôt négatif</string>
     <string name="review_overwhelmingly_negative">Extrêmement négatif</string>
     <string name="settings_interface_show_recommendations_title">Afficher les recommandations de jeux</string>
-    <string name="settings_interface_show_recommendations_subtitle">Affiche des recommandations personnalisées. Le laisser activé aide à soutenir Rift.</string>
     <string name="settings_interface_library_tabs_title">Onglets de la bibliothèque</string>
     <string name="settings_interface_library_tabs_subtitle">Choisissez les onglets de boutiques affichés dans la bibliothèque.</string>
     <string name="settings_interface_library_tabs_none">Aucun onglet de boutique</string>
@@ -2016,7 +2001,6 @@
     <string name="nexus_oauth_invalid_callback">Rift Launcher a rejeté une réponse de connexion invalide de Nexus Mods.</string>
     <string name="nexus_oauth_sign_in_required">Connectez un compte Nexus Mods avant d’utiliser les fonctionnalités Nexus en ligne.</string>
     <string name="nexus_oauth_session_unavailable">L’autorisation Nexus est temporairement indisponible. Réessayez.</string>
-    <string name="nexus_integration_temporarily_unavailable">La prise en charge de Nexus Mods est temporairement désactivée pendant l’enregistrement de Rift auprès de Nexus Mods. Les mods déjà installés peuvent toujours être gérés.</string>
     <string name="nexus_invalid_nxm_callback">Cette autorisation Nexus est invalide, a expiré, a déjà été utilisée ou ne correspond plus à une requête Rift Launcher active. Relancez le téléchargement depuis Gérer les mods Nexus.</string>
     <string name="nexus_nxm_callback_received">Autorisation de téléchargement Nexus reçue. Revenez dans Gérer les mods Nexus si le téléchargement ne reprend pas automatiquement.</string>
     <string name="nexus_nxm_no_active_target">Ouvrez Gérer les mods Nexus pour le jeu de destination, puis touchez à nouveau Mod Manager Download sur Nexus Mods.</string>
@@ -2102,7 +2086,6 @@
     <string name="debug_prerun_title">Obtenez l\'aide de l\'AI</string>
     <string name="debug_prerun_message_1">Lance le jeu avec les journaux de débogage et les partage avec notre AI sur Discord quand vous quittez. Jouez jusqu\'à ce que le problème se produise.</string>
     <string name="debug_prerun_message_2">Les réponses de l\'AI sont réservées aux abonnés.</string>
-    <string name="debug_prerun_message_1_app">Lance le jeu avec les journaux de débogage. Quand vous quittez, le journal est envoyé à notre AI, et la réponse arrive sur notre Discord, ou dans l\'app si vous vous connectez avec un compte Rift. Jouez jusqu\'à ce que le problème se produise.</string>
     <string name="debug_prerun_message_2_app">La première analyse est gratuite. Les réponses suivantes nécessitent un abonnement.</string>
     <string name="debug_prerun_message_1_neutral">Le jeu se lance avec les journaux de débogage. Quand vous quittez, le journal est envoyé à notre AI. Jouez jusqu\'à ce que le problème se produise.</string>
     <string name="debug_trial_note">Essai gratuit disponible.</string>
@@ -2794,14 +2777,12 @@
     <string name="settings_hide_ai_title">Masquer les fonctions IA</string>
     <string name="settings_hide_ai_subtitle">Masque l\'aide au débogage par IA optionnelle</string>
     <string name="settings_info_boot_ads_title">Écrans de chargement sponsorisés</string>
-    <string name="settings_info_boot_ads_subtitle">Laisser cette option activée aide à soutenir le développement de Rift. Cela ne ralentit jamais le lancement des jeux et ne vous affecte en aucune façon.</string>
     <string name="settings_info_boot_recs_title">Recommandations de jeux sur les écrans de chargement</string>
     <string name="settings_info_boot_recs_subtitle">Afficher un jeu qui pourrait vous plaire pendant le démarrage, en l\'absence de carte sponsorisée.</string>
     <string name="boot_rec_badge">Recommandé pour vous</string>
     <string name="boot_ad_close_cd">Fermer cette carte</string>
     <string name="boot_ad_sheet_title_sponsored">À propos des cartes sponsorisées</string>
     <string name="boot_ad_sheet_title_rec">À propos des recommandations</string>
-    <string name="boot_ad_sheet_body_sponsored">Les cartes sponsorisées aident à financer le travail à plein temps sur Rift. Vous pouvez modifier ce choix à tout moment dans les Paramètres.</string>
     <string name="boot_ad_sheet_body_rec">Les recommandations sont choisies selon les jeux auxquels vous jouez. Vous pouvez modifier ce choix à tout moment dans les Paramètres.</string>
     <string name="boot_ad_close_one">Fermer celle-ci</string>
     <string name="boot_ad_turn_off_sponsored">Désactiver les cartes sponsorisées</string>
@@ -3004,7 +2985,6 @@
     <string name="support_reply_ready">Votre réponse de l\'Aide AI est prête</string>
     <string name="support_reply_open">Ouvrir</string>
     <string name="support_wait_channel_name">État de la réponse de l\'Aide AI</string>
-    <string name="support_wait_channel_description">S\'affiche pendant que Rift attend une réponse à votre rapport.</string>
     <string name="support_replies_channel_name">Réponses de l\'Aide AI</string>
     <string name="support_replies_channel_description">Vous prévient quand la réponse à votre rapport est prête.</string>
     <string name="support_wait_title">En attente de la réponse de l\'Aide AI</string>

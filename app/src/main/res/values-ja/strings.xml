@@ -971,7 +971,6 @@
     <string name="settings_accounts_signed_out">サインインしていません</string>
     <string name="settings_accounts_ea_title">EA アカウント</string>
     <string name="settings_accounts_rockstar_title">Rockstar アカウント</string>
-    <string name="gamenative_account_title">Rift アカウント</string>
     <string name="gamenative_account_sign_in">サインイン</string>
     <string name="gamenative_account_sign_in_subtitle">サインインすると、プランの確認とサブスクリプションの管理ができます。</string>
     <string name="gamenative_account_loading">アカウント情報を読み込んでいます。</string>
@@ -989,7 +988,6 @@
     <string name="gamenative_account_managed_kofi">このプランは Ko-fi から提供されています。Ko-fi で管理してください。</string>
     <string name="gamenative_account_manage_subscription_failed">請求ページを開けませんでした。しばらくしてからもう一度お試しください。</string>
     <string name="gamenative_account_sign_out">サインアウト</string>
-    <string name="gamenative_account_sign_out_subtitle">このデバイスで Rift アカウントからサインアウトします。</string>
     <string name="gamenative_account_discord">Discord</string>
     <string name="gamenative_account_discord_not_connected">未接続 › 接続</string>
     <string name="gamenative_account_discord_connected">接続済み › 接続解除</string>
@@ -1002,7 +1000,6 @@
     <string name="gamenative_account_discord_link_failed">現在 Discord と連携できません。接続を確認して、もう一度お試しください。</string>
     <string name="gamenative_account_discord_link_connected_as">%1$s として接続済み</string>
     <string name="gamenative_account_discord_link_no_browser">Discord を開くブラウザが見つかりません。別の端末でコードをスキャンしてください。</string>
-    <string name="gamenative_sign_in_title">Rift にサインイン</string>
     <string name="gamenative_sign_in_scan">スマートフォンでこのコードをスキャンしてサインインしてください。このデバイスでサインインすることもできます。</string>
     <string name="gamenative_sign_in_code">コード: %1$s</string>
     <string name="gamenative_sign_in_this_device">このデバイスでサインイン</string>
@@ -1011,13 +1008,10 @@
     <string name="gamenative_sign_in_expired">このサインインコードは期限切れです。「再試行」を選択して新しいコードを取得してください。</string>
     <string name="gamenative_sign_in_failed">現在サインインできません。接続を確認して、もう一度お試しください。</string>
     <string name="gamenative_sign_in_try_again">再試行</string>
-    <string name="gamenative_sign_in_success">Rift にサインインしました。</string>
     <string name="gamenative_sign_in_no_browser">サインインページを開くブラウザーが見つかりませんでした。代わりに別のデバイスでコードをスキャンしてください。</string>
     <string name="support_title">AI ヘルプ</string>
-    <string name="support_subtitle">Rift AI サポートとの会話</string>
     <string name="support_refresh">更新</string>
     <string name="support_signed_out_title">ゲームについてサポートを受ける</string>
-    <string name="support_signed_out_body">Rift アカウントにサインインすると、サポートの会話を確認し、ゲームの問題について AI と話すことができます。</string>
     <string name="support_signed_out_discord">Discord でもサポートを受けられます</string>
     <string name="support_empty_title">まだ会話はありません</string>
     <string name="support_empty_body">会話を始めるには、ライブラリのゲームで「AI のサポートを受ける」を選んでください。問題が起きるまでプレイしてからゲームを閉じ、何が起きたかを説明してください。</string>
@@ -1029,7 +1023,6 @@
     <string name="support_last_activity">最終アクティビティ %1$s</string>
     <string name="support_problem_network">接続できませんでした。接続を確認して、もう一度お試しください。</string>
     <string name="support_problem_unavailable">アプリ内のサポートチャットはまだ利用できません。それまでは、AI サポートは Discord で行われます。</string>
-    <string name="support_problem_unauthorized">Rift アカウントを確認できませんでした。後でもう一度お試しいただくか、設定でサインアウトしてから再度サインインしてください。</string>
     <string name="support_problem_rate_limited">短時間に多くの送信がありました。しばらく待ってから、もう一度お試しください。</string>
     <string name="support_problem_not_found">この会話は見つかりませんでした。</string>
     <string name="support_problem_server">こちら側で問題が発生しました。数分後にもう一度お試しください。</string>
@@ -1040,9 +1033,6 @@
     <string name="support_problem_already_answered">結果はすでにお知らせいただいています。</string>
     <string name="support_label_you">あなた</string>
     <string name="support_label_report">あなたのレポート</string>
-    <string name="support_label_ai">Rift AI</string>
-    <string name="support_label_staff">%1$s · Rift チーム</string>
-    <string name="support_label_team">Rift チーム</string>
     <string name="support_analysing_first">AI がログを分析しています。通常は数分かかります。この画面を離れても大丈夫です。戻ってきたときに返信が表示されます。</string>
     <string name="support_analysing_followup">返信を待っています。通常は数分かかります。</string>
     <string name="support_outcome_question">これで問題は解決しましたか？</string>
@@ -1059,7 +1049,6 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro のレポートはキューを待たずに処理されます。</string>
     <string name="support_limit_title">本日の公正利用の上限に達しました</string>
-    <string name="support_upgrade_reason_required">AI の返信には Rift のサブスクリプションが必要です。すでに Discord または Ko-fi でサブスクリプションに登録している場合は、設定で Discord を連携してください。</string>
     <string name="support_see_plans">プランを見る</string>
     <string name="support_plan_basic_title">$5/月 · Basic</string>
     <string name="support_plan_basic_body">ゲームを動かす。もっと快適に動かす。</string>
@@ -1140,13 +1129,11 @@
     <string name="settings_info_send_tip_title">メンバーになる</string>
     <string name="settings_info_send_tip_subtitle">ゲームを動かす AI サポート、リリースへの早期アクセスなど</string>
     <string name="settings_info_ask_tip_title">メンバーシップのご案内</string>
-    <string name="settings_info_ask_tip_subtitle">Riftメンバーになるための案内を時々表示します</string>
     <string name="settings_info_source_title">ソースコード</string>
     <string name="settings_info_source_subtitle">このプロジェクトのソースコードを表示する</string>
     <string name="settings_info_libraries_title">使用するライブラリ</string>
     <string name="settings_info_libraries_subtitle">Rift Launcher を可能にするテクノロジーをご覧ください</string>
     <string name="settings_info_privacy_title">プライバシーポリシー</string>
-    <string name="settings_info_privacy_subtitle">Rift\'s プライバシー ポリシーへのリンクを開きます</string>
     <string name="settings_info_usage_analytics_title">使用状況分析</string>
     <string name="settings_info_usage_analytics_subtitle">当社は個人情報を追跡することはありません。これを無効にすると、重要でない分析は停止されますが、コアとなるゲーム パフォーマンス データは、互換性を向上させるための正当な目的として引き続き収集されます。</string>
 
@@ -1314,7 +1301,6 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">最近のクラッシュ</string>
     <string name="main_recent_crash_message">申し訳ありません!\n\' が抱えていた最近の問題について知っていただければ幸いです。\nアプリ\'s の設定で最新のクラッシュ ログを表示およびエクスポートし、プロジェクト ZESC4ZZs リポジトリの Github の問題として添付できます。\nGithub リポジトリへのリンクも設定にあります。</string>
-    <string name="main_thank_you_title">Riftを楽しんでいますか？</string>
     <string name="main_thank_you_message">今すぐメンバーになりましょう。メンバー特典:\n\n• ゲームを動かすための AI サポート\n• 新リリースへの早期アクセス\n• Discordのプレミアムロールと限定チャンネル\n• …その他多数\n\n月額$5から</string>
     <string name="main_join_kofi">メンバーになる</string>
     <string name="pitch_session_title">%1$sを楽しんでいますか？</string>
@@ -1838,7 +1824,6 @@
     <string name="lsfg_installing">Lossless Scaling をダウンロード中…</string>
     <string name="lsfg_performance_mode_desc">処理を早くするために品質を下げる</string>
     <string name="settings_interface_show_recommendations_title">ゲームのおすすめを表示</string>
-    <string name="settings_interface_show_recommendations_subtitle">パーソナライズされたおすすめを表示します。オンのままにすると Rift の支援につながります。</string>
     <string name="settings_interface_library_tabs_title">ライブラリのタブ</string>
     <string name="settings_interface_library_tabs_subtitle">ライブラリに表示するストアのタブを選択します。</string>
     <string name="settings_interface_library_tabs_none">ストアのタブなし</string>
@@ -1961,7 +1946,6 @@
     <string name="nexus_oauth_invalid_callback">Rift Launcher は Nexus Mods からの無効なサインイン応答を拒否しました。</string>
     <string name="nexus_oauth_sign_in_required">Nexus のオンライン機能を使用する前に、Nexus Mods アカウントへ接続してください。</string>
     <string name="nexus_oauth_session_unavailable">Nexus の認証を一時的に利用できません。もう一度お試しください。</string>
-    <string name="nexus_integration_temporarily_unavailable">Rift を Nexus Mods に登録している間、Nexus Mods サポートは一時的に無効になっています。インストール済みの Mod は引き続き管理できます。</string>
     <string name="nexus_invalid_nxm_callback">この Nexus 認証は無効か期限切れ、使用済み、または Rift Launcher の有効なリクエストと一致しません。もう一度「Nexus Mod を管理」からダウンロードを開始してください。</string>
     <string name="nexus_nxm_callback_received">Nexus のダウンロード認証を受信しました。ダウンロードが自動的に再開しない場合は、「Nexus Mod を管理」に戻ってください。</string>
     <string name="nexus_nxm_no_active_target">対象ゲームの「Nexus Mod を管理」を開き、Nexus Mods でもう一度「Mod Manager Download」をタップしてください。</string>
@@ -2047,7 +2031,6 @@
     <string name="debug_prerun_title">AI のサポートを受ける</string>
     <string name="debug_prerun_message_1">デバッグログ付きでゲームを起動し、終了時にログを Discord の AI に共有します。問題が発生するまでゲームをプレイしてください。</string>
     <string name="debug_prerun_message_2">AI の返信はサブスク会員限定です。</string>
-    <string name="debug_prerun_message_1_app">デバッグログ付きでゲームを実行します。終了するとログが AI に送られ、回答は Discord に届きます。Rift アカウントでサインインした場合はアプリに届きます。問題が発生するまでプレイしてください。</string>
     <string name="debug_prerun_message_2_app">最初の分析は無料です。追加の返信にはプランが必要です。</string>
     <string name="debug_prerun_message_1_neutral">デバッグログ付きでゲームを実行します。終了するとログが AI に送られます。問題が発生するまでプレイしてください。</string>
     <string name="debug_trial_note">無料トライアルあり。</string>
@@ -2754,14 +2737,12 @@
     <string name="settings_hide_ai_title">AI機能を非表示</string>
     <string name="settings_hide_ai_subtitle">任意のAIデバッグ支援を非表示にします</string>
     <string name="settings_info_boot_ads_title">スポンサー付きローディング画面</string>
-    <string name="settings_info_boot_ads_subtitle">オンのままにしておくと Rift の開発を支援できます。ゲームの起動が遅くなることはなく、あなたに影響することも一切ありません。</string>
     <string name="settings_info_boot_recs_title">ローディング画面におすすめゲームを表示</string>
     <string name="settings_info_boot_recs_subtitle">スポンサーカードがないとき、ゲームの起動中におすすめのゲームを表示します。</string>
     <string name="boot_rec_badge">あなたへのおすすめ</string>
     <string name="boot_ad_close_cd">このカードを閉じる</string>
     <string name="boot_ad_sheet_title_sponsored">スポンサーカードについて</string>
     <string name="boot_ad_sheet_title_rec">おすすめについて</string>
-    <string name="boot_ad_sheet_body_sponsored">スポンサーカードは Rift の専任開発を支えています。設定でいつでも変更できます。</string>
     <string name="boot_ad_sheet_body_rec">おすすめはプレイしたゲームをもとに選ばれます。設定でいつでも変更できます。</string>
     <string name="boot_ad_close_one">これを閉じる</string>
     <string name="boot_ad_turn_off_sponsored">スポンサーカードをオフにする</string>
@@ -2955,7 +2936,6 @@
     <string name="support_reply_ready">AI ヘルプからの返信が届きました</string>
     <string name="support_reply_open">開く</string>
     <string name="support_wait_channel_name">AI ヘルプ返信の状況</string>
-    <string name="support_wait_channel_description">Riftがレポートへの返信を待っている間に表示されます。</string>
     <string name="support_replies_channel_name">AI ヘルプの返信</string>
     <string name="support_replies_channel_description">レポートへの返信が届いたときにお知らせします。</string>
     <string name="support_wait_title">AI ヘルプの返信を待っています</string>

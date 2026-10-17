@@ -29,7 +29,6 @@ internal fun AboutSettings() {
     val uriHandler = LocalUriHandler.current
     val riftPrefs = RiftPrefs.of(LocalContext.current)
     var shareRatings by rememberSaveable { mutableStateOf(riftPrefs.communityShare) }
-    var askForTip by rememberSaveable { mutableStateOf(!PrefManager.tipped) }
     var analytics by rememberSaveable { mutableStateOf(PrefManager.usageAnalyticsEnabled) }
     var librariesDialog by rememberSaveable { mutableStateOf(false) }
 
@@ -60,25 +59,9 @@ internal fun AboutSettings() {
             icon = Icons.Rounded.Favorite,
             onClick = { uriHandler.openUri(Constants.Misc.KO_FI_LINK) },
         )
-        SwitchRow(
-            title = stringResource(R.string.settings_info_ask_tip_title),
-            subtitle = stringResource(R.string.settings_info_ask_tip_subtitle),
-            icon = Icons.Rounded.Savings,
-            checked = askForTip,
-            onCheckedChange = {
-                askForTip = it
-                PrefManager.tipped = !it
-            },
-        )
     }
 
     SettingsGroup(title = stringResource(R.string.rift_settings_group_privacy)) {
-        LinkRow(
-            title = stringResource(R.string.settings_info_privacy_title),
-            subtitle = stringResource(R.string.settings_info_privacy_subtitle),
-            icon = Icons.Rounded.PrivacyTip,
-            onClick = { uriHandler.openUri(Constants.Misc.PRIVACY_LINK) },
-        )
         SwitchRow(
             title = stringResource(R.string.settings_info_usage_analytics_title),
             subtitle = stringResource(R.string.settings_info_usage_analytics_subtitle),

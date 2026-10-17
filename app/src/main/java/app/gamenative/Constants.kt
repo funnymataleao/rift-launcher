@@ -34,6 +34,9 @@ object Constants {
     }
 
     object Misc {
+        // RIFT: the original app's account, support chat, membership pitches, ads and recommendations are hidden.
+        const val HIDE_UPSTREAM_SERVICES = true
+
         // RIFT: the "Become a member" link (Settings -> About, and the support dialogs). Put your own Ko-fi
         // address here: this is the only place it is written.
         const val KO_FI_LINK = "https://ko-fi.com/gamenative"

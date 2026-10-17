@@ -111,6 +111,7 @@ object BootAdRepository {
      * opt-in recommendation card.
      */
     fun pickBootCard(): BootAdItem? {
+        if (app.gamenative.Constants.Misc.HIDE_UPSTREAM_SERVICES) return null
         val sponsor = eligibleSponsor()
         if (sponsor != null) return sponsor.takeIf { passesShowRate(it) }
         return recommendationCard()
