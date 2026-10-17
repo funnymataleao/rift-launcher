@@ -1359,6 +1359,7 @@ abstract class BaseAppScreen {
                 tags = riftMeta.genres + riftMeta.tags,
                 screenshots = storeMerged.screenshots,
                 videos = storeMerged.videos,
+                videoThumbnails = storeMerged.videoThumbnails,
                 source = riftMeta.source,
             ).mergedWith(storeMerged).copy(source = riftMeta.source)
         } else {

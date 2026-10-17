@@ -95,6 +95,7 @@ internal fun RiftGamePage(
                     source = m.source,
                     screenshots = media.screenshots,
                     videos = media.videos,
+                    videoThumbnails = media.videoThumbnails,
                 )
             } ?: media,
             heroImageUrl = shown.heroImageUrl.ifEmpty { null },
