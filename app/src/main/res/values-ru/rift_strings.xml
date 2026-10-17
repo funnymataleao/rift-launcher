@@ -309,4 +309,21 @@
     <string name="rift_art_network">Не удалось связаться с SteamGridDB.</string>
     <string name="rift_art_open_settings">Открыть настройки</string>
     <string name="rift_art_retry">Повторить</string>
+
+    <!-- Эмуляторы: выбор установленного приложения, скачивание, запуск игры -->
+    <string name="rift_section_emulators">Эмуляторы</string>
+    <string name="rift_emulator_search_hint">Поиск по приложениям</string>
+    <string name="rift_emulator_group_installed">Установлено, подходит для системы</string>
+    <string name="rift_emulator_group_download">Скачать</string>
+    <string name="rift_emulator_group_all">Все приложения на устройстве</string>
+    <string name="rift_emulator_download_hint">Только официальные страницы. После установки вернитесь в Rift: эмулятор появится в списке сам.</string>
+    <string name="rift_emulator_download_play">Google Play</string>
+    <string name="rift_emulator_download_site">Официальный сайт</string>
+    <string name="rift_emulator_download_failed">Не удалось открыть страницу загрузки.</string>
+    <string name="rift_emulator_nothing_found">Нет приложения с таким названием.</string>
+    <string name="rift_settings_pick_core">Какое ядро RetroArch?</string>
+    <string name="rift_settings_change_core">Сменить ядро</string>
+    <string name="rift_emulator_not_set">Для этой системы ещё не выбран эмулятор. Выберите его в Настройках, Эмуляторы.</string>
+    <string name="rift_emulator_missing">%1$s больше не установлен. Выберите другой эмулятор в Настройках, Эмуляторы.</string>
+    <string name="rift_emulator_opened_only">%1$s не умеет открывать эту игру снаружи, поэтому открыто само приложение. Выберите игру в нём.</string>
 </resources>

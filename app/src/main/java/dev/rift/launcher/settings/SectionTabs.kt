@@ -14,6 +14,7 @@ import androidx.compose.material.icons.rounded.Android
 import androidx.compose.material.icons.rounded.Cast
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.DesktopWindows
+import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -181,6 +182,7 @@ private fun RiftSection.icon(): ImageVector = when (this) {
     RiftSection.PcGames -> Icons.Rounded.DesktopWindows
     RiftSection.AndroidGames -> Icons.Rounded.Android
     RiftSection.PcStreaming -> Icons.Rounded.Cast
+    RiftSection.Emulators -> Icons.Rounded.SportsEsports
     RiftSection.CloudStreaming -> Icons.Rounded.Cloud
 }
 
@@ -189,4 +191,5 @@ private fun RiftSection.accent(): SettingsAccent = when (this) {
     RiftSection.PcGames -> SettingsAccent.Blue
     RiftSection.AndroidGames -> SettingsAccent.Green
     RiftSection.PcStreaming -> SettingsAccent.Mint
+    RiftSection.Emulators -> SettingsAccent.Peach
 }

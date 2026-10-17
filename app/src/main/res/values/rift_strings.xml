@@ -314,4 +314,21 @@
     <string name="rift_art_network">Could not reach SteamGridDB.</string>
     <string name="rift_art_open_settings">Open settings</string>
     <string name="rift_art_retry">Try again</string>
+
+    <!-- Emulators: picking an installed app, downloading one, starting a game -->
+    <string name="rift_section_emulators">Emulators</string>
+    <string name="rift_emulator_search_hint">Search apps</string>
+    <string name="rift_emulator_group_installed">Installed, for this system</string>
+    <string name="rift_emulator_group_download">Download</string>
+    <string name="rift_emulator_group_all">All apps on this device</string>
+    <string name="rift_emulator_download_hint">Official pages only. After installing, come back to Rift: the emulator shows up in the list by itself.</string>
+    <string name="rift_emulator_download_play">Google Play</string>
+    <string name="rift_emulator_download_site">Official site</string>
+    <string name="rift_emulator_download_failed">Could not open the download page.</string>
+    <string name="rift_emulator_nothing_found">No app with that name.</string>
+    <string name="rift_settings_pick_core">Which RetroArch core?</string>
+    <string name="rift_settings_change_core">Change core</string>
+    <string name="rift_emulator_not_set">This system has no emulator yet. Pick one in Settings, Emulators.</string>
+    <string name="rift_emulator_missing">%1$s is not installed any more. Pick another emulator in Settings, Emulators.</string>
+    <string name="rift_emulator_opened_only">%1$s cannot open this game from outside, so its own app is open. Pick the game there.</string>
 </resources>

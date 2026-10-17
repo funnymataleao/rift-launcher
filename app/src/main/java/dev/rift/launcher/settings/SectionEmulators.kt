@@ -23,8 +23,8 @@ import app.gamenative.ui.util.SnackbarManager
 private sealed interface EmulatorDialog {
     data object PickPlatform : EmulatorDialog
     data class PickEmulator(val platformId: String) : EmulatorDialog
+    data class PickCore(val platformId: String, val emulatorPackage: String) : EmulatorDialog
     data class Manage(val platformId: String) : EmulatorDialog
-    data class ChangeEmulator(val platformId: String) : EmulatorDialog
 }
 
 /**
@@ -48,16 +48,27 @@ internal fun EmulatorsSettings() {
 
     val picker = rememberFolderPicker { uri -> onFolderPicked?.invoke(uri) }
 
-    fun chooseEmulator(platformId: String, emulatorPackage: String) {
+    /** The emulator (and core) for a system is chosen: save it, asking for the games folder first when the system is new. */
+    fun chooseEmulator(platformId: String, emulatorPackage: String, core: String) {
         val existing = platforms.firstOrNull { it.platformId == platformId }
         if (existing != null) {
-            save(platforms.map { if (it.platformId == platformId) it.copy(emulatorPackage = emulatorPackage) else it })
+            save(platforms.map { if (it.platformId == platformId) it.copy(emulatorPackage = emulatorPackage, core = core) else it })
         } else {
             onFolderPicked = { uri ->
-                save(platforms + EmulatorPlatform(platformId, emulatorPackage, uri))
+                save(platforms + EmulatorPlatform(platformId, emulatorPackage, uri, core))
                 onFolderPicked = null
             }
             picker()
+        }
+    }
+
+    /** After an app is picked: RetroArch also needs the core that runs the system, everything else is done. */
+    fun emulatorPicked(platformId: String, emulatorPackage: String) {
+        val def = EmulatorCatalog.platform(platformId)
+        if (EmulatorCatalog.launchKind(def, emulatorPackage) == LaunchKind.RETROARCH && def != null && def.cores.size > 1) {
+            dialog = EmulatorDialog.PickCore(platformId, emulatorPackage)
+        } else {
+            chooseEmulator(platformId, emulatorPackage, "")
         }
     }
 
@@ -69,7 +80,7 @@ internal fun EmulatorsSettings() {
             LinkRow(
                 title = stringResource(def.nameRes),
                 subtitle = listOfNotNull(
-                    EmulatorCatalog.labelFor(def, entry.emulatorPackage).takeIf { it.isNotBlank() },
+                    EmulatorCatalog.labelFor(context, entry.emulatorPackage, def).takeIf { entry.emulatorPackage.isNotBlank() },
                     folderLabel(entry.folderUri),
                 ).joinToString(" · "),
                 icon = Icons.Rounded.SportsEsports,
@@ -122,62 +133,52 @@ internal fun EmulatorsSettings() {
                 title = stringResource(R.string.rift_settings_pick_platform),
                 options = free.map { stringResource(it.nameRes) },
                 selectedIndex = -1,
-                onSelect = { index ->
-                    val picked = free[index]
-                    val installed = EmulatorCatalog.installed(context, picked)
-                    if (installed.isEmpty()) {
-                        SnackbarManager.show(context.getString(R.string.rift_settings_no_emulator_installed))
-                        dialog = null
-                    } else {
-                        dialog = EmulatorDialog.PickEmulator(picked.id)
-                    }
-                },
+                onSelect = { index -> dialog = EmulatorDialog.PickEmulator(free[index].id) },
                 onDismiss = { if (dialog == current) dialog = null },
             )
         }
         is EmulatorDialog.PickEmulator -> {
             val def = EmulatorCatalog.platform(current.platformId)
-            val installed = def?.let { EmulatorCatalog.installed(context, it) }.orEmpty()
-            RiftChoiceDialog(
-                title = stringResource(R.string.rift_settings_pick_emulator),
-                options = installed.map { it.label },
-                selectedIndex = -1,
-                onSelect = { chooseEmulator(current.platformId, installed[it].packageName) },
-                onDismiss = { if (dialog == current) dialog = null },
-            )
+            if (def != null) {
+                EmulatorPickerDialog(
+                    platform = def,
+                    onPick = { emulatorPicked(current.platformId, it) },
+                    onDismiss = { if (dialog == current) dialog = null },
+                )
+            }
         }
-        is EmulatorDialog.ChangeEmulator -> {
+        is EmulatorDialog.PickCore -> {
             val def = EmulatorCatalog.platform(current.platformId)
-            val installed = def?.let { EmulatorCatalog.installed(context, it) }.orEmpty()
-            val currentPackage = platforms.firstOrNull { it.platformId == current.platformId }?.emulatorPackage
+            val cores = def?.cores.orEmpty()
             RiftChoiceDialog(
-                title = stringResource(R.string.rift_settings_pick_emulator),
-                options = installed.map { it.label },
-                selectedIndex = installed.indexOfFirst { it.packageName == currentPackage },
-                onSelect = { chooseEmulator(current.platformId, installed[it].packageName) },
+                title = stringResource(R.string.rift_settings_pick_core),
+                options = cores.map { it.label },
+                selectedIndex = cores.indexOfFirst { it.file == platforms.firstOrNull { p -> p.platformId == current.platformId }?.core }.coerceAtLeast(0),
+                onSelect = { chooseEmulator(current.platformId, current.emulatorPackage, cores[it].file) },
                 onDismiss = { if (dialog == current) dialog = null },
             )
         }
         is EmulatorDialog.Manage -> {
+            val def = EmulatorCatalog.platform(current.platformId)
+            val entry = platforms.firstOrNull { it.platformId == current.platformId }
+            val hasCore = entry != null && def != null && def.cores.size > 1 &&
+                EmulatorCatalog.launchKind(def, entry.emulatorPackage) == LaunchKind.RETROARCH
+            val options = buildList {
+                add(stringResource(R.string.rift_settings_change_emulator))
+                if (hasCore) add(stringResource(R.string.rift_settings_change_core))
+                add(stringResource(R.string.rift_settings_change_folder))
+                add(stringResource(R.string.rift_settings_remove_platform))
+            }
             RiftChoiceDialog(
-                title = EmulatorCatalog.platform(current.platformId)?.let { stringResource(it.nameRes) }.orEmpty(),
-                options = listOf(
-                    stringResource(R.string.rift_settings_change_emulator),
-                    stringResource(R.string.rift_settings_change_folder),
-                    stringResource(R.string.rift_settings_remove_platform),
-                ),
+                title = def?.let { stringResource(it.nameRes) }.orEmpty(),
+                options = options,
                 selectedIndex = -1,
                 onSelect = { index ->
-                    when (index) {
-                        0 -> {
-                            val def = EmulatorCatalog.platform(current.platformId)
-                            if (def != null && EmulatorCatalog.installed(context, def).isNotEmpty()) {
-                                dialog = EmulatorDialog.ChangeEmulator(current.platformId)
-                            } else {
-                                SnackbarManager.show(context.getString(R.string.rift_settings_no_emulator_installed))
-                            }
-                        }
-                        1 -> {
+                    val action = index - (if (hasCore && index > 0) 1 else 0)
+                    when {
+                        index == 0 -> dialog = EmulatorDialog.PickEmulator(current.platformId)
+                        hasCore && index == 1 -> entry?.let { dialog = EmulatorDialog.PickCore(current.platformId, it.emulatorPackage) }
+                        action == 1 -> {
                             onFolderPicked = { uri ->
                                 save(platforms.map { if (it.platformId == current.platformId) it.copy(folderUri = uri) else it })
                                 onFolderPicked = null
