@@ -62,7 +62,7 @@ internal fun HomeSettings() {
             },
         )
     }
-    NoteText(stringResource(R.string.rift_settings_home_note))
+    NoteText(stringResource(R.string.rift_settings_home_note), underGroup = true)
 }
 
 /** The system's own "use Rift as the home app?" dialog, where the device has it (Android 10 and up). */

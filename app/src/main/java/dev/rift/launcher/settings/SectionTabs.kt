@@ -211,7 +211,7 @@ internal fun TabsSettings() {
             }
         }
     }
-    NoteText(stringResource(R.string.rift_settings_tabs_hint))
+    NoteText(stringResource(R.string.rift_settings_tabs_hint), underGroup = true)
 
     renaming?.let { section ->
         RenameTabDialog(

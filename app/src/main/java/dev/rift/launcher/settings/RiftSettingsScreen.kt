@@ -359,7 +359,7 @@ private fun SectionPane(
                         .fillMaxHeight()
                         .verticalScroll(rememberScrollState())
                         .padding(top = 16.dp, bottom = 56.dp, start = 4.dp, end = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(34.dp),
+                    verticalArrangement = Arrangement.spacedBy(GroupGap),
                 ) {
                     when (section) {
                         RiftSettingsSection.Sound -> SoundSettings()

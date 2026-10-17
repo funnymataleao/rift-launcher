@@ -41,6 +41,8 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.layout
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -90,8 +92,14 @@ internal fun plateText(focused: Boolean): Color = if (focused) RiftAccent.curren
 internal fun plateSubtext(focused: Boolean): Color =
     if (focused) RiftAccent.current.onAccent.copy(alpha = 0.72f) else RiftColors.OnSurfaceVariant
 
+/** The space between two groups on a page. */
+internal val GroupGap = 32.dp
+
+/** One size for every group name, on every page. */
+private val GroupTitleSize = 21.sp
+
 /**
- * A group of settings rows under a small caption, one plate per row.
+ * A group of settings rows: its name, then one plate per row.
  */
 @Composable
 internal fun SettingsGroup(
@@ -99,16 +107,14 @@ internal fun SettingsGroup(
     title: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (title != null) {
-            // Same small caption as the group names in the section list.
             Text(
-                text = title.uppercase(),
-                color = RiftColors.OnSurfaceVariant,
-                fontSize = 12.5.sp,
+                text = title,
+                color = RiftColors.OnSurface,
+                fontSize = GroupTitleSize,
                 fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 1.5.sp,
-                modifier = Modifier.padding(start = 18.dp),
+                modifier = Modifier.padding(start = 6.dp),
             )
         }
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(PlateGap)) {
@@ -441,15 +447,32 @@ internal fun InfoRow(
     }
 }
 
-/** A plain explanation under a group. */
+/**
+ * A plain explanation. With [underGroup] it explains the group just above and sits close under its rows,
+ * not a whole group gap away; otherwise it just follows what is above it.
+ */
 @Composable
-internal fun NoteText(text: String, modifier: Modifier = Modifier) {
+internal fun NoteText(text: String, modifier: Modifier = Modifier, underGroup: Boolean = false) {
+    val tuck = with(LocalDensity.current) { (GroupGap - 8.dp).roundToPx() }
     Text(
         text = text,
         color = RiftColors.OnSurfaceVariant,
         fontSize = 13.5.sp,
         lineHeight = 19.sp,
-        modifier = modifier.padding(horizontal = 12.dp),
+        modifier = modifier
+            .then(
+                if (!underGroup) {
+                    Modifier
+                } else {
+                    // Reports less height and sits higher by the same amount: closer to the group above,
+                    // the same distance as before to whatever follows.
+                    Modifier.layout { measurable, constraints ->
+                        val placeable = measurable.measure(constraints)
+                        layout(placeable.width, (placeable.height - tuck).coerceAtLeast(0)) { placeable.place(0, -tuck) }
+                    }
+                },
+            )
+            .padding(horizontal = 12.dp),
     )
 }
 

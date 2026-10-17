@@ -74,7 +74,7 @@ internal fun ArtworkSettings() {
             )
         }
     }
-    NoteText(stringResource(R.string.rift_settings_art_note))
+    NoteText(stringResource(R.string.rift_settings_art_note), underGroup = true)
 
     if (editing) {
         KeyDialog(
