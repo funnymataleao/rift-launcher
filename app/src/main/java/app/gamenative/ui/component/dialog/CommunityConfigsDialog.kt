@@ -8,6 +8,9 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.selection.selectable
@@ -345,27 +348,24 @@ fun CommunityConfigsDialog(
             dismissOnClickOutside = false,
         ),
     ) {
+        // Rift: black OLED screen with the game, device and GPU as the header and round close/refresh buttons.
         Scaffold(
             modifier = Modifier.fillMaxSize(),
+            containerColor = RiftColors.Background,
             topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text(stringResource(R.string.community_config_title)) },
-                    navigationIcon = {
-                        IconButton(onClick = onDismissRequest) {
-                            Icon(Icons.Default.Close, stringResource(R.string.community_config_close))
-                        }
+                RiftConfigHeader(
+                    gameName = resolvedGame?.name ?: gameName,
+                    hardware = listOf(
+                        detectedDevices.firstOrNull()?.model ?: listOf(Build.MANUFACTURER, Build.MODEL).joinToString(" ").trim(),
+                        detectedGpu.ifBlank { stringResource(R.string.community_config_gpu_unknown) },
+                    ).filter { it.isNotBlank() }.joinToString(" · "),
+                    total = total,
+                    refreshEnabled = !loading && !loadingMore,
+                    onRefresh = {
+                        activeService.clearConfigCache()
+                        configRefreshKey++
                     },
-                    actions = {
-                        IconButton(
-                            onClick = {
-                                activeService.clearConfigCache()
-                                configRefreshKey++
-                            },
-                            enabled = !loading && !loadingMore,
-                        ) {
-                            Icon(Icons.Default.Refresh, stringResource(R.string.community_config_refresh))
-                        }
-                    },
+                    onClose = onDismissRequest,
                 )
             },
         ) { paddingValues ->
@@ -395,22 +395,23 @@ fun CommunityConfigsDialog(
                         }
                     },
             ) {
-                CommunityConfigHeader(
-                    gameName = resolvedGame?.name ?: gameName,
-                    deviceName = detectedDevices.firstOrNull()?.model
-                        ?: listOf(Build.MANUFACTURER, Build.MODEL).joinToString(" ").trim(),
-                    gpuName = detectedGpu,
-                    total = total,
-                )
                 if (riftService != null) {
-                    CommunitySourceControl(
-                        fromRift = fromRift,
-                        enabled = !loading && !loadingMore,
-                        onSelected = {
-                            sourceChosen = true
-                            fromRift = it
-                        },
-                    )
+                    Row(
+                        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        listOf(true, false).forEach { rift ->
+                            RiftFilterPill(
+                                text = stringResource(if (rift) R.string.rift_community_source_rift else R.string.rift_community_source_gamenative),
+                                selected = fromRift == rift,
+                                enabled = controlsEnabled,
+                                onClick = {
+                                    sourceChosen = true
+                                    fromRift = rift
+                                },
+                            )
+                        }
+                    }
                 }
                 RiftConfigFilters(
                     sort = sort,
@@ -420,7 +421,6 @@ fun CommunityConfigsDialog(
                     onSortChange = { sort = it },
                     onHardwareScopeChange = { hardwareScope = it },
                 )
-                HorizontalDivider()
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     when {
@@ -545,70 +545,6 @@ fun CommunityConfigsDialog(
                 onApply(run, matchType, options)
             },
         )
-    }
-}
-
-@Composable
-private fun CommunityConfigHeader(
-    gameName: String,
-    deviceName: String,
-    gpuName: String,
-    total: Int,
-) {
-    ListItem(
-        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
-        headlineContent = {
-            Text(
-                text = gameName,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        supportingContent = {
-            Text(
-                text = listOf(
-                    deviceName,
-                    gpuName.ifBlank { stringResource(R.string.community_config_gpu_unknown) },
-                ).filter { it.isNotBlank() }.joinToString(" | "),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        trailingContent = {
-            if (total > 0) Text(pluralStringResource(R.plurals.community_config_result_count, total, total))
-        },
-    )
-}
-
-/** Rift: which community database the list comes from. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CommunitySourceControl(
-    fromRift: Boolean,
-    enabled: Boolean,
-    onSelected: (Boolean) -> Unit,
-) {
-    SingleChoiceSegmentedButtonRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, top = 12.dp),
-    ) {
-        listOf(true, false).forEachIndexed { index, rift ->
-            SegmentedButton(
-                selected = fromRift == rift,
-                onClick = { onSelected(rift) },
-                enabled = enabled,
-                shape = SegmentedButtonDefaults.itemShape(index, 2),
-                label = {
-                    Text(
-                        stringResource(if (rift) R.string.rift_community_source_rift else R.string.rift_community_source_gamenative),
-                        maxLines = 1,
-                    )
-                },
-            )
-        }
     }
 }
 
@@ -1322,5 +1258,69 @@ private fun RiftConfigDetailPane(
                 color = if (canApply) RiftColors.OnPrimary else RiftColors.OnSurface,
             )
         }
+    }
+}
+
+/** Rift: the profiles screen header: game, hardware and count on the left, round refresh and close on the right. */
+@Composable
+private fun RiftConfigHeader(
+    gameName: String,
+    hardware: String,
+    total: Int,
+    refreshEnabled: Boolean,
+    onRefresh: () -> Unit,
+    onClose: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = stringResource(R.string.community_config_title).uppercase(Locale.getDefault()),
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = RiftColors.OnSurfaceVariant,
+            )
+            Text(
+                text = gameName,
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
+                color = RiftColors.OnSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = listOfNotNull(
+                    hardware.takeIf { it.isNotBlank() },
+                    if (total > 0) pluralStringResource(R.plurals.community_config_result_count, total, total) else null,
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.bodyMedium,
+                color = RiftColors.OnSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        RiftHeaderButton(Icons.Default.Refresh, stringResource(R.string.community_config_refresh), refreshEnabled, onRefresh)
+        RiftHeaderButton(Icons.Default.Close, stringResource(R.string.community_config_close), true, onClose)
+    }
+}
+
+@Composable
+private fun RiftHeaderButton(icon: androidx.compose.ui.graphics.vector.ImageVector, description: String, enabled: Boolean, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+    Box(
+        modifier = Modifier
+            .size(RiftSizes.button)
+            .clip(RoundedCornerShape(50))
+            .background(Color.White.copy(alpha = if (focused) 0.2f else 0.1f))
+            .focusRing(interactionSource, RoundedCornerShape(50), width = 2.dp)
+            .selectable(selected = false, enabled = enabled, interactionSource = interactionSource, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = description, tint = if (enabled) RiftColors.OnSurface else RiftColors.Outline)
     }
 }

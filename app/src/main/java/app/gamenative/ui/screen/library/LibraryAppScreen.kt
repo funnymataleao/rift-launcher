@@ -27,6 +27,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarOutline
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.ui.layout.layout
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Theaters
@@ -177,9 +185,6 @@ import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.StoreGameDetails
 import app.gamenative.service.SteamService
-import app.gamenative.ui.component.GamepadAction
-import app.gamenative.ui.component.GamepadActionBar
-import app.gamenative.ui.component.GamepadButton
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.DownloadDisplayDetails
@@ -862,6 +867,61 @@ private enum class GamePageSection(val labelRes: Int, val titleRes: Int) {
     Details(R.string.rift_game_section_details, R.string.rift_game_section_details),
 }
 
+/** Rift: the Details section, equal tiles in rows with one gap size; the last row keeps its tiles' width. */
+@Composable
+private fun GamePageDetailsGrid(tiles: List<Triple<ImageVector, String, String?>>, columns: Int) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        tiles.chunked(columns).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                row.forEach { (icon, label, value) ->
+                    val interactionSource = remember { MutableInteractionSource() }
+                    val focused by interactionSource.collectIsFocusedAsState()
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(
+                                if (focused) dev.rift.launcher.ui.theme.RiftColors.SurfaceContainer
+                                else dev.rift.launcher.ui.theme.RiftColors.Surface,
+                            )
+                            .focusRing(interactionSource, RoundedCornerShape(20.dp), width = 2.dp)
+                            .focusable(interactionSource = interactionSource)
+                            .padding(horizontal = 18.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(dev.rift.launcher.ui.theme.RiftColors.SurfaceContainerHigh),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(icon, contentDescription = null, tint = dev.rift.launcher.ui.theme.RiftColors.Primary, modifier = Modifier.size(20.dp))
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                label.uppercase(Locale.getDefault()),
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp),
+                                color = dev.rift.launcher.ui.theme.RiftColors.OnSurfaceVariant,
+                            )
+                            Text(
+                                value.orEmpty(),
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+                repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
 /** Rift: the top-left "B Библиотека" pill that leaves the page. */
 @Composable
 private fun GamePageBackPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -1279,9 +1339,30 @@ private fun GamePageMediaRow(
     videoFallback: String,
     gameName: String,
     onOpen: (Int) -> Unit,
+    sidePadding: Dp = 0.dp,
 ) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        itemsIndexed(media, key = { _, item -> item.url }) { index, item ->
+    // Rift: the row runs edge to edge (past the page's side padding) with that padding as content padding,
+    // so a focused tile grows and casts its ring without being cut at the row's edge. Repeats are dropped.
+    val tiles = remember(media) {
+        media.withIndex().distinctBy { it.value.url.substringBefore('?').lowercase(Locale.ROOT) }
+    }
+    LazyRow(
+        modifier = Modifier.layout { measurable, constraints ->
+            val extra = (sidePadding * 2).roundToPx()
+            val placeable = measurable.measure(
+                constraints.copy(
+                    minWidth = constraints.minWidth + extra,
+                    maxWidth = if (constraints.hasBoundedWidth) constraints.maxWidth + extra else constraints.maxWidth,
+                ),
+            )
+            layout(placeable.width - extra, placeable.height) { placeable.place(-sidePadding.roundToPx(), 0) }
+        },
+        contentPadding = PaddingValues(horizontal = sidePadding, vertical = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        itemsIndexed(tiles, key = { _, tile -> tile.value.url }) { position, tile ->
+            val index = tile.index
+            val item = tile.value
             val interactionSource = remember { MutableInteractionSource() }
             val isFocused by interactionSource.collectIsFocusedAsState()
             val scale by animateFloatAsState(
@@ -1297,7 +1378,7 @@ private fun GamePageMediaRow(
                 modifier = Modifier
                     .padding(vertical = 8.dp)
                     .height(236.dp)
-                    .width(if (index == 0) 420.dp else 300.dp)
+                    .width(if (position == 0) 420.dp else 300.dp)
                     .scale(scale)
                     .clip(RoundedCornerShape(22.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainer)
@@ -2457,6 +2538,7 @@ internal fun AppScreenContent(
                     GamePageSectionBlock(GamePageSection.Media, sectionOffsets, scrollState) {
                         GamePageMediaRow(
                             media = heroMedia,
+                            sidePadding = sidePadding,
                             videoFallback = videoFallback,
                             gameName = displayInfo.name,
                             onOpen = { fullscreenHeroPage = it },
@@ -2472,17 +2554,6 @@ internal fun AppScreenContent(
                     GamePageSectionBlock(GamePageSection.Compatibility, sectionOffsets, scrollState) {
                 // Rift: Wine compatibility is about GameNative's own (PC Games) games; streaming, cloud, Android and emulator pages have none.
                 if (riftStream == null) {
-                // Rift: community run stats moved off the hero, next to the compatibility verdict.
-                if (gameStats != null &&
-                    (gameStats.runsGpu > 0 || gameStats.reviewsGpu > 0 || gameStats.reviewsDevice > 0 ||
-                        gameStats.fps != null || gameStats.sessionSec != null)
-                ) {
-                    app.gamenative.ui.component.GameStatsStrip(
-                        stats = gameStats,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
                 app.gamenative.ui.component.RiftCompatibilityCards(
                     summary = communityCompatibility.summary,
                     loading = communityCompatibility.loading,
@@ -2505,115 +2576,41 @@ internal fun AppScreenContent(
                     }
                 }
                 GamePageSectionBlock(GamePageSection.Details, sectionOffsets, scrollState) {
-                // Info cards in 2-column grid (Rift: not for a cloud game, nothing of it is on the device)
-                if (riftStream?.showLocalDetails != false) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    val statusText = when {
-                        isInstalled -> stringResource(R.string.installed)
-                        isDownloading -> stringResource(R.string.installing)
-                        else -> stringResource(R.string.not_installed)
-                    }
-                    val statusColor = when {
-                        isInstalled -> PluviaTheme.colors.statusInstalled
-                        isDownloading -> MaterialTheme.colorScheme.tertiary
-                        else -> null
-                    }
-                    InfoCard(
-                        label = stringResource(R.string.status),
-                        value = statusText,
-                        statusColor = statusColor,
-                        isCompact = true,
-                        modifier = Modifier.weight(1f),
-                        focusableForNavigation = true,
-                    )
-                    InfoCard(
-                        label = stringResource(R.string.size),
-                        value = when {
-                            isInstalled && displayInfo.sizeOnDisk != null -> displayInfo.sizeOnDisk
-                            !isInstalled && displayInfo.sizeFromStore != null -> displayInfo.sizeFromStore
-                            else -> stringResource(R.string.library_compatibility_unknown)
-                        },
-                        isCompact = true,
-                        modifier = Modifier.weight(1f),
-                        focusableForNavigation = true,
-                    )
-                }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    InfoCard(
-                        label = stringResource(R.string.developer),
-                        value = displayInfo.developer,
-                        isCompact = true,
-                        modifier = Modifier.weight(1f),
-                        focusableForNavigation = true,
-                    )
-                    InfoCard(
-                        label = stringResource(R.string.release_date),
-                        value = remember(displayInfo.releaseDate) {
-                            if (displayInfo.releaseDate > 0) {
-                                SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-                                    .format(Date(displayInfo.releaseDate * 1000))
-                            } else {
-                                context.getString(R.string.library_compatibility_unknown)
-                            }
-                        },
-                        isCompact = true,
-                        modifier = Modifier.weight(1f),
-                        focusableForNavigation = true,
-                    )
-                }
-
-                // Install location (when installed)
-                if (isInstalled && displayInfo.installLocation != null) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    InfoCard(
-                        label = stringResource(R.string.location),
-                        value = displayInfo.installLocation,
-                        isCompact = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        focusableForNavigation = true,
-                    )
-                }
-
-                // Play time and last played
-                if (displayInfo.playtimeText != null || displayInfo.lastPlayedText != null) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        if (displayInfo.playtimeText != null) {
-                            InfoCard(
-                                label = stringResource(R.string.play_time),
-                                value = displayInfo.playtimeText,
-                                isCompact = true,
-                                modifier = Modifier.weight(1f),
-                                focusableForNavigation = true,
-                            )
-                        }
-                        if (displayInfo.lastPlayedText != null) {
-                            InfoCard(
-                                label = stringResource(R.string.last_played),
-                                value = displayInfo.lastPlayedText,
-                                isCompact = true,
-                                modifier = Modifier.weight(1f),
-                                focusableForNavigation = true,
-                            )
-                        }
+                // Rift: details as an even grid of equal tiles (icon, label, value); empty fields are left out.
+                val unknown = stringResource(R.string.library_compatibility_unknown)
+                val releaseText = remember(displayInfo.releaseDate) {
+                    if (displayInfo.releaseDate > 0) {
+                        SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(displayInfo.releaseDate * 1000))
+                    } else {
+                        ""
                     }
                 }
-
+                val localDetails = riftStream?.showLocalDetails != false
+                val sizeText = when {
+                    !localDetails -> null
+                    isInstalled -> displayInfo.sizeOnDisk
+                    else -> displayInfo.sizeFromStore
+                }
+                val statusText = when {
+                    !localDetails -> null
+                    isInstalled -> stringResource(R.string.installed)
+                    isDownloading -> stringResource(R.string.installing)
+                    else -> stringResource(R.string.not_installed)
+                }
+                val detailTiles = listOf(
+                    Triple(Icons.Filled.CheckCircle, stringResource(R.string.status), statusText),
+                    Triple(Icons.Filled.Storage, stringResource(R.string.size), sizeText),
+                    Triple(Icons.Filled.Code, stringResource(R.string.developer), displayInfo.developer),
+                    Triple(Icons.Filled.Event, stringResource(R.string.release_date), releaseText),
+                    Triple(Icons.Filled.Schedule, stringResource(R.string.play_time), displayInfo.playtimeText),
+                    Triple(Icons.Filled.History, stringResource(R.string.last_played), displayInfo.lastPlayedText),
+                    Triple(Icons.Filled.Folder, stringResource(R.string.location), displayInfo.installLocation?.takeIf { isInstalled && localDetails }),
+                ).filter { !it.third.isNullOrBlank() && it.third != unknown }
+                GamePageDetailsGrid(detailTiles, columns = if (configuration.screenWidthDp >= 840) 3 else 2)
                 }
 
-                // Rift: room under the last card for the gamepad footer, so it is not cut off.
-                Spacer(modifier = Modifier.height(96.dp).navigationBarsPadding())
+                // Rift: the same bottom margin as everywhere, so the last tile shows whole with room under it.
+                Spacer(modifier = Modifier.height(48.dp).navigationBarsPadding())
             }
         }
 
@@ -2640,57 +2637,7 @@ internal fun AppScreenContent(
         }
         }
 
-        GamepadActionBar(
-            actions = listOfNotNull(
-                if (riftStream != null) {
-                    GamepadAction(
-                        button = GamepadButton.START,
-                        labelResId = riftStream.labelRes,
-                        onClick = riftStream.onStream,
-                    )
-                } else if (isInstalled) {
-                    GamepadAction(
-                        button = GamepadButton.START,
-                        labelResId = R.string.run_app,
-                        onClick = { if (startActionEnabled) onStartAction() },
-                    )
-                } else if (isDownloading) {
-                    GamepadAction(
-                        button = GamepadButton.START,
-                        labelResId = R.string.pause_download,
-                        onClick = { if (startActionEnabled) onStartAction() },
-                    )
-                } else if (hasPartialDownload) {
-                    GamepadAction(
-                        button = GamepadButton.START,
-                        labelResId = R.string.resume_download,
-                        onClick = { if (startActionEnabled) onStartAction() },
-                    )
-                } else {
-                    GamepadAction(
-                        button = GamepadButton.START,
-                        labelResId = R.string.install_app,
-                        onClick = { if (startActionEnabled) onStartAction() },
-                    )
-                },
-                if (riftStream == null || riftStream.showOptions) {
-                    GamepadAction(
-                        button = GamepadButton.SELECT,
-                        labelResId = R.string.options,
-                        onClick = { if (riftStream == null) propertiesOpen = true else optionsMenuVisible = true },
-                    )
-                } else {
-                    null
-                },
-                GamepadAction(
-                    button = GamepadButton.B,
-                    labelResId = R.string.back,
-                    onClick = onBack,
-                ),
-            ),
-            modifier = Modifier.align(Alignment.BottomCenter),
-            visible = !optionsMenuVisible && riftOptionsOnly == null,
-        )
+        // Rift: no button-hint footer on the game page (Denis 17.10); hints that matter sit inside the screens.
 
         // Options panel - slides in from right
         GameOptionsPanel(
