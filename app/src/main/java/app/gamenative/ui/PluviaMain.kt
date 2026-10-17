@@ -2213,6 +2213,8 @@ fun PluviaMain(
                     RiftSettingsScreen(
                         onBack = { navController.navigateUp() },
                         onOpenPcPairing = { PcStreaming.openAddPc(context) },
+                        onSteamSignIn = { navController.navigate(PluviaScreen.LoginUser.route) },
+                        onSteamSignOut = { SteamService.logOut() },
                     )
                 }
 

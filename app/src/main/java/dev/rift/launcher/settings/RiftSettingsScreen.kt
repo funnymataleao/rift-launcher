@@ -34,13 +34,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,24 +55,17 @@ import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.gamenative.PluviaApp
 import app.gamenative.R
-import app.gamenative.events.AndroidEvent
-import app.gamenative.ui.util.SnackbarManager
-import app.gamenative.utils.PlatformOAuthHandlers
 import dev.rift.launcher.ui.theme.RiftColors
 import dev.rift.launcher.ui.theme.RiftMotion
 import dev.rift.launcher.ui.theme.RiftShapes
 import dev.rift.launcher.ui.theme.RiftSizes
 import dev.rift.launcher.ui.theme.RiftTheme
-import kotlinx.coroutines.launch
-import timber.log.Timber
 
 private val RailWidth = 372.dp
 private val ContentMaxWidth = 860.dp
@@ -92,7 +83,12 @@ private val ContentMaxWidth = 860.dp
  * itself uses, so nothing set here is lost when going back to GameNative's own screens.
  */
 @Composable
-fun RiftSettingsScreen(onBack: () -> Unit, onOpenPcPairing: (() -> Unit)? = null) {
+fun RiftSettingsScreen(
+    onBack: () -> Unit,
+    onOpenPcPairing: (() -> Unit)? = null,
+    onSteamSignIn: (() -> Unit)? = null,
+    onSteamSignOut: (() -> Unit)? = null,
+) {
     val sections = remember { RiftSettingsSection.entries }
     var selectedIndex by rememberSaveable { mutableIntStateOf(0) }
     val selected = sections[selectedIndex]
@@ -100,8 +96,6 @@ fun RiftSettingsScreen(onBack: () -> Unit, onOpenPcPairing: (() -> Unit)? = null
     val railItems = remember { List(sections.size) { FocusRequester() } }
     val contentEntry = remember { FocusRequester() }
     var contentHasFocus by remember { mutableStateOf(false) }
-
-    GogAuthCodeEffect()
 
     BackHandler {
         if (contentHasFocus) {
@@ -148,6 +142,8 @@ fun RiftSettingsScreen(onBack: () -> Unit, onOpenPcPairing: (() -> Unit)? = null
                     contentEntry = contentEntry,
                     returnTo = railItems[selectedIndex],
                     onOpenPcPairing = onOpenPcPairing,
+                    onSteamSignIn = onSteamSignIn,
+                    onSteamSignOut = onSteamSignOut,
                     onContentFocus = { contentHasFocus = it },
                     modifier = Modifier.weight(1f),
                 )
@@ -295,6 +291,8 @@ private fun SectionPane(
     contentEntry: FocusRequester,
     returnTo: FocusRequester,
     onOpenPcPairing: (() -> Unit)?,
+    onSteamSignIn: (() -> Unit)?,
+    onSteamSignOut: (() -> Unit)?,
     onContentFocus: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -354,7 +352,7 @@ private fun SectionPane(
                         RiftSettingsSection.Emulators -> EmulatorsSettings()
                         RiftSettingsSection.Streaming -> StreamingSettings(onOpenPcPairing)
                         RiftSettingsSection.Downloads -> DownloadsSettings()
-                        RiftSettingsSection.Accounts -> AccountsSettings()
+                        RiftSettingsSection.Accounts -> AccountsSettings(onSteamSignIn, onSteamSignOut)
                         RiftSettingsSection.About -> AboutSettings()
                         RiftSettingsSection.Debug -> DebugSettings()
                     }
@@ -362,33 +360,5 @@ private fun SectionPane(
                 }
             }
         }
-    }
-}
-
-/**
- * GOG's sign-in returns its code as an app event. GameNative's own settings screen was the one
- * listening for it, so it keeps being handled while this screen is open.
- */
-@Composable
-private fun GogAuthCodeEffect() {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    DisposableEffect(Unit) {
-        val onGogAuthCode: (AndroidEvent.GOGAuthCodeReceived) -> Unit = { event ->
-            Timber.i("[RiftSettings]: received GOG auth code event")
-            scope.launch {
-                PlatformOAuthHandlers.handleGogAuthentication(
-                    context = context,
-                    authCode = event.authCode,
-                    coroutineScope = scope,
-                    onLoadingChange = { },
-                    onError = { msg -> if (msg != null) SnackbarManager.show(msg) },
-                    onSuccess = { SnackbarManager.show(context.getString(R.string.gog_login_success_title)) },
-                    onDialogClose = { },
-                )
-            }
-        }
-        PluviaApp.events.on<AndroidEvent.GOGAuthCodeReceived, Unit>(onGogAuthCode)
-        onDispose { PluviaApp.events.off<AndroidEvent.GOGAuthCodeReceived, Unit>(onGogAuthCode) }
     }
 }
