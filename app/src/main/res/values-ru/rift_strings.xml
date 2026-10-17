@@ -526,4 +526,8 @@
     <string name="rift_settings_cache_clear_message">Обложки, фоны, логотипы и описания игр будут скачиваться заново, поэтому какое-то время библиотека может открываться медленнее. Игры, сохранения, настройки, выбранные вами обложки и паки звуков не затрагиваются.</string>
     <string name="rift_settings_cache_clear_confirm">Очистить</string>
     <string name="rift_settings_cache_cleared">Кэш очищен, освобождено %1$s</string>
+    <string name="rift_accent_amber">Янтарный</string>
+    <string name="rift_accent_lagoon">Лагуна</string>
+    <string name="rift_accent_glacier">Ледник</string>
+    <string name="rift_accent_dawn">Рассвет</string>
 </resources>
