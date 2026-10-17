@@ -77,6 +77,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarOutline
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.gamenative.data.FavoritesManager
@@ -202,6 +203,7 @@ import dev.rift.launcher.cloud.XcloudAccount
 import dev.rift.launcher.cloud.rememberCloudStreamingTab
 import dev.rift.launcher.emulators.EmulatorLibrary
 import dev.rift.launcher.emulators.toLibraryItem
+import dev.rift.launcher.settings.RenameGameDialog
 import dev.rift.launcher.art.ArtKind
 import dev.rift.launcher.art.GameArtStore
 import dev.rift.launcher.meta.RiftAutoMeta
@@ -286,6 +288,8 @@ fun RiftHomeScreen(
     val streamUninstalledMode by rememberUninstalledMode(RiftSection.PcStreaming)
     // Games the person hid (Start menu) are gone from every tab and library.
     val hiddenGames by RiftHiddenGames.hidden(context).collectAsStateWithLifecycle()
+    // Names the person gave to Emulators and Android games; loaded before the first list is made.
+    val gameNames by RiftGameNames.names(context).collectAsStateWithLifecycle()
     val favoriteIds by FavoritesManager.favorites.collectAsStateWithLifecycle()
     val loadedLibrary = remember(libraryState.appInfoList, pickedArt, uninstalledMode, hiddenGames) {
         GameArtStore.apply(
@@ -357,7 +361,7 @@ fun RiftHomeScreen(
         homeLifecycle.lifecycle.addObserver(observer)
         onDispose { homeLifecycle.lifecycle.removeObserver(observer) }
     }
-    LaunchedEffect(emulatorGames, androidGames, metaVersion) {
+    LaunchedEffect(emulatorGames, androidGames, metaVersion, gameNames) {
         withContext(Dispatchers.IO) {
             RiftAutoMeta.prefetch(
                 context,
@@ -366,7 +370,7 @@ fun RiftHomeScreen(
         }
     }
     var emulatorView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.Emulators, TabSort.LAST_PLAYED)) }
-    val emulatorItems by remember(emulatorGames, emulatorView, pickedArt, hiddenGames) {
+    val emulatorItems by remember(emulatorGames, emulatorView, pickedArt, hiddenGames, gameNames) {
         derivedStateOf { GameArtStore.apply(context, EmulatorLibrary.arrange(context, emulatorGames, emulatorView).filterNot { it.appId in hiddenGames }) }
     }
     val hasEmulatorGames = emulatorGames.any { it.appId !in hiddenGames }
@@ -466,7 +470,7 @@ fun RiftHomeScreen(
     }
     // Emulator and Android games have no store art: as soon as a tab has games, Rift finds each one's cover,
     // wide picture, banner and logo on SteamGridDB (by name), the games on screen first, and they appear one by one.
-    LaunchedEffect(emulatorGames, androidGames, artKey) {
+    LaunchedEffect(emulatorGames, androidGames, artKey, gameNames) {
         if (artKey.isBlank()) return@LaunchedEffect
         val order = withContext(Dispatchers.Default) {
             val emulators = EmulatorLibrary.arrange(context, emulatorGames, emulatorView).map { it.copy(isInstalled = true) }
@@ -485,7 +489,7 @@ fun RiftHomeScreen(
     }
     val focusedAndroid = androidShown.firstOrNull { it.packageName == focusedPackage } ?: androidShown.firstOrNull()
     // The focused Android game with the pictures found or picked for it: banner behind, logo over it.
-    val focusedAndroidItem = remember(focusedAndroid, pickedArt) { focusedAndroid?.let { GameArtStore.apply(context, it.toArtItem()) } }
+    val focusedAndroidItem = remember(focusedAndroid, pickedArt, gameNames) { focusedAndroid?.let { GameArtStore.apply(context, it.toArtItem()) } }
     // Like PC games (Denis): the row has the latest games and ends in "Open library", not hundreds of covers.
     val streamHomeRow = streamItems.take(HOME_ROW_COUNT)
     val streamLibraryItems = when (streamLibraryTab) {
@@ -725,6 +729,8 @@ fun RiftHomeScreen(
     val artOpener = remember<(LibraryItem) -> Unit> { { item -> latestOpenArt.value(item) } }
     // Start on the other tabs: the short menu of that tab (null = closed); the last list stays for the fade-out.
     var startMenuItems by remember { mutableStateOf<List<RiftStartMenuItem>?>(null) }
+    // The game being renamed: its id, the name it has now and its own name.
+    var renameTarget by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     var libraryFiltersOpen by remember { mutableStateOf(false) }
     var filterGroupIndex by remember { mutableStateOf<Int?>(null) }
     var lastFilterItems by remember { mutableStateOf<List<RiftStartMenuItem>>(emptyList()) }
@@ -799,6 +805,7 @@ fun RiftHomeScreen(
                     line(R.string.rift_menu_play, Icons.Default.PlayArrow) { AndroidGames.launch(context, game) },
                     line(R.string.rift_option_change_art, Icons.Default.ImageIcon) { openArt(art) },
                     favorite(art.appId, game.label),
+                    line(R.string.rift_option_rename, Icons.Default.Edit) { renameTarget = Triple(art.appId, art.name, game.label) },
                     line(R.string.rift_menu_hide, Icons.Default.VisibilityOff) { hideGame(art.appId, game.label) },
                     properties { openGame(game.toPageItem()) },
                     cancel,
@@ -818,6 +825,9 @@ fun RiftHomeScreen(
                     line(R.string.rift_menu_play, Icons.Default.PlayArrow) { EmulatorLibrary.game(item.appId)?.let { EmulatorLibrary.launch(context, it) } },
                     line(R.string.rift_option_change_art, Icons.Default.ImageIcon) { openArt(item) },
                     favorite(item.appId, item.name),
+                    line(R.string.rift_option_rename, Icons.Default.Edit) {
+                        renameTarget = Triple(item.appId, item.name, EmulatorLibrary.game(item.appId)?.name ?: item.name)
+                    },
                     line(R.string.rift_menu_hide, Icons.Default.VisibilityOff) { hideGame(item.appId, item.name) },
                     properties { openGame(item) },
                     cancel,
@@ -1662,6 +1672,16 @@ fun RiftHomeScreen(
                     items = lastStartMenuItems,
                     onDismiss = { startMenuItems = null },
                 )
+                renameTarget?.let { (appId, current, original) ->
+                    RenameGameDialog(
+                        initial = current,
+                        onSave = { name ->
+                            RiftGameNames.rename(context, appId, name, original)
+                            renameTarget = null
+                        },
+                        onDismiss = { renameTarget = null },
+                    )
+                }
                 RiftSystemMenu(
                     isOpen = systemMenuOpen,
                     onDismiss = { systemMenuOpen = false },
@@ -1732,6 +1752,7 @@ fun RiftHomeScreen(
                 // An emulator game's page; the page stays open while the emulator runs, like a PC game's.
                 RiftGamePage(
                     item = item,
+                    originalName = EmulatorLibrary.game(item.appId)?.name ?: item.name,
                     onPlay = {
                         sounds.play(RiftSound.Launch)
                         EmulatorLibrary.game(item.appId)?.let { EmulatorLibrary.launch(context, it) }
@@ -1743,6 +1764,7 @@ fun RiftHomeScreen(
             } else if (item.appId.startsWith("ANDROID_")) {
                 RiftGamePage(
                     item = item,
+                    originalName = androidGames.firstOrNull { "ANDROID_" + it.packageName == item.appId }?.label ?: item.name,
                     onPlay = {
                         sounds.play(RiftSound.Launch)
                         AndroidGames.launch(context, AndroidGame(item.appId.removePrefix("ANDROID_"), item.name))

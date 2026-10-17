@@ -236,6 +236,19 @@ object GameArtStore {
         }
     }
 
+    /** Drops the pictures found without being asked for [appId] (renamed): the next auto fill searches again. */
+    fun forgetAuto(context: Context, appId: String) {
+        autoPrefs(context).edit {
+            ArtKind.entries.forEach { remove(autoKey(appId, it)) }
+            remove("$appId|$AUTO_PATH")
+        }
+        ArtKind.entries.forEach { kind ->
+            File(context.filesDir, DIR).listFiles { f -> f.name.startsWith(fileStem("auto|$appId", kind)) }?.forEach { it.delete() }
+        }
+        pickCount = -1
+        _version.value++
+    }
+
     /** Back to the store's own picture of [kind]. */
     fun reset(context: Context, appId: String, kind: ArtKind) {
         prefs(context).edit { remove(key(appId, kind)) }

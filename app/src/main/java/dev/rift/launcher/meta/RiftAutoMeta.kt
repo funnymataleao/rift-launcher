@@ -27,6 +27,11 @@ object RiftAutoMeta {
     fun cached(context: Context, appId: String): GameMeta? =
         prefs(context).getString(appId, null)?.let(GameMeta::fromJson)
 
+    /** Drops what was found for [appId] (the game was renamed), so the next lookup asks IGDB again. */
+    fun forget(context: Context, appId: String) {
+        prefs(context).edit { remove(appId); remove(TRIED + appId) }
+    }
+
     /** The saved metadata, or a fresh lookup when there is none (and the retry delay is over). */
     suspend fun ensure(context: Context, item: LibraryItem, platformId: String?): GameMeta? {
         cached(context, item.appId)?.let { return it }

@@ -46,7 +46,7 @@ data class EmulatorGame(
 /** An emulator game as a library entry, so the home's covers, art and library grid work as for any game. */
 fun EmulatorGame.toLibraryItem() = LibraryItem(
     appId = appId,
-    name = name,
+    name = dev.rift.launcher.home.RiftGameNames.display(appId, name),
     isInstalled = true,
 )
 
