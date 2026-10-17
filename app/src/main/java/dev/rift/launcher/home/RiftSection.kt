@@ -51,5 +51,5 @@ object RiftSections {
         }
         if (androidGames.isNotEmpty()) add(RiftSection.AndroidGames)
         if (pairedPcs.isNotEmpty()) add(RiftSection.PcStreaming)
-    }
+    }.let { RiftTabPrefs.arrange(context, it) }
 }

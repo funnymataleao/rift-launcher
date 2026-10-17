@@ -1299,6 +1299,8 @@ private fun SectionTabs(
     onSelect: (RiftSection) -> Unit,
 ) {
     val places = remember { mutableStateMapOf<RiftSection, TabPlace>() }
+    val context = LocalContext.current
+    val customNames = remember { RiftTabPrefs.names(context) }
     var origin by remember { mutableStateOf<Offset?>(null) }
     val capsuleX = remember { Animatable(0f) }
     val capsuleW = remember { Animatable(0f) }
@@ -1371,7 +1373,7 @@ private fun SectionTabs(
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
             sections.forEach { section ->
                 SectionTab(
-                    title = stringResource(section.titleRes),
+                    title = customNames[section.key] ?: stringResource(section.titleRes),
                     selected = section == selected,
                     onClick = { onSelect(section) },
                     onPlaced = { places[section] = it },

@@ -352,6 +352,7 @@ private fun SectionPane(
                         RiftSettingsSection.Emulators -> EmulatorsSettings()
                         RiftSettingsSection.Streaming -> StreamingSettings(onOpenPcPairing)
                         RiftSettingsSection.Downloads -> DownloadsSettings()
+                        RiftSettingsSection.Tabs -> TabsSettings()
                         RiftSettingsSection.Accounts -> AccountsSettings(onSteamSignIn, onSteamSignOut)
                         RiftSettingsSection.About -> AboutSettings()
                         RiftSettingsSection.Debug -> DebugSettings()
