@@ -651,6 +651,9 @@ fun RiftHomeScreen(
         withContext(Dispatchers.IO) { runCatching { AndroidGames.launchable(context) } }
     }
     var backDownHere by remember { mutableStateOf(false) }
+    var panelHasFocus by remember { mutableStateOf(false) }
+    var panelFocusAsk by remember { mutableIntStateOf(0) }
+    LaunchedEffect(panelOpen) { if (!panelOpen) panelHasFocus = false }
     val overlayOpen = panelOpen || systemMenuOpen || gameOptionsOpen || appsOpen || libraryOpen || artItem != null
     var selectLongPressed by remember { mutableStateOf(false) }
     val quickAccessKey = remember { RiftControls.quickAccessKey(context) }
@@ -821,6 +824,14 @@ fun RiftHomeScreen(
                 .onPreviewKeyEvent { event ->
                     val native = event.nativeKeyEvent
                     if (optionsItem != null && optionsOnly.panelOpen) return@onPreviewKeyEvent false
+                    // The filters panel is open but holds no focus (after a touch, or while it slides in): the press
+                    // must not move the covers under the blur; take it and ask the panel to grab focus.
+                    if (panelOpen && !panelHasFocus && event.type == KeyEventType.KeyDown &&
+                        native.keyCode in KeyEvent.KEYCODE_DPAD_UP..KeyEvent.KEYCODE_DPAD_CENTER
+                    ) {
+                        panelFocusAsk++
+                        return@onPreviewKeyEvent true
+                    }
                     if (optionsItem != null && event.type == KeyEventType.KeyDown) optionsItem = null
                     if (appsOpen || libraryOpen || artItem != null) return@onPreviewKeyEvent false
                     // Never stranded: a direction press with nothing but the screen focused goes to a cover.
@@ -1334,6 +1345,8 @@ fun RiftHomeScreen(
                     onCuratedListToggle = viewModel::onCuratedListToggle,
                     onClearCuratedLists = viewModel::onClearCuratedLists,
                     tabGroups = tabGroups,
+                    focusAsk = panelFocusAsk,
+                    onFocusChanged = { panelHasFocus = it },
                     extraGroup = when (section) {
                         RiftSection.PcGames -> uninstalledGroup(uninstalledMode) {
                             RiftUninstalledMode.set(context, RiftSection.PcGames, it)
