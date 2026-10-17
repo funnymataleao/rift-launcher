@@ -30,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import dev.rift.launcher.sound.RiftMusic
+import dev.rift.launcher.sound.riftSilentPress
 import dev.rift.launcher.sound.RiftSoundSettings
 import dev.rift.launcher.sound.pack.DeckPack
 import dev.rift.launcher.sound.pack.DeckThemesClient
@@ -235,6 +236,7 @@ private fun PackRow(
         RiftRoundButton(
             icon = if (playing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
             description = stringResource(if (playing) R.string.rift_settings_packs_preview_stop else R.string.rift_settings_packs_preview),
+            modifier = Modifier.riftSilentPress(),
             onClick = { if (!busy) onPreview() },
         )
     }

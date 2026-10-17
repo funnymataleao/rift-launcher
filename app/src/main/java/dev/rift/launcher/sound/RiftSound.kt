@@ -70,6 +70,17 @@ object RiftSoundSettings {
 object RiftSounds {
     private const val MIN_GAP_MS = 35L
 
+    /**
+     * Set while a control that makes sound of its own has the focus (a pack's play button), so A/Enter and a tap on
+     * it stay silent instead of mixing the interface sound into what is being played.
+     */
+    @Volatile
+    var pressMuted = false
+
+    /** Set by such a control when a finger goes down on it; the screen's tap sound reads and clears it. */
+    @Volatile
+    var tapMuted = false
+
     private var pool: SoundPool? = null
     private val ids = mutableMapOf<RiftSound, Int>()
     private var loadedPack: String? = null
