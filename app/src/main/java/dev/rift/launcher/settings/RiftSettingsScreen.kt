@@ -90,7 +90,7 @@ fun RiftSettingsScreen(
     onSteamSignOut: (() -> Unit)? = null,
 ) {
     val sections = remember { RiftSettingsSection.entries }
-    var selectedIndex by rememberSaveable { mutableIntStateOf(0) }
+    var selectedIndex by rememberSaveable { mutableIntStateOf(RiftSettingsSection.takeRequested()?.ordinal ?: 0) }
     val selected = sections[selectedIndex]
 
     val railItems = remember { List(sections.size) { FocusRequester() } }
@@ -343,6 +343,7 @@ private fun SectionPane(
                     when (section) {
                         RiftSettingsSection.Sound -> SoundSettings()
                         RiftSettingsSection.Home -> HomeSettings()
+                        RiftSettingsSection.Artwork -> ArtworkSettings()
                         RiftSettingsSection.Interface -> InterfaceSettings()
                         RiftSettingsSection.Controller -> ControllerSettings()
                         RiftSettingsSection.Display -> DisplaySettings()

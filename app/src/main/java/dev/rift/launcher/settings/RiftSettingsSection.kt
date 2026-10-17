@@ -16,6 +16,7 @@ import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material.icons.rounded.Tab
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.gamenative.R
@@ -53,6 +54,7 @@ enum class RiftSettingsSection(
     Tabs(RiftSettingsGroup.Rift, R.string.rift_settings_tabs, R.string.rift_settings_tabs_summary, Icons.Rounded.Tab, SettingsAccent.Peach),
     Controller(RiftSettingsGroup.Rift, R.string.rift_settings_controller, R.string.rift_settings_controller_summary, Icons.Rounded.Gamepad, SettingsAccent.Sand),
     Sound(RiftSettingsGroup.Rift, R.string.rift_settings_sound, R.string.rift_settings_sound_summary, Icons.Rounded.MusicNote, SettingsAccent.Yellow),
+    Artwork(RiftSettingsGroup.Rift, R.string.rift_settings_artwork, R.string.rift_settings_artwork_summary, Icons.Rounded.Image, SettingsAccent.Teal),
     Home(RiftSettingsGroup.Rift, R.string.rift_settings_home, R.string.rift_settings_home_summary, Icons.Rounded.Home, SettingsAccent.Terracotta),
 
     Graphics(RiftSettingsGroup.Windows, R.string.rift_settings_graphics, R.string.rift_settings_graphics_summary, Icons.Rounded.Videocam, SettingsAccent.Blue),
@@ -62,4 +64,17 @@ enum class RiftSettingsSection(
 
     About(RiftSettingsGroup.System, R.string.rift_settings_about, R.string.rift_settings_about_summary, Icons.Rounded.Info, SettingsAccent.Sand),
     Debug(RiftSettingsGroup.System, R.string.rift_settings_debug, R.string.rift_settings_debug_summary, Icons.Rounded.BugReport, SettingsAccent.Yellow),
+    ;
+
+    companion object {
+        /** A section another screen wants the settings to open on (the art picker sends people to the key). Read once. */
+        @Volatile
+        private var requested: RiftSettingsSection? = null
+
+        fun request(section: RiftSettingsSection) {
+            requested = section
+        }
+
+        internal fun takeRequested(): RiftSettingsSection? = requested.also { requested = null }
+    }
 }
