@@ -133,6 +133,13 @@ fun RiftInstallScreen(
                     if (selectAll != null) {
                         RiftPillButton(text = selectAll.first, onClick = selectAll.second)
                     }
+                    RiftPillButton(
+                        text = stringResource(R.string.rift_downloads_open),
+                        onClick = {
+                            RiftDownloadsNav.open()
+                            onDismiss()
+                        },
+                    )
                 }
 
                 if (items.isNotEmpty()) {

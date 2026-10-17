@@ -3,6 +3,7 @@ package app.gamenative.ui.screen
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -10,7 +11,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.gamenative.ui.model.HomeViewModel
+import app.gamenative.ui.screen.downloads.HomeDownloadsScreen
 import app.gamenative.ui.theme.PluviaTheme
+import dev.rift.launcher.home.RiftDownloadsNav
 import dev.rift.launcher.home.RiftDownloadsScreen
 import dev.rift.launcher.home.RiftHomeScreen
 import dev.rift.launcher.settings.RiftSettingsSection
@@ -33,9 +36,25 @@ fun HomeScreen(
     // Rift: our home replaces GameNative's library screen, which never opens in Rift. Only its downloads
     // screen is reachable (quick access panel), and Back from it returns to the Rift home.
     var showDownloads by rememberSaveable { mutableStateOf(false) }
+    // Rift: the storage manager still lives in GameNative's downloads screen; it opens from the Rift page.
+    var showStorage by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        RiftDownloadsNav.requests.collect { showDownloads = true }
+    }
+    if (showDownloads && showStorage) {
+        BackHandler { showStorage = false }
+        HomeDownloadsScreen(
+            onBack = { showStorage = false },
+            onClickPlay = onClickPlay,
+            onTestGraphics = onTestGraphics,
+            onPlayWithDiagnostics = onPlayWithDiagnostics,
+            onAiDebugRun = onAiDebugRun,
+        )
+        return
+    }
     if (showDownloads) {
         BackHandler { showDownloads = false }
-        RiftDownloadsScreen(onBack = { showDownloads = false })
+        RiftDownloadsScreen(onBack = { showDownloads = false }, onOpenStorage = { showStorage = true })
         return
     }
 
