@@ -54,19 +54,20 @@
         </intent>
     </queries>
 
+    <!-- Rift: no android:isGame / android:appCategory="game" (GameNative has both). Rift is a
+         launcher; with them RedMagic Game Space treats it as a game and covers every start with its
+         "Energy Cube" intro (Denis, 2026-10-17). -->
     <application
         android:name=".PluviaApp"
         android:usesCleartextTraffic="true"
         android:allowBackup="false"
         android:extractNativeLibs="true"
         android:icon="${icon}"
-        android:isGame="true"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:largeHeap="true"
         android:theme="@style/Theme.Pluvia"
         android:allowAudioPlaybackCapture="true"
-        android:appCategory="game"
         tools:targetApi="29">
         <!--
          android:windowSoftInputMode must always be in the activity block.
