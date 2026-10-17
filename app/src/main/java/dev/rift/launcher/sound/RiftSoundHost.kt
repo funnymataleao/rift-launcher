@@ -12,6 +12,8 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** Handle for the screens: `val sounds = rememberRiftSoundPlayer()` then `sounds.play(RiftSound.Launch)`. */
 class RiftSoundPlayer(private val context: android.content.Context) {
