@@ -44,8 +44,7 @@ data class GameMeta(
         fun fromJson(json: String): GameMeta? = try {
             val o = JSONObject(json)
             // Saved before the time to beat was fetched: looked up again.
-            if (o.optInt("v") < VERSION) return null
-            GameMeta(
+            if (o.optInt("v") < VERSION) null else GameMeta(
                 description = o.optString("d"),
                 rating = if (o.has("r")) o.optInt("r") else null,
                 ratingCount = if (o.has("c")) o.optInt("c") else null,
