@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import timber.log.Timber
 import java.io.File
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
@@ -22,6 +23,7 @@ import java.util.concurrent.TimeUnit
 object GameArtStore {
     private const val PREFS = "rift_game_art"
     private const val DIR = "game_art"
+    private const val TAG = "RiftArt"
 
     private val _version = MutableStateFlow(0)
     val version: StateFlow<Int> = _version
@@ -84,7 +86,12 @@ object GameArtStore {
      * If the download fails the web address is used instead.
      */
     suspend fun pick(context: Context, appId: String, kind: ArtKind, remoteUrl: String) {
-        val saved = withContext(Dispatchers.IO) { runCatching { download(context, appId, kind, remoteUrl) }.getOrNull() }
+        val saved = withContext(Dispatchers.IO) {
+            runCatching { download(context, appId, kind, remoteUrl) }
+                .onFailure { Timber.tag(TAG).w(it, "Picked %s for %s did not download: %s", kind.key, appId, remoteUrl) }
+                .getOrNull()
+        }
+        Timber.tag(TAG).i("Picked %s for %s: %s", kind.key, appId, saved ?: remoteUrl)
         prefs(context).edit { putString(key(appId, kind), saved ?: remoteUrl) }
         pickCount = -1
         _version.value++
@@ -119,7 +126,11 @@ object GameArtStore {
      * Returns early when the key is missing or refused.
      */
     suspend fun autoFill(context: Context, items: List<Pair<LibraryItem, List<ArtKind>>>, key: String) {
-        if (key.isBlank()) return
+        if (key.isBlank()) {
+            Timber.tag(TAG).i("Auto art: no SteamGridDB key, %d games not asked", items.size)
+            return
+        }
+        Timber.tag(TAG).i("Auto art: %d games", items.size)
         val p = autoPrefs(context)
         var lastPublish = 0L
         var dirty = false
@@ -146,6 +157,7 @@ object GameArtStore {
                 }
             }
         } catch (e: ArtError) {
+            Timber.tag(TAG).w("Auto art stopped: %s", e.javaClass.simpleName)
             // A refused or missing key: nothing more to ask this time.
             if (e !== ArtError.BadKey && e !== ArtError.NoKey) throw e
         } finally {
@@ -177,6 +189,7 @@ object GameArtStore {
         return try {
             val option = SteamGridDbClient.options(key, path, kind, 0).firstOrNull()
             if (option == null) {
+                Timber.tag(TAG).i("Auto art: no %s for %s", kind.key, appId)
                 p.edit { putString(slot, AUTO_NONE + System.currentTimeMillis()) }
                 false
             } else {
@@ -189,8 +202,10 @@ object GameArtStore {
             if (e === ArtError.NotFound) p.edit { putString(slot, AUTO_NONE + System.currentTimeMillis()) }
             false
         } catch (e: java.io.IOException) {
+            Timber.tag(TAG).w(e, "Auto art: %s for %s did not download", kind.key, appId)
             false
         } catch (e: IllegalStateException) {
+            Timber.tag(TAG).w(e, "Auto art: %s for %s did not download", kind.key, appId)
             false
         }
     }
@@ -219,6 +234,7 @@ object GameArtStore {
             target.outputStream().use { out -> response.body.byteStream().use { it.copyTo(out) } }
         }
         dir.listFiles { f -> f.name.startsWith(stem) && f != target }?.forEach { it.delete() }
+        Timber.tag(TAG).i("Saved %s for %s: %s (%d bytes)", kind.key, appId, target.absolutePath, target.length())
         return "file://${target.absolutePath}"
     }
 }
