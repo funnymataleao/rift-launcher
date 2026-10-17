@@ -51,4 +51,7 @@
     <string name="rift_stream_play">Stream from PC</string>
     <string name="rift_stream_library_installed">Installed on PC</string>
     <string name="rift_stream_library_not_installed">Not installed</string>
+    <string name="rift_stream_settings_now">Right away</string>
+    <string name="rift_stream_settings_restart">After restart</string>
+    <string name="rift_stream_restart">Apply and restart stream</string>
 </resources>
