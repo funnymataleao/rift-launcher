@@ -767,19 +767,6 @@ fun RiftHomeScreen(
     }
     val latestOpenArt = rememberUpdatedState<(LibraryItem) -> Unit> { openArt(it) }
     val artOpener = remember<(LibraryItem) -> Unit> { { item -> latestOpenArt.value(item) } }
-    // The same game-info and name lines on GameNative's own game screens (PC games).
-    val latestRefreshMeta = rememberUpdatedState<(LibraryItem) -> Unit> { refreshMeta(it, null) }
-    val latestOpenMeta = rememberUpdatedState<(LibraryItem) -> Unit> { openMetaPicker(it, null) }
-    val latestRename = rememberUpdatedState<(LibraryItem) -> Unit> {
-        renameTarget = Triple(it.appId, it.name, RiftGameNames.original(context, it.appId, it.name))
-    }
-    val infoActions = remember {
-        dev.rift.launcher.meta.RiftInfoActions(
-            refresh = { latestRefreshMeta.value(it) },
-            choose = { latestOpenMeta.value(it) },
-            rename = { latestRename.value(it) },
-        )
-    }
     // Start on the other tabs: the short menu of that tab (null = closed); the last list stays for the fade-out.
     var startMenuItems by remember { mutableStateOf<List<RiftStartMenuItem>?>(null) }
     // The game being renamed: its id, the name it has now and its own name.
@@ -860,6 +847,19 @@ fun RiftHomeScreen(
                 openMetaPicker(item, platformId)
             }
         }
+    }
+    // The same game-info and name lines on GameNative's own game screens (PC games).
+    val latestRefreshMeta = rememberUpdatedState<(LibraryItem) -> Unit> { refreshMeta(it, null) }
+    val latestOpenMeta = rememberUpdatedState<(LibraryItem) -> Unit> { openMetaPicker(it, null) }
+    val latestRename = rememberUpdatedState<(LibraryItem) -> Unit> {
+        renameTarget = Triple(it.appId, it.name, RiftGameNames.original(context, it.appId, it.name))
+    }
+    val infoActions = remember {
+        dev.rift.launcher.meta.RiftInfoActions(
+            refresh = { latestRefreshMeta.value(it) },
+            choose = { latestOpenMeta.value(it) },
+            rename = { latestRename.value(it) },
+        )
     }
     fun otherTabMenu(picked: LibraryItem? = null): List<RiftStartMenuItem>? {
         fun line(@androidx.annotation.StringRes label: Int, icon: ImageVector, action: () -> Unit) =
