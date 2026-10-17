@@ -128,10 +128,10 @@ object PcStreaming {
      * PC online (just resumed, network change), its known addresses are asked directly first, so a PC
      * that is on is never reported offline.
      */
-    fun startStream(context: Context, pc: ComputerDetails, app: NvApp, uniqueId: String) {
+    fun startStream(context: Context, pc: ComputerDetails, app: NvApp, uniqueId: String, coverUrls: List<String> = emptyList()) {
         val address = pc.activeAddress
         if (isOnline(pc) && address != null) {
-            launchStream(context, pc, address, pc.httpsPort, pc.vDisplaySupported && pc.vDisplayDriverReady, app, uniqueId)
+            launchStream(context, pc, address, pc.httpsPort, pc.vDisplaySupported && pc.vDisplayDriverReady, app, uniqueId, coverUrls)
             return
         }
         if (checking) return
@@ -143,7 +143,7 @@ object PcStreaming {
             withContext(Dispatchers.Main) {
                 checking = false
                 when (reach) {
-                    is Reach.Online -> launchStream(context, pc, reach.address, reach.httpsPort, reach.virtualDisplay, app, uniqueId)
+                    is Reach.Online -> launchStream(context, pc, reach.address, reach.httpsPort, reach.virtualDisplay, app, uniqueId, coverUrls)
                     is Reach.NoHttps -> SnackbarManager.show(context.getString(R.string.rift_stream_pc_no_https, pc.name, reach.httpsPort))
                     Reach.Offline -> SnackbarManager.show(context.getString(R.string.rift_stream_pc_offline, pc.name))
                 }
@@ -193,6 +193,7 @@ object PcStreaming {
         virtualDisplay: Boolean,
         app: NvApp,
         uniqueId: String,
+        coverUrls: List<String>,
     ) {
         context.startActivity(
             Intent(context, StreamActivity::class.java).apply {
@@ -207,6 +208,7 @@ object PcStreaming {
                 putExtra(StreamActivity.EXTRA_APP_UUID, app.appUUID)
                 putExtra(StreamActivity.EXTRA_APP_HDR, app.isHdrSupported)
                 putExtra(StreamActivity.EXTRA_VIRTUAL_DISPLAY_READY, virtualDisplay)
+                putExtra(StreamActivity.EXTRA_COVER_URLS, coverUrls.toTypedArray())
                 if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             },
         )
