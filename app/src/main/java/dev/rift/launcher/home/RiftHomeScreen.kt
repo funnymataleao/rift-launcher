@@ -120,6 +120,7 @@ import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.draw.drawWithContent
 import android.os.Build
+import android.os.SystemClock
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -698,6 +699,9 @@ fun RiftHomeScreen(
     // The listener lives across recompositions: it calls the latest versions of these.
     val latestClosePage = rememberUpdatedState<() -> Unit> { closePage() }
     val latestRefocus = rememberUpdatedState<() -> Unit> { refocusCover() }
+    val latestLayerOpen = rememberUpdatedState<() -> Boolean> {
+        systemMenuOpen || searchOpen || viewModel.state.value.isOptionsPanelOpen
+    }
     DisposableEffect(composeView) {
         val listener: (AndroidEvent.KeyEvent) -> Boolean = { androidEvent ->
             val ev = androidEvent.event
@@ -741,7 +745,17 @@ fun RiftHomeScreen(
     // Coming back to the app: focus a cover again.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, e -> if (e == Lifecycle.Event.ON_RESUME) latestRefocus.value() }
+        var lastResume = 0L
+        val observer = LifecycleEventObserver { _, e ->
+            if (e == Lifecycle.Event.ON_RESUME) {
+                // Coming back from a game gives two resumes within a second: one refocus is enough, and
+                // a layer that is open (the drawer, the panels, the search) keeps the focus it has.
+                val now = SystemClock.elapsedRealtime()
+                val twice = now - lastResume < 1500
+                lastResume = now
+                if (!twice && !latestLayerOpen.value()) latestRefocus.value()
+            }
+        }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
