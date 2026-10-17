@@ -94,6 +94,7 @@ fun StreamMenu(
     maxFps: Int = 60,
     screenSize: Pair<Int, Int>? = null,
     ownWindow: Boolean = false,
+    extraSettings: (@Composable (requester: (String) -> FocusRequester) -> Unit)? = null,
 ) = RiftGlassTheme {
     Box(modifier = Modifier.fillMaxSize()) {
         // In a window of its own the window is the glass, slides in and closes on a tap outside.
@@ -170,7 +171,9 @@ fun StreamMenu(
                         onClick = onEndStream,
                         focusRequester = requester(StreamMenuRow.END),
                     )
-                    // PC streams only, and only while the stream runs: the cloud stream has its own settings.
+                    // A cloud game brings its own settings instead of the PC stream's.
+                    if (error == null && extraSettings != null) extraSettings(::requester)
+                    // PC streams only, and only while the stream runs.
                     if (error == null && onPerfOverlayChange != null && onPictureChange != null) {
                         StreamQuickSettings(
                             requester = ::requester,
@@ -327,7 +330,7 @@ private fun StreamQuickSettings(
 
 /** A slider over fixed [steps]: A grabs it, left and right step, B lets go (the quick menu's row). */
 @Composable
-private fun <T> StepRow(
+internal fun <T> StepRow(
     title: String,
     steps: List<T>,
     value: T,
