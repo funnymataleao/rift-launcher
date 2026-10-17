@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import app.gamenative.R
+import dev.rift.launcher.home.RiftControls
 import dev.rift.launcher.stream.StreamMenu
 import org.json.JSONObject
 import timber.log.Timber
@@ -43,9 +44,10 @@ import timber.log.Timber
  * Xbox Cloud Gaming in Rift's own full-screen browser, with the Better xCloud userscript loaded before
  * xbox.com's own scripts. The gamepad reaches the game through the browser's Gamepad API.
  *
- * Exits like a stream from a PC: Select + Start (or the edge swipe) opens the side panel with
- * "End stream", B closes it. Opened with [EXTRA_SIGN_IN] it shows xbox.com/play for signing in and
- * closes by itself once xbox.com says the account is signed in.
+ * The script's settings are Rift's ([CloudPlaySettings]) and its own menus and name are kept out of
+ * sight. The gamepad's Home (or Select + Start, or the edge swipe) opens Rift's side panel with
+ * "End stream" and the settings worth changing while playing; B closes it. Opened with [EXTRA_SIGN_IN]
+ * it shows xbox.com/play for signing in and closes by itself once xbox.com says the account is signed in.
  */
 class XcloudActivity : ComponentActivity() {
 
@@ -108,6 +110,9 @@ class XcloudActivity : ComponentActivity() {
     /** Buttons whose press the page saw: their release goes to the page even while the panel is open. */
     private val pressedInPage = mutableSetOf<Int>()
 
+    /** A button chosen in Rift's settings that also opens the panel, besides Home. */
+    private var menuKey = KeyEvent.KEYCODE_UNKNOWN
+
     private val pollSignIn = object : Runnable {
         override fun run() {
             webView.evaluateJavascript(SIGNED_IN_CHECK) { result ->
@@ -128,6 +133,7 @@ class XcloudActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         hideSystemBars()
         signInMode = intent.getBooleanExtra(EXTRA_SIGN_IN, false)
+        menuKey = RiftControls.streamMenuKey(this)
         val url = intent.getStringExtra(EXTRA_URL) ?: return finish()
         val title = intent.getStringExtra(EXTRA_TITLE) ?: getString(R.string.rift_cloud_service_xcloud)
 
@@ -160,7 +166,7 @@ class XcloudActivity : ComponentActivity() {
             setBackgroundColor(0xCC000000.toInt())
             textSize = 18f
             setPadding(40, 20, 40, 20)
-            text = getString(R.string.rift_stream_menu_hint)
+            text = getString(R.string.rift_cloud_menu_hint)
             visibility = View.GONE
         }
         root = FrameLayout(this).apply {
@@ -174,6 +180,7 @@ class XcloudActivity : ComponentActivity() {
                         pcName = getString(R.string.rift_cloud_service_xcloud),
                         onDismiss = ::closeMenu,
                         onEndStream = ::finish,
+                        extraSettings = if (signInMode) null else { requester -> CloudQuickSettings(requester, ::applyLive) },
                     )
                 }
             }
@@ -195,13 +202,16 @@ class XcloudActivity : ComponentActivity() {
 
     /**
      * Better xCloud has to run before the page's own scripts. The script only runs where its userscript
-     * header says (xbox.com's /play pages and the sign-in return page), in the top frame.
+     * header says (xbox.com's /play pages and the sign-in return page), in the top frame. Rift's settings
+     * go into the page's storage first, and the script is changed so its name and its own settings
+     * buttons never show: Rift's settings and side panel take their place.
      */
     private fun addBetterXcloud(): Boolean {
         // Without the script xCloud still plays, just without Better xCloud.
         val script = runCatching { assets.open(SCRIPT_ASSET).bufferedReader().use { it.readText() } }
             .onFailure { Timber.e(it, "Better xCloud script missing") }
-            .getOrNull() ?: return true
+            .getOrNull()
+            ?.let(::unbranded) ?: return true
         val flags = JSONObject()
             .put(
                 "DeviceInfo",
@@ -218,7 +228,7 @@ class XcloudActivity : ComponentActivity() {
             .put("CheckForUpdate", false)
         val guard = "if (window.top !== window || !/^\\/[a-zA-Z]{2}-[a-zA-Z]{2}\\/(play|auth\\/msa)/.test(window.location.pathname)) " +
             "throw new Error('[Rift] Better xCloud runs on xbox.com/play only');\n"
-        val full = guard + "window.BX_FLAGS = $flags;\n" + script
+        val full = guard + "window.BX_FLAGS = $flags;\n" + CloudPlaySettings.pageScript(this) + script
         if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
             WebViewCompat.addDocumentStartJavaScript(webView, full, setOf(ORIGIN))
             return true
@@ -229,6 +239,36 @@ class XcloudActivity : ComponentActivity() {
     }
 
     private var pendingScript: String? = null
+
+    /**
+     * The script without its name in what the page shows and without its settings buttons (in the
+     * page's header, in xCloud's guide, in the stream's menu), and without its settings opening by
+     * themselves where xCloud is not offered. The bundled file stays as published.
+     */
+    private fun unbranded(script: String): String {
+        // The name in the script's own English texts first; translations it downloads go through t below.
+        var text = script.replace("Better xCloud", "Rift")
+        fun patch(from: String, to: String) {
+            if (from in text) text = text.replace(from, to) else Timber.w("Cloud script changed, not found: %s", from.take(60))
+        }
+        patch(
+            "var t = Translations.get;",
+            "var t = (key, values) => { let text = Translations.get(key, values); " +
+                "return typeof text === \"string\" ? text.replace(/Better xCloud/g, \"Rift\") : text; };",
+        )
+        patch("\$btnStreamSettings = StreamUiHandler.cloneStreamHudButton(\$orgButton, t(\"better-xcloud\"), BxIcon.BETTER_XCLOUD)", "\$btnStreamSettings = null")
+        patch("buttonsLayout = [buttons.scriptSettings,", "buttonsLayout = [")
+        patch("SettingsDialog.getInstance().show();}\$btnSettings", ";}\$btnSettings")
+        return text
+    }
+
+    /** A setting changed in the side panel: kept for the next game and applied to this one now. */
+    private fun applyLive(setting: CloudSetting, value: Any) {
+        CloudPlaySettings.set(this, setting, value)
+        webView.evaluateJavascript(CloudPlaySettings.liveScript(setting, value)) { result ->
+            if (result != "\"ok\"") Log.w(LOG_TAG, "Setting ${setting.key} not applied: $result")
+        }
+    }
 
     private inner class XcloudClient : WebViewClient() {
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -255,6 +295,10 @@ class XcloudActivity : ComponentActivity() {
 
         override fun onPageFinished(view: WebView, url: String) {
             Log.i(LOG_TAG, "Page finished: $url")
+            // What was set in the page before Rift kept the settings is taken over once.
+            if (url.startsWith(ORIGIN) && CloudPlaySettings.needsImport(this@XcloudActivity)) {
+                view.evaluateJavascript(CloudPlaySettings.READ_PAGE_SCRIPT) { CloudPlaySettings.importFromPage(this@XcloudActivity, it) }
+            }
             if (!signInMode && !hintShown && url.contains("/play/launch/")) {
                 hintShown = true
                 hintText.visibility = View.VISIBLE
@@ -356,6 +400,13 @@ class XcloudActivity : ComponentActivity() {
                 KeyEvent.ACTION_DOWN -> held += event.keyCode
                 KeyEvent.ACTION_UP -> held -= event.keyCode
             }
+        }
+        // Home opens and closes the panel; the page never sees it, so xCloud's own menu stays shut.
+        if (gamepad && (event.keyCode == KeyEvent.KEYCODE_BUTTON_MODE || event.keyCode == menuKey)) {
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                if (menuOpen) closeMenu() else openMenu()
+            }
+            return true
         }
         // With the panel open the pad drives the panel: B closes it, A and the d-pad reach Compose.
         if (menuOpen) {
