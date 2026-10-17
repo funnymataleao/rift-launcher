@@ -1281,11 +1281,14 @@ fun RiftHomeScreen(
                             switchSection(1)
                             true
                         }
+                        // Y: the search, on every tab (it opens the PC games' search, whatever tab it is pressed on).
+                        KeyEvent.KEYCODE_BUTTON_Y -> {
+                            if (event.type == KeyEventType.KeyUp) openSearch()
+                            true
+                        }
                         // Start: a small menu in the middle, its own lines on every tab. On PC games it is
-                        // GameNative's options logic behind the menu; Y does the same there, and elsewhere
-                        // goes straight to the art.
-                        KeyEvent.KEYCODE_BUTTON_Y, KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_MENU -> {
-                            val start = event.nativeKeyEvent.keyCode != KeyEvent.KEYCODE_BUTTON_Y
+                        // GameNative's options logic behind the menu. The art is changed from this menu.
+                        KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_MENU -> {
                             if (onServiceCard) {
                                 // "Open library" is not a game: no menu.
                             } else if (section == RiftSection.PcGames) {
@@ -1294,15 +1297,7 @@ fun RiftHomeScreen(
                                     optionsToken++
                                     optionsItem = it
                                 }
-                            } else if (!start && section == RiftSection.PcStreaming) {
-                                focusedStream?.let(::openArt)
-                            } else if (!start && section == RiftSection.AndroidGames) {
-                                // Android games have no options panel either: Y picks their art.
-                                focusedAndroid?.let { openArt(it.toArtItem()) }
-                            } else if (!start && section == RiftSection.Emulators) {
-                                // Emulator games the same: Y picks their art.
-                                focusedEmulator?.let(::openArt)
-                            } else if (start) {
+                            } else {
                                 startMenuItems = otherTabMenu()
                             }
                             true
@@ -2843,6 +2838,7 @@ private fun SectionTabs(
             selected = selected,
             title = { customNames[it.key] ?: stringResource(it.titleRes) },
             onSelect = onSelect,
+            reachable = false,
         )
     }
 }
@@ -2856,6 +2852,7 @@ internal fun <T> GlassTabs(
     selected: T?,
     title: @Composable (T) -> String,
     onSelect: (T) -> Unit,
+    reachable: Boolean = true,
 ) {
     val places = remember { mutableStateMapOf<T, TabPlace>() }
     var origin by remember { mutableStateOf<Offset?>(null) }
@@ -2941,6 +2938,7 @@ internal fun <T> GlassTabs(
                     onClick = { onSelect(tab) },
                     onPlaced = { places[tab] = it },
                     focusRequester = requesters.getValue(tab),
+                    reachable = reachable,
                     onStep = { step ->
                         val next = tabs.getOrNull(index + step) ?: return@SectionTab false
                         onSelect(next)
@@ -2961,6 +2959,7 @@ private fun SectionTab(
     onClick: () -> Unit,
     onPlaced: (TabPlace) -> Unit,
     focusRequester: FocusRequester,
+    reachable: Boolean,
     onStep: (Int) -> Boolean,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -2983,6 +2982,8 @@ private fun SectionTab(
             .clip(RiftShapes.full)
             .then(if (focused) Modifier.background(RiftAccent.current.brush) else Modifier)
             .focusRequester(focusRequester)
+            // The home's tabs are the bumpers'; the d-pad never lands on them (canFocus on a parent is not enough).
+            .then(if (reachable) Modifier else Modifier.focusProperties { canFocus = false })
             .onPreviewKeyEvent { event ->
                 val step = when (event.nativeKeyEvent.keyCode) {
                     KeyEvent.KEYCODE_DPAD_LEFT -> -1
@@ -3190,7 +3191,7 @@ private fun HintsBar(showFilters: Boolean, showOptions: Boolean = true, modifier
         if (showFilters) Hint(listOf(GamepadButton.SELECT.iconRes), stringResource(R.string.rift_hint_filters))
         Hint(listOf(InputIcons.Xbox.guide), stringResource(R.string.rift_hint_menu))
         Spacer(modifier = Modifier.weight(1f))
-        if (showFilters && showOptions) Hint(listOf(face(GamepadButton.Y, GamepadButton.X)), stringResource(R.string.rift_hint_options))
+        if (showFilters) Hint(listOf(face(GamepadButton.Y, GamepadButton.X)), stringResource(R.string.rift_search))
         if (showFilters) Hint(listOf(face(GamepadButton.A, GamepadButton.B)), stringResource(R.string.rift_details))
         Hint(listOf(face(GamepadButton.B, GamepadButton.A)), stringResource(R.string.rift_hint_apps))
     }
