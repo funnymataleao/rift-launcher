@@ -263,6 +263,21 @@
     <string name="rift_settings_store_signed_in">Signed in</string>
     <string name="rift_settings_sign_out_title">Sign out of %1$s?</string>
     <string name="rift_settings_sign_out_message">You will need to sign in again to see its games.</string>
+
+    <string name="rift_settings_tabs">Tabs</string>
+    <string name="rift_settings_tabs_summary">Names, order and visibility of the home screen tabs</string>
+    <string name="rift_settings_tabs_group">Home screen tabs</string>
+    <string name="rift_settings_tabs_note">A tab shows on the home screen once its source is connected. Here you can rename it, move it or hide it.</string>
+    <string name="rift_settings_tab_shown">Shown</string>
+    <string name="rift_settings_tab_hidden">Hidden</string>
+    <string name="rift_settings_tab_rename">Rename</string>
+    <string name="rift_settings_tab_move_up">Move left</string>
+    <string name="rift_settings_tab_move_down">Move right</string>
+    <string name="rift_settings_tab_hide">Hide</string>
+    <string name="rift_settings_tab_show">Show</string>
+    <string name="rift_settings_tab_reset_name">Restore the name</string>
+    <string name="rift_settings_tab_save">Save</string>
+    <string name="rift_settings_tab_rename_hint">Up to 24 characters. An empty name brings the original back.</string>
     <string name="rift_library_all">All games</string>
     <string name="rift_library_open">Open library</string>
 </resources>

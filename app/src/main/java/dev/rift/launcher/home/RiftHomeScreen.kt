@@ -1610,7 +1610,15 @@ private fun SectionTabs(
     selected: RiftSection?,
     onSelect: (RiftSection) -> Unit,
 ) {
-    GlassTabs(glass = glass, tabs = sections, selected = selected, title = { stringResource(it.titleRes) }, onSelect = onSelect)
+    val context = LocalContext.current
+    val customNames = remember { RiftTabPrefs.names(context) }
+    GlassTabs(
+        glass = glass,
+        tabs = sections,
+        selected = selected,
+        title = { customNames[it.key] ?: stringResource(it.titleRes) },
+        onSelect = onSelect,
+    )
 }
 
 /** Tabs with the sliding glass capsule and lemon line; the home's sections and the library's sources. */
