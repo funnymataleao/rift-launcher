@@ -56,8 +56,11 @@ internal fun RiftGamePage(
     LaunchedEffect(game.appId, game.name) { RiftAutoArt.ensure(context, game) }
     var meta by remember(game.appId, game.name) { mutableStateOf(RiftAutoMeta.cached(context, game.appId)) }
     LaunchedEffect(game.appId, game.name) { RiftAutoMeta.ensure(context, game, platformId)?.let { meta = it } }
+    // Rift: trailers and screenshots from Steam by title, for the hero background and the Media section.
+    var media by remember(game.name) { mutableStateOf(StoreGameDetails()) }
+    LaunchedEffect(game.name) { media = app.gamenative.data.StoreDetailsRepository.getMediaByTitle(game.name) }
     val ratingLabel = stringResource(R.string.rift_meta_rating)
-    val displayInfo = remember(shown, meta) {
+    val displayInfo = remember(shown, meta, media) {
         GameDisplayInfo(
             name = shown.name,
             developer = meta?.developer.orEmpty(),
@@ -77,8 +80,10 @@ internal fun RiftGamePage(
                     reviewCount = m.ratingCount,
                     reviewSummary = m.rating?.let { ratingLabel },
                     tags = m.genres + m.tags,
+                    screenshots = media.screenshots,
+                    videos = media.videos,
                 )
-            } ?: StoreGameDetails(),
+            } ?: media,
             heroImageUrl = shown.heroImageUrl.ifEmpty { null },
             iconUrl = shown.customIconUrl.ifEmpty { null },
             gameId = 0,

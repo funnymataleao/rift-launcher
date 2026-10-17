@@ -116,6 +116,29 @@ object StoreDetailsRepository {
         )
     }
 
+    /**
+     * Rift: trailers and screenshots for a game that is not from a PC store (Android, emulators),
+     * found on Steam by title. Only media is returned; the page keeps its own description and rating.
+     */
+    suspend fun getMediaByTitle(
+        title: String,
+        locale: Locale = Locale.getDefault(),
+    ): StoreGameDetails = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val cacheKey = "media:" + GogMapRepository.normalizeTitle(title)
+        cache[cacheKey]?.takeIf { now - it.loadedAt in 0..CACHE_TTL_MS }?.let { return@withContext it.details }
+        val media = try {
+            fetchSteamSupplement(title, locale).let { StoreGameDetails(screenshots = it.screenshots, videos = it.videos) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "Store media lookup failed for $title")
+            StoreGameDetails()
+        }
+        cache[cacheKey] = CacheEntry(now, media)
+        media
+    }
+
     private suspend fun fetchSteam(appId: Int, locale: Locale): StoreGameDetails = coroutineScope {
         if (appId <= 0) return@coroutineScope StoreGameDetails()
         val language = SteamUtils.steamLanguageForAppLocale(locale)
