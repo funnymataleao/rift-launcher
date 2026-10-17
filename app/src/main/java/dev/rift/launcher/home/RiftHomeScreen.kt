@@ -100,6 +100,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
+import app.gamenative.ui.icons.InputIcons
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.runtime.withFrameNanos
@@ -2635,7 +2636,7 @@ private fun HintsBar(showFilters: Boolean, modifier: Modifier = Modifier) {
         val swap = PrefManager.swapFaceButtons
         fun face(button: GamepadButton, swapped: GamepadButton) = if (swap) swapped.iconRes else button.iconRes
         if (showFilters) Hint(listOf(GamepadButton.SELECT.iconRes), stringResource(R.string.rift_hint_filters))
-        Hint(listOf(GamepadButton.SELECT.iconRes), stringResource(R.string.rift_hint_menu))
+        Hint(listOf(InputIcons.Xbox.guide), stringResource(R.string.rift_hint_menu))
         Spacer(modifier = Modifier.weight(1f))
         if (showFilters) Hint(listOf(face(GamepadButton.Y, GamepadButton.X)), stringResource(R.string.rift_hint_options))
         if (showFilters) Hint(listOf(face(GamepadButton.A, GamepadButton.B)), stringResource(R.string.rift_details))
