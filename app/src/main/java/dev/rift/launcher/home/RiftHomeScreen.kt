@@ -2005,7 +2005,12 @@ fun RiftHomeScreen(
                 },
             )
         }
-        // The art picker lives above everything, the game page included.
+        // The art picker lives above everything, the game page included; the page's trailer waits under it.
+        val pageCovered = artItem != null || metaItem != null
+        DisposableEffect(pageCovered) {
+            RiftPageCover.covered = pageCovered
+            onDispose { RiftPageCover.covered = false }
+        }
         RiftTheme {
             RiftArtPicker(
                 item = artItem,
