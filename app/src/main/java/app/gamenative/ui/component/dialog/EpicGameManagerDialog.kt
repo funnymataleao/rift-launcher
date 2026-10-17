@@ -56,6 +56,8 @@ import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.utils.StorageUtils
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
+import dev.rift.launcher.home.RiftInstallItem
+import dev.rift.launcher.home.RiftInstallScreen
 import com.winlator.core.StringUtils
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -71,7 +73,6 @@ fun EpicGameManagerDialog(
     onDismissRequest: () -> Unit
 ) {
     val context = LocalContext.current
-    val scrollState = rememberScrollState()
 
     val allDownloadableGames = remember { mutableStateListOf<EpicGame>() }
     val selectedGameIds = remember { mutableStateMapOf<Int, Boolean>() }
@@ -83,9 +84,10 @@ fun EpicGameManagerDialog(
     // Install button must not wait for them (Rift: install stayed disabled with 0 bytes).
     var sizesLoading by remember { mutableStateOf(false) }
 
+    // No scroll reset here: with a gamepad the focus system scrolls the dialog as it opens, which
+    // cancelled animateScrollTo and with it this whole load (list empty, 0 bytes, Install disabled).
+    // Upstream fixed the same bug in GameManagerDialog for Steam.
     LaunchedEffect(visible) {
-        scrollState.animateScrollTo(0)
-
         allDownloadableGames.clear()
         selectedGameIds.clear()
 
@@ -152,18 +154,6 @@ fun EpicGameManagerDialog(
         derivedStateOf { getInstallSizeInfo() }
     }
 
-    fun installSizeDisplay(): String {
-        val unknown = context.getString(
-            if (sizesLoading) R.string.epic_install_size_calculating else R.string.epic_install_size_unknown,
-        )
-        return context.getString(
-            R.string.steam_install_space,
-            if (installSizeInfo.installBytes > 0L) installSizeInfo.downloadSize else unknown,
-            if (installSizeInfo.installBytes > 0L) installSizeInfo.installSize else unknown,
-            installSizeInfo.availableSpace
-        )
-    }
-
     fun installButtonEnabled(): Boolean {
         // Check if there's enough space
         if (installSizeInfo.availableBytes < installSizeInfo.installBytes) {
@@ -174,215 +164,54 @@ fun EpicGameManagerDialog(
         return selectedGameIds.filter { it.value }.isNotEmpty()
     }
 
-    when {
-        visible -> {
-            Dialog(
-                onDismissRequest = onDismissRequest,
-                properties = DialogProperties(
-                    usePlatformDefaultWidth = false,
-                    dismissOnClickOutside = false,
-                ),
-                content = {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black)
-                            .verticalScroll(scrollState),
-                        horizontalAlignment = Alignment.Start,
-                    ) {
-                        // Hero Section with Game Image Background
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(250.dp)
-                        ) {
-                            // Hero background image
-                            if (displayInfo.heroImageUrl != null) {
-                                CoilImage(
-                                    modifier = Modifier.fillMaxSize(),
-                                    imageModel = { displayInfo.heroImageUrl },
-                                    imageOptions = ImageOptions(contentScale = ContentScale.Crop),
-                                    loading = { LoadingScreen() },
-                                    failure = {
-                                        Box(
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            // Gradient background as fallback
-                                            Surface(
-                                                modifier = Modifier.fillMaxSize(),
-                                                color = MaterialTheme.colorScheme.primary
-                                            ) { }
-                                        }
-                                    },
-                                    previewPlaceholder = painterResource(R.drawable.testhero),
-                                )
-                            } else {
-                                // Fallback gradient background when no hero image
-                                Surface(
-                                    modifier = Modifier.fillMaxSize(),
-                                    color = MaterialTheme.colorScheme.primary
-                                ) { }
-                            }
-
-                            // Gradient overlay
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        brush = Brush.verticalGradient(
-                                            colors = listOf(
-                                                Color.Transparent,
-                                                Color.Black.copy(alpha = 0.8f)
-                                            )
-                                        )
-                                    )
-                            )
-
-                            // Back button (top left)
-                            Box(
-                                modifier = Modifier
-                                    .padding(20.dp)
-                                    .background(
-                                        color = Color.Black.copy(alpha = 0.5f),
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                            ) {
-                                BackButton(onClick = onDismissRequest)
-                            }
-
-                            // Game title and subtitle
-                            Column(
-                                modifier = Modifier
-                                    .align(Alignment.BottomStart)
-                                    .padding(20.dp)
-                            ) {
-                                Text(
-                                    text = displayInfo.name,
-                                    style = MaterialTheme.typography.headlineLarge.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        shadow = Shadow(
-                                            color = Color.Black.copy(alpha = 0.5f),
-                                            offset = Offset(0f, 2f),
-                                            blurRadius = 10f
-                                        )
-                                    ),
-                                    color = Color.White
-                                )
-
-                                Text(
-                                    text = "${displayInfo.developer} • ${
-                                        remember(displayInfo.releaseDate) {
-                                            if (displayInfo.releaseDate > 0) {
-                                                SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(displayInfo.releaseDate * 1000))
-                                            } else {
-                                                ""
-                                            }
-                                        }
-                                    }",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.White.copy(alpha = 0.9f)
-                                )
-                            }
-                        }
-
-                        Column(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            allDownloadableGames.forEach { game ->
-                                val gameIdValue = game.id ?: 0
-                                val checked = selectedGameIds[gameIdValue] ?: false
-                                val isBaseGame = gameIdValue == gameId
-
-                                ListItem(
-                                    headlineContent = {
-                                        Column {
-                                            Text(
-                                                text = game.title
-                                            )
-                                            // Add size display
-                                            val sizeText = if (game.installSize > 0L) {
-                                                val downloadSize = StringUtils.formatBytes(game.downloadSize)
-                                                val installSize = StringUtils.formatBytes(game.installSize)
-                                                "$downloadSize download • $installSize install"
-                                            } else {
-                                                stringResource(
-                                                    if (sizesLoading) R.string.epic_install_size_calculating else R.string.epic_install_size_unknown,
-                                                )
-                                            }
-                                            Text(
-                                                text = sizeText,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                            )
-                                            // Show if it's DLC
-                                            if (game.isDLC) {
-                                                Text(
-                                                    text = "DLC",
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.primary
-                                                )
-                                            }
-                                        }
-                                    },
-                                    trailingContent = {
-                                        Checkbox(
-                                            checked = checked,
-                                            enabled = !isBaseGame, // Base game can't be deselected
-                                            onCheckedChange = { isChecked ->
-                                                if (!isBaseGame) {
-                                                    selectedGameIds[gameIdValue] = isChecked
-                                                }
-                                            }
-                                        )
-                                    },
-                                    modifier = Modifier.clickable(enabled = !isBaseGame) {
-                                        if (!isBaseGame) {
-                                            selectedGameIds[gameIdValue] = !checked
-                                        }
-                                    }
-                                )
-
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(horizontal = 16.dp),
-                                    thickness = 0.5.dp,
-                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                                )
-                            }
-                        }
-
-                        Column(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 8.dp, start = 8.dp, bottom = 8.dp, end = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    modifier = Modifier.weight(0.5f),
-                                    text = installSizeDisplay()
-                                )
-
-                                Button(
-                                    enabled = installButtonEnabled(),
-                                    onClick = {
-                                        val selectedIds = selectedGameIds
-                                            .filter { it.value }
-                                            .keys
-                                            .toList()
-                                        onInstall(selectedIds)
-                                    }
-                                ) {
-                                    Text(stringResource(R.string.install))
-                                }
-                            }
-                        }
-                    }
-                },
+    if (visible) {
+        // Rift: one install screen for every store (dev.rift.launcher.home.RiftInstallScreen)
+        val unknown = stringResource(
+            if (sizesLoading) R.string.epic_install_size_calculating else R.string.epic_install_size_unknown,
+        )
+        val dlcLabel = stringResource(R.string.rift_install_dlc)
+        val items = allDownloadableGames.map { game ->
+            val gameIdValue = game.id ?: 0
+            val isBaseGame = gameIdValue == gameId
+            val sizes = if (game.installSize > 0L) {
+                context.getString(
+                    R.string.rift_install_item_sizes,
+                    StringUtils.formatBytes(game.downloadSize),
+                    StringUtils.formatBytes(game.installSize),
+                )
+            } else {
+                unknown
+            }
+            RiftInstallItem(
+                key = gameIdValue,
+                title = game.title,
+                subtitle = if (game.isDLC) "$dlcLabel • $sizes" else sizes,
+                checked = selectedGameIds[gameIdValue] ?: false,
+                enabled = !isBaseGame, // Base game can't be deselected
+                onCheckedChange = { selectedGameIds[gameIdValue] = it },
             )
         }
+        val sizesKnown = installSizeInfo.installBytes > 0L
+        RiftInstallScreen(
+            displayInfo = displayInfo,
+            downloadSize = if (sizesKnown) installSizeInfo.downloadSize else unknown,
+            installSize = if (sizesKnown) installSizeInfo.installSize else unknown,
+            availableSpace = installSizeInfo.availableSpace,
+            installEnabled = installButtonEnabled(),
+            onInstall = {
+                val selectedIds = selectedGameIds
+                    .filter { it.value }
+                    .keys
+                    .toList()
+                onInstall(selectedIds)
+            },
+            onDismiss = onDismissRequest,
+            items = items,
+            warning = if (installSizeInfo.availableBytes < installSizeInfo.installBytes) {
+                stringResource(R.string.rift_install_not_enough_space)
+            } else {
+                null
+            },
+        )
     }
 }

@@ -60,6 +60,8 @@ import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.StorageUtils
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
+import dev.rift.launcher.home.RiftInstallItem
+import dev.rift.launcher.home.RiftInstallScreen
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -300,227 +302,47 @@ fun GameManagerDialog(
         return selectedAppIds.filter { it.value }.isNotEmpty()
     }
 
-    when {
-        visible -> {
-            Dialog(
-                onDismissRequest = onDismissRequest,
-                properties = DialogProperties(
-                    usePlatformDefaultWidth = false,
-                    dismissOnClickOutside = false,
-                ),
-                content = {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black)
-                            .verticalScroll(scrollState),
-                        horizontalAlignment = Alignment.Start,
-                    ) {
-                        // Hero Section with Game Image Background
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(250.dp)
-                        ) {
-                            // Hero background image
-                            if (displayInfo.heroImageUrl != null) {
-                                CoilImage(
-                                    modifier = Modifier.fillMaxSize(),
-                                    imageModel = { displayInfo.heroImageUrl },
-                                    imageOptions = ImageOptions(contentScale = ContentScale.Crop),
-                                    loading = { LoadingScreen() },
-                                    failure = {
-                                        Box(
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            // Gradient background as fallback
-                                            Surface(
-                                                modifier = Modifier.fillMaxSize(),
-                                                color = MaterialTheme.colorScheme.primary
-                                            ) { }
-                                        }
-                                    },
-                                    previewPlaceholder = painterResource(R.drawable.testhero),
-                                )
-                            } else {
-                                // Fallback gradient background when no hero image
-                                Surface(
-                                    modifier = Modifier.fillMaxSize(),
-                                    color = MaterialTheme.colorScheme.primary
-                                ) { }
-                            }
-
-                            // Gradient overlay
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        brush = Brush.verticalGradient(
-                                            colors = listOf(
-                                                Color.Transparent,
-                                                Color.Black.copy(alpha = 0.8f)
-                                            )
-                                        )
-                                    )
-                            )
-
-                            // Back button (top left)
-                            Box(
-                                modifier = Modifier
-                                    .padding(20.dp)
-                                    .background(
-                                        color = Color.Black.copy(alpha = 0.5f),
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                            ) {
-                                BackButton(onClick = onDismissRequest)
-                            }
-
-                            // Game title and subtitle
-                            Column(
-                                modifier = Modifier
-                                    .align(Alignment.BottomStart)
-                                    .padding(20.dp)
-                            ) {
-                                Text(
-                                    text = displayInfo.name,
-                                    style = MaterialTheme.typography.headlineLarge.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        shadow = Shadow(
-                                            color = Color.Black.copy(alpha = 0.5f),
-                                            offset = Offset(0f, 2f),
-                                            blurRadius = 10f
-                                        )
-                                    ),
-                                    color = Color.White
-                                )
-
-                                Text(
-                                    text = "${displayInfo.developer} • ${
-                                        remember(displayInfo.releaseDate) {
-                                            if (displayInfo.releaseDate > 0) {
-                                                SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(displayInfo.releaseDate * 1000))
-                                            } else {
-                                                ""
-                                            }
-                                        }
-                                    }",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.White.copy(alpha = 0.9f)
-                                )
-                            }
-                        }
-
-                        Column(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            if (branch != null && branch != "public") {
-                                Text(
-                                    text = "Installing the \"$branch\" branch",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                )
-                            }
-
-                            // Select All toggle
-                            if (selectableAppIds.isNotEmpty()) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                                    horizontalArrangement = Arrangement.End
-                                ) {
-                                    Button(
-                                        onClick = {
-                                            val newState = !allSelectableSelected
-                                            selectableAppIds.forEach { appId ->
-                                                selectedAppIds[appId] = newState
-                                            }
-                                        }
-                                    ) {
-                                        Text(
-                                            text = if (allSelectableSelected) "Deselect all" else "Select all"
-                                        )
-                                    }
-                                }
-                            }
-
-                            allDownloadableApps.forEach { (dlcAppId, depotInfo) ->
-                                val checked = selectedAppIds[dlcAppId] ?: false
-                                val enabled = enabledAppIds[dlcAppId] ?: false
-
-                                ListItem(
-                                    headlineContent = {
-                                        Column {
-                                            Text(
-                                                text = getDepotAppName(depotInfo)
-                                            )
-                                            // Add size display
-                                            val (downloadSize, installSize) = getSizeInfo(dlcAppId)
-                                            Text(
-                                                text = "$downloadSize download • $installSize install",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                            )
-                                        }
-                                    },
-                                    trailingContent = {
-                                        Checkbox(
-                                            checked = checked,
-                                            enabled = enabled,
-                                            onCheckedChange = { isChecked ->
-                                                // Update the local (unsaved) state only
-                                                selectedAppIds[dlcAppId] = isChecked
-                                            }
-                                        )
-                                    },
-                                    modifier = Modifier.clickable(enabled = enabled) {
-                                        // Toggle checkbox when ListItem is clicked
-                                        selectedAppIds[dlcAppId] = !checked
-                                    }
-                                )
-
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(horizontal = 16.dp),
-                                    thickness = 0.5.dp,
-                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                                )
-                            }
-                        }
-
-                        Column(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 8.dp, start = 8.dp, bottom = 8.dp, end = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    modifier = Modifier.weight(0.5f),
-                                    text = installSizeDisplay()
-                                )
-
-                                Button(
-                                    enabled = installButtonEnabled(),
-                                    onClick = {
-                                        onInstall(selectedAppIds
-                                            .filter { selectedId -> selectedId.key in enabledAppIds.filter { enabledId -> enabledId.value } }
-                                            .filter { selectedId -> selectedId.value }.keys.toList())
-                                    }
-                                ) {
-                                    Text(stringResource(R.string.install))
-                                }
-                            }
-                        }
-                    }
-                },
+    if (visible) {
+        // Rift: one install screen for every store (dev.rift.launcher.home.RiftInstallScreen)
+        val items = allDownloadableApps.map { (dlcAppId, depotInfo) ->
+            val (downloadSize, installSize) = getSizeInfo(dlcAppId)
+            RiftInstallItem(
+                key = dlcAppId,
+                title = getDepotAppName(depotInfo),
+                subtitle = context.getString(R.string.rift_install_item_sizes, downloadSize, installSize),
+                checked = selectedAppIds[dlcAppId] ?: false,
+                enabled = enabledAppIds[dlcAppId] ?: false,
+                onCheckedChange = { selectedAppIds[dlcAppId] = it },
             )
         }
+        RiftInstallScreen(
+            displayInfo = displayInfo,
+            downloadSize = installSizeInfo.downloadSize,
+            installSize = installSizeInfo.installSize,
+            availableSpace = installSizeInfo.availableSpace,
+            installEnabled = installButtonEnabled(),
+            onInstall = {
+                onInstall(selectedAppIds
+                    .filter { selectedId -> selectedId.key in enabledAppIds.filter { enabledId -> enabledId.value } }
+                    .filter { selectedId -> selectedId.value }.keys.toList())
+            },
+            onDismiss = onDismissRequest,
+            items = items,
+            note = if (branch != null && branch != "public") stringResource(R.string.rift_install_branch, branch) else null,
+            warning = if (installSizeInfo.availableBytes < installSizeInfo.installBytes) {
+                stringResource(R.string.rift_install_not_enough_space)
+            } else {
+                null
+            },
+            selectAll = if (selectableAppIds.isNotEmpty()) {
+                stringResource(if (allSelectableSelected) R.string.rift_install_deselect_all else R.string.rift_install_select_all) to {
+                    val newState = !allSelectableSelected
+                    selectableAppIds.forEach { appId -> selectedAppIds[appId] = newState }
+                }
+            } else {
+                null
+            },
+        )
     }
 }
 

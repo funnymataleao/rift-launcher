@@ -10,6 +10,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -738,7 +739,34 @@ class GOGAppScreen : BaseAppScreen() {
                 }
                 else -> null
             }
-            app.gamenative.ui.component.dialog.MessageDialog(
+            if (installDialogState.type == app.gamenative.ui.enums.DialogType.INSTALL_APP) {
+                // Rift: the same full install screen as the other stores, not a message box
+                val displayInfo = getGameDisplayInfo(context, libraryItem)
+                val sizes by produceState<Pair<Long, Long>?>(null, appId) {
+                    value = withContext(Dispatchers.IO) {
+                        val game = GOGService.getGOGGameOf(libraryItem.gameId.toString())
+                        val available = runCatching {
+                            app.gamenative.utils.StorageUtils.getAvailableSpace(GOGConstants.defaultGOGGamesPath)
+                        }.getOrDefault(0L)
+                        (game?.downloadSize ?: 0L) to available
+                    }
+                }
+                val (downloadBytes, availableBytes) = sizes ?: (0L to 0L)
+                val unknown = stringResource(
+                    if (sizes == null) R.string.epic_install_size_calculating else R.string.epic_install_size_unknown,
+                )
+                val enoughSpace = downloadBytes <= 0L || availableBytes >= downloadBytes
+                dev.rift.launcher.home.RiftInstallScreen(
+                    displayInfo = displayInfo,
+                    downloadSize = if (downloadBytes > 0L) app.gamenative.utils.StorageUtils.formatBinarySize(downloadBytes) else unknown,
+                    installSize = null,
+                    availableSpace = if (sizes != null) app.gamenative.utils.StorageUtils.formatBinarySize(availableBytes) else unknown,
+                    installEnabled = sizes != null && enoughSpace,
+                    onInstall = { onConfirmClick?.invoke() },
+                    onDismiss = { BaseAppScreen.hideInstallDialog(appId) },
+                    warning = if (enoughSpace) null else stringResource(R.string.rift_install_not_enough_space),
+                )
+            } else app.gamenative.ui.component.dialog.MessageDialog(
                 visible = installDialogState.visible,
                 onDismissRequest = onDismissRequest,
                 onConfirmClick = onConfirmClick,

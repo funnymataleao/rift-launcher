@@ -554,4 +554,15 @@
     <string name="rift_meta_src_wikipedia">Википедия</string>
     <string name="epic_install_size_calculating">Вычисляется…</string>
     <string name="epic_install_size_unknown">Неизвестно</string>
+    <string name="rift_install_download_size">Загрузка</string>
+    <string name="rift_install_size_on_disk">На диске</string>
+    <string name="rift_install_available_space">Свободно</string>
+    <string name="rift_install_components">Компоненты</string>
+    <string name="rift_install_back">Назад</string>
+    <string name="rift_install_select_all">Выбрать всё</string>
+    <string name="rift_install_deselect_all">Снять всё</string>
+    <string name="rift_install_branch">Устанавливается ветка «%1$s»</string>
+    <string name="rift_install_not_enough_space">Недостаточно свободного места</string>
+    <string name="rift_install_item_sizes">Загрузка %1$s • на диске %2$s</string>
+    <string name="rift_install_dlc">DLC</string>
 </resources>
