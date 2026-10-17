@@ -50,10 +50,12 @@ fun CoverImage(urls: List<String>, contentDescription: String?, modifier: Modifi
 /**
  * The art for a 2:3 cover, best first. Steam games start with Steam's own 600x900 library cover,
  * built from the app id, so the cover is right from the first frame and does not change when the
- * library learns the game's art later; the wide header is only the last resort.
+ * library learns the game's art later; the wide header is only the last resort (never for a cloud game,
+ * whose wide art would sit on a tall card until the poster came).
  */
 fun portraitCoverUrls(item: app.gamenative.data.LibraryItem): List<String> =
-    listOfNotNull(steamAsset(item, "library_600x900.jpg"), item.capsuleImageUrl, steamAsset(item, "library_600x900_2x.jpg"), item.headerImageUrl, item.heroImageUrl)
+    // A cloud game always has the store's tall poster: it is retried rather than replaced by wide art.
+    if (dev.rift.launcher.cloud.CloudLibrary.isCloud(item.appId) && item.capsuleImageUrl.isNotBlank()) listOf(item.capsuleImageUrl) else listOfNotNull(steamAsset(item, "library_600x900.jpg"), item.capsuleImageUrl, steamAsset(item, "library_600x900_2x.jpg"), item.headerImageUrl, item.heroImageUrl)
 
 /** The art for a wide tile, best first: the header (built from the app id for Steam), then the hero. */
 fun wideCoverUrls(item: app.gamenative.data.LibraryItem): List<String> =

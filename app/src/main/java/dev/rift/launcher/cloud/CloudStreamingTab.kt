@@ -50,41 +50,52 @@ object CloudLibrary {
 }
 
 /** A cloud game as a library entry, so the home's covers, art and game page work as for any game. */
-fun CloudGame.toLibraryItem() = LibraryItem(
+fun CloudGame.toLibraryItem(logo: String = "") = LibraryItem(
     appId = CloudLibrary.APP_ID_PREFIX + productId,
     name = title,
     capsuleImageUrl = poster,
     headerImageUrl = titledHero,
     heroImageUrl = hero,
     isInstalled = true,
+    customLogoUrl = logo,
 )
 
 /**
- * The cloud streaming tab's data: Game Pass cloud games, the ones started from Rift first (the latest
- * first), then Game Pass's most popular, then the rest of the catalog in its own order.
+ * The cloud streaming tab's data: Game Pass cloud games with the logos found for them so far, and when
+ * each was last started from Rift.
  */
-class CloudStreamingTab internal constructor(private val catalog: CloudCatalog?, private val recent: Map<String, Long>) {
-    val games: List<CloudGame> = run {
-        val all = catalog?.games.orEmpty()
-        val popular = catalog?.popular.orEmpty().withIndex().associate { (index, id) -> id to index }
-        all.withIndex().sortedWith(
-            compareByDescending<IndexedValue<CloudGame>> { recent[it.value.productId] ?: 0L }
-                .thenBy { popular[it.value.productId] ?: Int.MAX_VALUE }
-                .thenBy { it.index },
-        ).map { it.value }
-    }
+class CloudStreamingTab internal constructor(
+    private val catalog: CloudCatalog?,
+    private val recent: Map<String, Long>,
+    private val logos: Map<String, String>,
+) {
+    val games: List<CloudGame> = catalog?.games.orEmpty()
 
-    val items: List<LibraryItem> = games.map { it.toLibraryItem() }
+    val items: List<LibraryItem> = games.map { it.item() }
+
+    private fun CloudGame.item() = toLibraryItem(logos[productId].orEmpty())
 
     /**
-     * The tab's covers in the person's chosen order. "Last played" is the tab's own order above; "date
-     * added" is the order Game Pass lists its cloud games in.
+     * The tab's covers in the person's chosen order. "Last played" puts the games started from Rift first,
+     * the latest first, and the rest by name; "date added" puts Game Pass's "Recently added" list first,
+     * in its order, then the rest by release date, the newest first.
      */
-    fun arrange(view: TabView): List<LibraryItem> = when (view.sort) {
-        TabSort.LAST_PLAYED -> items
-        TabSort.DATE_ADDED -> catalog?.games.orEmpty().map { it.toLibraryItem() }
-        TabSort.NAME_ASC -> items.sortedBy { it.name.lowercase() }
-        TabSort.NAME_DESC -> items.sortedByDescending { it.name.lowercase() }
+    fun arrange(view: TabView): List<LibraryItem> {
+        val byName = compareBy<CloudGame> { it.title.lowercase() }
+        val sorted = when (view.sort) {
+            TabSort.LAST_PLAYED -> games.sortedWith(compareByDescending<CloudGame> { recent[it.productId] ?: 0L }.then(byName))
+            TabSort.DATE_ADDED -> {
+                val added = catalog?.recentlyAdded.orEmpty().withIndex().associate { (index, id) -> id to index }
+                games.sortedWith(
+                    compareBy<CloudGame> { added[it.productId] ?: Int.MAX_VALUE }
+                        .thenByDescending { it.releaseDate }
+                        .then(byName),
+                )
+            }
+            TabSort.NAME_ASC -> games.sortedWith(byName)
+            TabSort.NAME_DESC -> games.sortedWith(byName.reversed())
+        }
+        return sorted.map { it.item() }
     }
 
     /** Starts [item] in the cloud. */
@@ -101,6 +112,7 @@ fun rememberCloudStreamingTab(): CloudStreamingTab {
     val context = LocalContext.current
     val catalog by CloudLibrary.catalog.collectAsStateWithLifecycle()
     val recent by XcloudAccount.recent(context).collectAsStateWithLifecycle()
+    val logos by CloudLogos.logos(context).collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { CloudLibrary.load(context) }
-    return remember(catalog, recent) { CloudStreamingTab(catalog, recent.orEmpty()) }
+    return remember(catalog, recent, logos) { CloudStreamingTab(catalog, recent.orEmpty(), logos) }
 }
