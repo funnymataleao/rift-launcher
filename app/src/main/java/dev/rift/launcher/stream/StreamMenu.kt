@@ -168,19 +168,20 @@ fun StreamMenu(
                         .padding(start = 20.dp, end = 10.dp, top = 16.dp, bottom = 12.dp),
                 ) {
                     Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        // The game on top (Denis): its wide cover across the panel, its name, then the PC.
-                        StreamHeader(
-                            appName = appName,
-                            pcName = pcName,
-                            coverUrls = coverUrls,
-                            cloud = extraSettings != null,
-                        )
                         Column(
                             modifier = Modifier
                                 .weight(1f)
                                 .verticalScroll(rememberScrollState()),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
+                            // The game on top (Denis): its wide cover across the panel, its name, then the PC.
+                            // It scrolls with the rows, so a short screen still reaches every setting.
+                            StreamHeader(
+                                appName = appName,
+                                pcName = pcName,
+                                coverUrls = coverUrls,
+                                cloud = extraSettings != null,
+                            )
                             if (error != null) {
                                 Text(
                                     text = error,
