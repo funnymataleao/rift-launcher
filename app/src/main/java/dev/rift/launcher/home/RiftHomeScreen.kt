@@ -2657,6 +2657,8 @@ private fun TopBar(
     // status icons in the right corner. Searching hides the bumpers and tabs and opens a wide field in their place,
     // from the first cover's left edge to the search button.
     val gap = with(LocalDensity.current) { 10.dp.roundToPx() }
+    // Between RB and the search button: clearly apart, the button belongs to the corner.
+    val cornerGap = with(LocalDensity.current) { 28.dp.roundToPx() }
     val pad = with(LocalDensity.current) { ScreenPadding.roundToPx() }
     // The bumper's picture sits a little inside its touch box; its edge, not the box, lines up with the covers.
     val bumperInset = with(LocalDensity.current) { 8.dp.roundToPx() }
@@ -2682,7 +2684,7 @@ private fun TopBar(
         val iconsX = constraints.maxWidth - pad - icons.width
         val btnX = iconsX - gap - searchBtn.width
         // The tabs get what the bumpers, the search button and the corner leave.
-        val tabsMax = (btnX - gap - (pad - bumperInset) - lb.width - rb.width - 2 * gap).coerceAtLeast(0)
+        val tabsMax = (btnX - cornerGap - rb.width - gap - (pad - bumperInset + lb.width + gap)).coerceAtLeast(0)
         val tabs = measurables[1].measure(loose.copy(maxWidth = tabsMax))
         val p = progress.value
         val fieldRight = btnX - gap
@@ -2994,7 +2996,7 @@ private fun SectionTab(
                 if (event.type == KeyEventType.KeyDown) onStep(step) else true
             }
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            .padding(horizontal = 18.dp),
+            .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
