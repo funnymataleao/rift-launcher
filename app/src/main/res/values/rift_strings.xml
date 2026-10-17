@@ -28,11 +28,11 @@
     <string name="rift_exit">Exit</string>
 
     <!-- Settings -->
-    <string name="rift_settings_interface">Interface</string>
+    <string name="rift_settings_interface">Appearance</string>
     <string name="rift_settings_interface_summary">Language, app icon, library and achievement notifications</string>
-    <string name="rift_settings_controller">Controller</string>
+    <string name="rift_settings_controller">Controls</string>
     <string name="rift_settings_controller_summary">Gamepad behaviour and what new games use</string>
-    <string name="rift_settings_display">Display</string>
+    <string name="rift_settings_display">Screen</string>
     <string name="rift_settings_display_summary">Game resolution, renderer, sharpness and orientation</string>
     <string name="rift_settings_graphics">Driver and graphics</string>
     <string name="rift_settings_graphics_summary">Vulkan driver, DirectX layer and driver managers</string>
@@ -44,7 +44,7 @@
     <string name="rift_settings_streaming_summary">Artemis: picture, latency, sound, host and gamepads</string>
     <string name="rift_settings_downloads">Downloads and storage</string>
     <string name="rift_settings_downloads_summary">Network, speed, install location and Steam server</string>
-    <string name="rift_settings_accounts">PC game stores</string>
+    <string name="rift_settings_accounts">PC stores</string>
     <string name="rift_settings_accounts_summary">GameNative account, Steam, Epic, GOG and others</string>
     <string name="rift_settings_about">About</string>
     <string name="rift_settings_about_summary">Version, source code, privacy and support</string>
@@ -73,7 +73,6 @@
     <string name="rift_settings_group_stream_gamepad">Gamepads</string>
     <string name="rift_settings_group_network">Network</string>
     <string name="rift_settings_group_storage">Storage</string>
-    <string name="rift_settings_group_stores">Other stores</string>
     <string name="rift_settings_group_project">Project</string>
     <string name="rift_settings_group_privacy">Privacy</string>
     <string name="rift_settings_group_logs">Logs</string>
@@ -172,19 +171,13 @@
     <string name="rift_settings_stream_gamepads_summary">Auto uses as many as are connected</string>
     <string name="rift_settings_stream_keep_gamepads">Keep gamepads after disconnect</string>
     <string name="rift_settings_stream_keep_gamepads_summary">The PC keeps them when a controller drops out for a moment</string>
-    <string name="rift_settings_stores_note">Steam, GOG, Epic and Amazon sign-in lives in Stores.</string>
     <string name="rift_settings_stream_add_pc">Add PC</string>
     <string name="rift_settings_stream_add_pc_summary">Find a PC on your network and enter its PIN to stream games</string>
     <string name="rift_settings_group_sources">Sources</string>
     <string name="rift_settings_group_rift">Rift</string>
     <string name="rift_settings_group_windows">Windows games</string>
     <string name="rift_settings_group_system">System</string>
-    <string name="rift_settings_sources">Game sources</string>
-    <string name="rift_settings_sources_summary">Add where your games come from</string>
-    <string name="rift_settings_sources_note">A tab appears on the home screen as soon as its source is added here.</string>
-    <string name="rift_settings_group_your_sources">Where games come from</string>
-    <string name="rift_settings_source_not_added">Not added</string>
-    <string name="rift_settings_sound">Sound and music</string>
+    <string name="rift_settings_sound">Sounds</string>
     <string name="rift_settings_sound_summary">Click sounds and your own sound pack</string>
     <string name="rift_settings_home">Launcher mode</string>
     <string name="rift_settings_home_summary">Rift as an app or as the home screen</string>
@@ -192,8 +185,6 @@
     <string name="rift_settings_clock">Clock, hours</string>
     <string name="rift_settings_show_battery">Show battery</string>
     <string name="rift_settings_show_network">Show network</string>
-    <string name="rift_settings_button_glyphs">Button icons</string>
-    <string name="rift_settings_button_glyphs_summary">Which gamepad icons the hints show</string>
     <string name="rift_settings_ui_sounds">Interface sounds</string>
     <string name="rift_settings_ui_sounds_summary">A soft click when moving and pressing</string>
     <string name="rift_settings_sound_note">Put files named move, select, back, tab, open, close and launch (ogg, wav or mp3) in the folder. Missing ones stay built-in.</string>
@@ -243,9 +234,35 @@
     <string name="rift_settings_sound_pack_reset">Back to built-in sounds</string>
     <string name="rift_section_android_games">Android games</string>
     <string name="rift_hint_options">Options</string>
-    <string name="rift_hint_menu">Quick access</string>
+    <string name="rift_settings_quick_access_hold_select">Hold Select</string>
+    <string name="rift_apps_title">Apps</string>
+    <string name="rift_hint_apps">Apps</string>
+    <string name="rift_apps_sort_recent">Recent</string>
+    <string name="rift_apps_sort_newest">Newest</string>
+    <string name="rift_apps_sort_name">A–Z</string>
+    <string name="rift_hint_menu">Hold: quick access</string>
     <string name="rift_source_android">Android</string>
     <string name="rift_search">Search</string>
     <string name="rift_settings_stream_vibration">Gamepad vibration</string>
     <string name="rift_settings_stream_vibration_summary">Pass the game\'s rumble to your gamepad</string>
+    <string name="rift_settings_quick_access">Right panel button</string>
+    <string name="rift_settings_quick_access_summary">The gamepad button that opens the game options panel</string>
+    <string name="rift_settings_quick_access_press">Press the button on your gamepad</string>
+    <string name="rift_settings_quick_access_reset">Guide button</string>
+    <string name="rift_settings_cancel">Cancel</string>
+    <string name="rift_settings_group_pcs">Your PCs</string>
+    <string name="rift_settings_pc_paired">Paired</string>
+    <string name="rift_filters_title">Filters</string>
+    <string name="rift_filter_any">Any</string>
+
+    <string name="rift_store_steam" translatable="false">Steam</string>
+    <string name="rift_store_epic" translatable="false">Epic Games</string>
+    <string name="rift_store_gog" translatable="false">GOG</string>
+    <string name="rift_store_amazon" translatable="false">Amazon Games</string>
+    <string name="rift_settings_sign_in">Sign in</string>
+    <string name="rift_settings_store_signed_in">Signed in</string>
+    <string name="rift_settings_sign_out_title">Sign out of %1$s?</string>
+    <string name="rift_settings_sign_out_message">You will need to sign in again to see its games.</string>
+    <string name="rift_library_all">All games</string>
+    <string name="rift_library_open">Open library</string>
 </resources>

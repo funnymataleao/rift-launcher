@@ -191,14 +191,14 @@ private fun ChoiceOptionRow(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val shape = if (multi) RiftShapes.card else RiftShapes.full
+    val shape = RiftShapes.full
     Row(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = RiftSizes.button)
             .clip(shape)
             .background(if (focused) RiftColors.SurfaceContainerHigh else RiftColors.SurfaceContainer)
-            .border(if (focused) 3.dp else 1.dp, if (focused) Color.White else RiftColors.OutlineVariant, shape)
+            .border(if (focused) 2.dp else 1.dp, if (focused) Color.White.copy(alpha = 0.9f) else RiftColors.OutlineVariant, shape)
             .clickable(
                 interactionSource = interaction,
                 indication = null,

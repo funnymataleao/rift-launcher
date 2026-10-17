@@ -158,10 +158,14 @@ class RiftPrefs private constructor(
         get() = prefs.getBoolean(SHOW_NETWORK, true)
         set(value) = prefs.edit().putBoolean(SHOW_NETWORK, value).apply()
 
-    /** "xbox" or "playstation": which button glyphs the hints show. */
-    var buttonGlyphs: String
-        get() = prefs.getString(BUTTON_GLYPHS, "xbox") ?: "xbox"
-        set(value) = prefs.edit().putString(BUTTON_GLYPHS, value).apply()
+    /**
+     * KeyEvent key code of the gamepad button that opens the right-hand panel on the home screen
+     * (file "rift_prefs", key "quick_access_keycode"). None by default: holding Select always works,
+     * and Android keeps Guide for itself on some devices.
+     */
+    var quickAccessKeyCode: Int
+        get() = homePrefs.getInt(QUICK_ACCESS, dev.rift.launcher.home.RiftControls.DEFAULT_QUICK_ACCESS)
+        set(value) = homePrefs.edit().putInt(QUICK_ACCESS, value).apply()
 
     // --- Emulator folders ---
 
@@ -207,7 +211,7 @@ class RiftPrefs private constructor(
         private const val CLOCK_24H = "clock_24h"
         private const val SHOW_BATTERY = "show_battery"
         private const val SHOW_NETWORK = "show_network"
-        private const val BUTTON_GLYPHS = "button_glyphs"
+        private const val QUICK_ACCESS = "quick_access_keycode"
         private const val ROMS_URI = "emulators_roms_uri"
         private const val BIOS_URI = "emulators_bios_uri"
         private const val ESDE_URI = "emulators_esde_uri"

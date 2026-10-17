@@ -47,7 +47,8 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.ui.theme.PluviaTheme
 
 // Rift: option rows are full pills, like every other Rift button.
-private val OptionItemShape = RoundedCornerShape(50)
+// Rift: quiet rows, a small radius instead of a capsule.
+private val OptionItemShape = RoundedCornerShape(10.dp)
 
 private data class OptionItemStyle(
     val scale: Float,
@@ -74,9 +75,10 @@ private fun rememberOptionItemStyle(
 
     val backgroundColor by animateColorAsState(
         targetValue = when {
-            isFocused && selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
-            isFocused -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+            // Rift: dark grey fills; the accent colour stays on the small check/radio mark.
+            isFocused && selected -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.16f)
+            isFocused -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+            selected -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
             else -> Color.Transparent
         },
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
@@ -84,13 +86,13 @@ private fun rememberOptionItemStyle(
     )
 
     val borderColor by animateColorAsState(
-        targetValue = if (isFocused) MaterialTheme.colorScheme.primary else Color.Transparent,
+        targetValue = if (isFocused) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f) else Color.Transparent,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "${labelPrefix}BorderColor",
     )
 
     val borderWidth by animateDpAsState(
-        targetValue = if (isFocused) 2.dp else 0.dp,
+        targetValue = if (isFocused) 1.dp else 0.dp,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "${labelPrefix}BorderWidth",
     )
@@ -98,7 +100,7 @@ private fun rememberOptionItemStyle(
     val contentColor by animateColorAsState(
         targetValue = when {
             isFocused -> MaterialTheme.colorScheme.onSurface
-            selected -> MaterialTheme.colorScheme.primary
+            selected -> MaterialTheme.colorScheme.onSurface
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         },
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
@@ -284,7 +286,8 @@ fun OptionSectionHeader(
     Text(
         text = text.uppercase(),
         style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+        // Rift: neutral section titles, no accent colour.
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         letterSpacing = MaterialTheme.typography.labelMedium.letterSpacing * 1.5f,
         modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)
     )

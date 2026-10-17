@@ -8,6 +8,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -33,24 +35,27 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.PhotoAlbum
-import androidx.compose.material.icons.filled.PhotoSizeSelectActual
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material.icons.filled.ViewCarousel
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Stars
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -80,12 +85,9 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.SteamCollection
-import app.gamenative.ui.component.GameStatsKey
 import app.gamenative.ui.component.OptionListItem
-import app.gamenative.ui.component.OptionRadioItem
 import app.gamenative.ui.component.OptionSectionHeader
 import app.gamenative.ui.enums.AppFilter
-import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.enums.SortOption
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.adaptivePanelWidth
@@ -99,8 +101,6 @@ fun LibraryOptionsPanel(
     onFilterChanged: (AppFilter) -> Unit,
     currentSortOption: SortOption,
     onSortOptionChanged: (SortOption) -> Unit,
-    currentView: PaneType,
-    onViewChanged: (PaneType) -> Unit,
     steamCollections: List<SteamCollection>?,
     selectedSteamCollectionIds: Set<String>,
     steamCollectionCounts: Map<String, Int>,
@@ -122,9 +122,22 @@ fun LibraryOptionsPanel(
     showCloseButton: Boolean = true,
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
+    // Accordion: only one group is open at a time. B closes the open group first, then the panel.
+    var openGroup by rememberSaveable { mutableStateOf<String?>(null) }
+    val headerFocus = remember { mutableMapOf("sort" to firstItemFocusRequester) }
+    fun headerRequester(key: String) = headerFocus.getOrPut(key) { FocusRequester() }
+    fun toggleGroup(key: String) {
+        openGroup = if (openGroup == key) null else key
+    }
 
     BackHandler(enabled = isOpen) {
-        onDismiss()
+        val open = openGroup
+        if (open != null) {
+            openGroup = null
+            runCatching { headerRequester(open).requestFocus() }
+        } else {
+            onDismiss()
+        }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -184,7 +197,7 @@ fun LibraryOptionsPanel(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = stringResource(R.string.options_panel_title),
+                            text = stringResource(R.string.rift_filters_title),
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.SemiBold
                             ),
@@ -212,132 +225,71 @@ fun LibraryOptionsPanel(
                             .verticalScroll(rememberScrollState())
                             .padding(vertical = 12.dp)
                     ) {
-                        GameStatsKey(modifier = Modifier.padding(horizontal = 8.dp))
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        OptionSectionHeader(text = stringResource(R.string.options_sort_by))
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .focusGroup()
                                 .padding(horizontal = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            SortOption.entries.forEachIndexed { index, option ->
-                                OptionRadioItem(
-                                    text = stringResource(option.displayTextRes),
-                                    selected = currentSortOption == option,
-                                    onClick = { onSortOptionChanged(option) },
-                                    icon = option.icon(),
-                                    focusRequester = if (index == 0) firstItemFocusRequester else remember { FocusRequester() },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        OptionSectionHeader(text = stringResource(R.string.library_app_type))
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusGroup()
-                                .padding(horizontal = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            AppFilter.entries.forEach { appFilter ->
-                                if (appFilter in listOf(
-                                        AppFilter.GAME,
-                                        AppFilter.APPLICATION,
-                                        AppFilter.TOOL,
-                                        AppFilter.DEMO,
-                                        AppFilter.PLAYTEST,
-                                    )
-                                ) {
+                            FilterAccordion(
+                                label = stringResource(R.string.options_sort_by),
+                                valueText = stringResource(currentSortOption.displayTextRes),
+                                icon = currentSortOption.icon(),
+                                expanded = openGroup == "sort",
+                                onToggle = { toggleGroup("sort") },
+                                headerFocus = headerRequester("sort"),
+                            ) {
+                                SortOption.entries.forEach { option ->
                                     OptionListItem(
-                                        text = stringResource(appFilter.displayTextRes),
-                                        selected = selectedFilters.contains(appFilter),
-                                        onClick = { onFilterChanged(appFilter) },
-                                        icon = appFilter.icon,
-                                        modifier = Modifier.fillMaxWidth()
+                                        text = stringResource(option.displayTextRes),
+                                        selected = currentSortOption == option,
+                                        onClick = {
+                                            onSortOptionChanged(option)
+                                            openGroup = null
+                                            runCatching { headerRequester("sort").requestFocus() }
+                                        },
+                                        icon = option.icon(),
+                                        modifier = Modifier.fillMaxWidth(),
                                     )
                                 }
                             }
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        OptionSectionHeader(text = stringResource(R.string.library_app_status))
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusGroup()
-                                .padding(horizontal = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            AppFilter.entries.forEach { appFilter ->
-                                if (appFilter in listOf(
-                                        AppFilter.INSTALLED,
-                                        AppFilter.SHARED,
-                                        AppFilter.COMPATIBLE,
-                                        AppFilter.EXPIRED,
-                                        AppFilter.PLAYABLE,
-                                        AppFilter.FIVE_STAR,
-                                        AppFilter.FIVE_STAR_GPU,
-                                        AppFilter.PROVEN_GPU,
-                                        AppFilter.VR,
-                                    )
-                                ) {
+                            FilterAccordion(
+                                label = stringResource(R.string.library_app_type),
+                                valueText = summarize(TYPE_FILTERS, selectedFilters),
+                                icon = Icons.Default.Category,
+                                expanded = openGroup == "type",
+                                onToggle = { toggleGroup("type") },
+                                headerFocus = headerRequester("type"),
+                            ) {
+                                TYPE_FILTERS.forEach { f ->
                                     OptionListItem(
-                                        text = stringResource(appFilter.displayTextRes),
-                                        selected = selectedFilters.contains(appFilter),
-                                        onClick = { onFilterChanged(appFilter) },
-                                        icon = appFilter.icon,
-                                        modifier = Modifier.fillMaxWidth()
+                                        text = stringResource(f.displayTextRes),
+                                        selected = selectedFilters.contains(f),
+                                        onClick = { onFilterChanged(f) },
+                                        icon = f.icon,
+                                        modifier = Modifier.fillMaxWidth(),
                                     )
                                 }
                             }
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        OptionSectionHeader(text = stringResource(R.string.library_layout_title))
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusGroup()
-                                .padding(horizontal = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            OptionRadioItem(
-                                text = stringResource(R.string.library_layout_list),
-                                selected = currentView == PaneType.LIST,
-                                onClick = { onViewChanged(PaneType.LIST) },
-                                icon = Icons.AutoMirrored.Filled.List,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            OptionRadioItem(
-                                text = stringResource(R.string.library_layout_capsule),
-                                selected = currentView == PaneType.GRID_CAPSULE,
-                                onClick = { onViewChanged(PaneType.GRID_CAPSULE) },
-                                icon = Icons.Default.PhotoAlbum,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            OptionRadioItem(
-                                text = stringResource(R.string.library_layout_hero),
-                                selected = currentView == PaneType.GRID_HERO,
-                                onClick = { onViewChanged(PaneType.GRID_HERO) },
-                                icon = Icons.Default.PhotoSizeSelectActual,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            OptionRadioItem(
-                                text = stringResource(R.string.library_layout_carousel),
-                                selected = currentView == PaneType.CAROUSEL,
-                                onClick = { onViewChanged(PaneType.CAROUSEL) },
-                                icon = Icons.Default.ViewCarousel,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                            FilterAccordion(
+                                label = stringResource(R.string.library_app_status),
+                                valueText = summarize(STATUS_FILTERS, selectedFilters),
+                                icon = Icons.Default.FilterList,
+                                expanded = openGroup == "status",
+                                onToggle = { toggleGroup("status") },
+                                headerFocus = headerRequester("status"),
+                            ) {
+                                STATUS_FILTERS.forEach { f ->
+                                    OptionListItem(
+                                        text = stringResource(f.displayTextRes),
+                                        selected = selectedFilters.contains(f),
+                                        onClick = { onFilterChanged(f) },
+                                        icon = f.icon,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
+                            }
                         }
 
                         // Steam collections — local view filter, shown only when Steam is connected.
@@ -357,6 +309,9 @@ fun LibraryOptionsPanel(
                                         add(R.string.steam_collections_smart_unsupported)
                                     }
                                 },
+                                expanded = openGroup == "steam",
+                                onExpandedChange = { toggleGroup("steam") },
+                                headerFocus = headerRequester("steam"),
                                 onToggle = onSteamCollectionToggle,
                                 onClear = onClearSteamCollections,
                             )
@@ -375,6 +330,9 @@ fun LibraryOptionsPanel(
                                 } else {
                                     emptyList()
                                 },
+                                expanded = openGroup == "curated",
+                                onExpandedChange = { toggleGroup("curated") },
+                                headerFocus = headerRequester("curated"),
                                 onToggle = onCuratedListToggle,
                                 onClear = onClearCuratedLists,
                             )
@@ -408,16 +366,19 @@ private fun CollectionFilterSection(
     @StringRes clearRes: Int,
     @StringRes emptyRes: Int? = null,
     messageRes: List<Int> = emptyList(),
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    headerFocus: FocusRequester,
     onToggle: (String) -> Unit,
     onClear: () -> Unit,
 ) {
-    var expanded by rememberSaveable { mutableStateOf(selectedIds.isNotEmpty()) }
 
     Spacer(modifier = Modifier.height(20.dp))
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { expanded = !expanded }
+            .focusRequester(headerFocus)
+            .clickable { onExpandedChange(!expanded) }
             .padding(end = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
@@ -497,6 +458,121 @@ private fun CollectionFilterMessage(@StringRes messageRes: Int) {
     )
 }
 
+private val TYPE_FILTERS = listOf(
+    AppFilter.GAME,
+    AppFilter.APPLICATION,
+    AppFilter.TOOL,
+    AppFilter.DEMO,
+    AppFilter.PLAYTEST,
+)
+
+private val STATUS_FILTERS = listOf(
+    AppFilter.INSTALLED,
+    AppFilter.SHARED,
+    AppFilter.COMPATIBLE,
+    AppFilter.EXPIRED,
+    AppFilter.PLAYABLE,
+    AppFilter.FIVE_STAR,
+    AppFilter.FIVE_STAR_GPU,
+    AppFilter.PROVEN_GPU,
+    AppFilter.VR,
+)
+
+@Composable
+private fun summarize(options: List<AppFilter>, selected: EnumSet<AppFilter>): String {
+    val chosen = options.filter { selected.contains(it) }
+    return when (chosen.size) {
+        0 -> stringResource(R.string.rift_filter_any)
+        1 -> stringResource(chosen.first().displayTextRes)
+        else -> stringResource(chosen.first().displayTextRes) + " +" + (chosen.size - 1)
+    }
+}
+
+/**
+ * One filter group on one line (label + current value + chevron). A unrolls the options right
+ * inside the panel; the caller keeps only one group open at a time.
+ */
+@Composable
+private fun FilterAccordion(
+    label: String,
+    valueText: String,
+    icon: ImageVector,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    headerFocus: FocusRequester,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val shape = RoundedCornerShape(12.dp)
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .background(
+                    MaterialTheme.colorScheme.onSurface.copy(
+                        alpha = if (isFocused) 0.14f else if (expanded) 0.09f else 0.06f
+                    )
+                )
+                .then(
+                    if (isFocused) {
+                        Modifier.border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f), shape)
+                    } else Modifier
+                )
+                .focusRequester(headerFocus)
+                .clickable(interactionSource = interactionSource, indication = null, onClick = onToggle)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp),
+            )
+            Spacer(modifier = Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = valueText,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Icon(
+                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(),
+            exit = shrinkVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)) + fadeOut(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusGroup()
+                    .padding(top = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                content()
+            }
+        }
+    }
+}
+
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
 @Preview(
     uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL,
@@ -530,8 +606,6 @@ private fun Preview_LibraryOptionsPanel() {
                     onFilterChanged = { },
                     currentSortOption = SortOption.INSTALLED_FIRST,
                     onSortOptionChanged = { },
-                    currentView = PaneType.GRID_HERO,
-                    onViewChanged = { },
                     steamCollections = listOf(
                         SteamCollection(id = "fav", name = "Favorites", appIds = setOf(440, 570)),
                         SteamCollection(id = "rpg", name = "RPGs", appIds = setOf(292030)),

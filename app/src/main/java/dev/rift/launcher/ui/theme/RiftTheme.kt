@@ -53,6 +53,18 @@ object RiftShapes {
     val control = RoundedCornerShape(19.dp)
     val sheet = RoundedCornerShape(26.dp)
     val full = RoundedCornerShape(50)
+
+    /**
+     * Denis 2026-10-16: nothing square anywhere (side panels themselves aside). One rounded family
+     * for every Material component, in Rift's own screens and GameNative's alike.
+     */
+    val material = Shapes(
+        extraSmall = RoundedCornerShape(12.dp),
+        small = control,
+        medium = card,
+        large = sheet,
+        extraLarge = RoundedCornerShape(32.dp),
+    )
 }
 
 object RiftSizes {
@@ -91,12 +103,34 @@ private val RiftColorScheme = darkColorScheme(
     outline = RiftColors.Outline,
     outlineVariant = RiftColors.OutlineVariant,
     surfaceTint = Color.Transparent,
+    // Every container role set explicitly: Material's dark defaults are purple (GameNative's panels
+    // use primaryContainer for focused rows).
+    primaryContainer = Color.White.copy(alpha = 0.14f),
+    onPrimaryContainer = RiftColors.OnSurface,
+    secondaryContainer = Color.White.copy(alpha = 0.10f),
+    onSecondaryContainer = RiftColors.OnSurface,
+    tertiaryContainer = Color.White.copy(alpha = 0.10f),
+    onTertiaryContainer = RiftColors.OnSurface,
+    onTertiary = RiftColors.OnPrimary,
+    inversePrimary = RiftColors.Primary,
+    inverseSurface = RiftColors.OnSurface,
+    inverseOnSurface = RiftColors.Background,
+    surfaceBright = RiftColors.SurfaceContainerHigh,
+    surfaceDim = RiftColors.Background,
+    surfaceContainerLowest = RiftColors.Background,
+    surfaceContainerLow = RiftColors.Surface,
+    surfaceContainerHighest = RiftColors.SurfaceContainerHigh,
 )
 
 /** Side panels: translucent black over a blurred home screen, like frosted glass. */
 private val RiftGlassColorScheme = RiftColorScheme.copy(
-    surface = Color.Black.copy(alpha = 0.65f),
-    surfaceContainer = Color.Black.copy(alpha = 0.65f),
+    surface = Color.Black.copy(alpha = 0.7f),
+    surfaceContainer = Color.Black.copy(alpha = 0.7f),
+    // Cards inside the panels stay see-through too, just a little lighter than the glass.
+    surfaceVariant = Color.White.copy(alpha = 0.06f),
+    surfaceContainerLow = Color.White.copy(alpha = 0.04f),
+    surfaceContainerHigh = Color.White.copy(alpha = 0.07f),
+    surfaceContainerHighest = Color.White.copy(alpha = 0.10f),
     surfaceTint = Color.Transparent,
     scrim = Color.Black.copy(alpha = 0.3f),
 )
@@ -119,11 +153,7 @@ private fun RiftMaterialTheme(colorScheme: ColorScheme, content: @Composable () 
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
         motionScheme = MotionScheme.expressive(),
-        shapes = Shapes(
-            small = RiftShapes.control,
-            medium = RiftShapes.card,
-            large = RiftShapes.sheet,
-        ),
+        shapes = RiftShapes.material,
         content = content,
     )
 }

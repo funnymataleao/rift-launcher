@@ -66,6 +66,7 @@ import app.gamenative.utils.IconSwitcher
 import app.gamenative.utils.LocaleHelper
 import com.posthog.PostHog
 import dev.rift.launcher.ui.theme.RiftColors
+import dev.rift.launcher.ui.theme.RiftShapes
 
 /** Language, app icon, status bar, the library and achievement notifications. */
 @Composable
@@ -405,7 +406,7 @@ private fun IconVariantCard(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(22.dp)
+    val shape = RiftShapes.sheet
     Column(
         modifier = Modifier
             .clip(shape)

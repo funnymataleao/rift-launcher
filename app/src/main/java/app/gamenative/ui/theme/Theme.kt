@@ -183,6 +183,8 @@ fun PluviaTheme(
         MaterialTheme(
             colorScheme = colorScheme,
             typography = PluviaTypography,
+            // Rift: the same rounded shapes as Rift's own screens.
+            shapes = dev.rift.launcher.ui.theme.RiftShapes.material,
             content = content,
         )
     }

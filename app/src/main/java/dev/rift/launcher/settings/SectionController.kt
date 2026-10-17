@@ -38,8 +38,6 @@ internal fun ControllerSettings() {
 
     var swapFaceButtons by rememberSaveable { mutableStateOf(PrefManager.swapFaceButtons) }
     var showHints by rememberSaveable { mutableStateOf(PrefManager.showGamepadHints) }
-    val riftPrefs = rememberRiftPrefs()
-    var glyphs by rememberSaveable { mutableStateOf(riftPrefs.buttonGlyphs) }
 
     // Steam Controller (BLE) is opt-in and needs the Nearby devices permission. The switch only reads
     // "on" while the permission is still granted, because the launch path refuses to start the
@@ -79,18 +77,7 @@ internal fun ControllerSettings() {
     }
 
     SettingsGroup(title = stringResource(R.string.rift_settings_group_gamepad)) {
-        val glyphSets = listOf("xbox", "playstation")
-        ChoiceChipsRow(
-            title = stringResource(R.string.rift_settings_button_glyphs),
-            subtitle = stringResource(R.string.rift_settings_button_glyphs_summary),
-            icon = Icons.Rounded.SportsEsports,
-            options = listOf("Xbox", "PlayStation"),
-            selectedIndex = glyphSets.indexOf(glyphs),
-            onSelect = {
-                glyphs = glyphSets[it]
-                riftPrefs.buttonGlyphs = glyphs
-            },
-        )
+        QuickAccessRow()
         SwitchRow(
             title = stringResource(R.string.settings_interface_swap_face_buttons_title),
             subtitle = stringResource(R.string.settings_interface_swap_face_buttons_subtitle),

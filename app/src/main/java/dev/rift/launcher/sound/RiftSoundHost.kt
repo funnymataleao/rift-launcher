@@ -16,7 +16,10 @@ class RiftSoundPlayer(private val context: android.content.Context) {
 @Composable
 fun rememberRiftSoundPlayer(): RiftSoundPlayer {
     val context = LocalContext.current.applicationContext
-    return androidx.compose.runtime.remember(context) { RiftSoundPlayer(context) }
+    return androidx.compose.runtime.remember(context) {
+        RiftSounds.preload(context)
+        RiftSoundPlayer(context)
+    }
 }
 
 /**

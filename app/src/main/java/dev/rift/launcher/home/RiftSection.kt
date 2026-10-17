@@ -30,14 +30,26 @@ sealed interface RiftSection {
         override val key = "android"
         override val titleRes = R.string.rift_section_android_games
     }
+
+    /** Apps of the PCs paired in "Add PC", streamed through the embedded Artemis core. */
+    data object PcStreaming : RiftSection {
+        override val key = "stream"
+        override val titleRes = R.string.rift_section_pc_streaming
+    }
 }
 
 object RiftSections {
     /** Sections that are set up right now, in display order. */
-    fun configured(context: Context, pcLibrary: List<LibraryItem>, androidGames: List<AndroidGame>): List<RiftSection> = buildList {
+    fun configured(
+        context: Context,
+        pcLibrary: List<LibraryItem>,
+        androidGames: List<AndroidGame>,
+        hasStreamGames: Boolean = false,
+    ): List<RiftSection> = buildList {
         if (PlatformAuthUtils.isSignedInToAnyPlatform(context) || pcLibrary.isNotEmpty()) {
             add(RiftSection.PcGames)
         }
         if (androidGames.isNotEmpty()) add(RiftSection.AndroidGames)
+        if (hasStreamGames) add(RiftSection.PcStreaming)
     }
 }

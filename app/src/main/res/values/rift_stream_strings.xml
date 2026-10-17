@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rift: PC streaming (embedded Artemis core) -->
+<resources>
+    <string name="rift_section_pc_streaming">PC streaming</string>
+    <string name="rift_stream_add_pc_title">Add PC</string>
+    <string name="rift_stream_add_pc_subtitle">Stream games from a PC running Apollo, Vibepollo or Sunshine on the same network</string>
+    <string name="rift_stream_back">Back</string>
+    <string name="rift_stream_found_title">On your network</string>
+    <string name="rift_stream_searching">Looking for PCs…</string>
+    <string name="rift_stream_enter_ip">Enter IP address</string>
+    <string name="rift_stream_ip_adding">Connecting…</string>
+    <string name="rift_stream_ip_title">PC IP address</string>
+    <string name="rift_stream_ip_add">Add</string>
+    <string name="rift_stream_cancel">Cancel</string>
+    <string name="rift_stream_ip_unreachable">Could not reach %1$s. Check that the host app is running on the PC.</string>
+    <string name="rift_stream_state_checking">Checking</string>
+    <string name="rift_stream_state_online">Online</string>
+    <string name="rift_stream_state_offline">Offline</string>
+    <string name="rift_stream_state_paired">Online · paired</string>
+    <string name="rift_stream_state_not_paired">Online · not paired</string>
+    <string name="rift_stream_how_title">How to connect</string>
+    <string name="rift_stream_how_1">Start Apollo, Vibepollo or Sunshine on the PC.</string>
+    <string name="rift_stream_how_2">Pick your PC on the left, or enter its IP address.</string>
+    <string name="rift_stream_how_3">Type the PIN shown here into the host\'s web page on the PC.</string>
+    <string name="rift_stream_pin_title">PIN for %1$s</string>
+    <string name="rift_stream_pin_help">On the PC, open %1$s, go to PIN and enter this code.</string>
+    <string name="rift_stream_paired_title">%1$s is connected</string>
+    <string name="rift_stream_paired_help">The PC streaming tab is now on the home screen.</string>
+    <string name="rift_stream_done">Done</string>
+    <string name="rift_stream_pair_error_title">Could not pair</string>
+    <string name="rift_stream_pair_wrong_pin">The PIN was wrong. Try again.</string>
+    <string name="rift_stream_pair_busy">Pairing is already in progress on the PC.</string>
+    <string name="rift_stream_pair_failed">The PC refused pairing.</string>
+    <string name="rift_stream_retry">Try again</string>
+    <string name="rift_stream_pc_offline">%1$s is offline.</string>
+    <string name="rift_stream_offline_help">Turn on the PC and start the host app.</string>
+    <string name="rift_stream_apps_error">Could not load apps: %1$s</string>
+    <string name="rift_stream_connecting">Connecting to %1$s…</string>
+    <string name="rift_stream_stage">Starting: %1$s…</string>
+    <string name="rift_stream_stage_failed">Failed at %1$s (code %2$d)</string>
+    <string name="rift_stream_terminated">Connection lost (code %1$d)</string>
+    <string name="rift_stream_no_decoder">This device has no hardware H.264 decoder.</string>
+    <string name="rift_stream_no_games">No PC games yet. In Vibepollo\'s web page, turn on Integrations → Steam library sync and your installed games appear on the home screen in the PC streaming tab.</string>
+    <string name="rift_stream_group_pc_apps">PC apps</string>
+    <string name="rift_stream_end">End stream</string>
+    <string name="rift_stream_end_failed">Couldn\'t close the game on the PC.</string>
+    <string name="rift_stream_menu_hint">Select + Start: stream menu</string>
+</resources>

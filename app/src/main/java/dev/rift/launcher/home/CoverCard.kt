@@ -28,6 +28,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -49,6 +54,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.rift.launcher.ui.theme.RiftColors
 import dev.rift.launcher.ui.theme.RiftShapes
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
@@ -56,6 +62,8 @@ import kotlinx.coroutines.withContext
 
 private val FrameWidth = 1.dp
 private const val FRAME_SWEEP_MS = 1400
+private const val SHEEN_SWEEP_MS = 900
+private const val MAX_TILT_DEGREES = 9f
 
 /** How far a focused cover grows on each side; less than the gap between covers. */
 private val FocusGrowth = 7.dp
@@ -82,6 +90,7 @@ fun CoverCard(
     onClick: () -> Unit,
     cover: @Composable BoxScope.() -> Unit,
     badge: @Composable BoxScope.() -> Unit = {},
+    reflection: Boolean = true,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
@@ -108,7 +117,16 @@ fun CoverCard(
         }
     }
 
+    // Apple TV style: the right stick tilts the focused cover a little in 3D, the sheen follows.
+    val stick by LocalRightStick.current
+    val tiltSpec = MaterialTheme.motionScheme.fastSpatialSpec<Float>()
+    val tiltX by animateFloatAsState(if (focused) stick.x else 0f, tiltSpec, label = "tiltX")
+    val tiltY by animateFloatAsState(if (focused) stick.y else 0f, tiltSpec, label = "tiltY")
+
     val width = height * aspectRatio
+    // The card's picture, recorded as it is drawn and reused flipped for the reflection, so every
+    // card gets the very same reflection as soon as it shows anything.
+    val picture = rememberGraphicsLayer()
     Column(modifier = Modifier.width(width)) {
         Box(
             modifier = Modifier
@@ -118,6 +136,9 @@ fun CoverCard(
                     scaleX = scale
                     scaleY = scale
                     translationY = lift.toPx()
+                    rotationY = tiltX * MAX_TILT_DEGREES
+                    rotationX = -tiltY * MAX_TILT_DEGREES
+                    cameraDistance = 14f * density
                 }
                 .shadow(
                     elevation = if (focused) 20.dp else 0.dp,
@@ -127,7 +148,12 @@ fun CoverCard(
                 )
                 .clip(RiftShapes.card)
                 .background(RiftColors.SurfaceContainer)
+                .coverSheen(focused, tiltX, tiltY)
                 .coverFrame(focused, palette, RiftShapes.card)
+                .drawWithContent {
+                    picture.record { this@drawWithContent.drawContent() }
+                    drawLayer(picture)
+                }
                 .focusRequester(focusRequester)
                 .onFocusChanged { if (it.isFocused) onFocused() }
                 .clickable(interactionSource = interaction, indication = null, onClick = onClick),
@@ -135,14 +161,16 @@ fun CoverCard(
             cover()
             badge()
         }
-        Spacer(modifier = Modifier.height(10.dp))
-        CoverReflection(
-            coverHeight = height,
-            height = height * REFLECTION_SHARE,
-            focused = focused,
-            scale = scale,
-            cover = cover,
-        )
+        if (reflection) {
+            Spacer(modifier = Modifier.height(10.dp))
+            CoverReflection(
+                picture = picture,
+                coverHeight = height,
+                height = height * REFLECTION_SHARE,
+                focused = focused,
+                scale = scale,
+            )
+        }
     }
 }
 
@@ -179,17 +207,51 @@ private fun Modifier.coverFrame(focused: Boolean, colors: List<Color>, shape: Sh
     }
 }
 
+/**
+ * A light sheen over the cover: on focus it sweeps across once, corner to corner; afterwards it
+ * shows only while the cover is tilted, sliding with the tilt.
+ */
+@Composable
+private fun Modifier.coverSheen(focused: Boolean, tiltX: Float, tiltY: Float): Modifier {
+    val sweep = remember { Animatable(1f) }
+    LaunchedEffect(focused) {
+        if (focused) {
+            sweep.snapTo(0f)
+            sweep.animateTo(1f, tween(SHEEN_SWEEP_MS, easing = FastOutSlowInEasing))
+        }
+    }
+    return drawWithContent {
+        drawContent()
+        val sweeping = focused && sweep.value < 1f
+        val tilt = (abs(tiltX) + abs(tiltY)).coerceAtMost(1f)
+        val strength = if (sweeping) 0.32f * sin(Math.PI * sweep.value).toFloat() else 0.22f * tilt
+        if (strength <= 0.01f) return@drawWithContent
+        // Position along the diagonal: the sweep runs past both corners; a tilt moves it off centre.
+        val t = if (sweeping) -0.3f + 1.6f * sweep.value else 0.5f + 0.5f * (tiltX + tiltY) / 2f
+        val band = size.minDimension * 0.6f
+        val c = Offset(size.width * t, size.height * t)
+        drawRect(
+            Brush.linearGradient(
+                0f to Color.Transparent,
+                0.5f to Color.White.copy(alpha = strength),
+                1f to Color.Transparent,
+                start = c - Offset(band, band) / 2f,
+                end = c + Offset(band, band) / 2f,
+            ),
+        )
+    }
+}
+
 @Composable
 private fun CoverReflection(
+    picture: GraphicsLayer,
     coverHeight: Dp,
     height: Dp,
     focused: Boolean,
     scale: Float,
-    cover: @Composable BoxScope.() -> Unit,
 ) {
-    val alpha by animateFloatAsState(if (focused) 0.42f else 0.26f, tween(300), label = "reflectionAlpha")
+    val alpha by animateFloatAsState(if (focused) 0.42f else 0.3f, tween(300), label = "reflectionAlpha")
     // One mask for everything: the card's own rounded shape, so the reflection has the same corners.
-    // The coloured glow comes from the card's shadow; a separate glow layer here showed square edges.
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -202,23 +264,16 @@ private fun CoverReflection(
                 compositingStrategy = CompositingStrategy.Offscreen
             }
             .drawWithContent {
-                drawContent()
+                // Same base as the card, then its picture flipped: its bottom edge at the top here.
+                drawRect(RiftColors.SurfaceContainer)
+                val coverPx = coverHeight.toPx()
+                translate(top = coverPx) {
+                    scale(scaleX = 1f, scaleY = -1f, pivot = Offset.Zero) { drawLayer(picture) }
+                }
                 drawRect(
                     Brush.verticalGradient(0f to Color.Black, 0.35f to Color.Black.copy(alpha = 0.45f), 1f to Color.Transparent),
                     blendMode = BlendMode.DstIn,
                 )
             },
-    ) {
-        // The whole cover, flipped, with its bottom edge at the top of the reflection.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight(Alignment.Top, unbounded = true)
-                .height(coverHeight)
-                .graphicsLayer { scaleY = -1f }
-                // Same base as the card, so a cover still loading (or a dark one) reflects too.
-                .background(RiftColors.SurfaceContainer),
-            content = cover,
-        )
-    }
+    )
 }

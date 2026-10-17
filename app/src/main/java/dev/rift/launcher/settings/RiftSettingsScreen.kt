@@ -31,15 +31,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,24 +55,17 @@ import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.gamenative.PluviaApp
 import app.gamenative.R
-import app.gamenative.events.AndroidEvent
-import app.gamenative.ui.util.SnackbarManager
-import app.gamenative.utils.PlatformOAuthHandlers
 import dev.rift.launcher.ui.theme.RiftColors
 import dev.rift.launcher.ui.theme.RiftMotion
 import dev.rift.launcher.ui.theme.RiftShapes
 import dev.rift.launcher.ui.theme.RiftSizes
 import dev.rift.launcher.ui.theme.RiftTheme
-import kotlinx.coroutines.launch
-import timber.log.Timber
 
 private val RailWidth = 372.dp
 private val ContentMaxWidth = 860.dp
@@ -91,7 +83,12 @@ private val ContentMaxWidth = 860.dp
  * itself uses, so nothing set here is lost when going back to GameNative's own screens.
  */
 @Composable
-fun RiftSettingsScreen(onBack: () -> Unit, onOpenPcPairing: (() -> Unit)? = null) {
+fun RiftSettingsScreen(
+    onBack: () -> Unit,
+    onOpenPcPairing: (() -> Unit)? = null,
+    onSteamSignIn: (() -> Unit)? = null,
+    onSteamSignOut: (() -> Unit)? = null,
+) {
     val sections = remember { RiftSettingsSection.entries }
     var selectedIndex by rememberSaveable { mutableIntStateOf(0) }
     val selected = sections[selectedIndex]
@@ -99,8 +96,6 @@ fun RiftSettingsScreen(onBack: () -> Unit, onOpenPcPairing: (() -> Unit)? = null
     val railItems = remember { List(sections.size) { FocusRequester() } }
     val contentEntry = remember { FocusRequester() }
     var contentHasFocus by remember { mutableStateOf(false) }
-
-    GogAuthCodeEffect()
 
     BackHandler {
         if (contentHasFocus) {
@@ -147,15 +142,12 @@ fun RiftSettingsScreen(onBack: () -> Unit, onOpenPcPairing: (() -> Unit)? = null
                     contentEntry = contentEntry,
                     returnTo = railItems[selectedIndex],
                     onOpenPcPairing = onOpenPcPairing,
-                    onOpenSection = { target ->
-                        selectedIndex = sections.indexOf(target)
-                        runCatching { railItems[selectedIndex].requestFocus() }
-                    },
+                    onSteamSignIn = onSteamSignIn,
+                    onSteamSignOut = onSteamSignOut,
                     onContentFocus = { contentHasFocus = it },
                     modifier = Modifier.weight(1f),
                 )
             }
-            SettingsHints(modifier = Modifier.align(Alignment.BottomEnd))
         }
     }
 
@@ -180,7 +172,7 @@ private fun SectionRail(
             .widthIn(min = RailWidth, max = RailWidth)
             .verticalScroll(rememberScrollState())
             .focusGroup()
-            .padding(top = 20.dp, bottom = 72.dp),
+            .padding(top = 20.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(
@@ -254,18 +246,26 @@ private fun RailItem(
                     else -> Color.Transparent
                 },
             )
-            .border(if (focused) 3.dp else 0.dp, if (focused) Color.White else Color.Transparent, RiftShapes.full)
+            .border(if (focused) 2.dp else 0.dp, if (focused) Color.White.copy(alpha = 0.9f) else Color.Transparent, RiftShapes.full)
             .clickable(interactionSource = interaction, indication = null, role = Role.Tab, onClick = onClick)
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Icon(
-            imageVector = section.icon,
-            contentDescription = null,
-            tint = if (selected) RiftColors.Primary else RiftColors.OnSurfaceVariant,
-            modifier = Modifier.size(26.dp),
-        )
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(section.accent.color.copy(alpha = 0.2f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = section.icon,
+                contentDescription = null,
+                tint = section.accent.color,
+                modifier = Modifier.size(22.dp),
+            )
+        }
         Text(
             text = stringResource(section.titleRes),
             color = if (selected) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
@@ -291,7 +291,8 @@ private fun SectionPane(
     contentEntry: FocusRequester,
     returnTo: FocusRequester,
     onOpenPcPairing: (() -> Unit)?,
-    onOpenSection: (RiftSettingsSection) -> Unit,
+    onSteamSignIn: (() -> Unit)?,
+    onSteamSignOut: (() -> Unit)?,
     onContentFocus: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -305,7 +306,7 @@ private fun SectionPane(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            SectionBadge(section.icon, size = 68.dp)
+            SectionBadge(section.icon, size = 68.dp, accent = section.accent)
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = stringResource(section.titleRes),
@@ -330,16 +331,16 @@ private fun SectionPane(
                     .onFocusChanged { onContentFocus(it.hasFocus) }
                     .focusGroup(),
             ) {
+                CompositionLocalProvider(LocalSettingsAccent provides section.accent) {
                 Column(
                     modifier = Modifier
                         .widthIn(max = ContentMaxWidth)
                         .fillMaxHeight()
                         .verticalScroll(rememberScrollState())
-                        .padding(top = 6.dp, bottom = 84.dp, start = 4.dp, end = 4.dp),
+                        .padding(top = 6.dp, bottom = 32.dp, start = 4.dp, end = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(34.dp),
                 ) {
                     when (section) {
-                        RiftSettingsSection.Sources -> SourcesSettings(onOpenSection)
                         RiftSettingsSection.Sound -> SoundSettings()
                         RiftSettingsSection.Home -> HomeSettings()
                         RiftSettingsSection.Interface -> InterfaceSettings()
@@ -351,80 +352,14 @@ private fun SectionPane(
                         RiftSettingsSection.Emulators -> EmulatorsSettings()
                         RiftSettingsSection.Streaming -> StreamingSettings(onOpenPcPairing)
                         RiftSettingsSection.Downloads -> DownloadsSettings()
-                        RiftSettingsSection.Accounts -> AccountsSettings()
+                        RiftSettingsSection.Accounts -> AccountsSettings(onSteamSignIn, onSteamSignOut)
                         RiftSettingsSection.Device -> DeviceSettings()
                         RiftSettingsSection.About -> AboutSettings()
                         RiftSettingsSection.Debug -> DebugSettings()
                     }
                 }
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun SettingsHints(modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(58.dp)
-            .background(Brush.verticalGradient(listOf(Color.Transparent, RiftColors.Background.copy(alpha = 0.92f))))
-            .padding(horizontal = 48.dp),
-        horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.End),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Hint("A", stringResource(R.string.rift_hint_select))
-        Hint("LB RB", stringResource(R.string.rift_hint_sections))
-        Hint("B", stringResource(R.string.rift_hint_back))
-    }
-}
-
-@Composable
-private fun Hint(glyph: String, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Box(
-            modifier = Modifier
-                .clip(RiftShapes.full)
-                .background(RiftColors.SurfaceContainerHigh)
-                .padding(horizontal = 9.dp, vertical = 3.dp),
-        ) {
-            Text(text = glyph, color = RiftColors.OnSurface, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        }
-        Text(
-            text = label.uppercase(),
-            color = RiftColors.OnSurfaceVariant,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp,
-            style = MaterialTheme.typography.labelLarge,
-        )
-    }
-}
-
-/**
- * GOG's sign-in returns its code as an app event. GameNative's own settings screen was the one
- * listening for it, so it keeps being handled while this screen is open.
- */
-@Composable
-private fun GogAuthCodeEffect() {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    DisposableEffect(Unit) {
-        val onGogAuthCode: (AndroidEvent.GOGAuthCodeReceived) -> Unit = { event ->
-            Timber.i("[RiftSettings]: received GOG auth code event")
-            scope.launch {
-                PlatformOAuthHandlers.handleGogAuthentication(
-                    context = context,
-                    authCode = event.authCode,
-                    coroutineScope = scope,
-                    onLoadingChange = { },
-                    onError = { msg -> if (msg != null) SnackbarManager.show(msg) },
-                    onSuccess = { SnackbarManager.show(context.getString(R.string.gog_login_success_title)) },
-                    onDialogClose = { },
-                )
-            }
-        }
-        PluviaApp.events.on<AndroidEvent.GOGAuthCodeReceived, Unit>(onGogAuthCode)
-        onDispose { PluviaApp.events.off<AndroidEvent.GOGAuthCodeReceived, Unit>(onGogAuthCode) }
     }
 }
