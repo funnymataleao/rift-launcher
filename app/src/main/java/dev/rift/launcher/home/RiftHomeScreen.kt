@@ -1155,6 +1155,8 @@ fun RiftHomeScreen(
                         return@onPreviewKeyEvent true
                     }
                     if (overlayOpen) return@onPreviewKeyEvent false
+                    // Up from the row does nothing: the top bar and the tabs are reached with LB/RB only (Denis).
+                    if (native.keyCode == KeyEvent.KEYCODE_DPAD_UP && section != null && !searchOpen) return@onPreviewKeyEvent true
                     when (event.nativeKeyEvent.keyCode) {
                         KeyEvent.KEYCODE_BUTTON_L1 -> {
                             switchSection(-1)
