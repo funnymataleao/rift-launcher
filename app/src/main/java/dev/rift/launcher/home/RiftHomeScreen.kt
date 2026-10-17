@@ -111,6 +111,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withTimeoutOrNull
+import dev.rift.launcher.ui.RiftHomeKey
 import dev.rift.launcher.ui.RiftStartup
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.lifecycle.Lifecycle
@@ -994,19 +995,12 @@ fun RiftHomeScreen(
     RiftLayerSound(appsOpen)
     RiftLayerSound(libraryOpen)
     RiftLayerSound((artItem != null || metaItem != null))
-    var selectLongPressed by remember { mutableStateOf(false) }
+    // Select opens the filters only for a press that started on the home (not the release of one that closed a layer).
+    var selectDownHere by remember { mutableStateOf(false) }
     val quickAccessKey = remember { RiftControls.quickAccessKey(context) }
     // B / Back closes the open panel and never leaves the app.
     BackHandler(enabled = panelOpen) { viewModel.onOptionsPanelToggle(false) }
     BackHandler(enabled = systemMenuOpen) { systemMenuOpen = false }
-    // Holding Select opens the quick access panel: on the key's repeats, or after a hold timer for
-    // controllers that do not repeat.
-    val selectHold = remember { arrayOfNulls<Job>(1) }
-    fun toggleQuickAccess() {
-        if (selectLongPressed) return
-        selectLongPressed = true
-        if (!viewModel.state.value.isOptionsPanelOpen) systemMenuOpen = !systemMenuOpen
-    }
     // Keeps key handling alive when no cover holds focus (after a panel closes, say): the screen
     // itself takes focus instead of nothing.
     val rootFocus = remember { FocusRequester() }
@@ -1097,17 +1091,29 @@ fun RiftHomeScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    // Home pressed while Rift is the home app: every layer closes, back to the row of covers.
+    // Home pressed while Rift is the home app: the right panel, always (Denis 2026-10-17). Opening it, every other
+    // layer closes, back to the row of covers under the panel; a second Home closes it.
     val latestHomePressed = rememberUpdatedState<() -> Unit> {
+        if (systemMenuOpen) {
+            systemMenuOpen = false
+            return@rememberUpdatedState
+        }
         if (searchOpen) closeSearch()
         if (viewModel.state.value.isOptionsPanelOpen) viewModel.onOptionsPanelToggle(false)
         systemMenuOpen = false
         appsOpen = false
         if (libraryOpen) closeLibrary()
         openedAppId = null
+        startMenuItems = null
         refocusCover()
+        systemMenuOpen = true
     }
     DisposableEffect(Unit) {
+        // Home pressed on a screen of its own (Settings, say) brought the home back: its panel opens now.
+        if (RiftHomeKey.panelPending) {
+            RiftHomeKey.panelPending = false
+            latestHomePressed.value()
+        }
         val onHome: (AndroidEvent.HomePressed) -> Unit = { latestHomePressed.value() }
         PluviaApp.events.on<AndroidEvent.HomePressed, Unit>(onHome)
         onDispose { PluviaApp.events.off<AndroidEvent.HomePressed, Unit>(onHome) }
@@ -1226,26 +1232,13 @@ fun RiftHomeScreen(
                         if (event.type == KeyEventType.KeyUp) openSearch()
                         return@onPreviewKeyEvent true
                     }
-                    // Select: short press opens the filter panel, a long press the quick access panel.
+                    // Select: the filter panel on the left (Home opens the right one).
                     if (native.keyCode == KeyEvent.KEYCODE_BUTTON_SELECT) {
-                        when {
-                            event.type == KeyEventType.KeyDown && native.repeatCount == 0 && !native.isLongPress -> {
-                                selectLongPressed = false
-                                selectHold[0]?.cancel()
-                                selectHold[0] = homeScope.launch {
-                                    delay(SELECT_HOLD_MS)
-                                    toggleQuickAccess()
-                                }
-                            }
-                            event.type == KeyEventType.KeyDown -> {
-                                selectHold[0]?.cancel()
-                                toggleQuickAccess()
-                            }
-                            event.type == KeyEventType.KeyUp -> {
-                                selectHold[0]?.cancel()
-                                if (!selectLongPressed && !systemMenuOpen && section != null) {
-                                    viewModel.onOptionsPanelToggle(!viewModel.state.value.isOptionsPanelOpen)
-                                }
+                        if (event.type == KeyEventType.KeyDown && native.repeatCount == 0) selectDownHere = true
+                        if (event.type == KeyEventType.KeyUp && selectDownHere) {
+                            selectDownHere = false
+                            if (!systemMenuOpen && section != null) {
+                                viewModel.onOptionsPanelToggle(!viewModel.state.value.isOptionsPanelOpen)
                             }
                         }
                         return@onPreviewKeyEvent true
@@ -3147,7 +3140,6 @@ private const val STARTUP_SETTLE_MS = 2500L
 private const val FIRST_IMAGES_TIMEOUT_MS = 3500L
 private const val FIRST_IMAGES_COUNT = 7
 private const val APPS_PRELOAD_DELAY_MS = 4000L
-private const val SELECT_HOLD_MS = 450L
 
 /**
  * Frosted glass: the recorded [backdrop], shifted so it lines up with what is behind this box,

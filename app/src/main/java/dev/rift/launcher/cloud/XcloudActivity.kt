@@ -38,6 +38,7 @@ import app.gamenative.R
 import dev.rift.launcher.home.RiftControls
 import dev.rift.launcher.stream.StreamMenu
 import dev.rift.launcher.stream.StreamMenuRow
+import dev.rift.launcher.ui.RiftHomeKey
 import dev.rift.launcher.ui.rememberWindowBackdrop
 import org.json.JSONObject
 import timber.log.Timber
@@ -47,7 +48,7 @@ import timber.log.Timber
  * xbox.com's own scripts. The gamepad reaches the game through the browser's Gamepad API.
  *
  * The script's settings are Rift's ([CloudPlaySettings]) and its own menus and name are kept out of
- * sight. The gamepad's Home (or Select + Start, or the edge swipe) opens Rift's side panel with
+ * sight. The gamepad's Home (or the edge swipe) opens Rift's side panel with
  * "End stream" and the settings worth changing while playing; B closes it. Opened with [EXTRA_SIGN_IN]
  * it shows xbox.com/play for signing in and closes by itself once xbox.com says the account is signed in.
  */
@@ -107,8 +108,6 @@ class XcloudActivity : ComponentActivity() {
     private var documentStartScript = false
     private var hintShown = false
 
-    /** Gamepad buttons held right now, to see Select + Start together. */
-    private val held = mutableSetOf<Int>()
 
     /** Buttons whose press the page saw: their release goes to the page even while the panel is open. */
     private val pressedInPage = mutableSetOf<Int>()
@@ -143,6 +142,8 @@ class XcloudActivity : ComponentActivity() {
         hideSystemBars()
         signInMode = intent.getBooleanExtra(EXTRA_SIGN_IN, false)
         menuKey = RiftControls.streamMenuKey(this)
+        // Android's Home over the game: the panel instead.
+        RiftHomeKey.onHomeKey(this) { if (menuOpen) closeMenu() else openMenu() }
         val url = intent.getStringExtra(EXTRA_URL) ?: return finish()
         val title = intent.getStringExtra(EXTRA_TITLE) ?: getString(R.string.rift_cloud_service_xcloud)
 
@@ -459,12 +460,9 @@ class XcloudActivity : ComponentActivity() {
         val gamepad = isGamepad(event.source)
         if (gamepad) {
             lastGamepad = event.deviceId
-            when (event.action) {
-                KeyEvent.ACTION_DOWN -> held += event.keyCode
-                KeyEvent.ACTION_UP -> held -= event.keyCode
-            }
         }
-        // Home opens and closes the panel; the page never sees it, so xCloud's own menu stays shut.
+        // Home opens and closes the panel; the page never sees it, so xCloud's own menu stays shut. Select and
+        // Start are the game's.
         if (gamepad && (event.keyCode == KeyEvent.KEYCODE_BUTTON_MODE || event.keyCode == menuKey)) {
             if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
                 if (menuOpen) closeMenu() else openMenu()
@@ -479,12 +477,6 @@ class XcloudActivity : ComponentActivity() {
                 return true
             }
             return super.dispatchKeyEvent(event)
-        }
-        if (gamepad && event.action == KeyEvent.ACTION_DOWN &&
-            KeyEvent.KEYCODE_BUTTON_SELECT in held && KeyEvent.KEYCODE_BUTTON_START in held
-        ) {
-            openMenu()
-            return true
         }
         // Out of a game (loading, xbox.com's own pages) B goes back to Rift; in a game it is the game's.
         if (gamepad && !signInMode && !inGame() && event.keyCode == KeyEvent.KEYCODE_BUTTON_B) {

@@ -56,6 +56,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -1535,32 +1536,45 @@ fun XServerScreen(
     // master's event-bus route via registerBackAction(gameBack) below.
     BackHandler(enabled = BuildConfig.MODERN_ANDROID) { gameBack() }
 
-    DisposableEffect(container) {
-        registerBackAction(gameBack)
-        immersiveHooks?.registerToggle?.invoke {
-            Timber.i("toggleQuickMenu: invoked, showQuickMenu=%b", ui.showQuickMenu)
-            if (ui.showQuickMenu) {
-                dismissOverlayMenu()
-            } else {
-                val imeVisible = ViewCompat.getRootWindowInsets(view)
-                    ?.isVisible(WindowInsetsCompat.Type.ime()) == true
-                if (imeVisible) {
-                    ui.imeInputReceiver?.hideKeyboard()
-                    view.post {
-                        if (Build.VERSION.SDK_INT >= 30) {
-                            view.windowInsetsController?.hide(WindowInsets.Type.ime())
-                        } else {
-                            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-                            if (view.windowToken != null) imm.hideSoftInputFromWindow(view.windowToken, 0)
-                        }
+    val toggleQuickMenu: () -> Unit = {
+        Timber.i("toggleQuickMenu: invoked, showQuickMenu=%b", ui.showQuickMenu)
+        if (ui.showQuickMenu) {
+            dismissOverlayMenu()
+        } else {
+            val imeVisible = ViewCompat.getRootWindowInsets(view)
+                ?.isVisible(WindowInsetsCompat.Type.ime()) == true
+            if (imeVisible) {
+                ui.imeInputReceiver?.hideKeyboard()
+                view.post {
+                    if (Build.VERSION.SDK_INT >= 30) {
+                        view.windowInsetsController?.hide(WindowInsets.Type.ime())
+                    } else {
+                        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                        if (view.windowToken != null) imm.hideSoftInputFromWindow(view.windowToken, 0)
                     }
                 }
-                PluviaApp.touchpadView?.postDelayed({
-                    PluviaApp.touchpadView?.releasePointerCapture()
-                }, 100)
-                ui.showQuickMenu = true
             }
+            PluviaApp.touchpadView?.postDelayed({
+                PluviaApp.touchpadView?.releasePointerCapture()
+            }, 100)
+            ui.showQuickMenu = true
         }
+    }
+    // Home always opens the right panel, in a game too (Denis 2026-10-17): Rift is the home app on top, so Home
+    // reaches it as a home intent (MainActivity → HomePressed), never as a key.
+    val latestToggleQuickMenu by rememberUpdatedState(toggleQuickMenu)
+    DisposableEffect(Unit) {
+        val onHome: (AndroidEvent.HomePressed) -> Unit = {
+            Timber.tag("RiftHome").i("home in a PC game")
+            latestToggleQuickMenu()
+        }
+        PluviaApp.events.on<AndroidEvent.HomePressed, Unit>(onHome)
+        onDispose { PluviaApp.events.off<AndroidEvent.HomePressed, Unit>(onHome) }
+    }
+
+    DisposableEffect(container) {
+        registerBackAction(gameBack)
+        immersiveHooks?.registerToggle?.invoke(toggleQuickMenu)
         if (isLsfgAvailable) {
             LsfgVkManager.startVsyncClock(context, container)
         }
