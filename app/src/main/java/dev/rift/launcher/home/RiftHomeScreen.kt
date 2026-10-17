@@ -954,6 +954,14 @@ fun RiftHomeScreen(
     var panelHasFocus by remember { mutableStateOf(false) }
     var panelFocusAsk by remember { mutableIntStateOf(0) }
     LaunchedEffect(panelOpen) { if (!panelOpen) panelHasFocus = false }
+    // The last tile of a row ("Open library") is not a game: Start/Y have nothing to open on it.
+    val onServiceCard = when (section) {
+        RiftSection.PcGames -> libraryCardFocused && homeRow.isNotEmpty()
+        RiftSection.PcStreaming -> streamCardFocused && streamHomeRow.isNotEmpty()
+        RiftSection.CloudStreaming -> cloudCardFocused && cloudHomeRow.isNotEmpty()
+        RiftSection.Emulators -> emulatorCardFocused && emulatorHomeRow.isNotEmpty()
+        else -> false
+    }
     val overlayOpen = panelOpen || systemMenuOpen || gameOptionsOpen || startMenuItems != null || appsOpen || libraryOpen || (artItem != null || metaItem != null)
     RiftLayerSound(panelOpen)
     RiftLayerSound(systemMenuOpen)
@@ -1249,7 +1257,9 @@ fun RiftHomeScreen(
                         // goes straight to the art.
                         KeyEvent.KEYCODE_BUTTON_Y, KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_MENU -> {
                             val start = event.nativeKeyEvent.keyCode != KeyEvent.KEYCODE_BUTTON_Y
-                            if (section == RiftSection.PcGames) {
+                            if (onServiceCard) {
+                                // "Open library" is not a game: no menu.
+                            } else if (section == RiftSection.PcGames) {
                                 focusedItem?.let {
                                     optionsOnly.panelOpen = true
                                     optionsToken++
@@ -1515,7 +1525,7 @@ fun RiftHomeScreen(
               }
                 if (showHintBar) Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(FooterHeight).graphicsLayer { alpha = intro.value }) {
                     FrostedGlass(backdrop = backdrop, modifier = Modifier.matchParentSize())
-                    HintsBar(showFilters = section != null)
+                    HintsBar(showFilters = section != null, showOptions = !onServiceCard)
                 }
             }
 
@@ -3087,7 +3097,7 @@ private fun FrostedGlass(backdrop: GraphicsLayer, modifier: Modifier = Modifier)
 
 /** Frosted glass footer with a hairline on top; the blur itself comes from [modifier]. */
 @Composable
-private fun HintsBar(showFilters: Boolean, modifier: Modifier = Modifier) {
+private fun HintsBar(showFilters: Boolean, showOptions: Boolean = true, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -3104,7 +3114,7 @@ private fun HintsBar(showFilters: Boolean, modifier: Modifier = Modifier) {
         if (showFilters) Hint(listOf(GamepadButton.SELECT.iconRes), stringResource(R.string.rift_hint_filters))
         Hint(listOf(InputIcons.Xbox.guide), stringResource(R.string.rift_hint_menu))
         Spacer(modifier = Modifier.weight(1f))
-        if (showFilters) Hint(listOf(face(GamepadButton.Y, GamepadButton.X)), stringResource(R.string.rift_hint_options))
+        if (showFilters && showOptions) Hint(listOf(face(GamepadButton.Y, GamepadButton.X)), stringResource(R.string.rift_hint_options))
         if (showFilters) Hint(listOf(face(GamepadButton.A, GamepadButton.B)), stringResource(R.string.rift_details))
         Hint(listOf(face(GamepadButton.B, GamepadButton.A)), stringResource(R.string.rift_hint_apps))
     }
