@@ -1,5 +1,6 @@
 package dev.rift.launcher.stream
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -28,6 +29,8 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -92,6 +95,7 @@ fun StreamMenu(
             modifier = Modifier.align(Alignment.CenterEnd),
         ) {
             val endFocus = remember { FocusRequester() }
+            var endFocused by remember { mutableStateOf(false) }
             Surface(
                 modifier = Modifier.width(adaptivePanelWidth(420.dp)).fillMaxHeight(),
                 shape = RectangleShape,
@@ -119,7 +123,10 @@ fun StreamMenu(
                         text = stringResource(R.string.rift_stream_end),
                         icon = Icons.Rounded.PowerSettingsNew,
                         onClick = onEndStream,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().onFocusChanged {
+                            endFocused = it.isFocused
+                            Log.i("RiftStream", "panel End stream focused=${it.isFocused}")
+                        },
                         focusRequester = endFocus,
                     )
                     // PC streams only: the cloud stream has its own settings in the page.
@@ -128,10 +135,18 @@ fun StreamMenu(
                     }
                 }
             }
+            val view = LocalView.current
             LaunchedEffect(Unit) {
-                // One frame first, so the panel is laid out in the focused view before it takes the focus.
-                withFrameNanos { }
-                runCatching { endFocus.requestFocus() }
+                // The panel is composed a frame after it opens; until the button holds the focus, the
+                // view leaves touch mode and the button asks for it again, frame by frame.
+                repeat(FOCUS_ATTEMPTS) { attempt ->
+                    withFrameNanos { }
+                    if (endFocused) return@LaunchedEffect
+                    if (view.isInTouchMode) view.requestFocusFromTouch()
+                    runCatching { endFocus.requestFocus() }
+                    Log.i("RiftStream", "panel focus attempt $attempt touch mode=${view.isInTouchMode} view focus=${view.hasFocus()}")
+                }
+            }
             }
         }
     }
@@ -242,3 +257,5 @@ private fun StreamQuickSettings(onPerfOverlayChange: (Boolean) -> Unit, onRestar
         )
     }
 }
+
+private const val FOCUS_ATTEMPTS = 20

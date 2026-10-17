@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.view.Display
+import android.util.Log
 import android.view.Gravity
 import android.view.InputDevice
 import android.view.KeyEvent
@@ -71,10 +72,16 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         const val EXTRA_APP_UUID = "appUuid"
         const val EXTRA_APP_HDR = "appHdr"
 
+        private const val TAG = "RiftStream"
         private const val MENU_COMBO = ControllerPacket.BACK_FLAG or ControllerPacket.PLAY_FLAG
 
         /** How long Select or Start waits for the other one before it goes to the PC. */
         private const val COMBO_WINDOW_MS = 150L
+        private const val SUPPORTED_BUTTONS = ControllerPacket.A_FLAG or ControllerPacket.B_FLAG or
+            ControllerPacket.X_FLAG or ControllerPacket.Y_FLAG or ControllerPacket.LB_FLAG or ControllerPacket.RB_FLAG or
+            ControllerPacket.PLAY_FLAG or ControllerPacket.BACK_FLAG or ControllerPacket.LS_CLK_FLAG or
+            ControllerPacket.RS_CLK_FLAG or ControllerPacket.SPECIAL_BUTTON_FLAG or
+            ControllerPacket.UP_FLAG or ControllerPacket.DOWN_FLAG or ControllerPacket.LEFT_FLAG or ControllerPacket.RIGHT_FLAG
         private const val DPAD_FLAGS = ControllerPacket.UP_FLAG or ControllerPacket.DOWN_FLAG or
             ControllerPacket.LEFT_FLAG or ControllerPacket.RIGHT_FLAG
     }
@@ -379,8 +386,11 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         rsY = 0
         sendController()
         // The panel's buttons live in the Compose layer; it takes the focus so the d-pad and A work there.
-        menuView.requestFocus()
+        // Touches on the stream leave the window in touch mode, where Compose buttons take no focus, so
+        // the panel leaves it first.
+        menuView.requestFocusFromTouch()
         menuOpen = true
+        Log.i(TAG, "panel opened, touch mode=${menuView.isInTouchMode} focus=${menuView.hasFocus()}")
     }
 
     // NvConnectionListener
@@ -400,6 +410,13 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
     }
 
     override fun connectionStarted() {
+        // The PC gets its virtual pad right away, not on the first button press, so a game started with
+        // the stream already sees a controller.
+        conn.sendControllerArrivalEvent(
+            0, 1, MoonBridge.LI_CTYPE_XBOX, SUPPORTED_BUTTONS,
+            (MoonBridge.LI_CCAP_ANALOG_TRIGGERS.toInt() or MoonBridge.LI_CCAP_RUMBLE.toInt()).toShort(),
+        )
+        sendController()
         runOnUiThread {
             connected = true
             if (!settings.perfOverlay) statusText.visibility = View.GONE
@@ -514,9 +531,14 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         }
         // With the panel open the pad drives the panel: B closes it, A and the d-pad reach Compose.
         if (menuOpen) {
+            Log.i(TAG, "panel key ${KeyEvent.keyCodeToString(event.keyCode)} action=${event.action} focus=${menuView.hasFocus()}")
             if (event.keyCode == KeyEvent.KEYCODE_BUTTON_B) {
                 if (event.action == KeyEvent.ACTION_UP) menuOpen = false
                 return true
+            }
+            // Compose clicks on Enter / d-pad center, not on the pad's A.
+            if (event.keyCode == KeyEvent.KEYCODE_BUTTON_A) {
+                return super.dispatchKeyEvent(KeyEvent(event.downTime, event.eventTime, event.action, KeyEvent.KEYCODE_DPAD_CENTER, event.repeatCount, event.metaState, event.deviceId, event.scanCode, event.flags, event.source))
             }
             return super.dispatchKeyEvent(event)
         }
