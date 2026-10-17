@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Rift's panel over other apps (dev.rift.launcher.overlay.OverlayPanel) slides in from the right edge. -->
+    <style name="RiftOverlayPanelAnimation">
+        <item name="android:windowEnterAnimation">@anim/rift_panel_in</item>
+        <item name="android:windowExitAnimation">@anim/rift_panel_out</item>
+    </style>
+</resources>

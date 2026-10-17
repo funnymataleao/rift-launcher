@@ -1,0 +1,9 @@
+--path-glob
+*libredirect*.so
+--path-glob
+*redirect.tzst
+--path-glob
+*libkgslshim.so
+--path-glob
+*libsteambootstrap.so
+--invert-paths

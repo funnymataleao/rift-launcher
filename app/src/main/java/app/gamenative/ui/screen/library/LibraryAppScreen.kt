@@ -1,0 +1,3536 @@
+@file:OptIn(ExperimentalFoundationApi::class)
+
+package app.gamenative.ui.screen.library
+
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.ScrollState
+import android.content.Intent
+import android.content.res.Configuration
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.displayCutoutPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarOutline
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Theaters
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import app.gamenative.ui.component.GradientProgressBar
+import app.gamenative.ui.component.InfoCard
+import app.gamenative.ui.component.topbar.BackButton
+import app.gamenative.ui.data.Achievement
+import app.gamenative.ui.screen.library.components.ambient.AmbientDownloadOverlay
+import android.content.ActivityNotFoundException
+import android.net.Uri
+import android.view.KeyEvent
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import app.gamenative.NetworkMonitor
+import app.gamenative.PrefManager
+import app.gamenative.R
+import app.gamenative.data.CommunityCompatibilitySummary
+import app.gamenative.data.LibraryItem
+import app.gamenative.data.StoreGameDetails
+import app.gamenative.service.SteamService
+import app.gamenative.ui.data.AppMenuOption
+import app.gamenative.ui.data.DownloadDisplayDetails
+import app.gamenative.ui.data.GameDisplayInfo
+import app.gamenative.ui.enums.AppOptionMenuType
+import app.gamenative.ui.internal.fakeAppInfo
+import app.gamenative.ui.screen.library.appscreen.AmazonAppScreen
+import app.gamenative.ui.screen.library.appscreen.CustomGameAppScreen
+import app.gamenative.ui.screen.library.appscreen.EpicAppScreen
+import app.gamenative.ui.screen.library.appscreen.GOGAppScreen
+import app.gamenative.ui.screen.library.appscreen.SteamAppScreen
+import app.gamenative.ui.screen.library.components.GameOptionsPanel
+import app.gamenative.ui.screen.library.components.VideoHero
+import app.gamenative.utils.FormatUtils
+import app.gamenative.utils.HltbService
+import app.gamenative.ui.theme.PluviaTheme
+import com.skydoves.landscapist.ImageOptions
+import com.skydoves.landscapist.coil.CoilImage
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import timber.log.Timber
+
+// https://partner.steamgames.com/doc/store/assets/libraryassets#4
+
+@Composable
+private fun SkeletonText(
+    modifier: Modifier = Modifier,
+    lines: Int = 1,
+    lineHeight: Int = 16,
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "skeleton")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.1f,
+        targetValue = 0.25f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "alpha",
+    )
+
+    val color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha)
+
+    Column(modifier = modifier) {
+        repeat(lines) { index ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(if (index == lines - 1) 0.7f else 1f)
+                    .height(lineHeight.dp)
+                    .background(
+                        color = color,
+                        shape = RoundedCornerShape(4.dp),
+                    ),
+            )
+            if (index < lines - 1) {
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun PrimaryActionButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    isInstalled: Boolean = false,
+    isDownloading: Boolean = false,
+    downloadProgress: Float = 0f,
+    focusRequester: FocusRequester = remember { FocusRequester() },
+    onProgressBarPositioned: ((Rect) -> Unit)? = null,
+    icon: ImageVector? = null,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isFocused) 1.04f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "primaryActionScale",
+    )
+
+    // Download data arrives throttled (~5/sec) to bound GC/recomposition pressure; glide the
+    // bar AND the percent text between emissions so the digits tick smoothly instead of
+    // stepping. The tween matches the emit cadence so the animation lands with the next value.
+    val animatedProgress by animateFloatAsState(
+        targetValue = downloadProgress,
+        animationSpec = tween(durationMillis = 200, easing = LinearEasing),
+        label = "downloadProgress",
+    )
+
+    // Rift: two states only, as everywhere on a gamepad (Denis 17.10): in focus the accent fill with dark
+    // text and icon, otherwise the same grey as the other buttons. No outline.
+    // The focus fill is the user's accent brush, so a gradient accent shows as a gradient (Denis 17.10).
+    val buttonFill = if (isFocused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.1f))
+    val contentColor = if (isFocused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else Color.White
+
+    // Rift: every button on the game page is one height (RiftSizes.button); Play is a wider pill.
+    Box(
+        modifier = modifier
+            .height(dev.rift.launcher.ui.theme.RiftSizes.button)
+            .widthIn(min = 180.dp)
+            .scale(scale)
+            .clip(RoundedCornerShape(50))
+            .background(buttonFill, alpha = if (enabled) 1f else 0.5f)
+            .focusRequester(focusRequester)
+            .selectable(
+                selected = isFocused,
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+                onClick = onClick,
+            )
+            .padding(horizontal = 32.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (isDownloading) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Pause,
+                    contentDescription = null,
+                    tint = contentColor,
+                    modifier = Modifier.size(16.dp),
+                )
+                LinearProgressIndicator(
+                    progress = { animatedProgress },
+                    modifier = Modifier
+                        .width(80.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .then(
+                            if (onProgressBarPositioned != null) {
+                                Modifier.onGloballyPositioned { coordinates ->
+                                    onProgressBarPositioned(coordinates.boundsInRoot())
+                                }
+                            } else {
+                                Modifier
+                            },
+                        ),
+                    color = contentColor,
+                    trackColor = contentColor.copy(alpha = 0.25f),
+                )
+                Box(modifier = Modifier.width(36.dp), contentAlignment = Alignment.CenterEnd) {
+                    Text(
+                        text = "${(animatedProgress * 100).roundToInt()}%",
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontFeatureSettings = "tnum",
+                        ),
+                        color = contentColor,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+            }
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(
+                    imageVector = icon ?: if (isInstalled) Icons.Default.PlayArrow else Icons.Default.CloudDownload,
+                    contentDescription = null,
+                    tint = contentColor,
+                    modifier = Modifier.size(24.dp),
+                )
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = contentColor,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Icon-only action button for the overlay action bar
+ */
+@Composable
+private fun ActionIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isFocused) 1.1f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "actionIconScale",
+    )
+
+    Box(
+        modifier = modifier
+            .scale(scale)
+            .size(dev.rift.launcher.ui.theme.RiftSizes.button)
+            .clip(CircleShape)
+            .background(if (isFocused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.1f)))
+            .selectable(
+                selected = isFocused,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = if (isFocused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else Color.White,
+            modifier = Modifier.size(24.dp),
+        )
+    }
+}
+
+/**
+ * Rift: text action on the game page, same height and look as [ActionIconButton] (e.g. "Трейлер").
+ */
+@Composable
+private fun ActionPillButton(
+    icon: ImageVector,
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    centered: Boolean = false,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isFocused) 1.06f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "actionPillScale",
+    )
+    Row(
+        modifier = modifier
+            .scale(scale)
+            .height(dev.rift.launcher.ui.theme.RiftSizes.button)
+            .clip(RoundedCornerShape(50))
+            .background(if (isFocused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.1f)))
+            .selectable(
+                selected = isFocused,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(start = 20.dp, end = 24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = if (centered) Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally) else Arrangement.spacedBy(10.dp),
+    ) {
+        val content = if (isFocused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else Color.White
+        Icon(imageVector = icon, contentDescription = null, tint = content, modifier = Modifier.size(22.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = content,
+            maxLines = 1,
+        )
+    }
+}
+
+/** Rift: one fact on the game page hero (rating, time to beat, genre, year). */
+@Composable
+private fun HeroFactChip(text: String, accent: String? = null) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color.Black.copy(alpha = 0.5f))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (accent != null) {
+            Text(
+                text = accent,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold, fontFeatureSettings = "tnum"),
+                color = dev.rift.launcher.ui.theme.RiftColors.Primary,
+            )
+        }
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+            color = Color.White,
+            maxLines = 1,
+        )
+    }
+}
+
+/** Rift: the stats plate at the right of the hero action row. */
+@Composable
+private fun HeroStatsPlate(stats: List<Pair<String, String>>, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(26.dp))
+            .background(Color.Black.copy(alpha = 0.45f))
+            .padding(horizontal = 22.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(28.dp),
+    ) {
+        stats.forEach { (label, value) ->
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = label.uppercase(Locale.getDefault()),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp),
+                    color = Color.White.copy(alpha = 0.6f),
+                    maxLines = 1,
+                )
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontFeatureSettings = "tnum"),
+                    color = Color.White,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+/** Rift: the store description as one short plain-text teaser for the hero. */
+private fun heroTeaser(description: String): String {
+    val plain = androidx.core.text.HtmlCompat.fromHtml(description, androidx.core.text.HtmlCompat.FROM_HTML_MODE_COMPACT)
+        .toString()
+        .replace(Regex("\\s+"), " ")
+        .trim()
+    if (plain.length <= 220) return plain
+    val cut = plain.take(220)
+    val sentence = cut.lastIndexOf(". ")
+    return if (sentence > 80) cut.take(sentence + 1) else cut.substringBeforeLast(' ') + "…"
+}
+
+@Composable
+private fun HltbInfoBar(
+    stats: HltbService.Stats,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    var revealed by remember(stats.gameId) { mutableStateOf(false) }
+    val items = listOf(
+        stringResource(R.string.hltb_main_story) to stats.mainHours,
+        stringResource(R.string.hltb_main_plus_extras) to stats.mainPlusHours,
+        stringResource(R.string.hltb_completionist) to stats.completeHours,
+        stringResource(R.string.hltb_all_styles) to stats.allStylesHours,
+    ).filter { it.second != HltbService.UNKNOWN_HOURS } // Rift: only the times the source has
+    val canOpenHltb = stats.gameId > 0
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(14.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(enabled = canOpenHltb) {
+                    try {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse("${HltbService.GAME_URL}${stats.gameId}")),
+                        )
+                    } catch (e: ActivityNotFoundException) {
+                        Timber.tag("HLTB").w(e, "No handler for HLTB game URL")
+                    }
+                },
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.hltb_section_title),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium,
+            )
+            if (canOpenHltb) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Box(contentAlignment = Alignment.Center) {
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer { alpha = if (revealed) 1f else 0f }
+                    .then(if (!revealed) Modifier.clearAndSetSemantics {} else Modifier),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .horizontalScroll(rememberScrollState(), enabled = revealed)
+                        .widthIn(min = maxWidth),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    items.forEach { (label, hours) ->
+                        Column(
+                            modifier = Modifier
+                                .widthIn(min = 48.dp)
+                                .padding(horizontal = 10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                text = if (hours == HltbService.UNKNOWN_HOURS) {
+                                    HltbService.UNKNOWN_HOURS
+                                } else {
+                                    stringResource(R.string.hltb_hours_value, hours)
+                                },
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                softWrap = false,
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (!revealed) {
+                Button(
+                    onClick = { revealed = true },
+                    modifier = Modifier.matchParentSize(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
+                ) {
+                    Text(
+                        text = stringResource(R.string.hltb_show_spoilers),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private data class StoreMediaItem(
+    val isVideo: Boolean,
+    val url: String,
+)
+
+@Composable
+private fun StoreMediaPage(
+    item: StoreMediaItem,
+    gameName: String,
+    videoFallback: String,
+    active: Boolean,
+    fullscreen: Boolean,
+    autoplay: Boolean,
+    modifier: Modifier = Modifier,
+    muted: Boolean = !fullscreen,
+    loop: Boolean = true,
+    onEnded: () -> Unit = {},
+) {
+    if (item.isVideo) {
+        VideoHero(
+            videoUrl = item.url,
+            fallbackImageUrl = videoFallback,
+            contentDescription = gameName,
+            active = active,
+            muted = muted,
+            autoplay = autoplay,
+            loop = loop,
+            onEnded = onEnded,
+            fill = !fullscreen,
+            modifier = modifier.background(Color.Black),
+        )
+    } else {
+        CoilImage(
+            imageModel = { item.url },
+            imageOptions = ImageOptions(
+                contentDescription = gameName,
+                contentScale = if (fullscreen) ContentScale.Fit else ContentScale.Crop,
+            ),
+            modifier = modifier.background(Color.Black),
+            loading = {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(Color.Black),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(color = Color.White)
+                }
+            },
+        )
+    }
+}
+
+private fun buildStoreMedia(
+    details: StoreGameDetails,
+    fallbackImageUrl: String?,
+): List<StoreMediaItem> = buildList {
+    fallbackImageUrl?.takeIf(String::isNotBlank)?.let {
+        add(StoreMediaItem(isVideo = false, url = it))
+    }
+    details.videos.forEach { add(StoreMediaItem(isVideo = true, url = it)) }
+    details.screenshots.forEach { add(StoreMediaItem(isVideo = false, url = it)) }
+}.distinctBy(StoreMediaItem::url)
+
+@Composable
+private fun FullscreenStoreMediaDialog(
+    media: List<StoreMediaItem>,
+    initialPage: Int,
+    gameName: String,
+    videoFallback: String,
+    autoplay: Boolean,
+    onDismiss: (Int) -> Unit,
+) {
+    if (media.isEmpty()) return
+
+    val pagerState = rememberPagerState(
+        initialPage = initialPage.coerceIn(media.indices),
+        pageCount = { media.size },
+    )
+    val coroutineScope = rememberCoroutineScope()
+    val dismiss = { onDismiss(pagerState.currentPage) }
+
+    Dialog(
+        onDismissRequest = dismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
+    ) {
+        val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
+        SideEffect { dialogWindow?.setDimAmount(0f) }
+
+        Surface(
+            color = Color.Black,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .displayCutoutPadding()
+                    .navigationBarsPadding(),
+            ) {
+                HorizontalPager(
+                    state = pagerState,
+                    key = { media[it].url },
+                    modifier = Modifier.fillMaxSize(),
+                ) { page ->
+                    StoreMediaPage(
+                        item = media[page],
+                        gameName = gameName,
+                        videoFallback = videoFallback,
+                        active = page == pagerState.currentPage,
+                        fullscreen = true,
+                        autoplay = autoplay,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Surface(shape = CircleShape, color = Color.Black.copy(alpha = 0.62f)) {
+                        IconButton(onClick = dismiss) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = stringResource(R.string.library_store_media_close),
+                                tint = Color.White,
+                            )
+                        }
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color.Black.copy(alpha = 0.62f),
+                    ) {
+                        Text(
+                            text = stringResource(
+                                R.string.library_store_media_page,
+                                pagerState.currentPage + 1,
+                                media.size,
+                            ),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                        )
+                    }
+                }
+
+                if (media.size > 1 && pagerState.currentPage > 0) {
+                    Surface(
+                        modifier = Modifier.align(Alignment.CenterStart).padding(12.dp),
+                        shape = CircleShape,
+                        color = Color.Black.copy(alpha = 0.62f),
+                    ) {
+                        IconButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                                }
+                            },
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                                contentDescription = stringResource(R.string.library_store_media_previous),
+                                tint = Color.White,
+                            )
+                        }
+                    }
+                }
+
+                if (media.size > 1 && pagerState.currentPage < media.lastIndex) {
+                    Surface(
+                        modifier = Modifier.align(Alignment.CenterEnd).padding(12.dp),
+                        shape = CircleShape,
+                        color = Color.Black.copy(alpha = 0.62f),
+                    ) {
+                        IconButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                }
+                            },
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = stringResource(R.string.library_store_media_next),
+                                tint = Color.White,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+/** Rift: the game page's sections under the hero, in page order; LB/RB and the tabs jump between them. */
+private enum class GamePageSection(val labelRes: Int, val titleRes: Int) {
+    Overview(R.string.rift_game_section_overview, R.string.rift_game_about),
+    Media(R.string.rift_game_section_media, R.string.rift_game_media_title),
+    Achievements(R.string.rift_game_achievements, R.string.rift_game_achievements),
+    Compatibility(R.string.rift_game_section_compatibility, R.string.rift_game_section_compatibility),
+}
+
+/** Rift: the top-left "B Библиотека" pill that leaves the page. */
+@Composable
+private fun GamePageBackPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (isFocused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.08f)))
+            .selectable(selected = isFocused, interactionSource = interactionSource, indication = null, onClick = onClick)
+            .padding(start = 6.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            modifier = Modifier.size(26.dp).clip(CircleShape).background(Color.White),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("B", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold), color = Color.Black)
+        }
+        Text(
+            text = stringResource(R.string.rift_game_back_library),
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = if (isFocused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else Color.White,
+        )
+    }
+}
+
+/** Rift: a small LB / RB glyph next to the section tabs. */
+@Composable
+private fun ShoulderGlyph(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
+        color = Color.White,
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color.White.copy(alpha = 0.14f))
+            .padding(horizontal = 7.dp, vertical = 3.dp),
+    )
+}
+
+/**
+ * Rift: the section tabs. The current section is filled with the accent. In the content they take focus
+ * (A jumps there); in the sticky header they are touch-only so the gamepad never lands up there.
+ */
+@Composable
+private fun GamePageSectionTabs(
+    sections: List<GamePageSection>,
+    current: GamePageSection,
+    onSelect: (GamePageSection) -> Unit,
+    focusable: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    // Two states: while a tab has focus only that tab is filled; otherwise the current section is.
+    var rowFocused by remember { mutableStateOf(false) }
+    Row(
+        modifier = modifier.onFocusChanged { rowFocused = it.hasFocus },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        ShoulderGlyph("LB")
+        Spacer(modifier = Modifier.width(6.dp))
+        sections.forEach { section ->
+            val interactionSource = remember { MutableInteractionSource() }
+            val isFocused by interactionSource.collectIsFocusedAsState()
+            val selected = if (rowFocused) isFocused else section == current
+            val tabModifier = if (focusable) {
+                Modifier
+                    .selectable(
+                        selected = selected,
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = { onSelect(section) },
+                    )
+            } else {
+                Modifier
+                    .focusProperties { canFocus = false }
+                    .clickable(interactionSource = interactionSource, indication = null) { onSelect(section) }
+            }
+            Text(
+                text = stringResource(section.labelRes),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold),
+                color = if (selected) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else Color.White.copy(alpha = 0.8f),
+                maxLines = 1,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(if (selected) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.Transparent))
+                    .then(tabModifier)
+                    .padding(horizontal = 18.dp, vertical = 9.dp),
+            )
+        }
+        Spacer(modifier = Modifier.width(6.dp))
+        ShoulderGlyph("RB")
+    }
+}
+
+/**
+ * Rift: when focus enters this block with the d-pad, scroll the page so the whole block shows (the media row,
+ * the achievement cards, the compatibility cards), not just the focused tile's top edge (Denis 17.10).
+ * Moving within the block (left/right in the media row) does not re-trigger it.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun Modifier.keepWholeOnFocus(): Modifier {
+    val requester = remember { BringIntoViewRequester() }
+    val scope = rememberCoroutineScope()
+    return this
+        .bringIntoViewRequester(requester)
+        .onFocusChanged { if (it.hasFocus) scope.launch { requester.bringIntoView() } }
+}
+
+/** Rift: one section of the page: a small caps title, then its content. Records where it starts in the scroll. */
+@Composable
+private fun GamePageSectionBlock(
+    section: GamePageSection,
+    offsets: MutableMap<GamePageSection, Int>,
+    scrollState: ScrollState,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { offsets[section] = (it.positionInRoot().y + scrollState.value).roundToInt() }
+            .padding(bottom = 40.dp),
+    ) {
+        Text(
+            text = stringResource(section.titleRes).uppercase(Locale.getDefault()),
+            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 14.dp),
+        )
+        content()
+    }
+}
+
+/** Rift: once the hero scrolls away, a slim bar keeps the name and the section tabs on top. */
+@Composable
+private fun GamePageStickyHeader(
+    name: String,
+    sections: List<GamePageSection>,
+    current: GamePageSection,
+    onSelect: (GamePageSection) -> Unit,
+    playLabel: String? = null,
+    onPlay: () -> Unit = {},
+) {
+    val sidePadding = if (LocalConfiguration.current.screenWidthDp >= 840) 48.dp else 20.dp
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    // Rift: solid under the content so nothing from the page shows through, a short fade at the very bottom.
+                    0f to dev.rift.launcher.ui.theme.RiftColors.Background,
+                    0.82f to dev.rift.launcher.ui.theme.RiftColors.Background,
+                    1f to Color.Transparent,
+                ),
+            )
+            .windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top))
+            .padding(start = sidePadding, end = sidePadding, top = 14.dp, bottom = 24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = 360.dp),
+        )
+        // Rift: a small white Play next to the name, touch-only like the tabs.
+        if (playLabel != null) {
+            Row(
+                modifier = Modifier
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.White)
+                    .focusProperties { canFocus = false }
+                    .clickable(onClick = onPlay)
+                    .padding(start = 14.dp, end = 20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.Black, modifier = Modifier.size(20.dp))
+                Text(playLabel, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold), color = Color.Black)
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        GamePageSectionTabs(
+            sections = sections,
+            current = current,
+            onSelect = onSelect,
+            focusable = false,
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(Color.White.copy(alpha = 0.07f))
+                .padding(5.dp),
+        )
+    }
+}
+
+/** Rift: "Об игре" with the critics' rating and the HowLongToBeat card beside it, all one height. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun GamePageOverview(info: GameDisplayInfo, wide: Boolean, facts: List<Pair<String, String>>) {
+    val details = info.storeDetails
+    var expanded by rememberSaveable(info.appId) { mutableStateOf(false) }
+    val about: @Composable (Modifier) -> Unit = { modifier ->
+        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (details.description.isNotBlank()) {
+                Text(
+                    text = details.description,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.88f),
+                    maxLines = if (expanded) Int.MAX_VALUE else 6,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                ActionPillButton(
+                    icon = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    text = stringResource(if (expanded) R.string.rift_game_read_less else R.string.rift_game_read_more),
+                    onClick = { expanded = !expanded },
+                )
+                // Rift: Wikipedia's text is CC BY-SA; the credit stays under it.
+                if (details.source == "wikipedia") {
+                    Text(
+                        text = stringResource(R.string.rift_game_source_wikipedia),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    )
+                }
+            }
+            if (details.tags.isNotEmpty()) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    details.tags.forEach { tag ->
+                        Text(
+                            text = tag,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(MaterialTheme.colorScheme.surfaceContainer)
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+    val hasAbout = details.description.isNotBlank() || details.tags.isNotEmpty()
+    // Rift: one side column, the rating and the game's facts in one card with HowLongToBeat under it.
+    val side: @Composable (Modifier, Boolean) -> Unit = { modifier, stretch ->
+        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            GamePageInfoCard(info, facts, if (stretch) Modifier.fillMaxWidth().weight(1f) else Modifier.fillMaxWidth())
+            info.hltbStats?.let { GamePageHltbCard(it, Modifier.fillMaxWidth()) }
+        }
+    }
+    if (wide && hasAbout) {
+        // About on the left, the side column on the right, both as tall as the taller one.
+        Layout(
+            contents = listOf({ about(Modifier) }, { side(Modifier, true) }),
+            modifier = Modifier.fillMaxWidth(),
+        ) { (aboutMeasurables, sideMeasurables), constraints ->
+            val gap = 24.dp.roundToPx()
+            val sideWidth = 400.dp.roundToPx().coerceAtMost(constraints.maxWidth / 2)
+            val aboutWidth = (constraints.maxWidth - sideWidth - gap).coerceAtLeast(0)
+            val aboutPlaceable = aboutMeasurables.first().measure(Constraints(minWidth = aboutWidth, maxWidth = aboutWidth))
+            val sideMeasurable = sideMeasurables.first()
+            val height = maxOf(aboutPlaceable.height, sideMeasurable.maxIntrinsicHeight(sideWidth))
+            val sidePlaceable = sideMeasurable.measure(Constraints.fixed(sideWidth, height))
+            layout(constraints.maxWidth, height) {
+                aboutPlaceable.place(0, 0)
+                sidePlaceable.place(aboutWidth + gap, 0)
+            }
+        }
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            if (hasAbout) about(Modifier.fillMaxWidth())
+            side(if (wide) Modifier.width(400.dp) else Modifier.fillMaxWidth(), false)
+        }
+    }
+}
+
+/** Rift: Steam's review verdict ("Mostly Positive") as a string in the interface language, null when it is not Steam's. */
+private fun steamReviewVerdict(summary: String?): Int? = when (summary?.trim()?.lowercase(Locale.ROOT)) {
+    "overwhelmingly positive" -> R.string.rift_steam_reviews_overwhelmingly_positive
+    "very positive" -> R.string.rift_steam_reviews_very_positive
+    "positive" -> R.string.rift_steam_reviews_positive
+    "mostly positive" -> R.string.rift_steam_reviews_mostly_positive
+    "mixed" -> R.string.rift_steam_reviews_mixed
+    "mostly negative" -> R.string.rift_steam_reviews_mostly_negative
+    "negative" -> R.string.rift_steam_reviews_negative
+    "very negative" -> R.string.rift_steam_reviews_very_negative
+    "overwhelmingly negative" -> R.string.rift_steam_reviews_overwhelmingly_negative
+    else -> null
+}
+
+/** Rift: the rating ring (when there is one) over the game's facts: developer, release date, status, size, play time. */
+@Composable
+private fun GamePageInfoCard(info: GameDisplayInfo, facts: List<Pair<String, String>>, modifier: Modifier = Modifier) {
+    val details = info.storeDetails
+    val percent = details.reviewPercentage
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(26.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        if (percent != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(modifier = Modifier.size(80.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(
+                    progress = { percent / 100f },
+                    modifier = Modifier.fillMaxSize(),
+                    color = dev.rift.launcher.ui.theme.RiftColors.Primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    strokeWidth = 6.dp,
+                )
+                Text(
+                    text = if (steamReviewVerdict(details.reviewSummary) != null) "$percent%" else percent.toString(),
+                    // Rift: a calmer size and a little tracking so the digits don't run together inside the ring.
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                // Rift: say where the score comes from; Steam's English verdict is shown in the interface language.
+                val steamVerdict = steamReviewVerdict(details.reviewSummary)
+                Text(
+                    text = stringResource(if (steamVerdict != null) R.string.rift_game_rating_steam else R.string.rift_game_rating_critics)
+                        .uppercase(Locale.getDefault()),
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = steamVerdict?.let { stringResource(it) }
+                        ?: stringResource(R.string.rift_game_rating_of_100, percent),
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (steamVerdict != null) {
+                    Text(
+                        text = stringResource(R.string.rift_game_rating_positive, percent),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                details.reviewCount?.takeIf { it > 0 }?.let {
+                    Text(
+                        text = stringResource(R.string.rift_game_rating_count, it),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+        val releaseDate = remember(info.releaseDate) {
+            if (info.releaseDate > 0) {
+                SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(info.releaseDate * 1000))
+            } else {
+                ""
+            }
+        }
+        (
+            listOf(
+                stringResource(R.string.developer) to info.developer,
+                stringResource(R.string.release_date) to releaseDate,
+            ) + facts
+        ).filter { it.second.isNotBlank() }.forEach { (label, value) ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.End,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GamePageHltbCard(stats: HltbService.Stats, modifier: Modifier = Modifier) {
+    val items = listOf(
+        R.string.hltb_main_story to stats.mainHours,
+        R.string.hltb_main_plus_extras to stats.mainPlusHours,
+        R.string.hltb_completionist to stats.completeHours,
+    ).filter { it.second != HltbService.UNKNOWN_HOURS }
+    if (items.isEmpty()) return
+    val max = items.maxOf { it.second.replace(',', '.').toFloatOrNull() ?: 0f }.coerceAtLeast(1f)
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(26.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(R.string.rift_game_hltb_title),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "HOWLONGTOBEAT",
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        items.forEach { (labelRes, hours) ->
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Row {
+                    Text(
+                        text = stringResource(labelRes),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = stringResource(R.string.rift_game_hours, hours),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, fontFeatureSettings = "tnum"),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+                GradientProgressBar(
+                    progress = (hours.replace(',', '.').toFloatOrNull() ?: 0f) / max,
+                    modifier = Modifier.fillMaxWidth(),
+                    height = 8.dp,
+                )
+            }
+        }
+    }
+}
+
+/** Rift: trailers and screenshots as one row of 16:9 tiles; A opens the fullscreen viewer there. */
+@Composable
+private fun GamePageMediaRow(
+    media: List<StoreMediaItem>,
+    videoFallback: String,
+    gameName: String,
+    onOpen: (Int) -> Unit,
+    sidePadding: Dp = 0.dp,
+) {
+    // Rift: the row runs edge to edge (past the page's side padding) with that padding as content padding,
+    // so a focused tile grows and casts its ring without being cut at the row's edge. Repeats are dropped.
+    val tiles = remember(media) {
+        media.withIndex().distinctBy { it.value.url.substringBefore('?').lowercase(Locale.ROOT) }
+    }
+    // Sideways the row keeps the focused tile whole with room on both sides, not the page's vertical margins.
+    val rowKeepInView = with(LocalDensity.current) { remember(sidePadding) { dev.rift.launcher.home.KeepInView((sidePadding + 16.dp).toPx()) } }
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides rowKeepInView) {
+    LazyRow(
+        modifier = Modifier.layout { measurable, constraints ->
+            val extra = (sidePadding * 2).roundToPx()
+            val placeable = measurable.measure(
+                constraints.copy(
+                    minWidth = constraints.minWidth + extra,
+                    maxWidth = if (constraints.hasBoundedWidth) constraints.maxWidth + extra else constraints.maxWidth,
+                ),
+            )
+            layout(placeable.width - extra, placeable.height) { placeable.place(-sidePadding.roundToPx(), 0) }
+        },
+        contentPadding = PaddingValues(horizontal = sidePadding, vertical = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        itemsIndexed(tiles, key = { _, tile -> tile.value.url }) { position, tile ->
+            val index = tile.index
+            val item = tile.value
+            val interactionSource = remember { MutableInteractionSource() }
+            val isFocused by interactionSource.collectIsFocusedAsState()
+            val scale by animateFloatAsState(
+                targetValue = if (isFocused) 1.06f else 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium,
+                ),
+                label = "mediaTileScale",
+            )
+            // Rift: as in the mockup, the first tile (the trailer) is wider than the rest, all 236 dp high.
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 8.dp)
+                    .height(236.dp)
+                    .width(if (position == 0) 420.dp else 300.dp)
+                    .scale(scale)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .selectable(
+                        selected = isFocused,
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = { onOpen(index) },
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                CoilImage(
+                    imageModel = { if (item.isVideo) videoFallback else item.url },
+                    imageOptions = ImageOptions(contentDescription = gameName, contentScale = ContentScale.Crop),
+                    modifier = Modifier.fillMaxSize(),
+                )
+                // Rift: no outline; the tile in focus is lifted and bright, the others are dimmed.
+                if (!isFocused) Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.38f)))
+                if (item.isVideo) {
+                    Box(
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(CircleShape)
+                            .background(if (isFocused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.Black.copy(alpha = 0.55f))),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            tint = if (isFocused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else dev.rift.launcher.ui.theme.RiftColors.Primary,
+                            modifier = Modifier.size(32.dp),
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.rift_game_trailer),
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(14.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(Color.Black.copy(alpha = 0.55f))
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                }
+            }
+        }
+    }
+    }
+}
+
+@Composable
+private fun StoreDetailsSection(
+    details: StoreGameDetails,
+    gameKey: String,
+    modifier: Modifier = Modifier,
+) {
+    if (!details.hasOverview) return
+
+    var aboutExpanded by rememberSaveable(gameKey) { mutableStateOf(false) }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .clickable { aboutExpanded = !aboutExpanded }
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = stringResource(R.string.recommended_about_heading),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            )
+            Icon(
+                imageVector = if (aboutExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = stringResource(
+                    if (aboutExpanded) {
+                        R.string.library_store_about_collapse
+                    } else {
+                        R.string.library_store_about_expand
+                    },
+                ),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (aboutExpanded) {
+            if (details.reviewPercentage != null) {
+                StoreReviewCard(
+                    details = details,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+            if (details.description.isNotBlank()) {
+                if (details.reviewPercentage != null) Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = details.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = if (details.reviewPercentage == null) 4.dp else 0.dp),
+                )
+            }
+            if (details.tags.isNotEmpty()) {
+                if (details.description.isNotBlank() || details.reviewPercentage != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    details.tags.forEach { tag ->
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                        ) {
+                            Text(
+                                text = tag,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StoreReviewCard(
+    details: StoreGameDetails,
+    modifier: Modifier = Modifier,
+) {
+    val percentage = details.reviewPercentage ?: return
+    val scoreColor = when {
+        percentage >= 70 -> Color(0xFF4CAF50)
+        percentage >= 40 -> Color(0xFFB9A074)
+        else -> MaterialTheme.colorScheme.error
+    }
+    val summary = details.reviewSummary ?: stringResource(
+        when {
+            percentage >= 95 -> R.string.review_overwhelmingly_positive
+            percentage >= 80 -> R.string.review_very_positive
+            percentage >= 70 -> R.string.review_mostly_positive
+            percentage >= 40 -> R.string.review_mixed
+            percentage >= 20 -> R.string.review_mostly_negative
+            else -> R.string.review_overwhelmingly_negative
+        },
+    )
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(scoreColor.copy(alpha = 0.15f), RoundedCornerShape(9.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    text = "$percentage%",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = scoreColor,
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = summary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                details.reviewCount?.let { count ->
+                    Text(
+                        text = stringResource(
+                            R.string.recommended_review_count,
+                            String.format(Locale.getDefault(), "%,d", count),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppScreen(
+    libraryItem: LibraryItem,
+    onClickPlay: (Boolean) -> Unit,
+    onTestGraphics: () -> Unit,
+    onPlayWithDiagnostics: () -> Unit,
+    onAiDebugRun: () -> Unit,
+    onBack: () -> Unit,
+) {
+    // Get the appropriate screen model based on game source
+    val screenModel = remember(libraryItem.gameSource) {
+        when (libraryItem.gameSource) {
+            app.gamenative.data.GameSource.STEAM -> SteamAppScreen()
+            app.gamenative.data.GameSource.CUSTOM_GAME -> CustomGameAppScreen()
+            app.gamenative.data.GameSource.GOG -> GOGAppScreen()
+            app.gamenative.data.GameSource.EPIC -> EpicAppScreen()
+            app.gamenative.data.GameSource.AMAZON -> AmazonAppScreen()
+        }
+    }
+
+    // Render the content using the model
+    screenModel.Content(
+        libraryItem = libraryItem,
+        onClickPlay = onClickPlay,
+        onTestGraphics = onTestGraphics,
+        onPlayWithDiagnostics = onPlayWithDiagnostics,
+        onAiDebugRun = onAiDebugRun,
+        onBack = onBack,
+    )
+}
+
+
+internal data class ImmersiveModeUiState(
+    val isSupported: Boolean = false,
+    val isEnabled: Boolean = false,
+    val onChange: (Boolean) -> Unit = {},
+    val isVrEnabled: Boolean = false,
+    val onVrChange: (Boolean) -> Unit = {},
+)
+
+internal data class CommunityCompatibilityUiState(
+    val summary: CommunityCompatibilitySummary = CommunityCompatibilitySummary.unknown(),
+    val loading: Boolean = false,
+    val loadError: Boolean = false,
+    val onRetry: () -> Unit = {},
+    val onViewReports: () -> Unit = {},
+    // Rift: the game's own profile and the best community one, for the three compatibility cards.
+    val profile: List<Pair<String, String>>? = null,
+    val profileFromCommunity: Boolean = false,
+    val onEditProfile: () -> Unit = {},
+    val onRollback: () -> Unit = {},
+    val best: dev.rift.launcher.community.RiftBestConfig? = null,
+    val bestLoading: Boolean = false,
+    val onApplyBest: () -> Unit = {},
+)
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun AppScreenContent(
+    modifier: Modifier = Modifier,
+    displayInfo: GameDisplayInfo,
+    resetHeroOnFirstArtworkChange: Boolean = false,
+    downloadDisplayDetails: DownloadDisplayDetails,
+    downloadInfo: app.gamenative.data.DownloadInfo? = null,
+    onDownloadInstallClick: () -> Unit,
+    onPauseResumeClick: () -> Unit,
+    onDeleteDownloadClick: () -> Unit,
+    onUpdateClick: () -> Unit,
+    onBack: () -> Unit = {},
+    achievements: List<Achievement>? = null,
+    optionsMenu: List<AppMenuOption>,
+    dialogOpen: Boolean = false,
+    immersiveMode: ImmersiveModeUiState = ImmersiveModeUiState(),
+    communityCompatibility: CommunityCompatibilityUiState = CommunityCompatibilityUiState(),
+    gameStats: app.gamenative.ui.data.GameCardStats? = null,
+) {
+    // Unpacked so the body below is unchanged; bundling the params avoids a Compose VerifyError.
+    val isInstalled = downloadDisplayDetails.isInstalled
+    val isValidToDownload = downloadDisplayDetails.isValidToDownload
+    val isDownloading = downloadDisplayDetails.isDownloading
+    val downloadProgress = downloadDisplayDetails.downloadProgress
+    val hasPartialDownload = downloadDisplayDetails.hasPartialDownload
+    val hasLeftoverInstall = downloadDisplayDetails.hasLeftoverInstall
+    val isUpdatePending = downloadDisplayDetails.isUpdatePending
+    val context = LocalContext.current
+    // reactive — recomposes when network state changes
+    val hasInternet by NetworkMonitor.hasInternet.collectAsState()
+    val hasWifiOrEthernet by NetworkMonitor.hasWifiOrEthernet.collectAsState()
+    val downloadAllowed = !PrefManager.downloadOnWifiOnly || hasWifiOrEthernet
+    val scrollState = rememberScrollState()
+    val heroMedia = remember(
+        displayInfo.storeDetails.videos,
+        displayInfo.storeDetails.screenshots,
+        displayInfo.heroImageUrl,
+    ) {
+        buildStoreMedia(displayInfo.storeDetails, displayInfo.heroImageUrl)
+    }
+    val heroPagerState = rememberPagerState(pageCount = { heroMedia.size.coerceAtLeast(1) })
+    val heroMediaScope = rememberCoroutineScope()
+    val videoFallback = displayInfo.heroImageUrl
+        ?: displayInfo.storeDetails.screenshots.firstOrNull().orEmpty()
+    var fullscreenHeroPage by rememberSaveable(displayInfo.appId) { mutableStateOf<Int?>(null) }
+    var previousHeroImageUrl by remember(displayInfo.appId) {
+        mutableStateOf(displayInfo.heroImageUrl)
+    }
+    var didResetForFirstArtworkChange by remember(displayInfo.appId) {
+        mutableStateOf(false)
+    }
+    var heroHeightPx by remember { mutableIntStateOf(0) }
+    val heroPlaybackVisible by remember(scrollState) {
+        derivedStateOf { heroHeightPx > 0 && scrollState.value < heroHeightPx }
+    }
+
+    // Rift: Start on the Rift home shows only this game's options panel over the home.
+    val riftOptionsOnly = dev.rift.launcher.home.LocalRiftOptionsOnly.current
+    // Rift: opened from the PC streaming tab, the main action streams the game from the PC.
+    val riftStream = dev.rift.launcher.home.LocalRiftStreamAction.current
+    var optionsMenuVisible by remember { mutableStateOf(riftOptionsOnly != null) }
+    // Rift: the game's properties page (all the options, by group), from the Start menu or the page's settings icon.
+    var propertiesOpen by remember { mutableStateOf(riftOptionsOnly == null && dev.rift.launcher.home.RiftPropertiesRequest.take()) }
+    if (riftOptionsOnly != null) {
+        LaunchedEffect(optionsMenuVisible, propertiesOpen) { riftOptionsOnly.panelOpen = optionsMenuVisible || propertiesOpen }
+    }
+
+    // Track the original progress bar bounds for ambient mode morph animation
+    var progressBarBounds by remember { mutableStateOf<Rect?>(null) }
+    var ambientInteractionCounter by remember { mutableStateOf(0) }
+
+    // Focus requesters for gamepad navigation
+    val playButtonFocusRequester = remember { FocusRequester() }
+
+    var downloadTimeLeftText by remember { mutableStateOf("")}
+    // ETA digits are EMA estimates — refresh them at a calm ~1/sec (Steam-client-style steady
+    // numbers) instead of at the raw emit cadence. Status text ("Verifying…", "Unpacking...")
+    // is event-driven and always applied immediately; the Rust gates already bypass their
+    // throttle for status/count milestones, so no status change is ever held back here.
+    var lastEtaTextUpdateAt by remember { mutableStateOf(0L) }
+    val unpackingText = stringResource(R.string.download_unpacking)
+
+    val progressListener: (Float) -> Unit = {
+        val downloadStatusMessage = downloadInfo?.getCurrentStatusMessage()
+
+        downloadTimeLeftText = run {
+            val etaMs = downloadInfo?.getEstimatedTimeRemaining()
+            if (etaMs != null && etaMs > 0L) {
+                val now = System.currentTimeMillis()
+                if (now - lastEtaTextUpdateAt >= 1000L) {
+                    lastEtaTextUpdateAt = now
+                    val totalSeconds = etaMs / 1000
+                    val minutesLeft = totalSeconds / 60
+                    val secondsPart = totalSeconds % 60
+                    "${minutesLeft}m ${secondsPart}s left"
+                } else {
+                    downloadTimeLeftText // keep the previous ETA text until the 1s tick
+                }
+            } else if (isDownloading && downloadProgress >= 1f) {
+                // Bytes at 100% while the download is still active. Prefer the real status
+                // (e.g. Epic may still be fetching chunks — its byte total can saturate
+                // early); "Unpacking..." only when there is nothing more truthful to say.
+                lastEtaTextUpdateAt = 0L
+                downloadStatusMessage?.takeUnless { it.isBlank() } ?: unpackingText
+            } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
+                lastEtaTextUpdateAt = 0L
+                downloadStatusMessage?.takeUnless { it.isBlank() } ?: ""
+            } else {
+                lastEtaTextUpdateAt = 0L
+                ""
+            }
+        }
+    }
+
+    LaunchedEffect(displayInfo.appId) {
+        scrollState.scrollTo(0)
+        heroPagerState.scrollToPage(0)
+        fullscreenHeroPage = null
+    }
+
+    // Amazon initially renders its library icon while the full catalog record is loaded.
+    // Reset once when that icon is replaced so the pager does not preserve its stable key at
+    // a later position. Other artwork refreshes must not discard the user's current position.
+    LaunchedEffect(
+        displayInfo.appId,
+        resetHeroOnFirstArtworkChange,
+        displayInfo.heroImageUrl,
+    ) {
+        val currentHeroImageUrl = displayInfo.heroImageUrl
+        val heroChanged = currentHeroImageUrl != previousHeroImageUrl
+        previousHeroImageUrl = currentHeroImageUrl
+        if (
+            resetHeroOnFirstArtworkChange &&
+            !didResetForFirstArtworkChange &&
+            heroChanged &&
+            !currentHeroImageUrl.isNullOrBlank()
+        ) {
+            didResetForFirstArtworkChange = true
+            scrollState.scrollTo(0)
+            heroPagerState.scrollToPage(0)
+            fullscreenHeroPage = null
+        }
+    }
+
+    LaunchedEffect(heroMedia.size) {
+        if (heroMedia.isEmpty()) {
+            fullscreenHeroPage = null
+        } else {
+            val lastPage = heroMedia.lastIndex
+            if (heroPagerState.currentPage > lastPage) heroPagerState.scrollToPage(lastPage)
+            fullscreenHeroPage = fullscreenHeroPage?.coerceAtMost(lastPage)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        // Rift: the page opens at the top with focus on Play. On the tablet the first request could land
+        // before the button was attached and focus fell to the section tabs, scrolling the page down
+        // (tabs on the first screen, back pill cut off at the top). Retry briefly and keep the scroll at 0.
+        repeat(4) {
+            runCatching { playButtonFocusRequester.requestFocus() }
+            scrollState.scrollTo(0)
+            kotlinx.coroutines.delay(120)
+        }
+    }
+
+    LaunchedEffect(downloadInfo) {
+        downloadInfo?.addProgressListener(progressListener)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            downloadInfo?.removeProgressListener(progressListener)
+        }
+    }
+
+    // Restore focus when options menu, dialogs
+    LaunchedEffect(optionsMenuVisible, propertiesOpen, dialogOpen) {
+        if (!optionsMenuVisible && !propertiesOpen && !dialogOpen) {
+            kotlinx.coroutines.delay(100) // Brief delay for menu/dialog animation
+            try {
+                playButtonFocusRequester.requestFocus()
+            } catch (_: IllegalStateException) {
+                // FocusRequester not attached
+            }
+        }
+    }
+
+    // Button state calculations (needed by key event handler)
+    val isResume = !isDownloading && hasPartialDownload
+    val pauseResumeEnabled = if (isResume) downloadAllowed else true
+    val isInstall = !isInstalled
+    val installEnabled = if (isInstall) downloadAllowed && hasInternet else true
+    val buttonEnabled = if (isInstalled) {
+        installEnabled
+    } else {
+        installEnabled && isValidToDownload
+    }
+    val startActionEnabled = if (riftStream != null) {
+        true
+    } else if (isDownloading || hasPartialDownload) {
+        pauseResumeEnabled
+    } else {
+        buttonEnabled
+    }
+    val onStartAction = {
+        if (riftStream != null) {
+            riftStream.onStream()
+        } else if (isDownloading || hasPartialDownload) {
+            onPauseResumeClick()
+        } else {
+            onDownloadInstallClick()
+        }
+    }
+
+    val downloadingLabel = stringResource(R.string.downloading)
+    val downloadSizeText = remember(displayInfo.gameId, downloadProgress, downloadInfo) {
+        val (bytesDone, bytesTotal) = downloadInfo?.getBytesProgress() ?: (0L to 0L)
+        if (bytesTotal > 0L) {
+            "${FormatUtils.formatBytes(bytesDone)} / ${FormatUtils.formatBytes(bytesTotal)}"
+        } else if (bytesDone > 0L) {
+            FormatUtils.formatBytes(bytesDone)
+        } else {
+            downloadingLabel
+        }
+    }
+
+    // Rift: the sections under the hero, where each starts in the scroll, and which one is on screen.
+    val pageSections = remember(displayInfo.storeDetails, displayInfo.hltbStats, heroMedia, achievements, riftStream) {
+        buildList {
+            // Rift: Overview always shows, its side card carries the game's facts (status, size, play time).
+            add(GamePageSection.Overview)
+            if (heroMedia.any { it.isVideo || it.url != displayInfo.heroImageUrl }) add(GamePageSection.Media)
+            if (!achievements.isNullOrEmpty()) add(GamePageSection.Achievements)
+            if (riftStream == null) add(GamePageSection.Compatibility)
+        }
+    }
+    val sectionOffsets = remember(displayInfo.appId) { mutableStateMapOf<GamePageSection, Int>() }
+    val stickyHeaderPx = with(LocalDensity.current) { 88.dp.roundToPx() }
+    val currentSection by remember(pageSections) {
+        derivedStateOf {
+            // At the very bottom the last section is the current one, even if it starts below the header line.
+            if (scrollState.maxValue > 0 && scrollState.value >= scrollState.maxValue - 4) {
+                pageSections.lastOrNull { sectionOffsets[it] != null } ?: pageSections.first()
+            } else {
+                pageSections.lastOrNull { (sectionOffsets[it] ?: Int.MAX_VALUE) <= scrollState.value + stickyHeaderPx + 8 }
+                    ?: pageSections.first()
+            }
+        }
+    }
+    val goToSection: (GamePageSection) -> Unit = { section ->
+        heroMediaScope.launch {
+            scrollState.animateScrollTo(((sectionOffsets[section] ?: 0) - stickyHeaderPx).coerceAtLeast(0))
+        }
+    }
+
+    // Handle gamepad button presses
+    val handleKeyEvent: (KeyEvent) -> Boolean = { event ->
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            when (event.keyCode) {
+                // SELECT button - open options menu
+                KeyEvent.KEYCODE_BUTTON_SELECT -> {
+                    if (riftStream == null) propertiesOpen = true else if (riftStream.showOptions) optionsMenuVisible = true
+                    true
+                }
+
+                // START button - primary action (play/download/pause)
+                KeyEvent.KEYCODE_BUTTON_START -> {
+                    // Rift: in options-only mode Start never plays or installs.
+                    if (riftOptionsOnly == null && !optionsMenuVisible && startActionEnabled) {
+                        onStartAction()
+                    }
+                    true
+                }
+
+                // Rift: LB/RB jump between the page's sections; LB from the first goes back up to the hero.
+                KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_R1 -> {
+                    if (riftOptionsOnly == null && !optionsMenuVisible && !propertiesOpen) {
+                        val atTop = heroHeightPx > 0 && scrollState.value < heroHeightPx - stickyHeaderPx
+                        val index = if (atTop) -1 else pageSections.indexOf(currentSection)
+                        val next = index + if (event.keyCode == KeyEvent.KEYCODE_BUTTON_L1) -1 else 1
+                        if (next < 0) {
+                            heroMediaScope.launch { scrollState.animateScrollTo(0) }
+                        } else {
+                            pageSections.getOrNull(next)?.let(goToSection)
+                        }
+                        true
+                    } else {
+                        false
+                    }
+                }
+
+                // B button - back
+                KeyEvent.KEYCODE_BUTTON_B -> {
+                    if (optionsMenuVisible) {
+                        optionsMenuVisible = false
+                    } else {
+                        onBack()
+                    }
+                    true
+                }
+
+                else -> false
+            }
+        } else {
+            false
+        }
+    }
+
+    // Handle back press when options panel is open
+    BackHandler(enabled = optionsMenuVisible) {
+        optionsMenuVisible = false
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val pointerEvent = awaitPointerEvent(PointerEventPass.Initial)
+                        if (pointerEvent.changes.any { it.changedToDownIgnoreConsumed() }) {
+                            ambientInteractionCounter++
+                        }
+                    }
+                }
+            }
+            .onKeyEvent {
+                if (it.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
+                    ambientInteractionCounter++
+                }
+                handleKeyEvent(it.nativeKeyEvent)
+            },
+    ) {
+        // Rift: options-only mode shows just the options panel over the Rift home, no page.
+        if (riftOptionsOnly == null) {
+        // Rift: with the d-pad every focused element scrolls fully into view with 48 dp to spare, below the
+        // sticky header at the top and above the screen edge at the bottom; nothing is cut off (Denis 17.10).
+        val pageKeepInView = with(LocalDensity.current) {
+            remember { dev.rift.launcher.home.KeepInView(margin = (88.dp + 48.dp).toPx(), endMargin = 48.dp.toPx()) }
+        }
+        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides pageKeepInView) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState),
+        ) {
+            // Rift: the hero fills the screen (trailer or art) with the next section peeking under it;
+            // logo, facts, a short teaser and the action row sit over it at the bottom left.
+            val configuration = LocalConfiguration.current
+            val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+            val sidePadding = if (configuration.screenWidthDp >= 840) 48.dp else 20.dp
+            // Rift: the section tabs sit at the bottom of the first screen, right under the action row.
+            // Rift: the first screen is only the trailer, the title and the button row; the section tabs start below it (Denis 17.10).
+            // The whole window, system bars included: screenHeightDp leaves them out, which let the tabs peek in at the bottom.
+            val windowHeightPx = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.height
+            val heroHeight = with(LocalDensity.current) {
+                if (windowHeightPx > 0) windowHeightPx.toDp() else configuration.screenHeightDp.dp
+            }.coerceAtLeast(420.dp)
+            // Rift: Settings → Внешний вид → Страница игры picks the background; the trailer starts 3 s
+            // after the page opens and the art stays when there is no trailer, it ended, or Wi-Fi is required.
+            val pagePrefs = remember { dev.rift.launcher.settings.RiftPrefs.of(context) }
+            val backgroundMode = remember { pagePrefs.gamePageBackground }
+            var trailerSound by remember { mutableStateOf(pagePrefs.gamePageTrailerSound) }
+            val trailerLoop = remember { pagePrefs.gamePageTrailerLoop }
+            val trailerAllowed = backgroundMode == "trailer" &&
+                (hasWifiOrEthernet || !remember { pagePrefs.gamePageTrailerWifiOnly })
+            var trailerDue by remember(displayInfo.appId) { mutableStateOf(false) }
+            var trailerEnded by remember(displayInfo.appId) { mutableStateOf(false) }
+            LaunchedEffect(displayInfo.appId) {
+                delay(3000)
+                trailerDue = true
+            }
+            val artItem = remember(heroMedia) { heroMedia.firstOrNull { !it.isVideo } }
+            val videoItem = remember(heroMedia) { heroMedia.firstOrNull { it.isVideo } }
+            val heroBackground = when {
+                trailerAllowed && videoItem != null && (trailerDue || artItem == null) && !trailerEnded -> videoItem
+                else -> artItem ?: videoItem.takeIf { backgroundMode == "trailer" }
+            }
+            // Rift: while the trailer plays with sound, the launcher music fades out; it comes back when
+            // the trailer is muted, scrolled away or ended, and when the page closes.
+            val trailerAudible = fullscreenHeroPage != null ||
+                (heroBackground?.isVideo == true && trailerSound && trailerAllowed && heroPlaybackVisible)
+            val musicHold = remember { Any() }
+            LaunchedEffect(trailerAudible) {
+                if (trailerAudible) dev.rift.launcher.sound.RiftMusic.hold(musicHold) else dev.rift.launcher.sound.RiftMusic.release(musicHold)
+            }
+            DisposableEffect(Unit) { onDispose { dev.rift.launcher.sound.RiftMusic.release(musicHold) } }
+            val coverUrl = displayInfo.capsuleUrl?.takeIf {
+                backgroundMode == "cover" && it.isNotBlank() && configuration.screenWidthDp >= 840 && !isPortrait
+            }
+            val firstVideoPage = remember(heroMedia) { heroMedia.indexOfFirst { it.isVideo } }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(heroHeight)
+                    .onSizeChanged { heroHeightPx = it.height }
+                    // Rift: d-pad back up into the first screen lands at the very top, like LB: the whole
+                    // first screen, nothing of the tabs below it (Denis 17.10). One frame later so this
+                    // scroll replaces the default bring-into-view that focus starts.
+                    .onFocusChanged {
+                        if (it.hasFocus && scrollState.value > 0) {
+                            heroMediaScope.launch {
+                                androidx.compose.runtime.withFrameNanos { }
+                                scrollState.animateScrollTo(0)
+                            }
+                        }
+                    },
+            ) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .graphicsLayer {
+                            // Defer the scroll-state read to the graphics phase so scrolling
+                            // does not recompose the full game details hierarchy every frame.
+                            translationY = scrollState.value * 0.5f
+                        },
+                ) {
+                    if (heroBackground != null) {
+                        StoreMediaPage(
+                            item = heroBackground,
+                            gameName = displayInfo.name,
+                            videoFallback = videoFallback,
+                            active = fullscreenHeroPage == null && heroPlaybackVisible,
+                            fullscreen = false,
+                            autoplay = trailerAllowed,
+                            muted = !trailerSound,
+                            loop = trailerLoop,
+                            onEnded = { trailerEnded = true },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .then(if (coverUrl != null) Modifier.blur(28.dp) else Modifier),
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            dev.rift.launcher.ui.theme.RiftColors.SurfaceContainerHigh,
+                                            Color.Black,
+                                        ),
+                                    ),
+                                ),
+                        )
+                    }
+                }
+
+                // Scrims: bottom (action row), left (logo and text), top (back button).
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.verticalGradient(
+                                0f to Color.Black.copy(alpha = 0.5f),
+                                0.18f to Color.Transparent,
+                                0.4f to Color.Transparent,
+                                // Rift: a smooth black fade under the title, buttons and description so they read over any trailer.
+                                0.62f to Color.Black.copy(alpha = 0.55f),
+                                0.84f to Color.Black.copy(alpha = 0.9f),
+                                1f to Color.Black,
+                            ),
+                        ),
+                )
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.horizontalGradient(
+                                0f to Color.Black.copy(alpha = 0.72f),
+                                0.55f to Color.Transparent,
+                            ),
+                        ),
+                )
+
+                // Back button (top left).
+                // The hero image is intentionally drawn full-bleed through the status bar
+                // and any display cutout (notch / hole-punch / side cutout). The button
+                // itself, however, has to stay tappable, so it's pushed inwards by whichever
+                // is larger of the status bar inset or the cutout inset on each affected
+                // edge before the visual 16dp padding is applied.
+                GamePageBackPill(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .windowInsetsPadding(
+                            WindowInsets.statusBars
+                                .union(WindowInsets.displayCutout)
+                                .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+                        )
+                        .padding(horizontal = sidePadding - 8.dp, vertical = 16.dp),
+                )
+
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(start = sidePadding, end = sidePadding, bottom = 48.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.spacedBy(40.dp),
+                    ) {
+                    // Rift: the "cover" background puts the vertical cover next to the title.
+                    if (coverUrl != null) {
+                        CoilImage(
+                            imageModel = { coverUrl },
+                            imageOptions = ImageOptions(contentDescription = null, contentScale = ContentScale.Crop),
+                            modifier = Modifier
+                                .height((heroHeight * 0.56f).coerceAtMost(450.dp))
+                                .aspectRatio(2f / 3f)
+                                .clip(RoundedCornerShape(26.dp)),
+                        )
+                    }
+                    Column {
+                    // Logo art, else the name.
+                    val logoUrl = displayInfo.logoUrl?.takeIf { it.isNotBlank() }
+                    if (logoUrl != null) {
+                        CoilImage(
+                            imageModel = { logoUrl },
+                            imageOptions = ImageOptions(
+                                contentDescription = displayInfo.name,
+                                contentScale = ContentScale.Fit,
+                                alignment = Alignment.BottomStart,
+                            ),
+                            modifier = Modifier
+                                .widthIn(max = 460.dp)
+                                .fillMaxWidth()
+                                .height(if (isPortrait) 96.dp else 132.dp),
+                            failure = {
+                                Text(
+                                    text = displayInfo.name,
+                                    style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                                    color = Color.White,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            },
+                        )
+                    } else {
+                        Text(
+                            text = displayInfo.name,
+                            style = MaterialTheme.typography.displaySmall.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                shadow = Shadow(
+                                    color = Color.Black.copy(alpha = 0.6f),
+                                    offset = Offset(0f, 2f),
+                                    blurRadius = 8f,
+                                ),
+                            ),
+                            color = Color.White,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = 720.dp),
+                        )
+                    }
+
+                    // Facts: rating, time to beat, genres, year and developer.
+                    val releaseYear = remember(displayInfo.releaseDate) {
+                        if (displayInfo.releaseDate > 0) {
+                            SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(displayInfo.releaseDate * 1000))
+                        } else {
+                            ""
+                        }
+                    }
+                    val ratingLabel = stringResource(R.string.rift_game_rating)
+                    val beatLabel = stringResource(R.string.rift_game_beat_main)
+                    val facts = remember(displayInfo, releaseYear, ratingLabel, beatLabel) {
+                        buildList<Pair<String?, String>> {
+                            displayInfo.storeDetails.reviewPercentage?.let { add(it.toString() to ratingLabel) }
+                            displayInfo.hltbStats?.mainHours
+                                ?.takeIf { it != app.gamenative.utils.HltbService.UNKNOWN_HOURS }
+                                ?.let { add(null to beatLabel.format(it)) }
+                            displayInfo.storeDetails.tags.take(2).takeIf { it.isNotEmpty() }
+                                ?.let { add(null to it.joinToString(" · ")) }
+                            listOf(releaseYear, displayInfo.developer).filter { it.isNotBlank() }
+                                .takeIf { it.isNotEmpty() }
+                                ?.let { add(null to it.joinToString(" · ")) }
+                        }
+                    }
+                    if (facts.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            facts.forEach { (accent, text) -> HeroFactChip(text = text, accent = accent) }
+                        }
+                    }
+
+                    val teaser = remember(displayInfo.storeDetails.description) {
+                        heroTeaser(displayInfo.storeDetails.description)
+                    }
+                    if (teaser.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = teaser,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.White.copy(alpha = 0.85f),
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = 560.dp),
+                        )
+                    }
+                    }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Action row: Play, then the other actions right next to it, the stats plate at the far right.
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusGroup(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        if (riftStream != null) {
+                            PrimaryActionButton(
+                                // Rift: the main button is plain "Играть" for every kind of game (Denis 17.10).
+                                text = stringResource(R.string.rift_play),
+                                onClick = riftStream.onStream,
+                                isInstalled = true,
+                                focusRequester = playButtonFocusRequester,
+                                icon = riftStream.icon,
+                            )
+                        } else if (isDownloading || hasPartialDownload) {
+                            PrimaryActionButton(
+                                text = if (isDownloading) {
+                                    stringResource(R.string.pause_download)
+                                } else {
+                                    stringResource(R.string.resume_download)
+                                },
+                                onClick = onPauseResumeClick,
+                                enabled = pauseResumeEnabled,
+                                isInstalled = false,
+                                isDownloading = isDownloading,
+                                downloadProgress = downloadProgress,
+                                focusRequester = playButtonFocusRequester,
+                                onProgressBarPositioned = { progressBarBounds = it },
+                            )
+                        } else {
+                            val text = when {
+                                isInstalled -> stringResource(R.string.run_app)
+                                !hasInternet -> stringResource(R.string.library_need_internet)
+                                !hasWifiOrEthernet && PrefManager.downloadOnWifiOnly -> stringResource(R.string.library_wifi_only_enabled)
+                                else -> stringResource(R.string.install_app)
+                            }
+                            PrimaryActionButton(
+                                text = text,
+                                onClick = onDownloadInstallClick,
+                                enabled = buttonEnabled,
+                                isInstalled = isInstalled,
+                                focusRequester = playButtonFocusRequester,
+                            )
+                        }
+
+                        if (firstVideoPage >= 0) {
+                            ActionPillButton(
+                                icon = Icons.Filled.Theaters,
+                                text = stringResource(R.string.rift_game_trailer),
+                                onClick = { fullscreenHeroPage = firstVideoPage },
+                            )
+                        }
+
+                        // A streamed game has no local options.
+                        if (riftStream == null || riftStream.showOptions) {
+                            ActionIconButton(
+                                icon = Icons.Default.Settings,
+                                contentDescription = stringResource(R.string.options),
+                                onClick = { if (riftStream == null) propertiesOpen = true else optionsMenuVisible = true },
+                            )
+                        }
+
+                        val favoriteIds by app.gamenative.data.FavoritesManager.favorites.collectAsState()
+                        val isFavorite = displayInfo.appId in favoriteIds
+                        ActionIconButton(
+                            icon = if (isFavorite) Icons.Filled.Star else Icons.Filled.StarOutline,
+                            contentDescription = stringResource(
+                                if (isFavorite) R.string.option_remove_from_favorites else R.string.option_add_to_favorites,
+                            ),
+                            onClick = {
+                                app.gamenative.ui.screen.library.components.toggleFavorite(context, displayInfo.appId, displayInfo.name)
+                            },
+                        )
+
+                        // Rift: mute the background trailer (and bring the launcher music back); the choice is kept.
+                        if (heroBackground?.isVideo == true && trailerAllowed) {
+                            ActionIconButton(
+                                icon = if (trailerSound) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
+                                contentDescription = stringResource(if (trailerSound) R.string.rift_game_mute else R.string.rift_game_unmute),
+                                onClick = {
+                                    trailerSound = !trailerSound
+                                    pagePrefs.gamePageTrailerSound = trailerSound
+                                },
+                            )
+                        }
+
+                        if (riftStream == null && (isInstalled || hasPartialDownload || hasLeftoverInstall)) {
+                            ActionIconButton(
+                                icon = Icons.Default.Delete,
+                                contentDescription = if (isInstalled || hasLeftoverInstall) stringResource(R.string.uninstall) else stringResource(R.string.delete_app),
+                                onClick = onDeleteDownloadClick,
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        if (isDownloading && !isPortrait) {
+                            Column(
+                                horizontalAlignment = Alignment.End,
+                                verticalArrangement = Arrangement.Center,
+                            ) {
+                                if (downloadSizeText.isNotEmpty()) {
+                                    Text(
+                                        text = downloadSizeText,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color.White.copy(alpha = 0.9f),
+                                        maxLines = 1,
+                                    )
+                                }
+                                if (downloadTimeLeftText.isNotEmpty()) {
+                                    Text(
+                                        text = downloadTimeLeftText,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = Color.White.copy(alpha = 0.65f),
+                                        maxLines = 1,
+                                    )
+                                }
+                            }
+                        } else if (!isPortrait) {
+                            val lastPlayedLabel = stringResource(R.string.rift_game_last_played)
+                            val playTimeLabel = stringResource(R.string.rift_game_played)
+                            val achievementsLabel = stringResource(R.string.rift_game_achievements)
+                            val stats = remember(displayInfo.lastPlayedText, displayInfo.playtimeText, achievements) {
+                                buildList {
+                                    displayInfo.lastPlayedText?.let { add(lastPlayedLabel to it) }
+                                    displayInfo.playtimeText?.let { add(playTimeLabel to it) }
+                                    achievements?.takeIf { it.isNotEmpty() }?.let { list ->
+                                        add(achievementsLabel to "${list.count { it.isUnlocked }}/${list.size}")
+                                    }
+                                }
+                            }
+                            if (stats.isNotEmpty()) HeroStatsPlate(stats)
+                        }
+                    }
+
+                    if (immersiveMode.isSupported && isInstalled) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp)
+                                .clickable { immersiveMode.onChange(!immersiveMode.isEnabled) },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Checkbox(
+                                checked = immersiveMode.isEnabled,
+                                onCheckedChange = immersiveMode.onChange,
+                                colors = CheckboxDefaults.colors(
+                                    uncheckedColor = Color.White.copy(alpha = 0.7f),
+                                ),
+                            )
+                            Text(
+                                text = stringResource(R.string.launch_immersive_mode),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White,
+                            )
+                        }
+                        if (immersiveMode.isEnabled) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 24.dp)
+                                    .clickable { immersiveMode.onVrChange(!immersiveMode.isVrEnabled) },
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(
+                                    checked = immersiveMode.isVrEnabled,
+                                    onCheckedChange = immersiveMode.onVrChange,
+                                    colors = CheckboxDefaults.colors(
+                                        uncheckedColor = Color.White.copy(alpha = 0.7f),
+                                    ),
+                                )
+                                Text(
+                                    text = stringResource(R.string.xr_windows_vr_toggle),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.White,
+                                )
+                            }
+                        }
+                    }
+
+                    if (isDownloading && isPortrait) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (downloadSizeText.isNotEmpty()) {
+                                Text(
+                                    text = downloadSizeText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.9f),
+                                    maxLines = 1,
+                                )
+                            }
+                            if (downloadTimeLeftText.isNotEmpty()) {
+                                Text(
+                                    text = downloadTimeLeftText,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White.copy(alpha = 0.65f),
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                    }
+
+                    if (displayInfo.isLoadingPreferredCopy) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White.copy(alpha = 0.8f),
+                            )
+                            Text(
+                                text = stringResource(R.string.loading_preferred_copy),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.8f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    } else if (displayInfo.showChangePreferredCopy && displayInfo.onChangePreferredCopy != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            displayInfo.preferredCopyStatusText?.let { status ->
+                                Text(
+                                    text = status,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.8f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                            }
+                            Text(
+                                text = stringResource(R.string.change_preferred_copy),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clickable(
+                                    role = Role.Button,
+                                    onClick = displayInfo.onChangePreferredCopy,
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+
+            fullscreenHeroPage?.let { initialPage ->
+                FullscreenStoreMediaDialog(
+                    media = heroMedia,
+                    initialPage = initialPage,
+                    gameName = displayInfo.name,
+                    videoFallback = videoFallback,
+                    autoplay = hasWifiOrEthernet,
+                    onDismiss = { lastPage ->
+                        fullscreenHeroPage = null
+                        heroMediaScope.launch { heroPagerState.scrollToPage(lastPage) }
+                    },
+                )
+            }
+
+            // Rift: under the hero the page's sections run as one scroll; the tabs and LB/RB jump between them.
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(start = sidePadding, end = sidePadding, top = 8.dp),
+            ) {
+                // Update available banner
+                if (isUpdatePending) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CloudDownload,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.update_available),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                            }
+                            Button(
+                                onClick = onUpdateClick,
+                                shape = RoundedCornerShape(50),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = dev.rift.launcher.ui.theme.RiftColors.Primary,
+                                    contentColor = dev.rift.launcher.ui.theme.RiftColors.OnPrimary,
+                                ),
+                            ) {
+                                Text(stringResource(R.string.update_now))
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                GamePageSectionTabs(
+                    sections = pageSections,
+                    current = currentSection,
+                    onSelect = goToSection,
+                    focusable = true,
+                )
+                Spacer(modifier = Modifier.height(28.dp))
+
+                // Rift: the old Details block is gone (Denis 17.10); its facts sit in Overview's side card.
+                val unknown = stringResource(R.string.library_compatibility_unknown)
+                val localDetails = riftStream?.showLocalDetails != false
+                val sizeText = when {
+                    !localDetails -> null
+                    isInstalled -> displayInfo.sizeOnDisk
+                    else -> displayInfo.sizeFromStore
+                }
+                val statusText = when {
+                    !localDetails -> null
+                    isInstalled -> stringResource(R.string.installed)
+                    isDownloading -> stringResource(R.string.installing)
+                    else -> stringResource(R.string.not_installed)
+                }
+                val gameFacts = listOf(
+                    stringResource(R.string.status) to statusText,
+                    stringResource(R.string.size) to sizeText,
+                    stringResource(R.string.play_time) to displayInfo.playtimeText,
+                    stringResource(R.string.last_played) to displayInfo.lastPlayedText,
+                ).mapNotNull { (label, value) -> value?.takeIf { it.isNotBlank() && it != unknown }?.let { label to it } }
+                if (GamePageSection.Overview in pageSections) {
+                    GamePageSectionBlock(GamePageSection.Overview, sectionOffsets, scrollState) {
+                        GamePageOverview(displayInfo, wide = configuration.screenWidthDp >= 840, facts = gameFacts)
+                    }
+                }
+                if (GamePageSection.Media in pageSections) {
+                    GamePageSectionBlock(GamePageSection.Media, sectionOffsets, scrollState) {
+                        Box(Modifier.keepWholeOnFocus()) {
+                            GamePageMediaRow(
+                                media = heroMedia,
+                                sidePadding = sidePadding,
+                                videoFallback = videoFallback,
+                                gameName = displayInfo.name,
+                                onOpen = { fullscreenHeroPage = it },
+                            )
+                        }
+                    }
+                }
+                if (!achievements.isNullOrEmpty()) {
+                    GamePageSectionBlock(GamePageSection.Achievements, sectionOffsets, scrollState) {
+                        Box(Modifier.keepWholeOnFocus()) {
+                            GamePageAchievements(achievements = achievements, wide = configuration.screenWidthDp >= 840)
+                        }
+                    }
+                }
+                if (GamePageSection.Compatibility in pageSections) {
+                    GamePageSectionBlock(GamePageSection.Compatibility, sectionOffsets, scrollState) {
+                // Rift: Wine compatibility is about GameNative's own (PC Games) games; streaming, cloud, Android and emulator pages have none.
+                if (riftStream == null) {
+                Box(Modifier.keepWholeOnFocus()) {
+                app.gamenative.ui.component.RiftCompatibilityCards(
+                    summary = communityCompatibility.summary,
+                    loading = communityCompatibility.loading,
+                    loadError = communityCompatibility.loadError,
+                    onRetry = communityCompatibility.onRetry,
+                    onViewReports = communityCompatibility.onViewReports,
+                    gpuRuns = gameStats?.runsGpu,
+                    profile = communityCompatibility.profile,
+                    profileFromCommunity = communityCompatibility.profileFromCommunity,
+                    onEditProfile = communityCompatibility.onEditProfile,
+                    onRollback = communityCompatibility.onRollback,
+                    best = communityCompatibility.best,
+                    bestLoading = communityCompatibility.bestLoading,
+                    onApplyBest = communityCompatibility.onApplyBest,
+                    wide = LocalConfiguration.current.screenWidthDp >= 840,
+                )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                    }
+                }
+
+                // Rift: the same bottom margin as everywhere, so the last tile shows whole with room under it.
+                Spacer(modifier = Modifier.height(48.dp).navigationBarsPadding())
+            }
+        }
+        }
+
+        // Rift: once the hero scrolls away a slim header keeps the name and the section tabs on top.
+        // Shown only once the page's own tabs have gone under it, so the tabs are never on screen twice.
+        val tabsGonePx = with(LocalDensity.current) { 28.dp.roundToPx() }
+        val showStickyHeader by remember(pageSections) {
+            derivedStateOf {
+                val firstSection = pageSections.firstOrNull()?.let { sectionOffsets[it] }
+                heroHeightPx > 0 && firstSection != null && scrollState.value > firstSection - stickyHeaderPx - tabsGonePx
+            }
+        }
+        AnimatedVisibility(
+            visible = showStickyHeader,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopCenter),
+        ) {
+            GamePageStickyHeader(
+                name = displayInfo.name,
+                sections = pageSections,
+                current = currentSection,
+                onSelect = goToSection,
+                playLabel = when {
+                    riftStream != null -> stringResource(R.string.rift_play)
+                    isInstalled -> stringResource(R.string.rift_play)
+                    else -> null
+                },
+                onPlay = { riftStream?.onStream?.invoke() ?: onDownloadInstallClick() },
+            )
+        }
+        }
+
+        // Rift: no button-hint footer on the game page (Denis 17.10); hints that matter sit inside the screens.
+
+        // Options panel - slides in from right
+        GameOptionsPanel(
+            isOpen = optionsMenuVisible,
+            onDismiss = { optionsMenuVisible = false },
+            options = optionsMenu.toList(),
+            modifier = Modifier.align(Alignment.CenterEnd),
+            onPlay = if (isInstalled && riftStream == null) onStartAction else null,
+            onProperties = { propertiesOpen = true },
+            onHide = if (riftOptionsOnly != null) {
+                {
+                    val hide = riftOptionsOnly.onHide
+                    if (hide != null) {
+                        hide(displayInfo.appId, displayInfo.name)
+                    } else {
+                        dev.rift.launcher.home.RiftHiddenGames.hide(context, displayInfo.appId, displayInfo.name)
+                    }
+                }
+            } else {
+                null
+            },
+        )
+        dev.rift.launcher.home.RiftGameProperties(
+            isOpen = propertiesOpen,
+            title = displayInfo.name,
+            options = optionsMenu.toList(),
+            onDismiss = { propertiesOpen = false },
+        )
+
+        // Ambient mode during downloads
+        if (isDownloading && riftOptionsOnly == null) {
+            AmbientDownloadOverlay(
+                gameName = displayInfo.name,
+                downloadProgress = downloadProgress,
+                iconUrl = displayInfo.iconUrl,
+                originBounds = progressBarBounds,
+                userInteractionCounter = ambientInteractionCounter,
+            )
+        }
+    }
+}
+
+@Composable
+fun GameMigrationDialog(
+    progress: Float,
+    currentFile: String,
+    movedFiles: Int,
+    totalFiles: Int,
+) {
+    AlertDialog(
+        onDismissRequest = {
+            // We don't allow dismissal during move.
+        },
+        icon = { Icon(imageVector = Icons.Default.ContentCopy, contentDescription = null) },
+        title = { Text(text = stringResource(R.string.moving_files)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = stringResource(R.string.library_file_count, movedFiles + 1, totalFiles),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = currentFile,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth(),
+                    progress = { progress },
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "${(progress * 100).roundToInt()}%",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        },
+        confirmButton = {},
+    )
+}
+
+
+// Shared grayscale filter for locked achievement icons.
+private val grayMatrix = ColorMatrix().apply { setToSaturation(0f) }
+
+// Steam leaves some localized names blank.
+private val Achievement.label: String
+    get() = displayName.ifEmpty { name ?: "" }
+
+private fun Achievement.previewIconUrl(): String? =
+    if (isUnlocked) icon.ifEmpty { iconGray } else iconGray ?: icon.ifEmpty { null }
+
+// A still-locked secret achievement, whose details Steam keeps hidden.
+private val Achievement.isHiddenLocked: Boolean
+    get() = hidden && !isUnlocked
+
+// Achievement icon, grayed while locked. Pass masked = true to hide the art of a secret achievement.
+@Composable
+private fun AchievementIcon(ach: Achievement, size: Dp, corner: Dp, masked: Boolean = false) {
+    val box = Modifier
+        .size(size)
+        .clip(RoundedCornerShape(corner))
+        .background(MaterialTheme.colorScheme.surfaceContainer)
+    if (masked) {
+        Box(box, contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = Icons.Filled.Lock,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(size / 2),
+            )
+        }
+    } else {
+        val iconUrl = ach.previewIconUrl()
+        CoilImage(
+            imageModel = { iconUrl ?: "" },
+            imageOptions = ImageOptions(
+                contentScale = ContentScale.Crop,
+                contentDescription = ach.label,
+                colorFilter = if (ach.isUnlocked) null else ColorFilter.colorMatrix(grayMatrix),
+            ),
+            modifier = box,
+        )
+    }
+}
+
+// Progress bar plus "current / max" for stat-linked achievements.
+@Composable
+private fun AchievementProgressBar(current: Float, max: Float, textStyle: TextStyle) {
+    val fraction = if (max > 0f) (current / max).coerceIn(0f, 1f) else 0f
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        GradientProgressBar(
+            progress = fraction,
+            modifier = Modifier.weight(1f),
+            height = 5.dp,
+        )
+        Text(
+            text = "${current.toInt()} / ${max.toInt()}",
+            style = textStyle,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            softWrap = false,
+        )
+    }
+}
+
+// Focusable, clickable achievement row.
+@Composable
+private fun AchievementRow(ach: Achievement, focusRequester: FocusRequester? = null, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+    // Rift: in focus the row is filled with the accent and its text goes dark; no outline.
+    Surface(
+        shape = shape,
+        color = if (focused) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = if (focused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .then(if (focused) Modifier.clip(shape).background(dev.rift.launcher.ui.theme.RiftAccent.current.brush) else Modifier)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            AchievementIcon(ach = ach, size = 40.dp, corner = 6.dp)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = ach.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (ach.description.isNotEmpty()) {
+                    Text(
+                        text = ach.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = androidx.compose.material3.LocalContentColor.current.copy(alpha = 0.72f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                val unlockedAt = ach.getFormattedUnlockDateTime()
+                if (ach.isUnlocked && unlockedAt != null) {
+                    Text(
+                        text = stringResource(R.string.achievements_unlocked_at, unlockedAt.first, unlockedAt.second),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (androidx.compose.material3.LocalContentColor.current == dev.rift.launcher.ui.theme.RiftColors.OnPrimary) androidx.compose.material3.LocalContentColor.current else PluviaTheme.colors.statusInstalled,
+                    )
+                } else if (ach.hasProgress) {
+                    AchievementProgressBar(
+                        current = ach.progressCurrent ?: 0f,
+                        max = ach.progressMax ?: 0f,
+                        textStyle = MaterialTheme.typography.labelSmall,
+                    )
+                }
+            }
+        }
+    }
+}
+
+// Collapsed row standing in for still-locked secret achievements.
+@Composable
+private fun HiddenAchievementsSummary(count: Int, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+    Surface(
+        shape = shape,
+        color = if (focused) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = if (focused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (focused) Modifier.clip(shape).background(dev.rift.launcher.ui.theme.RiftAccent.current.brush) else Modifier)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "+$count",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = pluralStringResource(R.plurals.achievements_hidden_remaining, count, count),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = stringResource(R.string.achievements_hidden_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = androidx.compose.material3.LocalContentColor.current.copy(alpha = 0.72f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+// Full details for one achievement.
+@Composable
+private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
+        },
+        icon = {
+            AchievementIcon(ach = ach, size = 64.dp, corner = 10.dp)
+        },
+        title = {
+            Text(
+                text = ach.label,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (ach.description.isNotEmpty()) {
+                    Text(
+                        text = ach.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                val unlockedAt = ach.getFormattedUnlockDateTime()
+                if (ach.isUnlocked && unlockedAt != null) {
+                    Text(
+                        text = stringResource(R.string.achievements_unlocked_at, unlockedAt.first, unlockedAt.second),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = PluviaTheme.colors.statusInstalled,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else if (ach.hasProgress) {
+                    AchievementProgressBar(
+                        current = ach.progressCurrent ?: 0f,
+                        max = ach.progressMax ?: 0f,
+                        textStyle = MaterialTheme.typography.labelMedium,
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.achievements_locked),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        },
+    )
+}
+
+/**
+ * Rift: achievements as in the mockup: a summary card with the unlocked ring on the left, the unlocked
+ * ones as a two-column grid and the locked ones as small icons on the right. Any tile opens the full list.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun GamePageAchievements(achievements: List<Achievement>, wide: Boolean) {
+    var showAll by remember { mutableStateOf(false) }
+    var detail by remember { mutableStateOf<Achievement?>(null) }
+    val unlocked = remember(achievements) { achievements.filter { it.isUnlocked }.sortedByDescending { it.unlockTimestamp } }
+    val locked = remember(achievements) { achievements.filter { !it.isUnlocked } }
+    val total = achievements.size
+    val percent = if (total > 0) unlocked.size * 100 / total else 0
+    // Rift: three cards of one height side by side (Denis 17.10): progress, latest unlocked, not unlocked yet.
+    // One rule for headings: the section title sits above, each card carries its own small title inside.
+    // The row is as tall as the taller of the first two cards; each card fills that height evenly.
+    val cardModifier: Modifier.() -> Modifier = {
+        clip(RoundedCornerShape(26.dp)).background(dev.rift.launcher.ui.theme.RiftColors.Surface).padding(20.dp)
+    }
+    val cardTitle: @Composable (String) -> Unit = { title ->
+        Text(
+            title.uppercase(Locale.getDefault()),
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp),
+            color = dev.rift.launcher.ui.theme.RiftColors.OnSurfaceVariant,
+            maxLines = 1,
+        )
+    }
+    val summary: @Composable (Modifier) -> Unit = { modifier ->
+        Column(modifier = modifier.cardModifier(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            cardTitle(stringResource(R.string.rift_game_ach_progress))
+            Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.size(150.dp), contentAlignment = Alignment.Center) {
+                    // A plain arc: with round caps and the track gap a few percent looked like a lone drop.
+                    CircularProgressIndicator(
+                        progress = { if (total > 0) unlocked.size / total.toFloat() else 0f },
+                        modifier = Modifier.fillMaxSize(),
+                        color = dev.rift.launcher.ui.theme.RiftColors.Primary,
+                        trackColor = dev.rift.launcher.ui.theme.RiftColors.SurfaceContainerHigh,
+                        strokeWidth = 12.dp,
+                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Butt,
+                        gapSize = 0.dp,
+                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = androidx.compose.ui.text.buildAnnotatedString {
+                                append(unlocked.size.toString())
+                                pushStyle(androidx.compose.ui.text.SpanStyle(color = dev.rift.launcher.ui.theme.RiftColors.Outline, fontSize = 22.sp))
+                                append(" / $total")
+                                pop()
+                            },
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = stringResource(R.string.rift_game_ach_unlocked_percent, percent),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = dev.rift.launcher.ui.theme.RiftColors.OnSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                listOf(
+                    stringResource(R.string.rift_game_ach_last) to (unlocked.firstOrNull()?.getFormattedUnlockDateTime()?.first ?: "–"),
+                    stringResource(R.string.rift_game_ach_left) to locked.size.toString(),
+                ).forEach { (label, value) ->
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(dev.rift.launcher.ui.theme.RiftColors.SurfaceContainer)
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            label.uppercase(Locale.getDefault()),
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp),
+                            color = dev.rift.launcher.ui.theme.RiftColors.OnSurfaceVariant,
+                        )
+                        Text(value, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+        }
+    }
+    val recent: @Composable (Modifier, Boolean) -> Unit = { modifier, stretch ->
+        Column(modifier = modifier.cardModifier(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            cardTitle(stringResource(R.string.rift_game_ach_unlocked))
+            unlocked.take(3).forEach { ach ->
+                val interactionSource = remember { MutableInteractionSource() }
+                val focused by interactionSource.collectIsFocusedAsState()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(if (stretch) Modifier.weight(1f) else Modifier)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(if (focused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(dev.rift.launcher.ui.theme.RiftColors.SurfaceContainer))
+                        .selectable(selected = focused, interactionSource = interactionSource, indication = null) { detail = ach }
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    AchievementIcon(ach, size = 52.dp, corner = 12.dp)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(ach.label, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = if (focused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        val line = ach.getFormattedUnlockDateTime()?.first ?: ach.description
+                        if (line.isNotBlank()) {
+                            Text(line, style = MaterialTheme.typography.bodySmall, color = if (focused) dev.rift.launcher.ui.theme.RiftColors.OnPrimary.copy(alpha = 0.75f) else dev.rift.launcher.ui.theme.RiftColors.OnSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // Locked icons as grey squares of one size, hidden ones last; as many rows as the card's height holds.
+    val lockedOrdered = remember(locked) { locked.sortedBy { it.hidden } }
+    val lockedCard: @Composable (Modifier) -> Unit = { modifier ->
+        Column(modifier = modifier.cardModifier(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            cardTitle(stringResource(R.string.rift_game_ach_locked, locked.size))
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                val gap = 12.dp
+                val columns = ((maxWidth + gap) / (64.dp + gap)).toInt().coerceAtLeast(1)
+                val tile = (maxWidth - gap * (columns - 1)) / columns
+                val rows = ((maxHeight + gap) / (tile + gap)).toInt().coerceAtLeast(1)
+                Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+                    lockedOrdered.take(columns * rows).chunked(columns).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                            row.forEach { ach ->
+                                val interactionSource = remember { MutableInteractionSource() }
+                                val iconFocused by interactionSource.collectIsFocusedAsState()
+                                // No outline: the icon in focus grows and lights up, the rest stay dim.
+                                Box(
+                                    modifier = Modifier
+                                        .size(tile)
+                                        .scale(if (iconFocused) 1.1f else 1f)
+                                        .alpha(if (iconFocused) 1f else 0.6f)
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .selectable(selected = false, interactionSource = interactionSource, indication = null) { detail = ach },
+                                ) {
+                                    AchievementIcon(ach, size = tile, corner = 14.dp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            ActionPillButton(
+                icon = Icons.Filled.EmojiEvents,
+                text = stringResource(R.string.rift_game_ach_all, total),
+                onClick = { showAll = true },
+                modifier = Modifier.fillMaxWidth(),
+                centered = true,
+            )
+        }
+    }
+    if (wide) {
+        Layout(
+            contents = listOf(
+                { summary(Modifier) },
+                { if (unlocked.isNotEmpty()) recent(Modifier, true) },
+                { lockedCard(Modifier) },
+            ),
+            modifier = Modifier.fillMaxWidth(),
+        ) { (summaryM, recentM, lockedM), constraints ->
+            val gap = 20.dp.roundToPx()
+            val avail = constraints.maxWidth
+            val summaryW = 320.dp.roundToPx().coerceAtMost(avail / 3)
+            val hasRecent = recentM.isNotEmpty()
+            val rest = avail - summaryW - gap * (if (hasRecent) 2 else 1)
+            val recentW = if (hasRecent) (rest / 2.2f).toInt() else 0
+            val lockedW = rest - recentW
+            val height = maxOf(
+                summaryM.first().maxIntrinsicHeight(summaryW),
+                if (hasRecent) recentM.first().maxIntrinsicHeight(recentW) else 0,
+                300.dp.roundToPx(),
+            )
+            val summaryP = summaryM.first().measure(Constraints.fixed(summaryW, height))
+            val recentP = recentM.firstOrNull()?.measure(Constraints.fixed(recentW, height))
+            val lockedP = lockedM.first().measure(Constraints.fixed(lockedW, height))
+            layout(avail, height) {
+                summaryP.place(0, 0)
+                var x = summaryW + gap
+                recentP?.let { it.place(x, 0); x += recentW + gap }
+                lockedP.place(x, 0)
+            }
+        }
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            summary(Modifier.fillMaxWidth())
+            if (unlocked.isNotEmpty()) recent(Modifier.fillMaxWidth(), false)
+            lockedCard(Modifier.fillMaxWidth().height(300.dp))
+        }
+    }
+    if (showAll) AchievementsDialog(achievements = achievements, onDismiss = { showAll = false })
+    detail?.let { AchievementDetailDialog(ach = it, onDismiss = { detail = null }) }
+}
+
+@Composable
+private fun AchievementsRow(
+    achievements: List<Achievement>,
+) {
+    val unlockedCount = achievements.count { it.isUnlocked }
+    val totalCount = achievements.size
+    var showDialog by remember { mutableStateOf(false) }
+
+    val sortedAchievements = remember(achievements) {
+        achievements.sortedWith(
+            compareByDescending<Achievement> { it.isUnlocked }
+                .thenByDescending { it.unlockTimestamp },
+        )
+    }
+
+    Spacer(modifier = Modifier.height(10.dp))
+
+    InfoCard(
+        label = stringResource(R.string.achievements),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 36.dp),
+        isCompact = true,
+        onClick = { showDialog = true },
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Fit as many icons as the width allows.
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val minIconSize = 48.dp
+                val spacing = 8.dp
+                val total = sortedAchievements.size
+                val slotsByWidth = ((maxWidth + spacing) / (minIconSize + spacing))
+                    .toInt()
+                    .coerceAtLeast(1)
+                val slots = slotsByWidth.coerceAtMost(total)
+                // A full row divides the width evenly so the strip ends flush with the bar below.
+                val iconSize = if (total >= slotsByWidth) {
+                    (maxWidth - spacing * (slots - 1)) / slots
+                } else {
+                    minIconSize
+                }
+                // Reserve the last slot for a "+N" stack when more achievements exist than fit.
+                val showStack = total > slots
+                val iconCount = if (showStack) (slots - 1).coerceAtLeast(0) else slots
+                Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
+                    sortedAchievements.take(iconCount).forEach { ach ->
+                        AchievementIcon(
+                            ach = ach,
+                            size = iconSize,
+                            corner = 8.dp,
+                            masked = ach.isHiddenLocked,
+                        )
+                    }
+                    if (showStack) {
+                        val next = sortedAchievements[iconCount]
+                        Box(
+                            modifier = Modifier
+                                .size(iconSize)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainer),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (!next.isHiddenLocked) {
+                                val nextUrl = next.previewIconUrl()
+                                CoilImage(
+                                    imageModel = { nextUrl ?: "" },
+                                    imageOptions = ImageOptions(
+                                        contentScale = ContentScale.Crop,
+                                        contentDescription = next.label,
+                                        colorFilter = ColorFilter.colorMatrix(grayMatrix),
+                                    ),
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.55f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = "+${total - iconCount}",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                GradientProgressBar(
+                    progress = if (totalCount > 0) unlockedCount.toFloat() / totalCount else 0f,
+                    modifier = Modifier.weight(1f),
+                    height = 8.dp,
+                )
+                // Floors, so only a full set reads as 100%.
+                val percent = if (totalCount > 0) unlockedCount * 100 / totalCount else 0
+                Text(
+                    text = stringResource(R.string.achievements_progress_count, unlockedCount, totalCount, percent),
+                    style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"),
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+                // Give them a star for getting 100% completion
+                if (totalCount >= 1 && unlockedCount == totalCount) {
+                    Icon(
+                        imageVector = Icons.Filled.Star,
+                        contentDescription = stringResource(R.string.achievements_complete),
+                        tint = Color(0xFFFFD700),
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+        }
+    }
+
+    if (showDialog) {
+        AchievementsDialog(
+            achievements = sortedAchievements,
+            onDismiss = { showDialog = false },
+        )
+    }
+}
+
+@Composable
+private fun AchievementsDialog(
+    achievements: List<Achievement>,
+    onDismiss: () -> Unit,
+) {
+    // Dialog destinations don't animate; fade/slide the content in and play the exit before
+    // dismissing, matching the screenshot gallery.
+    val visibleState = remember { MutableTransitionState(false).apply { targetState = true } }
+    LaunchedEffect(visibleState.isIdle) {
+        if (visibleState.isIdle && !visibleState.currentState) onDismiss()
+    }
+    val dismiss = { visibleState.targetState = false }
+
+    // Secret achievements collapse into one row until revealed. Reveal is session-only.
+    val (hiddenLocked, visibleAchievements) = remember(achievements) {
+        achievements.partition { it.isHiddenLocked }
+    }
+    var revealHidden by remember { mutableStateOf(false) }
+    var showRevealConfirm by remember { mutableStateOf(false) }
+    var detailAchievement by remember { mutableStateOf<Achievement?>(null) }
+    // Keep focus on the freshly revealed achievements instead of jumping to the list top.
+    val revealedFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(revealHidden) {
+        if (revealHidden) {
+            repeat(5) {
+                try {
+                    if (revealedFocusRequester.requestFocus()) return@LaunchedEffect
+                } catch (_: IllegalStateException) {
+                }
+                delay(32)
+            }
+        }
+    }
+
+    Dialog(
+        onDismissRequest = dismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
+    ) {
+        // Drop the window dim so the entrance animation has no scrim flash.
+        val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
+        SideEffect { dialogWindow?.setDimAmount(0f) }
+
+        AnimatedVisibility(
+            visibleState = visibleState,
+            enter = fadeIn(animationSpec = tween(200)) +
+                slideInVertically(animationSpec = tween(200)) { it / 12 },
+            exit = fadeOut(animationSpec = tween(150)) +
+                slideOutVertically(animationSpec = tween(150)) { it / 12 },
+        ) {
+        Surface(
+            color = MaterialTheme.colorScheme.background,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .displayCutoutPadding()
+                    .navigationBarsPadding(),
+            ) {
+                // Header: back + title, mirroring the screenshot gallery.
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    BackButton(onClick = dismiss)
+                    Text(
+                        text = stringResource(R.string.achievements_all_title),
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = 16.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(visibleAchievements) { ach ->
+                        AchievementRow(ach) { detailAchievement = ach }
+                    }
+                    if (hiddenLocked.isNotEmpty()) {
+                        if (revealHidden) {
+                            itemsIndexed(hiddenLocked) { index, ach ->
+                                AchievementRow(
+                                    ach = ach,
+                                    focusRequester = if (index == 0) revealedFocusRequester else null,
+                                ) { detailAchievement = ach }
+                            }
+                        } else {
+                            item {
+                                HiddenAchievementsSummary(count = hiddenLocked.size) {
+                                    showRevealConfirm = true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        }
+    }
+
+    if (showRevealConfirm) {
+        AlertDialog(
+            onDismissRequest = { showRevealConfirm = false },
+            title = { Text(stringResource(R.string.achievements_reveal_title)) },
+            text = { Text(stringResource(R.string.achievements_reveal_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    revealHidden = true
+                    showRevealConfirm = false
+                }) { Text(stringResource(R.string.achievements_reveal_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRevealConfirm = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+    detailAchievement?.let { ach ->
+        AchievementDetailDialog(ach) { detailAchievement = null }
+    }
+}
+
+
+/***********
+ * PREVIEW *
+ ***********/
+
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
+@Preview(
+    device = "spec:width=1920px,height=1080px,dpi=440",
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL,
+) // Odin2 Mini
+@Composable
+private fun Preview_AppScreen() {
+    val context = LocalContext.current
+    PrefManager.init(context)
+    val intent = Intent(context, SteamService::class.java)
+    context.startForegroundService(intent)
+    var isDownloading by remember { mutableStateOf(false) }
+    val fakeApp = fakeAppInfo(1)
+    val displayInfo = GameDisplayInfo(
+        name = fakeApp.name,
+        developer = fakeApp.developer,
+        releaseDate = fakeApp.releaseDate,
+        heroImageUrl = fakeApp.getHeroUrl(),
+        iconUrl = fakeApp.iconUrl,
+        gameId = fakeApp.id,
+        appId = "STEAM_${fakeApp.id}",
+        installLocation = null,
+        sizeOnDisk = null,
+        sizeFromStore = null,
+        lastPlayedText = null,
+        playtimeText = null,
+        storeDetails = StoreGameDetails(
+            description = "Explore a rich world, discover its secrets, and make every play session your own.",
+            reviewPercentage = 92,
+            reviewCount = 12_438,
+            tags = listOf("Adventure", "Story Rich", "Controller"),
+            screenshots = listOf(fakeApp.getHeroUrl()),
+        ),
+    )
+    PluviaTheme {
+        Surface {
+            AppScreenContent(
+                displayInfo = displayInfo,
+                downloadDisplayDetails = DownloadDisplayDetails(
+                    isInstalled = false,
+                    isValidToDownload = true,
+                    isDownloading = isDownloading,
+                    downloadProgress = .50f,
+                    hasPartialDownload = false,
+                    isUpdatePending = false,
+                ),
+                downloadInfo = null,
+                onDownloadInstallClick = { isDownloading = !isDownloading },
+                onPauseResumeClick = { },
+                onDeleteDownloadClick = { },
+                onUpdateClick = { },
+                optionsMenu = AppOptionMenuType.entries.map {
+                    AppMenuOption(
+                        optionType = it,
+                        onClick = { },
+                    )
+                },
+            )
+        }
+    }
+}
