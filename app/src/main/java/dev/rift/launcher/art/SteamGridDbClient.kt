@@ -51,12 +51,27 @@ object SteamGridDbClient {
     /** Resolves [game] to the path part SteamGridDB uses: `steam/<id>` or `game/<id>`. */
     suspend fun resolve(key: String, game: Game, byName: Boolean = false): String {
         if (!byName && game.steamAppId != null && game.steamAppId > 0) return "steam/${game.steamAppId}"
-        val term = game.name.trim()
+        val term = cleanTitle(game.name)
         if (term.isEmpty()) throw ArtError.NotFound
         val url = "$BASE/search/autocomplete".toHttpUrl().newBuilder().addPathSegment(term).build()
         val data = getJson(key, url.toString()).optJSONArray("data")
         val first = data?.optJSONObject(0) ?: throw ArtError.NotFound
         return "game/${first.getLong("id")}"
+    }
+
+    /**
+     * A game's name as people search for it: without the "(USA)", "[!]" and "(Update)" tags dumps carry, without
+     * "v1.2.3" or "[0100...]" ids, underscores read as spaces, a trailing "_ " read as ": " ("Zelda_ Breath" is "Zelda: Breath").
+     */
+    internal fun cleanTitle(name: String): String {
+        val cleaned = name
+            .replace(Regex("\\s*[(\\[][^)\\]]*[)\\]]"), " ")
+            .replace(Regex("_\\s+"), ": ")
+            .replace('_', ' ')
+            .replace(Regex("\\s+v\\d+(\\.\\d+)*\\b"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim(' ', '-', '.', ':')
+        return cleaned.ifEmpty { name.trim() }
     }
 
     /** One page (0-based) of [kind] pictures for the game that [resolve] returned [path] for. */
