@@ -2385,9 +2385,16 @@ private fun HeroBackdrop(item: LibraryItem?) {
         // into a soft blur, then into the background.
         Box(modifier = Modifier.fillMaxSize()) {
             if (heroUrl.isNotEmpty()) {
+                // Without the hint footer the banner, and so its blur band, reaches one footer's height lower,
+                // like the rows below it.
+                val shift = with(LocalDensity.current) { if (HintBarState.shown) 0 else FooterHeight.roundToPx() }
                 val zoomed = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(HERO_HEIGHT_FRACTION)
+                    .layout { measurable, constraints ->
+                        val height = (constraints.maxHeight * HERO_HEIGHT_FRACTION).toInt() + shift
+                        val placeable = measurable.measure(constraints.copy(minHeight = height, maxHeight = height))
+                        layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+                    }
                     .graphicsLayer {
                         scaleX = zoom.value
                         scaleY = zoom.value
