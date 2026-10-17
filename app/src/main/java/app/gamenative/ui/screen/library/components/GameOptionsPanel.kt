@@ -280,20 +280,9 @@ private fun OptionItem(
             .clip(RoundedCornerShape(12.dp))
             .background(
                 if (isFocused) {
-                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                    MaterialTheme.colorScheme.primary
                 } else {
                     Color.Transparent
-                },
-            )
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        1.dp,
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                        RoundedCornerShape(12.dp),
-                    )
-                } else {
-                    Modifier
                 },
             )
             .then(
@@ -317,8 +306,8 @@ private fun OptionItem(
             imageVector = icon,
             contentDescription = null,
             tint = when {
+                isFocused -> MaterialTheme.colorScheme.onPrimary
                 isDestructive -> MaterialTheme.colorScheme.error
-                isFocused -> MaterialTheme.colorScheme.onSurface
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
             },
             modifier = Modifier.size(24.dp),
@@ -329,8 +318,8 @@ private fun OptionItem(
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = if (isFocused) FontWeight.Medium else FontWeight.Normal,
             color = when {
+                isFocused -> MaterialTheme.colorScheme.onPrimary
                 isDestructive -> MaterialTheme.colorScheme.error
-                isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
                 else -> MaterialTheme.colorScheme.onSurface
             },
         )

@@ -59,6 +59,8 @@ fun FocusSurface(
     focusedScale: Float = 1.04f,
     background: (focused: Boolean) -> Color = { if (it) RiftColors.SurfaceContainerHigh else GlassFill },
     focusRequester: FocusRequester? = null,
+    // Rift buttons show focus by the accent fill alone; the old Add PC screen still uses the ring.
+    outline: Boolean = true,
     contentAlignment: Alignment = Alignment.CenterStart,
     content: @Composable BoxScope.(focused: Boolean) -> Unit,
 ) {
@@ -73,7 +75,7 @@ fun FocusSurface(
             }
             .clip(shape)
             .background(background(focused))
-            .border(if (focused) 3.dp else 0.dp, if (focused) Color.White else Color.Transparent, shape)
+            .then(if (focused && outline) Modifier.border(3.dp, Color.White, shape) else Modifier)
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick),
         contentAlignment = contentAlignment,
@@ -97,18 +99,15 @@ fun StreamPillButton(
         shape = RiftShapes.full,
         focusedScale = 1.06f,
         background = { focused ->
-            when {
-                primary -> RiftColors.Primary
-                focused -> RiftColors.SurfaceContainerHigh
-                else -> RiftColors.SurfaceContainer
-            }
+            if (focused) RiftColors.Primary else RiftColors.SurfaceContainer
         },
         focusRequester = focusRequester,
+        outline = false,
         contentAlignment = Alignment.Center,
-    ) {
+    ) { focused ->
         Text(
             text = text,
-            color = if (primary) RiftColors.OnPrimary else RiftColors.OnSurface,
+            color = if (focused) RiftColors.OnPrimary else RiftColors.OnSurface,
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 28.dp),

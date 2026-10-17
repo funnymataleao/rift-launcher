@@ -226,6 +226,7 @@ import dev.rift.launcher.sound.riftKeySounds
 import dev.rift.launcher.stream.PcStreaming
 import dev.rift.launcher.stream.rememberPcStreamingTab
 import dev.rift.launcher.ui.theme.RiftBrush
+import dev.rift.launcher.ui.theme.RiftAccent
 import dev.rift.launcher.ui.theme.RiftColors
 import dev.rift.launcher.ui.theme.RiftGlassTheme
 import dev.rift.launcher.ui.theme.RiftMotion
@@ -2454,18 +2455,18 @@ private fun SearchField(search: SearchState) {
         // Not typing: a plain pill with the query; A opens the keyboard again.
         PillButton(
             onClick = search.onOpen,
-            background = { focused -> solid(if (focused) RiftColors.SurfaceContainerHigh else Color.Transparent) },
+            background = { focused -> solid(if (focused) RiftAccent.current.main else Color.Transparent) },
             modifier = Modifier.widthIn(max = 320.dp).height(RiftSizes.button).clip(RiftShapes.full).blackGlass(RiftShapes.full),
-        ) {
+        ) { focused ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.rift_search), tint = RiftColors.OnSurfaceVariant.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
+                Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.rift_search), tint = if (focused) RiftAccent.current.onAccent else RiftColors.OnSurfaceVariant.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
                 Text(
                     text = search.query.ifEmpty { stringResource(R.string.rift_search) },
-                    color = if (search.query.isEmpty()) RiftColors.OnSurfaceVariant else RiftColors.OnSurface,
+                    color = if (focused) RiftAccent.current.onAccent else if (search.query.isEmpty()) RiftColors.OnSurfaceVariant else RiftColors.OnSurface,
                     fontSize = 16.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -2532,7 +2533,6 @@ private fun PillButton(
             }
             .clip(shape)
             .background(background(focused))
-            .border(if (focused) 3.dp else 0.dp, if (focused) Color.White else Color.Transparent, shape)
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .then(if (focusable) Modifier else Modifier.focusProperties { canFocus = false })
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
@@ -2667,15 +2667,14 @@ private fun SectionTab(title: String, selected: Boolean, onClick: () -> Unit, on
                 report()
             }
             .clip(RiftShapes.full)
-            .background(if (focused && !selected) Color.White.copy(alpha = 0.06f) else Color.Transparent)
-            .border(1.dp, if (focused) Color.White.copy(alpha = 0.3f) else Color.Transparent, RiftShapes.full)
+            .background(if (focused) RiftAccent.current.main else Color.Transparent)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = 18.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = title,
-            color = if (selected) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
+            color = if (focused) RiftAccent.current.onAccent else if (selected) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
