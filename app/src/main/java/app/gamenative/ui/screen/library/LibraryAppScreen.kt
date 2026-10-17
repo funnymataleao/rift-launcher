@@ -1884,9 +1884,12 @@ internal fun AppScreenContent(
     }
 
     // Restore focus when options menu, dialogs
-    LaunchedEffect(optionsMenuVisible, propertiesOpen, dialogOpen) {
+    // Rift: not while Change Art or the game info picker is up over the page: they take the focus (and give it back on closing).
+    val riftCovered = dev.rift.launcher.home.RiftPageCover.covered
+    LaunchedEffect(optionsMenuVisible, propertiesOpen, dialogOpen, riftCovered) {
         if (!optionsMenuVisible && !propertiesOpen && !dialogOpen) {
             kotlinx.coroutines.delay(100) // Brief delay for menu/dialog animation
+            if (dev.rift.launcher.home.RiftPageCover.covered) return@LaunchedEffect
             try {
                 playButtonFocusRequester.requestFocus()
             } catch (_: IllegalStateException) {

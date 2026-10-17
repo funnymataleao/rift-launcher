@@ -1170,6 +1170,8 @@ fun RiftHomeScreen(
         }
     }
     val blur by animateDpAsState(if (overlayOpen) 28.dp else 0.dp, tween(300), label = "backdropBlur")
+    // Change Art and the game info picker over an open game page blur the page, like the home under its menus.
+    val pageBlur by animateDpAsState(if (artItem != null || metaItem != null) 28.dp else 0.dp, tween(300), label = "pageBlur")
     // A menu (or the art picker) over a library blurs the library itself, like the home under its menus.
     val libraryBlur by animateDpAsState(if (libraryOpen && (libraryMenuOpen || gameOptionsOpen || artItem != null || metaItem != null)) 28.dp else 0.dp, tween(300), label = "libraryBlur")
 
@@ -1880,6 +1882,7 @@ fun RiftHomeScreen(
                 scaleOut(MaterialTheme.motionScheme.fastSpatialSpec(), targetScale = PAGE_START_SCALE),
             modifier = Modifier
                 .fillMaxSize()
+                .blur(pageBlur)
                 // Focus stays on the page while it is open; on the way out the home takes it back.
                 .focusRequester(pageFocus)
                 .onFocusChanged { pageFocused = it.hasFocus }
