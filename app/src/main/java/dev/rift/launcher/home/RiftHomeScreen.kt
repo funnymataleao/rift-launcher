@@ -335,7 +335,8 @@ fun RiftHomeScreen(
             switchDirection = 0
         }
     }
-    val switchEntry = if (switchDirection != 0) ShelfEntry.switch(switchDirection) else null
+    // Covers always come in from the right and travel left, like at start (Denis), whichever way the switch goes.
+    val switchEntry = if (switchDirection != 0) ShelfEntry.switch(1) else null
 
     fun selectSection(target: RiftSection) {
         val from = section?.let(sections::indexOf) ?: -1
@@ -671,7 +672,7 @@ fun RiftHomeScreen(
                             HeroLogo(item = focusedStream, modifier = Modifier.weight(1f).graphicsLayer { alpha = intro.value })
                             PcGamesShelf(
                                 shown = streamItems,
-                                rollIn = false,
+                                entry = switchEntry,
                                 libraryState = libraryState,
                                 listState = streamRowState,
                                 cardHeight = cardHeight,
