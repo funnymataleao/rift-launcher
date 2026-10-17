@@ -10,7 +10,7 @@
     <string name="rift_device_group_memory">Memory and screen</string>
     <string name="rift_device_group_components">Components for Windows games</string>
     <string name="rift_device_group_now">Right now</string>
-    <string name="rift_device_group_community">GameNative community database</string>
+    <string name="rift_device_group_community">Community database</string>
     <string name="rift_device_model">Model</string>
     <string name="rift_device_chip">Chip</string>
     <string name="rift_device_android">Android</string>

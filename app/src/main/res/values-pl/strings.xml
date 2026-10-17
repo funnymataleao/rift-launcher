@@ -1010,7 +1010,7 @@
     <string name="settings_accounts_signed_out">Niezalogowano</string>
     <string name="settings_accounts_ea_title">Konto EA</string>
     <string name="settings_accounts_rockstar_title">Konto Rockstar</string>
-    <string name="gamenative_account_title">Konto GameNative</string>
+    <string name="gamenative_account_title">Konto Rift</string>
     <string name="gamenative_account_sign_in">Zaloguj się</string>
     <string name="gamenative_account_sign_in_subtitle">Zaloguj się, aby zobaczyć swój plan i zarządzać subskrypcją.</string>
     <string name="gamenative_account_loading">Wczytywanie danych konta.</string>
@@ -1028,7 +1028,7 @@
     <string name="gamenative_account_managed_kofi">Twój plan pochodzi z Ko-fi. Zarządzaj nim na Ko-fi.</string>
     <string name="gamenative_account_manage_subscription_failed">Nie udało się otworzyć strony płatności. Spróbuj ponownie później.</string>
     <string name="gamenative_account_sign_out">Wyloguj się</string>
-    <string name="gamenative_account_sign_out_subtitle">Wyloguj się z konta GameNative na tym urządzeniu.</string>
+    <string name="gamenative_account_sign_out_subtitle">Wyloguj się z konta Rift na tym urządzeniu.</string>
     <string name="gamenative_account_discord">Discord</string>
     <string name="gamenative_account_discord_not_connected">Nie połączono › Połącz</string>
     <string name="gamenative_account_discord_connected">Połączono › Rozłącz</string>
@@ -1041,7 +1041,7 @@
     <string name="gamenative_account_discord_link_failed">Połączenie z Discordem jest teraz niedostępne. Sprawdź połączenie i spróbuj ponownie.</string>
     <string name="gamenative_account_discord_link_connected_as">Połączono jako %1$s</string>
     <string name="gamenative_account_discord_link_no_browser">Nie znaleziono przeglądarki do otwarcia Discorda. Zeskanuj kod innym urządzeniem.</string>
-    <string name="gamenative_sign_in_title">Zaloguj się do GameNative</string>
+    <string name="gamenative_sign_in_title">Zaloguj się do Rift</string>
     <string name="gamenative_sign_in_scan">Zeskanuj ten kod telefonem, aby się zalogować. Możesz też zalogować się na tym urządzeniu.</string>
     <string name="gamenative_sign_in_code">Kod: %1$s</string>
     <string name="gamenative_sign_in_this_device">Zaloguj się na tym urządzeniu</string>
@@ -1050,13 +1050,13 @@
     <string name="gamenative_sign_in_expired">Ten kod logowania wygasł. Wybierz Spróbuj ponownie, aby otrzymać nowy kod.</string>
     <string name="gamenative_sign_in_failed">Logowanie jest teraz niedostępne. Sprawdź połączenie i spróbuj ponownie.</string>
     <string name="gamenative_sign_in_try_again">Spróbuj ponownie</string>
-    <string name="gamenative_sign_in_success">Zalogowano do GameNative.</string>
+    <string name="gamenative_sign_in_success">Zalogowano do Rift.</string>
     <string name="gamenative_sign_in_no_browser">Nie znaleziono przeglądarki do otwarcia strony logowania. Zamiast tego zeskanuj kod innym urządzeniem.</string>
     <string name="support_title">Pomoc AI</string>
-    <string name="support_subtitle">Twoje rozmowy z pomocą AI GameNative</string>
+    <string name="support_subtitle">Twoje rozmowy z pomocą AI Rift</string>
     <string name="support_refresh">Odśwież</string>
     <string name="support_signed_out_title">Uzyskaj pomoc w grach</string>
-    <string name="support_signed_out_body">Zaloguj się na konto GameNative, aby zobaczyć swoje rozmowy z pomocą i porozmawiać z naszym AI o problemach z grami.</string>
+    <string name="support_signed_out_body">Zaloguj się na konto Rift, aby zobaczyć swoje rozmowy z pomocą i porozmawiać z naszym AI o problemach z grami.</string>
     <string name="support_signed_out_discord">Pomoc możesz też uzyskać na naszym Discordzie</string>
     <string name="support_empty_title">Brak rozmów</string>
     <string name="support_empty_body">Aby ją rozpocząć, wybierz „Uzyskaj pomoc AI” przy grze w bibliotece. Graj, aż wystąpi problem, zamknij grę, a następnie opisz, co poszło nie tak.</string>
@@ -1068,7 +1068,7 @@
     <string name="support_last_activity">Ostatnia aktywność %1$s</string>
     <string name="support_problem_network">Nie udało się połączyć. Sprawdź połączenie i spróbuj ponownie.</string>
     <string name="support_problem_unavailable">Czat pomocy w aplikacji nie jest jeszcze dostępny. Do tego czasu pomoc AI odbywa się na naszym Discordzie.</string>
-    <string name="support_problem_unauthorized">Nie udało się potwierdzić konta GameNative. Spróbuj ponownie później albo wyloguj się i zaloguj ponownie w Ustawieniach.</string>
+    <string name="support_problem_unauthorized">Nie udało się potwierdzić konta Rift. Spróbuj ponownie później albo wyloguj się i zaloguj ponownie w Ustawieniach.</string>
     <string name="support_problem_rate_limited">Wysłano dużo w krótkim czasie. Odczekaj chwilę i spróbuj ponownie.</string>
     <string name="support_problem_not_found">Nie znaleziono tej rozmowy.</string>
     <string name="support_problem_server">Coś poszło nie tak po naszej stronie. Spróbuj ponownie za kilka minut.</string>
@@ -1079,9 +1079,9 @@
     <string name="support_problem_already_answered">Już nam przekazano, jak poszło.</string>
     <string name="support_label_you">Ty</string>
     <string name="support_label_report">Twój raport</string>
-    <string name="support_label_ai">GameNative AI</string>
-    <string name="support_label_staff">%1$s · Zespół GameNative</string>
-    <string name="support_label_team">Zespół GameNative</string>
+    <string name="support_label_ai">Rift AI</string>
+    <string name="support_label_staff">%1$s · Zespół Rift</string>
+    <string name="support_label_team">Zespół Rift</string>
     <string name="support_analysing_first">Nasze AI analizuje Twoje logi. Zwykle trwa to kilka minut. Możesz opuścić ten ekran, a odpowiedź będzie tutaj, gdy wrócisz.</string>
     <string name="support_analysing_followup">Oczekiwanie na odpowiedź. Zwykle trwa to kilka minut.</string>
     <string name="support_outcome_question">Czy to rozwiązało problem?</string>
@@ -1101,7 +1101,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Raporty Pro omijają kolejkę.</string>
     <string name="support_limit_title">Osiągnięto dzienny limit uczciwego użytkowania</string>
-    <string name="support_upgrade_reason_required">Odpowiedzi AI wymagają subskrypcji GameNative. Jeśli masz już subskrypcję na Discordzie lub Ko-fi, połącz Discord w Ustawieniach.</string>
+    <string name="support_upgrade_reason_required">Odpowiedzi AI wymagają subskrypcji Rift. Jeśli masz już subskrypcję na Discordzie lub Ko-fi, połącz Discord w Ustawieniach.</string>
     <string name="support_see_plans">Zobacz plany</string>
     <string name="support_plan_basic_title">$5/miesiąc · Basic</string>
     <string name="support_plan_basic_body">Uruchom swoje gry albo spraw, by działały lepiej.</string>
@@ -1182,13 +1182,13 @@
     <string name="settings_info_send_tip_title">Zostań członkiem</string>
     <string name="settings_info_send_tip_subtitle">Pomoc AI w uruchamianiu gier, wcześniejszy dostęp do wydań i więcej</string>
     <string name="settings_info_ask_tip_title">Oferty członkostwa</string>
-    <string name="settings_info_ask_tip_subtitle">Pokazuj od czasu do czasu oferty członkostwa GameNative</string>
+    <string name="settings_info_ask_tip_subtitle">Pokazuj od czasu do czasu oferty członkostwa Rift</string>
     <string name="settings_info_source_title">Kod źródłowy</string>
     <string name="settings_info_source_subtitle">Zobacz kod źródłowy tego projektu</string>
     <string name="settings_info_libraries_title">Użyte biblioteki</string>
     <string name="settings_info_libraries_subtitle">Zobacz, jakie technologie umożliwiają działanie Rift Launcher</string>
     <string name="settings_info_privacy_title">Polityka prywatności</string>
-    <string name="settings_info_privacy_subtitle">Otwiera link do polityki prywatności GameNative</string>
+    <string name="settings_info_privacy_subtitle">Otwiera link do polityki prywatności Rift</string>
     <string name="settings_info_usage_analytics_title">Analityka użytkowania</string>
     <string name="settings_info_usage_analytics_subtitle">Nigdy nie śledzimy danych osobowych. Wyłączenie tego zatrzymuje nieistotne analizy, jednak podstawowe dane o wydajności gier są nadal zbierane jako uzasadniony interes w celu poprawy kompatybilności.</string>
 
@@ -1298,13 +1298,13 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Ostatnia awaria</string>
     <string name="main_recent_crash_message">Przykro nam!\nDobrze byłoby wiedzieć o ostatnim problemie, który wystąpił.\nMożesz zobaczyć i wyeksportować log ostatniej awarii w ustawieniach aplikacji i dołączyć go jako zgłoszenie w repozytorium projektu na Githubie.\nLink do repozytorium Github znajduje się również w ustawieniach!</string>
-    <string name="main_thank_you_title">Podoba Ci się GameNative?</string>
+    <string name="main_thank_you_title">Podoba Ci się Rift?</string>
     <string name="main_thank_you_message">Zostań członkiem już dziś. Członkowie otrzymują:\n\n• Pomoc AI w uruchamianiu gier\n• Wcześniejszy dostęp do nowych wydań\n• Role premium i ekskluzywne kanały na Discordzie\n• …i więcej\n\nOd 5 $/mies.</string>
     <string name="main_join_kofi">Zostań członkiem</string>
     <string name="pitch_session_title">Podoba Ci się %1$s?</string>
     <string name="pitch_five_star_title">Świetnie, że %1$s działa doskonale!</string>
     <string name="main_share">Udostępnij</string>
-    <string name="main_share_text">Sprawdź GameNative - graj w gry Steam z PC na Androidzie, z pełnym wsparciem zapisów w chmurze!\nhttps://gamenative.app\nDołącz do społeczności: https://discord.gg/2hKv4VfZfE</string>
+    <string name="main_share_text">Sprawdź Rift - graj w gry Steam z PC na Androidzie, z pełnym wsparciem zapisów w chmurze!\n\nDołącz do społeczności: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">Czy gra zadziałała?</string>
     <string name="main_discord_support_message">Dołącz do Discorda, aby uzyskać pomoc w naprawie gry lub poprawie wydajności.</string>
     <string name="main_open_discord">Otwórz Discord</string>
@@ -1785,7 +1785,7 @@
     <string name="review_mostly_negative">W większości negatywne</string>
     <string name="review_overwhelmingly_negative">Przytłaczająco negatywne</string>
     <string name="settings_interface_show_recommendations_title">Pokaż rekomendacje gier</string>
-    <string name="settings_interface_show_recommendations_subtitle">Pokazuje spersonalizowane rekomendacje. Pozostawienie tej opcji włączonej wspiera GameNative.</string>
+    <string name="settings_interface_show_recommendations_subtitle">Pokazuje spersonalizowane rekomendacje. Pozostawienie tej opcji włączonej wspiera Rift.</string>
     <string name="settings_interface_library_tabs_title">Karty biblioteki</string>
     <string name="settings_interface_library_tabs_subtitle">Wybierz, które karty sklepów mają być widoczne w bibliotece.</string>
     <string name="settings_interface_library_tabs_none">Brak kart sklepów</string>
@@ -1848,7 +1848,7 @@
     <string name="game_launch_tip_7">Wskazówka: Używaj sterowników Turnip, aby grać w gry DirectX 12. Obsługa DirectX 12 dla urządzeń, które nie obsługują Turnip, jest obecnie ograniczona.</string>
     <string name="game_launch_tip_8">Wskazówka: Jeśli sterowanie nie działa, włącz Steam Input i sprawdź, czy Twoja aplikacja nie jest zainstalowana w przestrzeni prywatnej.</string>
     <string name="game_launch_tip_9">Wskazówka: Aby dodać pliki do gry, umieść je w folderze Downloads na swoim urządzeniu, naciśnij \"%s\", a znajdą się na dysku D: drive.</string>
-    <string name="game_launch_tip_10">Wskazówka: Zaimportuj konfigurację z gamenative.app/compatibility dla swojego GPU lub rodziny GPU, jeśli nie możesz uruchomić swojej gry.</string>
+    <string name="game_launch_tip_10">Wskazówka: Zaimportuj konfigurację z Rift dla swojego GPU lub rodziny GPU, jeśli nie możesz uruchomić swojej gry.</string>
     <string name="game_launch_tip_11">Wskazówka: Użyj HUD-a wydajności w szybkim menu, gdy chcesz zobaczyć statystyki FPS w grze.</string>
     <string name="game_launch_tip_12">Wskazówka: Jeśli Twoja gra nie ma dźwięku, użyj Proton 10, aby automatycznie wyodrębnić biblioteki DLL XAudio.</string>
     <string name="game_launch_tip_13">Wskazówka: Możesz włączyć lub wyłączyć kontroler ekranowy za pomocą przycisku wstecz na urządzeniu.</string>
@@ -2000,7 +2000,7 @@
     <string name="nexus_oauth_invalid_callback">Rift Launcher odrzucił nieprawidłową odpowiedź logowania z Nexus Mods.</string>
     <string name="nexus_oauth_sign_in_required">Przed użyciem funkcji online Nexus połącz konto Nexus Mods.</string>
     <string name="nexus_oauth_session_unavailable">Autoryzacja Nexus jest tymczasowo niedostępna. Spróbuj ponownie.</string>
-    <string name="nexus_integration_temporarily_unavailable">Obsługa Nexus Mods została tymczasowo wyłączona na czas rejestracji GameNative w Nexus Mods. Nadal możesz zarządzać już zainstalowanymi modami.</string>
+    <string name="nexus_integration_temporarily_unavailable">Obsługa Nexus Mods została tymczasowo wyłączona na czas rejestracji Rift w Nexus Mods. Nadal możesz zarządzać już zainstalowanymi modami.</string>
     <string name="nexus_invalid_nxm_callback">Ta autoryzacja Nexus jest nieprawidłowa, wygasła, została już użyta albo nie odpowiada już aktywnemu żądaniu Rift Launcher. Ponownie rozpocznij pobieranie na ekranie „Zarządzaj modami Nexus”.</string>
     <string name="nexus_nxm_callback_received">Otrzymano autoryzację pobierania z Nexus. Wróć do ekranu „Zarządzaj modami Nexus”, jeśli pobieranie nie zostanie automatycznie wznowione.</string>
     <string name="nexus_nxm_no_active_target">Otwórz ekran „Zarządzaj modami Nexus” dla gry docelowej, a następnie ponownie wybierz Mod Manager Download w Nexus Mods.</string>
@@ -2086,7 +2086,7 @@
     <string name="debug_prerun_title">Uzyskaj pomoc AI</string>
     <string name="debug_prerun_message_1">Uruchamia grę z logowaniem debugowania i po wyjściu udostępnia log naszemu AI na Discordzie. Graj, aż wystąpi problem.</string>
     <string name="debug_prerun_message_2">Odpowiedzi AI są tylko dla subskrybentów.</string>
-    <string name="debug_prerun_message_1_app">Uruchamia grę z logowaniem debugowania. Po wyjściu log trafia do naszego AI, a odpowiedź przychodzi na naszym Discordzie lub w aplikacji, jeśli zalogujesz się na konto GameNative. Graj, aż wystąpi problem.</string>
+    <string name="debug_prerun_message_1_app">Uruchamia grę z logowaniem debugowania. Po wyjściu log trafia do naszego AI, a odpowiedź przychodzi na naszym Discordzie lub w aplikacji, jeśli zalogujesz się na konto Rift. Graj, aż wystąpi problem.</string>
     <string name="debug_prerun_message_2_app">Pierwsza analiza jest darmowa. Kolejne odpowiedzi wymagają planu.</string>
     <string name="debug_prerun_message_1_neutral">Gra uruchamia się z logowaniem debugowania. Po wyjściu log trafia do naszego AI. Graj, aż wystąpi problem.</string>
     <string name="debug_trial_note">Dostępny bezpłatny okres próbny.</string>
@@ -2802,14 +2802,14 @@
     <string name="settings_hide_ai_title">Ukryj funkcje AI</string>
     <string name="settings_hide_ai_subtitle">Ukrywa opcjonalną pomoc AI w debugowaniu</string>
     <string name="settings_info_boot_ads_title">Sponsorowane ekrany ładowania</string>
-    <string name="settings_info_boot_ads_subtitle">Pozostawienie tej opcji włączonej wspiera rozwój GameNative. Nigdy nie spowalnia uruchamiania gier i w żaden sposób na Ciebie nie wpływa.</string>
+    <string name="settings_info_boot_ads_subtitle">Pozostawienie tej opcji włączonej wspiera rozwój Rift. Nigdy nie spowalnia uruchamiania gier i w żaden sposób na Ciebie nie wpływa.</string>
     <string name="settings_info_boot_recs_title">Polecane gry na ekranach ładowania</string>
     <string name="settings_info_boot_recs_subtitle">Pokazuj grę, która może Ci się spodobać, podczas uruchamiania gry, gdy nie ma karty sponsora.</string>
     <string name="boot_rec_badge">Polecane dla Ciebie</string>
     <string name="boot_ad_close_cd">Zamknij tę kartę</string>
     <string name="boot_ad_sheet_title_sponsored">O kartach sponsorów</string>
     <string name="boot_ad_sheet_title_rec">O rekomendacjach</string>
-    <string name="boot_ad_sheet_body_sponsored">Karty sponsorów pomagają finansować pełnoetatową pracę nad GameNative. Możesz to zmienić w każdej chwili w Ustawieniach.</string>
+    <string name="boot_ad_sheet_body_sponsored">Karty sponsorów pomagają finansować pełnoetatową pracę nad Rift. Możesz to zmienić w każdej chwili w Ustawieniach.</string>
     <string name="boot_ad_sheet_body_rec">Rekomendacje są dobierane na podstawie gier, w które grasz. Możesz to zmienić w każdej chwili w Ustawieniach.</string>
     <string name="boot_ad_close_one">Zamknij tę</string>
     <string name="boot_ad_turn_off_sponsored">Wyłącz karty sponsorów</string>
@@ -3030,7 +3030,7 @@
     <string name="support_reply_ready">Odpowiedź Pomocy AI jest gotowa</string>
     <string name="support_reply_open">Otwórz</string>
     <string name="support_wait_channel_name">Status odpowiedzi Pomocy AI</string>
-    <string name="support_wait_channel_description">Wyświetlane, gdy GameNative czeka na odpowiedź na Twój raport.</string>
+    <string name="support_wait_channel_description">Wyświetlane, gdy Rift czeka na odpowiedź na Twój raport.</string>
     <string name="support_replies_channel_name">Odpowiedzi Pomocy AI</string>
     <string name="support_replies_channel_description">Informuje, gdy odpowiedź na Twój raport jest gotowa.</string>
     <string name="support_wait_title">Oczekiwanie na odpowiedź Pomocy AI</string>

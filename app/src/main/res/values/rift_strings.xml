@@ -45,7 +45,7 @@
     <string name="rift_settings_downloads">Downloads and storage</string>
     <string name="rift_settings_downloads_summary">Network, speed, install location and Steam server</string>
     <string name="rift_settings_accounts">PC stores</string>
-    <string name="rift_settings_accounts_summary">GameNative account, Steam, Epic, GOG and others</string>
+    <string name="rift_settings_accounts_summary">Steam, Epic, GOG and other accounts</string>
     <string name="rift_settings_about">About</string>
     <string name="rift_settings_about_summary">Version, source code, privacy and support</string>
     <string name="rift_settings_debug">Debug</string>
@@ -399,7 +399,7 @@
     <string name="rift_settings_packs_preview_hint">The play button on the right plays a pack before you keep it. A pack you have not downloaded yet is fetched for listening and removed again.</string>
     <string name="rift_settings_packs_remove">Delete</string>
     <string name="rift_community_source_rift">Rift database</string>
-    <string name="rift_community_source_gamenative">GameNative database</string>
+    <string name="rift_community_source_gamenative">Community database</string>
     <!-- Quick access panel in game -->
     <string name="rift_quick_menu_performance">Performance</string>
     <string name="rift_quick_menu_frame_generation">Frame generation</string>

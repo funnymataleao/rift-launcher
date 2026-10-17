@@ -9,7 +9,7 @@
     <string name="rift_device_group_memory">Память и экран</string>
     <string name="rift_device_group_components">Компоненты для Windows-игр</string>
     <string name="rift_device_group_now">Сейчас</string>
-    <string name="rift_device_group_community">База сообщества GameNative</string>
+    <string name="rift_device_group_community">База сообщества</string>
     <string name="rift_device_model">Модель</string>
     <string name="rift_device_chip">Чип</string>
     <string name="rift_device_android">Android</string>

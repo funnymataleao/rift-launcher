@@ -44,7 +44,7 @@
     <string name="rift_settings_downloads">Загрузки и хранилище</string>
     <string name="rift_settings_downloads_summary">Сеть, скорость, место установки и сервер Steam</string>
     <string name="rift_settings_accounts">Магазины ПК</string>
-    <string name="rift_settings_accounts_summary">Аккаунт GameNative, Steam, Epic, GOG и другие</string>
+    <string name="rift_settings_accounts_summary">Аккаунты Steam, Epic, GOG и другие</string>
     <string name="rift_settings_about">О приложении</string>
     <string name="rift_settings_about_summary">Версия, исходный код, приватность и поддержка</string>
     <string name="rift_settings_debug">Отладка</string>
@@ -394,7 +394,7 @@
     <string name="rift_settings_packs_preview_hint">Кнопка справа проигрывает пак до выбора. Нескачанный пак временно загружается для прослушивания и потом удаляется.</string>
     <string name="rift_settings_packs_remove">Удалить</string>
     <string name="rift_community_source_rift">База Rift</string>
-    <string name="rift_community_source_gamenative">База GameNative</string>
+    <string name="rift_community_source_gamenative">База сообщества</string>
     <!-- Шторка в игре -->
     <string name="rift_quick_menu_performance">Производительность</string>
     <string name="rift_quick_menu_frame_generation">Генерация кадров</string>

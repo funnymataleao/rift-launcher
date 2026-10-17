@@ -80,7 +80,7 @@ fun ScConfigManagerDialog(storeKey: String, onChanged: () -> Unit, onDismiss: ()
                 return@launch
             }
             val parsed = withContext(Dispatchers.IO) { ScConfigStore.validate(text) }
-            if (parsed == null) { SnackbarManager.show("Not a Steam .vdf or exported GameNative config"); return@launch }
+            if (parsed == null) { SnackbarManager.show("Not a Steam .vdf or exported Rift config"); return@launch }
             // Fallback when the file name is unavailable: the vdf's top-level `title`, then a generic label.
             val title = Regex("\"title\"\\s+\"([^\"#][^\"]*)\"").find(text)?.groupValues?.getOrNull(1)?.trim()
             val name = fileName ?: title?.takeIf { it.isNotBlank() } ?: "Imported"
