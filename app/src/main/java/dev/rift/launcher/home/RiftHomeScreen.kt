@@ -2880,7 +2880,8 @@ internal fun <T> GlassTabs(
     val capsuleX = remember { Animatable(0f) }
     val capsuleW = remember { Animatable(0f) }
     var placed by remember { mutableStateOf(false) }
-    val spec = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
+    // The capsule keeps up with the page change: the fast spring, no slow glide.
+    val spec = MaterialTheme.motionScheme.fastSpatialSpec<Float>()
     val target = selected?.let { places[it] }
     val base = origin
     LaunchedEffect(target, base) {
@@ -2899,10 +2900,10 @@ internal fun <T> GlassTabs(
     val scroll = rememberScrollState()
     var viewport by remember { mutableStateOf(0) }
     LaunchedEffect(target, base, viewport) {
-        if (target == null || base == null || viewport == 0) return@LaunchedEffect
+        if (target == null || base == null || viewport == 0 || scroll.maxValue == 0) return@LaunchedEffect
         val left = target.tab.x - base.x
         val want = (left - (viewport - target.tabSize.width) / 2f).roundToInt().coerceIn(0, scroll.maxValue)
-        if (scroll.value != want) scroll.animateScrollTo(want, tween(250))
+        if (scroll.value != want) scroll.animateScrollTo(want, tween(120))
     }
     Box(modifier = Modifier.onSizeChanged { viewport = it.width }.horizontalScroll(scroll)) {
     Box(
