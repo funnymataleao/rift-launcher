@@ -212,6 +212,7 @@ import dev.rift.launcher.art.ArtKind
 import dev.rift.launcher.art.GameArtStore
 import dev.rift.launcher.meta.RiftAutoMeta
 import dev.rift.launcher.ui.BlackGlass
+import dev.rift.launcher.ui.DrawerBackdrop
 import dev.rift.launcher.ui.LocalGlassBackdrop
 import dev.rift.launcher.ui.blackGlass
 import dev.rift.launcher.art.LocalRiftArtPicker
@@ -1750,6 +1751,7 @@ fun RiftHomeScreen(
                 LibraryOptionsPanel(
                     isOpen = panelOpen,
                     onDismiss = { viewModel.onOptionsPanelToggle(false) },
+                    glassBackdrop = remember(backdrop) { DrawerBackdrop.Layer(backdrop) },
                     selectedFilters = libraryState.appInfoSortType,
                     onFilterChanged = viewModel::onFilterChanged,
                     currentSortOption = libraryState.currentSortOption,
@@ -1823,6 +1825,8 @@ fun RiftHomeScreen(
                 RiftSystemMenu(
                     isOpen = systemMenuOpen,
                     onDismiss = { systemMenuOpen = false },
+                    // The panel's glass blurs the home behind it.
+                    glassBackdrop = remember(backdrop) { DrawerBackdrop.Layer(backdrop) },
                     onNavigateRoute = { route ->
                         systemMenuOpen = false
                         if (route == PluviaScreen.Support.route) {

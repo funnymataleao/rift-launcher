@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.screen.library.components.SystemMenu
+import dev.rift.launcher.ui.DrawerBackdrop
 
 /**
  * GameNative's system menu (profile, settings, AI Help, downloads, Steam): Rift's right, quick access panel,
@@ -18,6 +19,7 @@ fun RiftSystemMenu(
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
     isOffline: Boolean,
+    glassBackdrop: DrawerBackdrop? = null,
 ) {
     SystemMenu(
         isOpen = isOpen,
@@ -32,5 +34,6 @@ fun RiftSystemMenu(
         showCloseButton = false,
         showCommunityItems = false,
         showStoreAccounts = false,
+        glassBackdrop = glassBackdrop,
     )
 }

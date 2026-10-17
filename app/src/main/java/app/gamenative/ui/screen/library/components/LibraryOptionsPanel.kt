@@ -1,5 +1,7 @@
 package app.gamenative.ui.screen.library.components
 
+import dev.rift.launcher.ui.DrawerBackdrop
+import dev.rift.launcher.ui.drawerGlass
 import android.content.res.Configuration
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
@@ -131,6 +133,8 @@ fun LibraryOptionsPanel(
     // whether the panel holds focus, so input never leaks to the covers under the blur.
     focusAsk: Int = 0,
     onFocusChanged: (Boolean) -> Unit = {},
+    // Rift: the glass of every Rift panel, blurring the home behind it.
+    glassBackdrop: DrawerBackdrop? = null,
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
     // Accordion: only one group is open at a time. B closes the open group first, then the panel.
@@ -191,10 +195,11 @@ fun LibraryOptionsPanel(
             Surface(
                 modifier = Modifier
                     .width(adaptivePanelWidth(300.dp))
-                    .fillMaxHeight(),
+                    .fillMaxHeight()
+                    .clip(panelShape)
+                    .drawerGlass(glassBackdrop),
                 shape = panelShape,
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 2.dp,
+                color = Color.Transparent,
                 shadowElevation = panelShadowElevation,
             ) {
                 Column(

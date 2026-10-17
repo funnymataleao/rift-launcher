@@ -38,6 +38,7 @@ import app.gamenative.R
 import dev.rift.launcher.home.RiftControls
 import dev.rift.launcher.stream.StreamMenu
 import dev.rift.launcher.stream.StreamMenuRow
+import dev.rift.launcher.ui.rememberWindowBackdrop
 import org.json.JSONObject
 import timber.log.Timber
 
@@ -190,6 +191,8 @@ class XcloudActivity : ComponentActivity() {
                         onEndStream = ::finish,
                         focusRow = StreamMenuRow.CLOUD_FIRST,
                         extraSettings = if (signInMode) null else { requester -> CloudQuickSettings(requester, ::openXboxMenu, ::applyLive) },
+                        // The page behind the panel, copied as it opens, for the panel's glass to blur.
+                        backdrop = rememberWindowBackdrop(menuOpen),
                     )
                 }
             }
