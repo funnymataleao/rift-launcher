@@ -309,6 +309,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        // Home pressed while Rift is the home app: back to the main screen, nothing is recreated.
+        if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) {
+            lifecycleScope.launch { PluviaApp.events.emit(AndroidEvent.HomePressed) }
+            return
+        }
         handleLaunchIntent(intent, isNewIntent = true)
     }
 

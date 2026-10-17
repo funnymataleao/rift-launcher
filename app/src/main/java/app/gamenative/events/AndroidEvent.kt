@@ -7,6 +7,8 @@ import java.util.EnumSet
 
 interface AndroidEvent<T> : Event<T> {
     data object BackPressed : AndroidEvent<Unit>
+    /** Rift is the home app and Home was pressed while it was already open. */
+    data object HomePressed : AndroidEvent<Unit>
     data class SetSystemUIVisibility(val visible: Boolean) : AndroidEvent<Unit>
     data class SetAllowedOrientation(val orientations: EnumSet<Orientation>) : AndroidEvent<Unit>
     data object StartOrientator : AndroidEvent<Unit>
