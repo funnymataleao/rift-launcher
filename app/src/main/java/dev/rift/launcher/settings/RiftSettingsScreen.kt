@@ -20,6 +20,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -74,7 +79,10 @@ import dev.rift.launcher.ui.theme.RiftTheme
 
 private val RailInset = 8.dp
 private val RailItemHeight = 52.dp
-private val RailWidth = 372.dp
+private val RailGap = 14.dp
+private val RailDot = 8.dp
+private val RailEndInset = 14.dp
+private val CaptionInset = 18.dp
 private val ContentMaxWidth = 860.dp
 
 /**
@@ -141,6 +149,7 @@ fun RiftSettingsScreen(
                 .fillMaxSize()
                 .background(RiftColors.Background)
                 .statusBarsPadding()
+                .navigationBarsPadding()
                 .displayCutoutPadding()
                 .onPreviewKeyEvent { event ->
                     if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -198,11 +207,27 @@ private fun SectionRail(
     onFocused: (Int) -> Unit,
     onSelect: (Int) -> Unit,
 ) {
+    // As wide as the longest row (its name set in the selected weight, plus the icon, the dot and the
+    // insets), so the sidebar takes no more room than it needs.
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val rowStyle = TextStyle(fontSize = 18.5.sp, fontWeight = FontWeight.ExtraBold)
+    val captionStyle = TextStyle(fontSize = 12.5.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
+    val titles = sections.map { stringResource(it.titleRes) }
+    val captions = sections.map { stringResource(it.group.titleRes).uppercase() }
+    val railWidth = with(density) {
+        val rows = titles.maxOf { measurer.measure(it, rowStyle, maxLines = 1).size.width.toDp() }
+        val caption = captions.maxOf { measurer.measure(it, captionStyle, maxLines = 1).size.width.toDp() }
+        maxOf(
+            RailInset + (RailItemHeight - RailInset * 2) + RailGap + rows + RailGap + RailDot + RailEndInset,
+            CaptionInset + caption + RailEndInset,
+        )
+    }
     Column(
         modifier = Modifier
             .fillMaxHeight()
             .padding(start = 32.dp, end = 12.dp)
-            .widthIn(min = RailWidth, max = RailWidth)
+            .width(railWidth)
             .verticalScroll(rememberScrollState())
             .focusGroup()
             .padding(top = 12.dp, bottom = 24.dp),
@@ -216,7 +241,7 @@ private fun SectionRail(
                     fontSize = 12.5.sp,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 1.5.sp,
-                    modifier = Modifier.padding(start = 18.dp, top = if (index == 0) 4.dp else 22.dp, bottom = 6.dp),
+                    modifier = Modifier.padding(start = CaptionInset, top = if (index == 0) 4.dp else 22.dp, bottom = 6.dp),
                 )
             }
             RailItem(
@@ -261,9 +286,9 @@ private fun RailItem(
             )
             .clickable(interactionSource = interaction, indication = null, role = Role.Tab, onClick = onClick)
             // The icon disc fills the height minus one inset, so left, top and bottom are the same.
-            .padding(start = RailInset, end = 18.dp, top = RailInset, bottom = RailInset),
+            .padding(start = RailInset, end = RailEndInset, top = RailInset, bottom = RailInset),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(RailGap),
     ) {
         Box(
             modifier = Modifier
@@ -290,7 +315,7 @@ private fun RailItem(
         if (selected) {
             Box(
                 modifier = Modifier
-                    .size(8.dp)
+                    .size(RailDot)
                     .clip(CircleShape)
                     .background(if (focused) plateText(true) else RiftColors.Primary),
             )
@@ -314,26 +339,6 @@ private fun SectionPane(
             .fillMaxHeight()
             .padding(start = 20.dp, end = 48.dp),
     ) {
-        Row(
-            modifier = Modifier.padding(top = 26.dp, bottom = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            SectionBadge(section.icon, size = 68.dp)
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = stringResource(section.titleRes),
-                    color = RiftColors.OnSurface,
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                )
-                Text(
-                    text = stringResource(section.summaryRes),
-                    color = RiftColors.OnSurfaceVariant,
-                    fontSize = 16.5.sp,
-                )
-            }
-        }
         key(section) {
             Box(
                 modifier = Modifier
@@ -351,7 +356,7 @@ private fun SectionPane(
                         .widthIn(max = ContentMaxWidth)
                         .fillMaxHeight()
                         .verticalScroll(rememberScrollState())
-                        .padding(top = 6.dp, bottom = 32.dp, start = 4.dp, end = 4.dp),
+                        .padding(top = 16.dp, bottom = 56.dp, start = 4.dp, end = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(34.dp),
                 ) {
                     when (section) {

@@ -216,7 +216,7 @@ private fun ProfileRow(title: String, value: String, subtitle: String? = null) {
             .fillMaxWidth()
             .plateFill(focused)
             .focusable(interactionSource = interaction)
-            .heightIn(min = 72.dp)
+            .heightIn(min = RowMinHeight)
             .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),

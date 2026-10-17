@@ -3,6 +3,7 @@ package dev.rift.launcher.settings
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AspectRatio
 import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Cast
 import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.Dns
@@ -321,23 +322,21 @@ private const val VIBEPOLLO_DOWNLOAD_URL = "https://github.com/Nonary/Vibepollo/
 private fun PcBlock(pairedPcs: List<String>, onOpenPcPairing: (() -> Unit)?) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
-    if (pairedPcs.isNotEmpty()) {
-        SettingsGroup(title = stringResource(R.string.rift_settings_group_pcs)) {
-            pairedPcs.forEach { name ->
-                InfoRow(
-                    title = name,
-                    value = stringResource(R.string.rift_settings_pc_paired),
-                    icon = Icons.Rounded.Computer,
-                )
-            }
+    SettingsGroup(title = if (pairedPcs.isNotEmpty()) stringResource(R.string.rift_settings_group_pcs) else null) {
+        pairedPcs.forEach { name ->
+            InfoRow(
+                title = name,
+                value = stringResource(R.string.rift_settings_pc_paired),
+                icon = Icons.Rounded.Computer,
+            )
         }
+        LinkRow(
+            title = stringResource(R.string.rift_settings_stream_add_pc),
+            subtitle = stringResource(R.string.rift_settings_stream_add_pc_summary),
+            icon = Icons.Rounded.Add,
+            onClick = { onOpenPcPairing?.invoke() ?: PcStreaming.openAddPc(context) },
+        )
     }
-    BigActionCard(
-        title = stringResource(R.string.rift_settings_stream_add_pc),
-        subtitle = stringResource(R.string.rift_settings_stream_add_pc_summary),
-        icon = Icons.Rounded.Computer,
-        onClick = { onOpenPcPairing?.invoke() ?: PcStreaming.openAddPc(context) },
-    )
     val streamTab = if (pairedPcs.isNotEmpty()) rememberPcStreamingTab() else null
     // No PC games, so the home has no PC streaming tab: how to get them there. With PCs, only once
     // their apps have loaded, so the hint does not flash while they load.

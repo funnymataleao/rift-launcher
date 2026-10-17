@@ -56,12 +56,14 @@ internal fun CloudSettings() {
             )
         }
     } else {
-        BigActionCard(
-            title = stringResource(R.string.rift_cloud_sign_in),
-            subtitle = stringResource(R.string.rift_cloud_sign_in_summary),
-            icon = Icons.Rounded.Cloud,
-            onClick = { XcloudActivity.signIn(context) },
-        )
+        SettingsGroup {
+            LinkRow(
+                title = stringResource(R.string.rift_cloud_sign_in),
+                subtitle = stringResource(R.string.rift_cloud_sign_in_summary),
+                icon = Icons.Rounded.Cloud,
+                onClick = { XcloudActivity.signIn(context) },
+            )
+        }
     }
 
     SettingsGroup(title = stringResource(R.string.rift_cloud_how_title)) {

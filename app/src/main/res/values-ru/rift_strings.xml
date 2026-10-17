@@ -326,13 +326,13 @@
     <string name="rift_accent_lime">Салатовый</string>
     <string name="rift_accent_peach">Персиковый</string>
     <string name="rift_accent_coral">Коралловый</string>
-    <string name="rift_accent_lilac">Сиреневый</string>
+    <string name="rift_accent_aqua">Бирюзовый</string>
     <string name="rift_accent_pearl">Перламутр</string>
     <string name="rift_accent_lemonlime">Лимон и салат</string>
     <string name="rift_accent_aurora">Аврора</string>
     <string name="rift_accent_sunset">Закат</string>
     <string name="rift_accent_ocean">Океан</string>
-    <string name="rift_accent_blush">Рассвет</string>
+    <string name="rift_accent_tropic">Тропики</string>
     <string name="rift_settings_tabs_hint">Потяни вкладку пальцем. С геймпада: A берёт вкладку, стрелки вверх и вниз двигают, A ставит, B возвращает как было.</string>
     <string name="rift_settings_tab_grabbed">Двигай стрелками, A поставить</string>
     <string name="rift_settings_tab_drag">Переставить</string>
