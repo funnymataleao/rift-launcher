@@ -182,6 +182,7 @@ import dev.rift.launcher.cloud.CloudLibrary
 import dev.rift.launcher.cloud.XcloudAccount
 import dev.rift.launcher.cloud.rememberCloudStreamingTab
 import dev.rift.launcher.emulators.EmulatorLibrary
+import dev.rift.launcher.art.ArtKind
 import dev.rift.launcher.art.GameArtStore
 import dev.rift.launcher.ui.BlackGlass
 import dev.rift.launcher.ui.LocalGlassBackdrop
@@ -919,6 +920,9 @@ fun RiftHomeScreen(
                             } else if (section == RiftSection.PcStreaming) {
                                 // Streamed games have no options panel; Y goes straight to their art.
                                 focusedStream?.let(::openArt)
+                            } else if (section == RiftSection.AndroidGames) {
+                                // Android games have no options panel either: Y picks their art.
+                                focusedAndroid?.let { openArt(it.toArtItem()) }
                             } else if (section == RiftSection.Emulators) {
                                 // Emulator games the same: Y picks their art.
                                 focusedEmulator?.let(::openArt)
@@ -1912,37 +1916,47 @@ private fun AndroidShelf(
                 },
                 onClick = { onOpen(game) },
                 cover = {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Brush.verticalGradient(listOf(RiftColors.SurfaceContainerHigh, RiftColors.Surface)))
-                            .padding(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        if (icon != null) {
+                    val art = rememberAndroidArt(game)
+                    if (art.isNotEmpty()) {
+                        CoverImage(urls = listOf(art), contentDescription = game.label, modifier = Modifier.fillMaxSize())
+                    }
+                    // The app's icon until a cover is found (or when there is none): its own colours behind it, no name.
+                    if (art.isEmpty() && icon != null) {
+                        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+                            Image(
+                                bitmap = icon.asImageBitmap(),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize().blur(40.dp).graphicsLayer { alpha = 0.45f },
+                            )
                             Image(
                                 bitmap = icon.asImageBitmap(),
                                 contentDescription = game.label,
-                                modifier = Modifier.fillMaxWidth(0.55f).clip(RiftShapes.card),
+                                modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.6f).clip(RiftShapes.card),
                             )
                         }
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Text(
-                            text = game.label,
-                            color = RiftColors.OnSurface,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            textAlign = TextAlign.Center,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
                     }
                 },
             )
             }
         }
     }
+}
+
+/** The cover of an Android game: the one picked in Change Art, else the first SteamGridDB finds for its name. Empty while there is none. */
+@Composable
+private fun rememberAndroidArt(game: AndroidGame): String {
+    val context = LocalContext.current
+    val version by GameArtStore.version.collectAsStateWithLifecycle()
+    val id = remember(game.packageName) { game.toArtItem().appId }
+    val picked = remember(id, version) { GameArtStore.get(context, id, ArtKind.Capsule) }
+    val found by produceState(GameArtStore.autoCached(context, id), id, picked) {
+        if (picked.isEmpty()) {
+            val key = RiftPrefs.of(context).steamGridDbKey
+            value = withContext(Dispatchers.IO) { GameArtStore.auto(context, id, game.label, key) }
+        }
+    }
+    return picked.ifEmpty { found }
 }
 
 @Composable

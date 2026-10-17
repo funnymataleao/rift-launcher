@@ -7,6 +7,7 @@ import app.gamenative.data.LibraryItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -87,6 +88,51 @@ object GameArtStore {
         prefs(context).edit { putString(key(appId, kind), saved ?: remoteUrl) }
         pickCount = -1
         _version.value++
+    }
+
+    // --- Pictures found without being asked (Android games have no store art of their own) ---
+    private const val AUTO_PREFS = "rift_game_art_auto"
+    private const val AUTO_NONE = "none:"
+    private const val AUTO_RETRY_MS = 24 * 60 * 60 * 1000L
+    private val autoSlots = kotlinx.coroutines.sync.Semaphore(2)
+
+    private fun autoPrefs(context: Context): SharedPreferences =
+        context.applicationContext.getSharedPreferences(AUTO_PREFS, Context.MODE_PRIVATE)
+
+    /** The cover found earlier for [appId] by [auto], or empty. Instant; for the first frame. */
+    fun autoCached(context: Context, appId: String): String =
+        autoPrefs(context).getString(appId, "").orEmpty().takeUnless { it.startsWith(AUTO_NONE) }.orEmpty()
+
+    /**
+     * A vertical cover for a game that has none: SteamGridDB's first result for [name]. Saved on the device
+     * (a game SteamGridDB does not know is remembered for a day). Empty when there is no key, no result or no network.
+     */
+    suspend fun auto(context: Context, appId: String, name: String, key: String): String {
+        val p = autoPrefs(context)
+        val known = p.getString(appId, "").orEmpty()
+        if (known.startsWith(AUTO_NONE)) {
+            if (System.currentTimeMillis() - known.removePrefix(AUTO_NONE).toLongOrNull().let { it ?: 0L } < AUTO_RETRY_MS) return ""
+        } else if (known.isNotEmpty()) {
+            return known
+        }
+        if (key.isBlank()) return ""
+        return autoSlots.withPermit {
+            try {
+                val path = SteamGridDbClient.resolve(key, SteamGridDbClient.Game(null, name))
+                val option = SteamGridDbClient.options(key, path, ArtKind.Capsule, 0).firstOrNull()
+                    ?: throw ArtError.NotFound
+                val saved = withContext(Dispatchers.IO) { download(context, "auto|$appId", ArtKind.Capsule, option.url) }
+                p.edit { putString(appId, saved) }
+                saved
+            } catch (e: ArtError) {
+                if (e === ArtError.NotFound) p.edit { putString(appId, AUTO_NONE + System.currentTimeMillis()) }
+                ""
+            } catch (e: java.io.IOException) {
+                ""
+            } catch (e: IllegalStateException) {
+                ""
+            }
+        }
     }
 
     /** Back to the store's own picture of [kind]. */
