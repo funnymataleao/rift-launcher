@@ -569,6 +569,8 @@ fun RiftHomeScreen(
     val artOpener = remember<(LibraryItem) -> Unit> { { item -> latestOpenArt.value(item) } }
     // B on the home: every installed Android app in a grid, Beacon style.
     var appsOpen by rememberSaveable { mutableStateOf(false) }
+    val appsFocus = remember { FocusRequester() }
+    var appsFocused by remember { mutableStateOf(false) }
     // Load the app list ahead (after start-up), so B opens the grid at once.
     LaunchedEffect(Unit) {
         delay(APPS_PRELOAD_DELAY_MS)
@@ -628,6 +630,15 @@ fun RiftHomeScreen(
             } else if (artItem != null) {
                 // The art picker has its own keys.
                 false
+            } else if (appsOpen && !appsFocused && isBackKey) {
+                // B with the apps grid open but its focus gone (the focused tile scrolled away): no key
+                // reaches the grid, so the first B closes it from here (Denis: it took a second B).
+                if (ev.action == KeyEvent.ACTION_UP) appsOpen = false
+                true
+            } else if (appsOpen && !appsFocused && ev.action == KeyEvent.ACTION_DOWN) {
+                if (!composeView.hasFocus()) composeView.requestFocus()
+                runCatching { appsFocus.requestFocus() }
+                true
             } else if (openedAppId != null && !pageFocused && isBackKey) {
                 // B on the game page with focus somewhere else: still back to the home.
                 if (ev.action == KeyEvent.ACTION_UP) latestClosePage.value()
@@ -1125,7 +1136,12 @@ fun RiftHomeScreen(
                         }
                     }
                 }
-                RiftAppsGrid(isOpen = appsOpen, onDismiss = { appsOpen = false })
+                RiftAppsGrid(
+                    isOpen = appsOpen,
+                    onDismiss = { appsOpen = false },
+                    focusRequester = appsFocus,
+                    onFocusChanged = { appsFocused = it },
+                )
                 dev.rift.launcher.assistant.optimize.RiftOptimizeHost()
                 RiftSystemMenu(
                     isOpen = systemMenuOpen,

@@ -59,6 +59,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -81,22 +82,29 @@ import kotlinx.coroutines.withContext
 /**
  * B on the home, Beacon style: every installed Android app in a grid over the blurred home.
  * A opens an app, B closes the grid. Same app list as the Android games picker in settings.
+ * [focusRequester] puts focus back into the grid, [onFocusChanged] says whether it has it: a tile
+ * scrolled far away can take the focus with it, and then the home sends keys here itself.
  */
 @Composable
-fun RiftAppsGrid(isOpen: Boolean, onDismiss: () -> Unit) {
+fun RiftAppsGrid(
+    isOpen: Boolean,
+    onDismiss: () -> Unit,
+    focusRequester: FocusRequester = remember { FocusRequester() },
+    onFocusChanged: (Boolean) -> Unit = {},
+) {
     BackHandler(enabled = isOpen) { onDismiss() }
     AnimatedVisibility(
         visible = isOpen,
         enter = fadeIn() + scaleIn(initialScale = 0.96f, animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec()),
         exit = fadeOut() + scaleOut(targetScale = 0.96f),
     ) {
-        AppsGridContent(onDismiss = onDismiss)
+        AppsGridContent(onDismiss = onDismiss, focusRequester = focusRequester, onFocusChanged = onFocusChanged)
     }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun AppsGridContent(onDismiss: () -> Unit) {
+private fun AppsGridContent(onDismiss: () -> Unit, focusRequester: FocusRequester, onFocusChanged: (Boolean) -> Unit) {
     val context = LocalContext.current
     // Opens on the cached list at once; the fresh one replaces it when ready.
     val apps by produceState(AndroidGames.cachedLaunchable) {
@@ -141,6 +149,8 @@ private fun AppsGridContent(onDismiss: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.55f))
+            .focusRequester(focusRequester)
+            .onFocusChanged { onFocusChanged(it.hasFocus) }
             // Focus stays inside the grid: scrolling past the edge must not land on the home behind it.
             .focusProperties { onExit = { cancelFocusChange() } }
             .focusGroup()
