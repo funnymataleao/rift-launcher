@@ -1135,7 +1135,7 @@ internal fun AppScreenContent(
             when (event.keyCode) {
                 // SELECT button - open options menu
                 KeyEvent.KEYCODE_BUTTON_SELECT -> {
-                    if (riftStream == null || riftStream.showOptions) propertiesOpen = true
+                    if (riftStream == null) propertiesOpen = true else if (riftStream.showOptions) optionsMenuVisible = true
                     true
                 }
 
@@ -1491,7 +1491,7 @@ internal fun AppScreenContent(
                             ActionIconButton(
                                 icon = Icons.Default.Settings,
                                 contentDescription = stringResource(R.string.options),
-                                onClick = { propertiesOpen = true },
+                                onClick = { if (riftStream == null) propertiesOpen = true else optionsMenuVisible = true },
                             )
                         }
 
@@ -1685,8 +1685,8 @@ internal fun AppScreenContent(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // Rift: a cloud game runs on Microsoft's servers, so Wine compatibility says nothing about it.
-                if (riftStream?.showLocalDetails != false) {
+                // Rift: Wine compatibility is about GameNative's own (PC Games) games; streaming, cloud, Android and emulator pages have none.
+                if (riftStream == null) {
                 CommunityCompatibilitySection(
                     gameKey = displayInfo.appId.toString(),
                     summary = communityCompatibility.summary,
@@ -1872,7 +1872,7 @@ internal fun AppScreenContent(
                     GamepadAction(
                         button = GamepadButton.SELECT,
                         labelResId = R.string.options,
-                        onClick = { propertiesOpen = true },
+                        onClick = { if (riftStream == null) propertiesOpen = true else optionsMenuVisible = true },
                     )
                 } else {
                     null
@@ -1893,7 +1893,7 @@ internal fun AppScreenContent(
             onDismiss = { optionsMenuVisible = false },
             options = optionsMenu.toList(),
             modifier = Modifier.align(Alignment.CenterEnd),
-            onPlay = if (isInstalled) onStartAction else null,
+            onPlay = if (isInstalled && riftStream == null) onStartAction else null,
             onProperties = { propertiesOpen = true },
             onHide = if (riftOptionsOnly != null) {
                 {

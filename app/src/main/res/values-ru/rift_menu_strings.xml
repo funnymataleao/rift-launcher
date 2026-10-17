@@ -6,6 +6,9 @@
     <string name="rift_menu_properties_title">Свойства</string>
     <string name="rift_menu_stream">Стримить с ПК</string>
     <string name="rift_option_choose_emulator">Выбрать эмулятор</string>
+    <string name="rift_option_rename">Переименовать</string>
+    <string name="rift_rename_title">Переименовать игру</string>
+    <string name="rift_rename_hint">Обложки, баннер, логотип и описание игры будут найдены заново по новому названию.</string>
     <string name="rift_menu_hide">Скрыть игру</string>
     <string name="rift_settings_hidden">Скрытые игры</string>
     <string name="rift_settings_hidden_summary">Игры, скрытые с главной: отсюда их можно вернуть</string>

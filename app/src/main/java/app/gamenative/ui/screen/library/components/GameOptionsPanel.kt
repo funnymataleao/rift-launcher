@@ -36,6 +36,7 @@ import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AltRoute
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
@@ -100,8 +101,8 @@ fun GameOptionsPanel(
     onProperties: (() -> Unit)? = null,
     onHide: (() -> Unit)? = null,
 ) {
-    // Rift: Start on the home shows a small menu in the middle, not this side panel.
-    if (dev.rift.launcher.home.LocalRiftOptionsOnly.current != null) {
+    // Rift: Start on the home (and the settings icon of an Android or emulator game's page) shows a small menu in the middle, not this side panel.
+    if (dev.rift.launcher.home.LocalRiftOptionsOnly.current != null || dev.rift.launcher.home.LocalRiftStreamAction.current?.showOptions == true) {
         dev.rift.launcher.home.RiftGameStartMenu(isOpen, onDismiss, options, onPlay, onProperties, onHide)
         return
     }
@@ -380,6 +381,7 @@ internal fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.RemoveFromFavorites -> Icons.Filled.Star
         AppOptionMenuType.ChangeArt -> Icons.Default.Image
         AppOptionMenuType.ChooseEmulator -> Icons.Default.Apps
+        AppOptionMenuType.Rename -> Icons.Default.Edit
     }
 }
 
@@ -404,6 +406,7 @@ internal fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, Lis
             AppOptionMenuType.RemoveFromFavorites,
             AppOptionMenuType.ChangeArt,
             AppOptionMenuType.ChooseEmulator,
+            AppOptionMenuType.Rename,
             -> quickActions.add(option)
 
             // Game Management

@@ -21,6 +21,20 @@ object RiftAutoArt {
     private fun prefs(context: Context): SharedPreferences =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
+    private const val PICKED = "picked|"
+
+    /** Drops what it found for [appId] (the game was renamed), but not a picture the person picked since. */
+    fun forget(context: Context, appId: String) {
+        val p = prefs(context)
+        for (kind in listOf(ArtKind.Hero, ArtKind.Logo)) {
+            val slot = "$PICKED$appId|${kind.key}"
+            val found = p.getString(slot, null) ?: continue
+            if (GameArtStore.get(context, appId, kind) == found) GameArtStore.reset(context, appId, kind)
+            p.edit { remove(slot) }
+        }
+        p.edit { remove(appId) }
+    }
+
     suspend fun ensure(context: Context, item: LibraryItem) {
         val key = RiftPrefs.of(context).steamGridDbKey
         if (key.isBlank() || item.name.isBlank()) return
@@ -35,6 +49,7 @@ object RiftAutoArt {
                 for (kind in kinds) {
                     val option = SteamGridDbClient.options(key, path, kind, 0).firstOrNull() ?: continue
                     GameArtStore.pick(context, item.appId, kind, option.url)
+                    p.edit { putString("${PICKED}${item.appId}|${kind.key}", GameArtStore.get(context, item.appId, kind)) }
                 }
                 // Found (or nothing to find): not asked again for now either way.
                 p.edit { putLong(item.appId, System.currentTimeMillis()) }

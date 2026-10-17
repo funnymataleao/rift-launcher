@@ -6,6 +6,9 @@
     <string name="rift_menu_properties_title">Properties</string>
     <string name="rift_menu_stream">Stream from PC</string>
     <string name="rift_option_choose_emulator">Choose emulator</string>
+    <string name="rift_option_rename">Rename</string>
+    <string name="rift_rename_title">Rename game</string>
+    <string name="rift_rename_hint">The covers, banner, logo and game info are searched again under the new name.</string>
     <string name="rift_menu_hide">Hide game</string>
     <string name="rift_settings_hidden">Hidden games</string>
     <string name="rift_settings_hidden_summary">Games hidden from the home screen, to bring them back</string>

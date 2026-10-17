@@ -26,9 +26,10 @@ import dev.rift.launcher.art.RiftAutoArt
 import dev.rift.launcher.meta.RiftAutoMeta
 import app.gamenative.data.StoreGameDetails
 import dev.rift.launcher.settings.EmulatorChoiceDialog
+import dev.rift.launcher.settings.RenameGameDialog
 
 /** The library entry an Android game's page and its art are known by. */
-fun AndroidGame.toPageItem() = LibraryItem(appId = "ANDROID_$packageName", name = label, isInstalled = true)
+fun AndroidGame.toPageItem() = LibraryItem(appId = "ANDROID_$packageName", name = RiftGameNames.display("ANDROID_$packageName", label), isInstalled = true)
 
 /**
  * The game page of a game that has no store of its own (Android games, emulator games): GameNative's
@@ -40,6 +41,7 @@ fun AndroidGame.toPageItem() = LibraryItem(appId = "ANDROID_$packageName", name 
 @Composable
 internal fun RiftGamePage(
     item: LibraryItem,
+    originalName: String,
     onPlay: () -> Unit,
     onBack: () -> Unit,
     onChangeArt: () -> Unit,
@@ -47,11 +49,13 @@ internal fun RiftGamePage(
     platformId: String? = null,
 ) {
     val context = LocalContext.current
+    val names by RiftGameNames.names(context).collectAsStateWithLifecycle()
+    val game = remember(item, names) { item.copy(name = names[item.appId] ?: originalName) }
     val artVersion by GameArtStore.version.collectAsStateWithLifecycle()
-    val shown = remember(item, artVersion) { GameArtStore.apply(context, item) }
-    LaunchedEffect(item.appId) { RiftAutoArt.ensure(context, item) }
-    var meta by remember(item.appId) { mutableStateOf(RiftAutoMeta.cached(context, item.appId)) }
-    LaunchedEffect(item.appId) { RiftAutoMeta.ensure(context, item, platformId)?.let { meta = it } }
+    val shown = remember(game, artVersion) { GameArtStore.apply(context, game) }
+    LaunchedEffect(game.appId, game.name) { RiftAutoArt.ensure(context, game) }
+    var meta by remember(game.appId, game.name) { mutableStateOf(RiftAutoMeta.cached(context, game.appId)) }
+    LaunchedEffect(game.appId, game.name) { RiftAutoMeta.ensure(context, game, platformId)?.let { meta = it } }
     val ratingLabel = stringResource(R.string.rift_meta_rating)
     val displayInfo = remember(shown, meta) {
         GameDisplayInfo(
@@ -77,6 +81,7 @@ internal fun RiftGamePage(
         )
     }
     var choosingEmulator by remember { mutableStateOf(false) }
+    var renaming by remember { mutableStateOf(false) }
     val options = remember(native, platformId, onChangeArt) {
         if (!native) {
             emptyList()
@@ -84,6 +89,7 @@ internal fun RiftGamePage(
             buildList {
                 add(AppMenuOption(AppOptionMenuType.ChangeArt, onChangeArt))
                 if (platformId != null) add(AppMenuOption(AppOptionMenuType.ChooseEmulator) { choosingEmulator = true })
+                add(AppMenuOption(AppOptionMenuType.Rename) { renaming = true })
             }
         }
     }
@@ -108,9 +114,19 @@ internal fun RiftGamePage(
                 onUpdateClick = {},
                 onBack = onBack,
                 optionsMenu = options,
-                dialogOpen = choosingEmulator,
+                dialogOpen = choosingEmulator || renaming,
             )
         }
+    }
+    if (renaming) {
+        RenameGameDialog(
+            initial = game.name,
+            onSave = { name ->
+                RiftGameNames.rename(context, game.appId, name, originalName)
+                renaming = false
+            },
+            onDismiss = { renaming = false },
+        )
     }
     if (choosingEmulator && platformId != null) {
         EmulatorChoiceDialog(platformId) { choosingEmulator = false }

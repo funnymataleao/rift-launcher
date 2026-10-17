@@ -222,6 +222,8 @@ fun RiftGameStartMenu(
         AppOptionMenuType.RiftOptimize,
         AppOptionMenuType.AddToFavorites,
         AppOptionMenuType.RemoveFromFavorites,
+        AppOptionMenuType.ChooseEmulator,
+        AppOptionMenuType.Rename,
     ).mapNotNull { type -> options.firstOrNull { it.optionType == type } }
     val items = buildList {
         if (onPlay != null) {

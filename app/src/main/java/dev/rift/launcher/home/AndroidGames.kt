@@ -13,7 +13,7 @@ import androidx.core.graphics.drawable.toBitmap
 data class AndroidGame(val packageName: String, val label: String, val isGame: Boolean = false, val installedAt: Long = 0L)
 
 /** The library entry the art picker and the picked-art store know an Android game by. */
-fun AndroidGame.toArtItem() = app.gamenative.data.LibraryItem(appId = "ANDROID_$packageName", name = label, isInstalled = true)
+fun AndroidGame.toArtItem() = app.gamenative.data.LibraryItem(appId = "ANDROID_$packageName", name = RiftGameNames.display("ANDROID_$packageName", label), isInstalled = true)
 
 /**
  * Android games for the "Android games" section. Like every other section it only appears once the
