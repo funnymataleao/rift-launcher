@@ -500,6 +500,27 @@ fun RiftHomeScreen(
     var libraryOpen by rememberSaveable { mutableStateOf(false) }
     var libraryCardFocused by rememberSaveable { mutableStateOf(false) }
     var libraryFocusedId by rememberSaveable { mutableStateOf<String?>(null) }
+    // Rift opened as a launcher in a new process (after an install, a kill, a restore of the saved state): nothing is
+    // remembered, the first tab starts at its first cover. The remembered cover only serves a return inside one run.
+    remember {
+        if (!RiftFocusMemory.processStarted) {
+            RiftFocusMemory.processStarted = true
+            android.util.Log.i("RiftFocus", "cold process: saved focus dropped (app=$focusedAppId pkg=$focusedPackage stream=$focusedStreamId cloud=$focusedCloudId emu=$focusedEmulatorId lib=$libraryFocusedId section=$sectionKey)")
+            sectionKey = null
+            focusedAppId = null
+            focusedPackage = null
+            focusedStreamId = null
+            focusedCloudId = null
+            focusedEmulatorId = null
+            libraryFocusedId = null
+            libraryCardFocused = false
+            streamCardFocused = false
+            cloudCardFocused = false
+            emulatorCardFocused = false
+            libraryOpen = false
+            openedAppId = null
+        }
+    }
     var libraryPending by remember { mutableStateOf<String?>(null) }
     var libraryTabSwitch by remember { mutableIntStateOf(0) }
     val focusedItem = homeRow.firstOrNull { it.appId == focusedAppId } ?: homeRow.firstOrNull()
@@ -580,6 +601,7 @@ fun RiftHomeScreen(
 
     /** Puts focus back on the cover this section had last. */
     fun focusSection(target: RiftSection?) {
+        android.util.Log.i("RiftFocus", "focusSection $target app=$focusedAppId stream=$focusedStreamId pkg=$focusedPackage cloud=$focusedCloudId emu=$focusedEmulatorId")
         // The game page has its own focus; the home picks its cover again when the page closes.
         if (openedAppId != null || (artItem != null || metaItem != null)) return
         // In the library, the grid takes it back on the game it had last.
@@ -3357,3 +3379,8 @@ private object RiftTabsMemory {
 
 private const val SOURCES_GRACE_MS = 2500L
 private const val COLD_START_SETTLE_MS = 4000L
+
+/** Lives as long as the process: tells a fresh start of Rift from a return inside one run. */
+private object RiftFocusMemory {
+    var processStarted = false
+}
