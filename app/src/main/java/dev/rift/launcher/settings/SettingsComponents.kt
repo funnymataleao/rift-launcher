@@ -1,6 +1,5 @@
 package dev.rift.launcher.settings
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material.icons.rounded.Check
@@ -10,7 +9,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.OutlinedToggleButton
+import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.ToggleButtonDefaults
@@ -44,10 +43,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.layout
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -531,8 +533,9 @@ internal fun RiftChip(
     val focused by interaction.collectIsFocusedAsState()
     val scale by animateFloatAsState(if (focused) 1.05f else 1f, RiftMotion.focusSpring(), label = "chipScale")
     val accent = RiftAccent.current
-    // The focused chip is filled with the accent behind a see-through button, so a gradient shows.
-    OutlinedToggleButton(
+    // Two states, like every plate: focused is filled with the accent behind a see-through button (so a
+    // gradient shows) with dark text, anything else is grey. The chosen option is told apart by an accent dot.
+    ToggleButton(
         checked = selected,
         onCheckedChange = { onClick() },
         enabled = enabled,
@@ -541,19 +544,11 @@ internal fun RiftChip(
             pressedShape = RiftShapes.full,
             checkedShape = RiftShapes.full,
         ),
-        colors = ToggleButtonDefaults.outlinedToggleButtonColors(
+        colors = ToggleButtonDefaults.toggleButtonColors(
             containerColor = if (focused) Color.Transparent else RiftColors.Surface,
             contentColor = if (focused) accent.onAccent else RiftColors.OnSurfaceVariant,
             checkedContainerColor = if (focused) Color.Transparent else RiftColors.SurfaceContainerHigh,
             checkedContentColor = if (focused) accent.onAccent else RiftColors.OnSurface,
-        ),
-        border = BorderStroke(
-            width = if (focused) 0.dp else if (selected) 1.5.dp else 1.dp,
-            color = when {
-                focused -> Color.Transparent
-                selected -> accent.main
-                else -> RiftColors.OutlineVariant
-            },
         ),
         contentPadding = PaddingValues(horizontal = 14.dp),
         interactionSource = interaction,
@@ -565,6 +560,15 @@ internal fun RiftChip(
             }
             .then(if (focused) Modifier.clip(RiftShapes.full).background(accent.brush) else Modifier),
     ) {
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(if (focused) accent.onAccent else accent.main),
+            )
+            Spacer(Modifier.width(8.dp))
+        }
         Text(
             text = text,
             fontSize = 14.5.sp,
@@ -572,6 +576,29 @@ internal fun RiftChip(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+/**
+ * The plate a text field sits on. Two states like every other plate: grey at rest, filled with the accent while
+ * the field has focus, with dark text and a dark cursor ([content] gets the focus state to colour them).
+ */
+@Composable
+internal fun RiftInputPlate(
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.(focused: Boolean) -> Unit,
+) {
+    var focused by remember { mutableStateOf(false) }
+    Row(
+        modifier = modifier
+            .onFocusChanged { focused = it.hasFocus }
+            .fillMaxWidth()
+            .heightIn(min = RiftSizes.button)
+            .plateFill(focused, RiftShapes.full, rest = RiftColors.SurfaceContainerHigh)
+            .padding(horizontal = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        content(focused)
     }
 }
 
