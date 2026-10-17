@@ -242,7 +242,11 @@ fun RiftHomeScreen(
         awaitDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
     val pairedPcs by PcStreaming.pairedHosts(context).collectAsStateWithLifecycle()
-    val sections = remember(library, androidGames, pairedPcs) { RiftSections.configured(context, library, androidGames, pairedPcs) }
+    // The PC streaming tab exists only while it has games to show; setup hints live in settings.
+    val streamTab = if (pairedPcs.isNotEmpty()) rememberPcStreamingTab() else null
+    val streamItems = streamTab?.items.orEmpty()
+    val hasStreamGames = streamItems.isNotEmpty()
+    val sections = remember(library, androidGames, hasStreamGames) { RiftSections.configured(context, library, androidGames, hasStreamGames) }
 
     // Start-up: pure black until there is something to show (or, with nothing set up, until the
     // stores have had a moment to sign in), then one entrance: the art drifts in with a slight zoom
@@ -252,7 +256,7 @@ fun RiftHomeScreen(
         delay(STARTUP_SETTLE_MS)
         settled = true
     }
-    val ready = library.isNotEmpty() || androidGames.isNotEmpty() || pairedPcs.isNotEmpty() || (settled && !libraryState.isLoading)
+    val ready = library.isNotEmpty() || androidGames.isNotEmpty() || hasStreamGames || (settled && !libraryState.isLoading)
     var introPlayed by rememberSaveable { mutableStateOf(false) }
     val intro = remember { Animatable(if (introPlayed) 1f else 0f) }
     val introSpec = MaterialTheme.motionScheme.slowEffectsSpec<Float>()
@@ -273,8 +277,6 @@ fun RiftHomeScreen(
             RiftStartup.homeReady = true
         }
     }
-    val streamTab = if (pairedPcs.isNotEmpty()) rememberPcStreamingTab() else null
-
     var sectionKey by rememberSaveable { mutableStateOf<String?>(null) }
     val section = sections.firstOrNull { it.key == sectionKey } ?: sections.firstOrNull()
 
@@ -300,7 +302,6 @@ fun RiftHomeScreen(
 
     val focusedItem = library.firstOrNull { it.appId == focusedAppId } ?: library.firstOrNull()
     val focusedAndroid = androidGames.firstOrNull { it.packageName == focusedPackage } ?: androidGames.firstOrNull()
-    val streamItems = streamTab?.items.orEmpty()
     val focusedStream = streamItems.firstOrNull { it.appId == focusedStreamId } ?: streamItems.firstOrNull()
 
     fun openGame(item: LibraryItem) {
@@ -682,7 +683,6 @@ fun RiftHomeScreen(
                                 onOpen = { streamTab.launch(context, it) },
                                 onNearEnd = {},
                                 badges = false,
-                                emptyMessage = stringResource(R.string.rift_stream_no_games),
                             )
                         }
                         // Still loading with nothing cached: stay black rather than show a spinner.
