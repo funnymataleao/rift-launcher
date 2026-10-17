@@ -40,6 +40,6 @@
     <string name="rift_stream_stage_failed">Failed at %1$s (code %2$d)</string>
     <string name="rift_stream_terminated">Connection lost (code %1$d)</string>
     <string name="rift_stream_no_decoder">This device has no hardware H.264 decoder.</string>
-    <string name="rift_stream_no_games">No PC games yet. In Vibepollo\'s web page, turn on Integrations → Steam library sync and your installed games appear here.</string>
+    <string name="rift_stream_no_games">No PC games yet. In Vibepollo\'s web page, turn on Integrations → Steam library sync and your installed games appear on the home screen in the PC streaming tab.</string>
     <string name="rift_stream_group_pc_apps">PC apps</string>
 </resources>
