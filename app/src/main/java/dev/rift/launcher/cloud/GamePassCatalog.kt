@@ -111,7 +111,8 @@ object GamePassCatalog {
         return (0 until json.length()).mapNotNull { json.optJSONObject(it)?.optString("id")?.takeIf(String::isNotBlank) }.distinct()
     }
 
-    private fun products(ids: List<String>): List<CloudGame> {
+    /** Titles, texts and art of up to [BATCH] store products (blocking; call off the main thread). */
+    internal fun products(ids: List<String>): List<CloudGame> {
         val url = "$PRODUCTS_URL?bigIds=${ids.joinToString(",")}&market=${XcloudAccount.MARKET}" +
             "&languages=${XcloudAccount.catalogLanguages()}&MS-CV=DGU1mcuYo0WMMp+F.1"
         val products = JSONObject(get(url)).optJSONArray("Products") ?: return emptyList()
@@ -169,49 +170,47 @@ object GamePassCatalog {
     private fun toCache(catalog: CloudCatalog): String = JSONObject()
         .put("fetchedAt", catalog.fetchedAt)
         .put("popular", JSONArray(catalog.popular))
-        .put(
-            "games",
-            JSONArray(
-                catalog.games.map { game ->
-                    JSONObject()
-                        .put("id", game.productId)
-                        .put("title", game.title)
-                        .put("poster", game.poster)
-                        .put("hero", game.hero)
-                        .put("titledHero", game.titledHero)
-                        .put("developer", game.developer)
-                        .put("publisher", game.publisher)
-                        .put("description", game.description)
-                        .put("releaseDate", game.releaseDate)
-                        .put("categories", JSONArray(game.categories))
-                        .put("screenshots", JSONArray(game.screenshots))
-                },
-            ),
-        )
+        .put("games", JSONArray(catalog.games.map { it.toJson() }))
         .toString()
+
+    /** One game as the saved catalog keeps it; the Xbox console library saves its games the same way. */
+    internal fun CloudGame.toJson(): JSONObject = JSONObject()
+        .put("id", productId)
+        .put("title", title)
+        .put("poster", poster)
+        .put("hero", hero)
+        .put("titledHero", titledHero)
+        .put("developer", developer)
+        .put("publisher", publisher)
+        .put("description", description)
+        .put("releaseDate", releaseDate)
+        .put("categories", JSONArray(categories))
+        .put("screenshots", JSONArray(screenshots))
+
+    internal fun cloudGame(game: JSONObject): CloudGame {
+        fun JSONArray?.strings() = if (this == null) emptyList() else (0 until length()).map { optString(it) }
+        return CloudGame(
+            productId = game.getString("id"),
+            title = game.getString("title"),
+            poster = game.optString("poster"),
+            hero = game.optString("hero"),
+            titledHero = game.optString("titledHero"),
+            developer = game.optString("developer"),
+            publisher = game.optString("publisher"),
+            description = game.optString("description"),
+            releaseDate = game.optLong("releaseDate"),
+            categories = game.optJSONArray("categories").strings(),
+            screenshots = game.optJSONArray("screenshots").strings(),
+        )
+    }
 
     private fun parseCache(raw: String): CloudCatalog {
         val json = JSONObject(raw)
-        fun JSONArray?.strings() = if (this == null) emptyList() else (0 until length()).map { optString(it) }
         val games = json.getJSONArray("games")
+        val popular = json.optJSONArray("popular")
         return CloudCatalog(
-            games = (0 until games.length()).map { i ->
-                val game = games.getJSONObject(i)
-                CloudGame(
-                    productId = game.getString("id"),
-                    title = game.getString("title"),
-                    poster = game.optString("poster"),
-                    hero = game.optString("hero"),
-                    titledHero = game.optString("titledHero"),
-                    developer = game.optString("developer"),
-                    publisher = game.optString("publisher"),
-                    description = game.optString("description"),
-                    releaseDate = game.optLong("releaseDate"),
-                    categories = game.optJSONArray("categories").strings(),
-                    screenshots = game.optJSONArray("screenshots").strings(),
-                )
-            },
-            popular = json.optJSONArray("popular").strings(),
+            games = (0 until games.length()).map { cloudGame(games.getJSONObject(it)) },
+            popular = if (popular == null) emptyList() else (0 until popular.length()).map { popular.optString(it) },
             fetchedAt = json.optLong("fetchedAt"),
         )
     }
