@@ -419,7 +419,7 @@
     <string name="rift_settings_meta_get">Как получить</string>
     <string name="rift_settings_meta_get_summary">Откроет инструкцию IGDB: войти через Twitch, создать приложение, скопировать Client ID и Secret</string>
     <string name="rift_settings_meta_remove">Удалить ключи</string>
-    <string name="rift_settings_meta_note">Когда заданы оба, на странице Android-игры или игры эмулятора показываются описание, рейтинг, жанры, теги, разработчик и дата выхода из IGDB. Они хранятся на этом устройстве и отправляются только на twitch.tv и igdb.com.</string>
+    <string name="rift_settings_meta_note">Без ключей IGDB, а также для игр, которых нет в IGDB, Rift берёт описание, жанры, разработчика и дату выхода со страницы Steam игры с точно таким же названием. Когда заданы оба ключа, на странице Android-игры или игры эмулятора показываются описание, рейтинг, жанры, теги, разработчик, дата выхода и время прохождения из IGDB. Ключи хранятся на этом устройстве и отправляются только на twitch.tv и igdb.com.</string>
     <string name="rift_meta_rating">Рейтинг IGDB</string>
     <string name="rift_about_license_title">Лицензия</string>
     <string name="rift_about_license_value">GPL-3.0</string>

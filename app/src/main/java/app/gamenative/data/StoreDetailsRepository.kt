@@ -139,6 +139,53 @@ object StoreDetailsRepository {
         media
     }
 
+    /** What Steam knows about a game found by its title, for games that are not from a PC store. */
+    data class SteamTitleMeta(
+        val details: StoreGameDetails = StoreGameDetails(),
+        val developer: String = "",
+        val publisher: String = "",
+        /** Unix seconds, 0 when unknown. */
+        val releaseDate: Long = 0L,
+    ) {
+        val isEmpty: Boolean get() = !details.hasContent && developer.isBlank() && publisher.isBlank() && releaseDate == 0L
+    }
+
+    /**
+     * Rift: description, genres, developer, publisher, release date and user rating of the Steam game whose
+     * name is exactly [title] (normalised; no guessing). Null when Steam could not be reached, an empty
+     * result when there is no such game.
+     */
+    suspend fun getMetaByTitle(
+        title: String,
+        locale: Locale = Locale.getDefault(),
+    ): SteamTitleMeta? = withContext(Dispatchers.IO) {
+        val language = SteamUtils.steamLanguageForAppLocale(locale)
+        val encoded = URLEncoder.encode(title, Charsets.UTF_8.name())
+        val search = getBody("https://store.steampowered.com/api/storesearch/?term=$encoded&cc=us&l=$language")
+            ?: return@withContext null
+        val appId = parseSteamSearchAppId(title, search) ?: return@withContext SteamTitleMeta()
+        coroutineScope {
+            val localized = async { getBody("https://store.steampowered.com/api/appdetails?appids=$appId&cc=us&l=$language") }
+            val english = if (language == "english") null else async {
+                getBody("https://store.steampowered.com/api/appdetails?appids=$appId&cc=us&l=english")
+            }
+            val reviews = async {
+                getBody("https://store.steampowered.com/appreviews/$appId?json=1&language=all&purchase_type=all&num_per_page=0&l=$language")
+            }
+            val localizedJson = localized.await() ?: return@coroutineScope null
+            val englishJson = english?.await() ?: localizedJson
+            val details = parseSteamStoreDetails(appId, localizedJson, reviews.await())
+            val data = parseObject(localizedJson)?.optJSONObject(appId.toString())?.optJSONObject("data")
+            val englishData = parseObject(englishJson)?.optJSONObject(appId.toString())?.optJSONObject("data")
+            SteamTitleMeta(
+                details = details,
+                developer = data?.optJSONArray("developers").strings().joinToString(", "),
+                publisher = data?.optJSONArray("publishers").strings().joinToString(", "),
+                releaseDate = parseSteamReleaseDate(englishData?.optJSONObject("release_date")),
+            )
+        }
+    }
+
     private suspend fun fetchSteam(appId: Int, locale: Locale): StoreGameDetails = coroutineScope {
         if (appId <= 0) return@coroutineScope StoreGameDetails()
         val language = SteamUtils.steamLanguageForAppLocale(locale)
@@ -649,4 +696,21 @@ internal fun stripStoreHtml(html: String): String {
         .replace(Regex("[ \\t\\x0B\\f\\r]+"), " ")
         .replace(Regex(" *\\n+ *"), "\n")
         .trim()
+}
+
+private fun JSONArray?.strings(): List<String> = this?.let { array -> (0 until array.length()).mapNotNull { array.optString(it).ifBlank { null } } }.orEmpty()
+
+/** Steam's English "20 Nov, 2012" / "Nov 20, 2012" / "Nov 2012" as Unix seconds; 0 for "Coming soon" and anything else. */
+internal fun parseSteamReleaseDate(releaseDate: JSONObject?): Long {
+    if (releaseDate == null || releaseDate.optBoolean("coming_soon", false)) return 0L
+    val text = releaseDate.optString("date").trim()
+    for (pattern in listOf("d MMM, yyyy", "MMM d, yyyy", "d MMM yyyy", "MMM yyyy", "yyyy")) {
+        val format = java.text.SimpleDateFormat(pattern, Locale.US).apply {
+            isLenient = false
+            timeZone = java.util.TimeZone.getTimeZone("UTC")
+        }
+        val parsed = runCatching { format.parse(text) }.getOrNull() ?: continue
+        return parsed.time / 1000
+    }
+    return 0L
 }

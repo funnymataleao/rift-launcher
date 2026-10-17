@@ -78,7 +78,7 @@ internal fun RiftGamePage(
                     description = m.description,
                     reviewPercentage = m.rating,
                     reviewCount = m.ratingCount,
-                    reviewSummary = m.rating?.let { ratingLabel },
+                    reviewSummary = m.rating?.let { m.ratingText.ifBlank { ratingLabel } },
                     tags = m.genres + m.tags,
                     screenshots = media.screenshots,
                     videos = media.videos,
