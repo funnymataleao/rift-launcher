@@ -1,9 +1,10 @@
 package dev.rift.launcher.settings
 
-import android.content.Context
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.runtime.Composable
@@ -15,6 +16,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import app.gamenative.R
+import dev.rift.launcher.sound.RiftMusic
+import dev.rift.launcher.sound.RiftSoundSettings
 
 /**
  * Interface sounds. The values live in the `rift_sounds` file the sound player reads on every play, so a
@@ -24,14 +27,18 @@ import app.gamenative.R
 @Composable
 internal fun SoundSettings() {
     val context = LocalContext.current
-    val sounds = remember { context.getSharedPreferences("rift_sounds", Context.MODE_PRIVATE) }
-    var enabled by rememberSaveable { mutableStateOf(sounds.getBoolean("enabled", true)) }
-    var volume by rememberSaveable { mutableStateOf(sounds.getInt("volume", 35)) }
-    var packUri by rememberSaveable { mutableStateOf(sounds.getString("pack_uri", "").orEmpty()) }
+    var enabled by rememberSaveable { mutableStateOf(RiftSoundSettings.isEnabled(context)) }
+    var volume by rememberSaveable { mutableStateOf(RiftSoundSettings.volume(context)) }
+    var packUri by rememberSaveable { mutableStateOf(RiftSoundSettings.packUri(context)) }
+    var musicEnabled by rememberSaveable { mutableStateOf(RiftSoundSettings.isMusicEnabled(context)) }
+    var musicVolume by rememberSaveable { mutableStateOf(RiftSoundSettings.musicVolume(context)) }
+    var soundPackId by rememberSaveable { mutableStateOf(RiftSoundSettings.soundPackId(context)) }
+    var musicPackId by rememberSaveable { mutableStateOf(RiftSoundSettings.musicPackId(context)) }
+    var packDialog by rememberSaveable { mutableStateOf<String?>(null) }
 
     val pickFolder = rememberFolderPicker { uri ->
         packUri = uri
-        sounds.edit().putString("pack_uri", uri).apply()
+        RiftSoundSettings.setPackUri(context, android.net.Uri.parse(uri))
     }
 
     SettingsGroup {
@@ -42,19 +49,70 @@ internal fun SoundSettings() {
             checked = enabled,
             onCheckedChange = {
                 enabled = it
-                sounds.edit().putBoolean("enabled", it).apply()
+                RiftSoundSettings.setEnabled(context, it)
             },
         )
-        val levels = listOf(15, 35, 50, 75, 100)
+        val levels = listOf(15, 35, 60, 80, 100)
         ChoiceChipsRow(
             title = stringResource(R.string.rift_settings_sound_volume),
             icon = Icons.Rounded.GraphicEq,
             options = levels.map { "$it%" },
-            selectedIndex = levels.indexOf(volume),
+            selectedIndex = levels.indexOfLast { it <= volume }.coerceAtLeast(0),
             onSelect = {
                 volume = levels[it]
-                sounds.edit().putInt("volume", volume).apply()
+                RiftSoundSettings.setVolume(context, volume)
             },
+        )
+    }
+
+    SettingsGroup(title = stringResource(R.string.rift_settings_group_deckthemes)) {
+        LinkRow(
+            title = stringResource(R.string.rift_settings_packs_sound_title),
+            subtitle = stringResource(R.string.rift_settings_packs_sound_summary),
+            icon = Icons.Rounded.CloudDownload,
+            value = packName(context, soundPackId) ?: stringResource(R.string.rift_settings_sound_pack_builtin),
+            onClick = { packDialog = "sound" },
+        )
+        SwitchRow(
+            title = stringResource(R.string.rift_settings_music),
+            subtitle = stringResource(R.string.rift_settings_music_summary),
+            icon = Icons.Rounded.MusicNote,
+            checked = musicEnabled,
+            onCheckedChange = {
+                musicEnabled = it
+                RiftSoundSettings.setMusicEnabled(context, it)
+                RiftMusic.apply(context)
+            },
+        )
+        LinkRow(
+            title = stringResource(R.string.rift_settings_packs_music_title),
+            subtitle = stringResource(R.string.rift_settings_packs_music_summary),
+            icon = Icons.Rounded.CloudDownload,
+            value = packName(context, musicPackId) ?: stringResource(R.string.rift_settings_music_none),
+            onClick = { packDialog = "music" },
+        )
+        val musicLevels = listOf(10, 25, 40, 60, 100)
+        ChoiceChipsRow(
+            title = stringResource(R.string.rift_settings_music_volume),
+            icon = Icons.Rounded.GraphicEq,
+            options = musicLevels.map { "$it%" },
+            selectedIndex = musicLevels.indexOfLast { it <= musicVolume }.coerceAtLeast(0),
+            onSelect = {
+                musicVolume = musicLevels[it]
+                RiftSoundSettings.setMusicVolume(context, musicVolume)
+                RiftMusic.apply(context)
+            },
+        )
+    }
+
+    packDialog?.let { kind ->
+        PackManagerDialog(
+            music = kind == "music",
+            onChanged = {
+                soundPackId = RiftSoundSettings.soundPackId(context)
+                musicPackId = RiftSoundSettings.musicPackId(context)
+            },
+            onDismiss = { packDialog = null },
         )
     }
 
@@ -72,7 +130,7 @@ internal fun SoundSettings() {
                 icon = Icons.Rounded.RestartAlt,
                 onClick = {
                     packUri = ""
-                    sounds.edit().putString("pack_uri", "").apply()
+                    RiftSoundSettings.setPackUri(context, null)
                 },
             )
         }

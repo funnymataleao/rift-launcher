@@ -361,4 +361,31 @@
     <string name="rift_community_share_title">Отправлять оценки игр в Rift</string>
     <string name="rift_community_share_subtitle">После игры звёзды, отмеченные проблемы, комментарий и настройки игры уходят в открытую базу конфигов Rift, без имени и аккаунта. На планшете они сохраняются всегда.</string>
     <string name="rift_community_feedback_note">Оценка и настройки игры уйдут в открытую базу конфигов Rift, без имени и аккаунта. Отключается в Настройках › О приложении › Приватность.</string>
+
+    <!-- Паки звуков и музыки с DeckThemes -->
+    <string name="rift_settings_group_deckthemes">Паки с DeckThemes</string>
+    <string name="rift_settings_packs_sound_title">Паки звуков</string>
+    <string name="rift_settings_packs_sound_summary">Те же паки, что в Audio Loader для Steam Deck</string>
+    <string name="rift_settings_packs_music_title">Паки музыки</string>
+    <string name="rift_settings_packs_music_summary">Фоновая музыка на главном экране</string>
+    <string name="rift_settings_music">Фоновая музыка</string>
+    <string name="rift_settings_music_summary">Играет на главном экране, когда выбран пак музыки</string>
+    <string name="rift_settings_music_none">Без музыки</string>
+    <string name="rift_settings_music_volume">Громкость музыки</string>
+    <string name="rift_settings_packs_builtin">Встроенные звуки</string>
+    <string name="rift_settings_packs_none_music">Без музыки</string>
+    <string name="rift_settings_packs_selected">Выбран</string>
+    <string name="rift_settings_packs_choose">Выбрать</string>
+    <string name="rift_settings_packs_download">Скачать</string>
+    <string name="rift_settings_packs_downloading">Скачивается…</string>
+    <string name="rift_settings_packs_downloads">Скачиваний: %1$d</string>
+    <string name="rift_settings_packs_more">Показать ещё паки</string>
+    <string name="rift_settings_packs_loading">Загрузка…</string>
+    <string name="rift_settings_packs_retry">Повторить</string>
+    <string name="rift_settings_packs_error">Не удалось связаться с DeckThemes. Проверьте интернет.</string>
+    <string name="rift_settings_packs_note">Паки сделаны их авторами на DeckThemes и скачиваются на устройство только по вашему выбору. В Rift их нет.</string>
+    <string name="rift_settings_packs_remove_hint">Удерживайте скачанный пак, чтобы удалить его.</string>
+    <string name="rift_settings_packs_remove_title">Удалить «%1$s»?</string>
+    <string name="rift_settings_packs_remove_message">Пак будет удалён с устройства, потом его можно скачать снова.</string>
+    <string name="rift_settings_packs_remove">Удалить</string>
 </resources>

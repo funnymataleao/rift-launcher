@@ -366,4 +366,31 @@
     <string name="rift_community_share_title">Share game ratings with Rift</string>
     <string name="rift_community_share_subtitle">After a game, your stars, issues, note and the game\'s settings go to Rift\'s open config database, with no name or account. They are always kept on this tablet too.</string>
     <string name="rift_community_feedback_note">Your rating and the game\'s settings go to Rift\'s open config database, with no name or account. Turn it off in Settings › About › Privacy.</string>
+
+    <!-- DeckThemes sound and music packs -->
+    <string name="rift_settings_group_deckthemes">Packs from DeckThemes</string>
+    <string name="rift_settings_packs_sound_title">Sound packs</string>
+    <string name="rift_settings_packs_sound_summary">The same packs Steam Deck\'s Audio Loader uses</string>
+    <string name="rift_settings_packs_music_title">Music packs</string>
+    <string name="rift_settings_packs_music_summary">Background music for the home screen</string>
+    <string name="rift_settings_music">Background music</string>
+    <string name="rift_settings_music_summary">Plays on the home screen once a music pack is chosen</string>
+    <string name="rift_settings_music_none">No music</string>
+    <string name="rift_settings_music_volume">Music volume</string>
+    <string name="rift_settings_packs_builtin">Built-in sounds</string>
+    <string name="rift_settings_packs_none_music">No music</string>
+    <string name="rift_settings_packs_selected">In use</string>
+    <string name="rift_settings_packs_choose">Use</string>
+    <string name="rift_settings_packs_download">Download</string>
+    <string name="rift_settings_packs_downloading">Downloading…</string>
+    <string name="rift_settings_packs_downloads">%1$d downloads</string>
+    <string name="rift_settings_packs_more">Show more packs</string>
+    <string name="rift_settings_packs_loading">Loading…</string>
+    <string name="rift_settings_packs_retry">Try again</string>
+    <string name="rift_settings_packs_error">Could not reach DeckThemes. Check the internet connection.</string>
+    <string name="rift_settings_packs_note">Packs are made by their authors on DeckThemes and are downloaded to this device only when you pick them. Rift does not include any.</string>
+    <string name="rift_settings_packs_remove_hint">Hold a downloaded pack to delete it.</string>
+    <string name="rift_settings_packs_remove_title">Delete %1$s?</string>
+    <string name="rift_settings_packs_remove_message">The pack is removed from this device. You can download it again later.</string>
+    <string name="rift_settings_packs_remove">Delete</string>
 </resources>

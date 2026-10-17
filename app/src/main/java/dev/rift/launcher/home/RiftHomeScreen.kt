@@ -194,6 +194,7 @@ import dev.rift.launcher.assistant.chat.AssistantChat
 import dev.rift.launcher.assistant.chat.ChatGame
 import dev.rift.launcher.assistant.chat.RIFT_ASSISTANT_ROUTE
 import app.gamenative.ui.screen.PluviaScreen
+import dev.rift.launcher.sound.RiftMusicEffect
 import dev.rift.launcher.sound.RiftSound
 import dev.rift.launcher.sound.rememberRiftSoundPlayer
 import dev.rift.launcher.sound.riftKeySounds
@@ -246,6 +247,7 @@ fun RiftHomeScreen(
     val context = LocalContext.current
     val homeScope = rememberCoroutineScope()
     val sounds = rememberRiftSoundPlayer()
+    RiftMusicEffect()
     val libraryState by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(libraryState.visibleLibraryTabs) {
