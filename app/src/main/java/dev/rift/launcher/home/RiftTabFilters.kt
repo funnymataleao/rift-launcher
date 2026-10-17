@@ -30,10 +30,10 @@ object RiftTabFilters {
 
     private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
-    fun get(context: Context, section: RiftSection): TabView {
+    fun get(context: Context, section: RiftSection, defaultSort: TabSort = TabSort.NAME_ASC): TabView {
         val prefs = prefs(context)
         return TabView(
-            sort = TabSort.fromKey(prefs.getString("tab_sort_${section.key}", null)),
+            sort = prefs.getString("tab_sort_${section.key}", null)?.let(TabSort::fromKey) ?: defaultSort,
             showAll = prefs.getBoolean("tab_show_all_${section.key}", false),
         )
     }

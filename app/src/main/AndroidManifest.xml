@@ -144,6 +144,14 @@
             android:resizeableActivity="true"
             android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection"
             android:theme="@style/Theme.Pluvia" />
+        <activity
+            android:name="dev.rift.launcher.cloud.XcloudActivity"
+            android:exported="false"
+            android:screenOrientation="sensorLandscape"
+            android:resizeableActivity="true"
+            android:hardwareAccelerated="true"
+            android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection"
+            android:theme="@style/Theme.Pluvia" />
 
         <activity
             android:name=".ui.screen.auth.NexusOAuthCallbackActivity"

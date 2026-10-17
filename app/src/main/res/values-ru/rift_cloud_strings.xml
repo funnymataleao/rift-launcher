@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rift_section_cloud_streaming">Облачный стриминг</string>
+    <string name="rift_cloud_play">Играть в облаке</string>
+    <string name="rift_cloud_service_xcloud">Xbox Cloud Gaming</string>
+    <string name="rift_cloud_service_game_pass">Xbox Game Pass</string>
+
+    <string name="rift_settings_cloud">Облачный стриминг</string>
+    <string name="rift_settings_cloud_summary">Xbox Cloud Gaming с Better xCloud</string>
+    <string name="rift_cloud_sign_in">Войти в Microsoft</string>
+    <string name="rift_cloud_sign_in_summary">Аккаунт Xbox с Game Pass Ultimate</string>
+    <string name="rift_cloud_signed_in">Подключено</string>
+    <string name="rift_cloud_account">Аккаунт Microsoft</string>
+    <string name="rift_cloud_sign_out">Выйти</string>
+    <string name="rift_cloud_sign_out_summary">Rift забудет аккаунт в своём браузере</string>
+    <string name="rift_cloud_games_count">Облачных игр в каталоге</string>
+    <string name="rift_cloud_catalog_loading">Загружается…</string>
+    <string name="rift_cloud_how_title">Как это работает</string>
+    <string name="rift_cloud_how">1. Войдите в аккаунт Microsoft с Game Pass Ultimate. В браузере Rift откроется xbox.com и сам закроется после входа.\n2. На главной появится вкладка «Облачный стриминг» с облачными играми Game Pass.\n3. A открывает страницу игры, «Играть в облаке» запускает её. Select + Start открывает шторку с «Закончить стрим».\nXbox Cloud Gaming работает не во всех странах, в России нужен VPN.</string>
+    <string name="rift_cloud_better_xcloud">Better xCloud</string>
+    <string name="rift_cloud_better_xcloud_summary">Встроен: качество, меню под геймпад, статистика. Настройки в меню игры. Автор redphx, лицензия MIT</string>
+</resources>

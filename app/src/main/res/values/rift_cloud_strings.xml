@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Rift: cloud streaming tab (Xbox Cloud Gaming with Better xCloud) -->
+    <string name="rift_section_cloud_streaming">Cloud streaming</string>
+    <string name="rift_cloud_play">Play in the cloud</string>
+    <string name="rift_cloud_service_xcloud">Xbox Cloud Gaming</string>
+    <string name="rift_cloud_service_game_pass">Xbox Game Pass</string>
+
+    <string name="rift_settings_cloud">Cloud streaming</string>
+    <string name="rift_settings_cloud_summary">Xbox Cloud Gaming with Better xCloud</string>
+    <string name="rift_cloud_sign_in">Sign in to Microsoft</string>
+    <string name="rift_cloud_sign_in_summary">Your Xbox account with Game Pass Ultimate</string>
+    <string name="rift_cloud_signed_in">Signed in</string>
+    <string name="rift_cloud_account">Microsoft account</string>
+    <string name="rift_cloud_sign_out">Sign out</string>
+    <string name="rift_cloud_sign_out_summary">Forgets the account in Rift\'s browser</string>
+    <string name="rift_cloud_games_count">Cloud games in the catalog</string>
+    <string name="rift_cloud_catalog_loading">Loading…</string>
+    <string name="rift_cloud_how_title">How it works</string>
+    <string name="rift_cloud_how">1. Sign in with the Microsoft account that has Game Pass Ultimate. xbox.com opens in Rift\'s browser and closes by itself once you are in.\n2. The Cloud streaming tab appears on the home screen with the Game Pass cloud games.\n3. A opens a game\'s page, “Play in the cloud” starts it. Select + Start opens the side panel with “End stream”.\nXbox Cloud Gaming is not available in every country; where it is not, it needs a VPN.</string>
+    <string name="rift_cloud_better_xcloud">Better xCloud</string>
+    <string name="rift_cloud_better_xcloud_summary">Built in: quality, controller-friendly menus, stats. Settings in the game\'s menu. By redphx, MIT license</string>
+</resources>
