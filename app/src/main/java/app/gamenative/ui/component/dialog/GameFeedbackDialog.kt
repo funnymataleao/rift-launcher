@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -20,6 +21,8 @@ import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.dialog.state.GameFeedbackDialogState
+import dev.rift.launcher.community.RiftCommunity
+import dev.rift.launcher.settings.RiftPrefs
 import timber.log.Timber
 
 @OptIn(
@@ -137,6 +140,18 @@ fun GameFeedbackDialog(
                                 .padding(bottom = 16.dp),
                             maxLines = 5,
                         )
+
+                        // Rift: say where the answer goes while it is shared.
+                        val context = LocalContext.current
+                        val shared = remember { RiftCommunity.BASE_URL.isNotEmpty() && RiftPrefs.of(context).communityShare }
+                        if (shared) {
+                            Text(
+                                text = stringResource(R.string.rift_community_feedback_note),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(bottom = 8.dp),
+                            )
+                        }
 
                         // Discord support link
                         TextButton(

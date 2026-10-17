@@ -7,12 +7,14 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Layers
 import androidx.compose.material.icons.rounded.PrivacyTip
+import androidx.compose.material.icons.rounded.Stars
 import androidx.compose.material.icons.rounded.Savings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import app.gamenative.BuildConfig
@@ -25,6 +27,8 @@ import app.gamenative.ui.component.dialog.LibrariesDialog
 @Composable
 internal fun AboutSettings() {
     val uriHandler = LocalUriHandler.current
+    val riftPrefs = RiftPrefs.of(LocalContext.current)
+    var shareRatings by rememberSaveable { mutableStateOf(riftPrefs.communityShare) }
     var askForTip by rememberSaveable { mutableStateOf(!PrefManager.tipped) }
     var analytics by rememberSaveable { mutableStateOf(PrefManager.usageAnalyticsEnabled) }
     var librariesDialog by rememberSaveable { mutableStateOf(false) }
@@ -83,6 +87,16 @@ internal fun AboutSettings() {
             onCheckedChange = {
                 analytics = it
                 PrefManager.usageAnalyticsEnabled = it
+            },
+        )
+        SwitchRow(
+            title = stringResource(R.string.rift_community_share_title),
+            subtitle = stringResource(R.string.rift_community_share_subtitle),
+            icon = Icons.Rounded.Stars,
+            checked = shareRatings,
+            onCheckedChange = {
+                shareRatings = it
+                riftPrefs.communityShare = it
             },
         )
     }

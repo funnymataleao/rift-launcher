@@ -194,8 +194,24 @@ class RiftPrefs private constructor(
         get() = prefs.getString(ESDE_URI, "") ?: ""
         set(value) = prefs.edit().putString(ESDE_URI, value).apply()
 
+    // --- Community database (dev.rift.launcher.community.RiftCommunity) ---
+
+    /** Send the "How did the game run?" answers to Rift's community database. */
+    var communityShare: Boolean
+        get() = prefs.getBoolean(COMMUNITY_SHARE, true)
+        set(value) = prefs.edit().putBoolean(COMMUNITY_SHARE, value).apply()
+
+    /** A random id made once per install, so the server can tell one tablet's repeated answers apart. */
+    val communityInstallId: String
+        get() = prefs.getString(COMMUNITY_INSTALL_ID, null)
+            ?: java.util.UUID.randomUUID().toString().also {
+                prefs.edit().putString(COMMUNITY_INSTALL_ID, it).apply()
+            }
+
     companion object {
         internal const val FILE = "rift_settings"
+        private const val COMMUNITY_SHARE = "community_share"
+        private const val COMMUNITY_INSTALL_ID = "community_install_id"
 
         private const val STREAM_RESOLUTION = "stream_resolution"
         private const val STREAM_FPS = "stream_fps"
