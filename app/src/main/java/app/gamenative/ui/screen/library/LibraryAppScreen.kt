@@ -1895,6 +1895,11 @@ internal fun AppScreenContent(
             modifier = Modifier.align(Alignment.CenterEnd),
             onPlay = if (isInstalled) onStartAction else null,
             onProperties = { propertiesOpen = true },
+            onHide = if (riftOptionsOnly != null) {
+                { dev.rift.launcher.home.RiftHiddenGames.hide(context, displayInfo.appId, displayInfo.name) }
+            } else {
+                null
+            },
         )
         dev.rift.launcher.home.RiftGameProperties(
             isOpen = propertiesOpen,

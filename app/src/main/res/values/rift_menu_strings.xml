@@ -5,4 +5,10 @@
     <string name="rift_menu_cancel">Cancel</string>
     <string name="rift_menu_properties_title">Properties</string>
     <string name="rift_menu_stream">Stream from PC</string>
+    <string name="rift_menu_hide">Hide game</string>
+    <string name="rift_settings_hidden">Hidden games</string>
+    <string name="rift_settings_hidden_summary">Games hidden from the home screen, to bring them back</string>
+    <string name="rift_settings_hidden_none">Nothing is hidden. Start on a game, then Hide game, takes it off every tab.</string>
+    <string name="rift_settings_hidden_note">Hidden games are not shown on any tab or in any library. Press one to bring it back.</string>
+    <string name="rift_settings_hidden_restore">Restore</string>
 </resources>
