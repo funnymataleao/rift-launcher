@@ -185,8 +185,10 @@ fun PluviaTheme(
             typography = PluviaTypography,
             // Rift: the same rounded shapes as Rift's own screens.
             shapes = dev.rift.launcher.ui.theme.RiftShapes.material,
-            content = content,
-        )
+        ) {
+            // Rift: the focused card is always whole, with a 48 dp margin, in every list and grid.
+            dev.rift.launcher.ui.theme.RiftFocusMargin(content)
+        }
     }
 }
 

@@ -63,7 +63,6 @@ import com.skydoves.landscapist.coil.CoilImage
 import dev.rift.launcher.home.CoverCard
 import dev.rift.launcher.home.CoverImage
 import dev.rift.launcher.home.LibraryTabSpec
-import dev.rift.launcher.home.viewGap
 import dev.rift.launcher.home.RiftLibraryScreen
 import dev.rift.launcher.settings.RiftPillButton
 import dev.rift.launcher.ui.theme.RiftColors
@@ -307,7 +306,7 @@ private fun ArtGrid(
                 ) {
                     if (hasOwn) {
                         item(key = RESET_KEY) {
-                            BoxWithConstraints(modifier = Modifier.viewGap()) {
+                            BoxWithConstraints {
                                 ArtTile(
                                     kind = kind,
                                     width = maxWidth,
@@ -338,7 +337,7 @@ private fun ArtGrid(
                         }
                     }
                     itemsIndexed(feed.options, key = { _, option -> option.id }) { index, option ->
-                        BoxWithConstraints(modifier = Modifier.viewGap()) {
+                        BoxWithConstraints {
                             ArtTile(
                                 kind = kind,
                                 width = maxWidth,

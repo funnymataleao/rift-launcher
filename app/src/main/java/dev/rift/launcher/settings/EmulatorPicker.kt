@@ -408,7 +408,6 @@ private fun PickerAppRow(
     val contentColor = if (focused) RiftColors.OnPrimary else RiftColors.OnSurface
     Row(
         modifier = modifier
-            .settingsFocusMargin()
             .fillMaxWidth()
             .heightIn(min = RiftSizes.button)
             .clip(RiftShapes.full)
