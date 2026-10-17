@@ -259,6 +259,20 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity-alias>
+        <!-- Rift's panel over Android games and emulators started from Rift (dev.rift.launcher.overlay). -->
+        <service
+            android:name="dev.rift.launcher.overlay.RiftOverlayService"
+            android:exported="true"
+            android:label="@string/rift_overlay_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/rift_overlay_service" />
+        </service>
+
         <service
             android:name=".service.SteamService"
             android:enabled="true"

@@ -399,4 +399,13 @@
     <string name="rift_quick_menu_performance">Performance</string>
     <string name="rift_quick_menu_frame_generation">Frame generation</string>
     <string name="rift_off">Off</string>
+    <!-- Panel over Android games and emulators (dev.rift.launcher.overlay) -->
+    <string name="rift_overlay_service_label">Rift panel in games</string>
+    <string name="rift_overlay_service_summary">Home on the gamepad opens Rift\'s panel in Android games and emulators started from Rift</string>
+    <string name="rift_overlay_service_description">Lets the gamepad\'s Home button open Rift\'s side panel over Android games and emulators you start from Rift. Rift only looks at gamepad buttons while such a game is on screen and reads nothing else.</string>
+    <string name="rift_overlay_back_to_rift">Back to Rift</string>
+    <string name="rift_overlay_back_to_rift_summary">The game stays open in the background</string>
+    <string name="rift_overlay_volume">Volume</string>
+    <string name="rift_settings_overlay">Panel in Android games</string>
+    <string name="rift_settings_overlay_summary">Home on the gamepad opens Rift\'s panel in Android games and emulators. Turn on \"Rift panel in games\" in Accessibility.</string>
 </resources>

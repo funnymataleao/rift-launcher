@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.Gamepad
 import androidx.compose.material.icons.rounded.Keyboard
+import androidx.compose.material.icons.rounded.Layers
 import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material.icons.rounded.Mouse
 import androidx.compose.material.icons.rounded.SportsEsports
@@ -20,14 +21,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.app.ActivityCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.steamcontroller.TritonBle
 import app.gamenative.ui.util.SnackbarManager
+import dev.rift.launcher.overlay.ExternalGameSession
 import timber.log.Timber
 
 /** The gamepad itself, and how new games treat controllers. */
@@ -78,6 +82,7 @@ internal fun ControllerSettings() {
 
     SettingsGroup(title = stringResource(R.string.rift_settings_group_gamepad)) {
         QuickAccessRow()
+        OverlayServiceRow()
         SwitchRow(
             title = stringResource(R.string.settings_interface_swap_face_buttons_title),
             subtitle = stringResource(R.string.settings_interface_swap_face_buttons_subtitle),
@@ -151,4 +156,22 @@ internal fun ControllerSettings() {
             onCheckedChange = { value -> defaults.update { it.copy(disableMouseInput = value) } },
         )
     }
+}
+
+/** Rift's panel over Android games works through Rift's accessibility service: shows whether it is on and opens its page. */
+@Composable
+private fun OverlayServiceRow() {
+    val context = LocalContext.current
+    var enabled by remember { mutableStateOf(ExternalGameSession.isServiceEnabled(context)) }
+    LifecycleResumeEffect(Unit) {
+        enabled = ExternalGameSession.isServiceEnabled(context)
+        onPauseOrDispose { }
+    }
+    LinkRow(
+        title = stringResource(R.string.rift_settings_overlay),
+        subtitle = stringResource(R.string.rift_settings_overlay_summary),
+        icon = Icons.Rounded.Layers,
+        value = stringResource(if (enabled) R.string.rift_settings_on else R.string.rift_settings_off),
+        onClick = { ExternalGameSession.openServiceSettings(context) },
+    )
 }

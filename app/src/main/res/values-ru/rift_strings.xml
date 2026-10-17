@@ -394,4 +394,13 @@
     <string name="rift_quick_menu_performance">Производительность</string>
     <string name="rift_quick_menu_frame_generation">Генерация кадров</string>
     <string name="rift_off">Выкл</string>
+    <!-- Шторка поверх Android-игр и эмуляторов (dev.rift.launcher.overlay) -->
+    <string name="rift_overlay_service_label">Шторка Rift в играх</string>
+    <string name="rift_overlay_service_summary">Home на геймпаде открывает шторку Rift в Android-играх и эмуляторах, запущенных из Rift</string>
+    <string name="rift_overlay_service_description">Кнопка Home на геймпаде открывает боковую шторку Rift поверх Android-игр и эмуляторов, запущенных из Rift. Rift смотрит только на кнопки геймпада и только пока такая игра на экране, больше ничего не читает.</string>
+    <string name="rift_overlay_back_to_rift">Вернуться в Rift</string>
+    <string name="rift_overlay_back_to_rift_summary">Игра останется открытой в фоне</string>
+    <string name="rift_overlay_volume">Громкость</string>
+    <string name="rift_settings_overlay">Шторка в Android-играх</string>
+    <string name="rift_settings_overlay_summary">Home на геймпаде открывает шторку Rift в Android-играх и эмуляторах. Включается в «Спец. возможностях»: «Шторка Rift в играх».</string>
 </resources>

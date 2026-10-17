@@ -12,6 +12,7 @@ import androidx.core.content.edit
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.ui.util.SnackbarManager
+import dev.rift.launcher.overlay.ExternalGameSession
 import dev.rift.launcher.home.TabSort
 import dev.rift.launcher.home.TabView
 import dev.rift.launcher.settings.EmulatorCatalog
@@ -229,6 +230,7 @@ object EmulatorLibrary {
         }
         val def = EmulatorCatalog.platform(game.platformId)
         val attempts = runCatching { intents(context, game, entry, def) }.getOrDefault(emptyList())
+        ExternalGameSession.started(context, entry.emulatorPackage)
         for (intent in attempts) {
             try {
                 context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
