@@ -56,6 +56,15 @@ internal fun RiftGamePage(
     LaunchedEffect(game.appId, game.name) { RiftAutoArt.ensure(context, game) }
     var meta by remember(game.appId, game.name) { mutableStateOf(RiftAutoMeta.cached(context, game.appId)) }
     LaunchedEffect(game.appId, game.name) { RiftAutoMeta.ensure(context, game, platformId)?.let { meta = it } }
+    LaunchedEffect(meta, game.appId) {
+        timber.log.Timber.tag("RiftMeta").i(
+            "page %s: description %s, source %s, genres+tags %d",
+            game.name,
+            if (meta?.description.isNullOrBlank()) "no" else "yes",
+            meta?.source ?: "none",
+            (meta?.genres?.size ?: 0) + (meta?.tags?.size ?: 0),
+        )
+    }
     // Rift: trailers and screenshots from Steam by title, for the hero background and the Media section.
     var media by remember(game.name) { mutableStateOf(StoreGameDetails()) }
     LaunchedEffect(game.name) { media = app.gamenative.data.StoreDetailsRepository.getMediaByTitle(game.name) }

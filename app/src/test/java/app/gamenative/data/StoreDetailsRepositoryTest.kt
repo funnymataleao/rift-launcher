@@ -334,4 +334,25 @@ class StoreDetailsRepositoryTest {
             parseSteamSearchAppId("DOOM II", search, allowReplacementBundleMatch = true),
         )
     }
+
+    private fun search(vararg names: String) =
+        """{"items": [${names.mapIndexed { i, n -> "{\"id\": ${i + 1}, \"name\": \"$n\"}" }.joinToString(",")}]}"""
+
+    @Test
+    fun `soft title match ignores apostrophes and trademark signs`() {
+        assertEquals(1, matchSteamTitle("No Mans Sky", search("No Man's Sky")))
+        assertEquals(2, matchSteamTitle("Layers of Fear 2", search("Layers of Fear", "Layers of Fear 2")))
+    }
+
+    @Test
+    fun `soft title match accepts one subtitle candidate`() {
+        assertEquals(1, matchSteamTitle("Crash Bandicoot 4", search("Crash Bandicoot\u2122 4: It's About Time")))
+    }
+
+    @Test
+    fun `soft title match refuses guesses`() {
+        assertNull(matchSteamTitle("Sonic", search("Sonic Mania")))
+        assertNull(matchSteamTitle("Zelda Breath of the Wild", search("Zelda Classic")))
+        assertNull(matchSteamTitle("Crash", search("Crash: One", "Crash: Two")))
+    }
 }

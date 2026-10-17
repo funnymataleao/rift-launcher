@@ -163,7 +163,7 @@ object StoreDetailsRepository {
         val encoded = URLEncoder.encode(title, Charsets.UTF_8.name())
         val search = getBody("https://store.steampowered.com/api/storesearch/?term=$encoded&cc=us&l=$language")
             ?: return@withContext null
-        val appId = parseSteamSearchAppId(title, search) ?: return@withContext SteamTitleMeta()
+        val appId = matchSteamTitle(title, search) ?: return@withContext SteamTitleMeta()
         coroutineScope {
             val localized = async { getBody("https://store.steampowered.com/api/appdetails?appids=$appId&cc=us&l=$language") }
             val english = if (language == "english") null else async {
@@ -713,4 +713,27 @@ internal fun parseSteamReleaseDate(releaseDate: JSONObject?): Long {
         return parsed.time / 1000
     }
     return 0L
+}
+
+private fun looseTitleKey(title: String): String =
+    GogMapRepository.normalizeTitle(title.replace(Regex("['\u2019\u2018`\u00B4]"), ""))
+
+/**
+ * The Steam search hit for [title], softer than [parseSteamSearchAppId] but still sure: the same name without
+ * apostrophes, ™/® and punctuation ("No Mans Sky" = "No Man's Sky"), or, when exactly one hit is, a game whose
+ * name is the title followed by a subtitle ("Crash Bandicoot 4" = "Crash Bandicoot™ 4: It's About Time").
+ * Anything less certain gives null: an empty page is better than another game's description.
+ */
+internal fun matchSteamTitle(title: String, searchJson: String?): Int? {
+    val key = looseTitleKey(title)
+    if (key.isBlank()) return null
+    val items = parseObject(searchJson)?.optJSONArray("items").objects()
+    items.firstOrNull { looseTitleKey(it.optString("name")) == key }
+        ?.let { return it.optInt("id", 0).takeIf { id -> id > 0 } }
+    val withSubtitle = items.filter { item ->
+        val name = item.optString("name")
+        val cut = Regex("\\s*(:|\\s[-\u2013\u2014]\\s)").find(name)?.range?.first ?: return@filter false
+        looseTitleKey(name.substring(0, cut)) == key
+    }
+    return withSubtitle.singleOrNull()?.optInt("id", 0)?.takeIf { it > 0 }
 }

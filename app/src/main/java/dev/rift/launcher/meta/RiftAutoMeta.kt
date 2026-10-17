@@ -20,8 +20,9 @@ import kotlinx.coroutines.sync.withLock
 object RiftAutoMeta {
     private const val PREFS = "rift_game_meta"
     private const val RETRY_MS = 24 * 60 * 60 * 1000L
-    private const val TRIED = "tried_"
-    private const val TRIED_IGDB = "tried_igdb_"
+    // "tried2_": the title matching got softer, so games Steam "did not know" before are asked again.
+    private const val TRIED = "tried2_"
+    private const val TRIED_IGDB = "tried2_igdb_"
     private const val TAG = "RiftMeta"
     private val lock = Mutex()
 
