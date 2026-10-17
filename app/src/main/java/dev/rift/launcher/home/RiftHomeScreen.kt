@@ -229,6 +229,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private const val PANEL_EXIT_REFOCUS_MS = 450L
+private const val HIDE_REFOCUS_MS = 500L
 private val ScreenPadding = 48.dp
 private val CardGap = 18.dp
 
@@ -715,6 +716,44 @@ fun RiftHomeScreen(
     }
     var lastStartMenuItems by remember { mutableStateOf<List<RiftStartMenuItem>>(emptyList()) }
     if (startMenuItems != null) lastStartMenuItems = startMenuItems!!
+    // Hiding a game: the cursor moves to the next card (the one before it if this was the last) before the card
+    // goes, so the focus is never left on a card that is no longer there. The last game of a library closes it.
+    fun hideGame(appId: String, name: String) {
+        fun neighbour(ids: List<String>): String? {
+            val i = ids.indexOf(appId)
+            return if (i < 0) null else ids.getOrNull(i + 1) ?: ids.getOrNull(i - 1)
+        }
+        val next: String? = when (section) {
+            RiftSection.AndroidGames -> neighbour(androidShown.map { it.toArtItem().appId })?.let { id ->
+                androidShown.firstOrNull { it.toArtItem().appId == id }?.also { focusedPackage = it.packageName }?.let(::androidFocusKey)
+            }
+            RiftSection.PcGames -> neighbour((if (libraryOpen) library else homeRow).map { it.appId })?.also { focusedAppId = it }
+            RiftSection.PcStreaming -> neighbour((if (libraryOpen) streamLibraryItems else streamHomeRow).map { it.appId })?.also { focusedStreamId = it }
+            RiftSection.CloudStreaming -> neighbour((if (libraryOpen) cloudItems else cloudHomeRow).map { it.appId })?.also { focusedCloudId = it }
+            RiftSection.Emulators -> neighbour((if (libraryOpen) emulatorLibraryItems else emulatorHomeRow).map { it.appId })?.also { focusedEmulatorId = it }
+            else -> null
+        }
+        RiftHiddenGames.hide(context, appId, name)
+        if (next == null) {
+            if (libraryOpen) closeLibrary()
+            return
+        }
+        fun assert() {
+            if (libraryOpen) {
+                libraryFocusedId = next
+                libraryPending = next
+            } else {
+                pendingFocusKey = next
+            }
+        }
+        assert()
+        // Again once the menu that hid it has faded out and given its focus back.
+        homeScope.launch {
+            delay(HIDE_REFOCUS_MS)
+            assert()
+        }
+    }
+    SideEffect { optionsOnly.onHide = ::hideGame }
     fun otherTabMenu(picked: LibraryItem? = null): List<RiftStartMenuItem>? {
         fun line(@androidx.annotation.StringRes label: Int, icon: ImageVector, action: () -> Unit) =
             RiftStartMenuItem(context.getString(label), icon = icon) { startMenuItems = null; action() }
@@ -736,7 +775,7 @@ fun RiftHomeScreen(
                     line(R.string.rift_menu_play, Icons.Default.PlayArrow) { AndroidGames.launch(context, game) },
                     line(R.string.rift_option_change_art, Icons.Default.ImageIcon) { openArt(art) },
                     favorite(art.appId, game.label),
-                    line(R.string.rift_menu_hide, Icons.Default.VisibilityOff) { RiftHiddenGames.hide(context, art.appId, game.label) },
+                    line(R.string.rift_menu_hide, Icons.Default.VisibilityOff) { hideGame(art.appId, game.label) },
                     properties { openGame(game.toPageItem()) },
                     cancel,
                 )
@@ -746,7 +785,7 @@ fun RiftHomeScreen(
                     line(R.string.rift_menu_stream, Icons.Default.Cast) { openGame(item, forStream = true) },
                     line(R.string.rift_option_change_art, Icons.Default.ImageIcon) { openArt(item) },
                     favorite(item.appId, item.name),
-                    line(R.string.rift_menu_hide, Icons.Default.VisibilityOff) { RiftHiddenGames.hide(context, item.appId, item.name) },
+                    line(R.string.rift_menu_hide, Icons.Default.VisibilityOff) { hideGame(item.appId, item.name) },
                     cancel,
                 )
             }
@@ -755,7 +794,7 @@ fun RiftHomeScreen(
                     line(R.string.rift_menu_play, Icons.Default.PlayArrow) { EmulatorLibrary.game(item.appId)?.let { EmulatorLibrary.launch(context, it) } },
                     line(R.string.rift_option_change_art, Icons.Default.ImageIcon) { openArt(item) },
                     favorite(item.appId, item.name),
-                    line(R.string.rift_menu_hide, Icons.Default.VisibilityOff) { RiftHiddenGames.hide(context, item.appId, item.name) },
+                    line(R.string.rift_menu_hide, Icons.Default.VisibilityOff) { hideGame(item.appId, item.name) },
                     properties { openGame(item) },
                     cancel,
                 )
@@ -765,7 +804,7 @@ fun RiftHomeScreen(
                     line(R.string.rift_menu_play, Icons.Default.PlayArrow) { openGame(item) },
                     line(R.string.rift_option_change_art, Icons.Default.ImageIcon) { openArt(item) },
                     favorite(item.appId, item.name),
-                    line(R.string.rift_menu_hide, Icons.Default.VisibilityOff) { RiftHiddenGames.hide(context, item.appId, item.name) },
+                    line(R.string.rift_menu_hide, Icons.Default.VisibilityOff) { hideGame(item.appId, item.name) },
                     cancel,
                 )
             }
@@ -961,6 +1000,8 @@ fun RiftHomeScreen(
         }
     }
     val blur by animateDpAsState(if (overlayOpen) 28.dp else 0.dp, tween(300), label = "backdropBlur")
+    // A menu over a library blurs the library itself, like the home under its menus.
+    val libraryBlur by animateDpAsState(if (libraryOpen && (libraryMenuOpen || gameOptionsOpen)) 28.dp else 0.dp, tween(300), label = "libraryBlur")
 
     val rightStick = rememberRightStick()
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
@@ -1374,6 +1415,7 @@ fun RiftHomeScreen(
                     else -> false
                 }
             }
+            Box(modifier = Modifier.fillMaxSize().blur(libraryBlur)) {
             // Big Picture's library: all the PC games in a grid, one tab per store with games.
             val libraryTabs = pcLibraryTabs(libraryState)
             RiftLibraryScreen(
@@ -1505,6 +1547,7 @@ fun RiftHomeScreen(
                     badges = false,
                     waitForReload = false,
                 )
+            }
             }
             // The filters menu of a library: the tab's groups, then the lines of the group picked. A pick applies
             // at once, closes the menu and sends the cursor back to the first game.
