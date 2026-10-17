@@ -54,4 +54,6 @@
     <string name="rift_stream_settings_now">Right away</string>
     <string name="rift_stream_settings_restart">After restart</string>
     <string name="rift_stream_restart">Apply and restart stream</string>
+    <string name="rift_stream_no_video">The PC sent no picture. The game\'s session on the PC may be stuck.</string>
+    <string name="rift_stream_relaunch">Quit the game on the PC and start again</string>
 </resources>

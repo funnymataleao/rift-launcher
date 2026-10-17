@@ -61,7 +61,8 @@ import dev.rift.launcher.settings.rememberRiftPrefs
 /**
  * The in-stream panel on the right, opened with Select + Start: the running game and "End stream",
  * which quits the game on the PC so the host lets go of its virtual display, then quick stream
- * settings. B closes it.
+ * settings. B closes it. When the stream broke, the panel says why and offers to quit the game on
+ * the PC and start it again.
  * Drawn like Rift's other side panels (GameNative's system menu in the glass theme).
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -74,6 +75,8 @@ fun StreamMenu(
     onEndStream: () -> Unit,
     onPerfOverlayChange: ((Boolean) -> Unit)? = null,
     onRestart: (() -> Unit)? = null,
+    error: String? = null,
+    onRelaunch: (() -> Unit)? = null,
 ) = RiftGlassTheme {
     Box(modifier = Modifier.fillMaxSize()) {
         AnimatedVisibility(
@@ -95,6 +98,7 @@ fun StreamMenu(
             modifier = Modifier.align(Alignment.CenterEnd),
         ) {
             val endFocus = remember { FocusRequester() }
+            val secondFocus = remember { FocusRequester() }
             var endFocused by remember { mutableStateOf(false) }
             Surface(
                 modifier = Modifier.width(adaptivePanelWidth(420.dp)).fillMaxHeight(),
@@ -119,18 +123,42 @@ fun StreamMenu(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    if (error != null) {
+                        Text(
+                            text = error,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    // The first button holds the focus: "Quit and start again" after an error, else "End stream".
+                    if (error != null && onRelaunch != null) {
+                        SystemMenuItem(
+                            text = stringResource(R.string.rift_stream_relaunch),
+                            icon = Icons.Rounded.RestartAlt,
+                            onClick = onRelaunch,
+                            modifier = Modifier.fillMaxWidth().onFocusChanged {
+                                endFocused = it.isFocused
+                                Log.i("RiftStream", "panel Relaunch focused=${it.isFocused}")
+                            },
+                            focusRequester = endFocus,
+                        )
+                    }
                     SystemMenuItem(
                         text = stringResource(R.string.rift_stream_end),
                         icon = Icons.Rounded.PowerSettingsNew,
                         onClick = onEndStream,
-                        modifier = Modifier.fillMaxWidth().onFocusChanged {
-                            endFocused = it.isFocused
-                            Log.i("RiftStream", "panel End stream focused=${it.isFocused}")
+                        modifier = if (error != null && onRelaunch != null) {
+                            Modifier.fillMaxWidth()
+                        } else {
+                            Modifier.fillMaxWidth().onFocusChanged {
+                                endFocused = it.isFocused
+                                Log.i("RiftStream", "panel End stream focused=${it.isFocused}")
+                            }
                         },
-                        focusRequester = endFocus,
+                        focusRequester = if (error != null && onRelaunch != null) secondFocus else endFocus,
                     )
-                    // PC streams only: the cloud stream has its own settings in the page.
-                    if (onPerfOverlayChange != null && onRestart != null) {
+                    // PC streams only, and only while the stream runs: the cloud stream has its own settings.
+                    if (error == null && onPerfOverlayChange != null && onRestart != null) {
                         StreamQuickSettings(onPerfOverlayChange = onPerfOverlayChange, onRestart = onRestart)
                     }
                 }

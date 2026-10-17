@@ -101,6 +101,9 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
     private var streamWidth = 1920
     private var streamHeight = 1080
     private var menuOpen by mutableStateOf(false)
+
+    /** Why the stream broke, shown in the panel; null while it runs. */
+    private var streamError by mutableStateOf<String?>(null)
     private var menuKey = KeyEvent.KEYCODE_UNKNOWN
 
     /** Select or Start held back from the PC while the other half of the combo may still come. */
@@ -158,10 +161,13 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
                             isOpen = menuOpen,
                             appName = intent.getStringExtra(EXTRA_APP_NAME).orEmpty(),
                             pcName = intent.getStringExtra(EXTRA_PC_NAME).orEmpty(),
-                            onDismiss = { menuOpen = false },
+                            // After an error there is no stream to go back to: closing the panel leaves.
+                            onDismiss = { if (streamError != null) finish() else menuOpen = false },
                             onEndStream = ::endStream,
                             onPerfOverlayChange = ::showPerfOverlay,
                             onRestart = ::restartStream,
+                            error = streamError,
+                            onRelaunch = ::relaunchStream,
                         )
                     }
                 }
@@ -174,7 +180,9 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
             },
         )
         onBackPressedDispatcher.addCallback(this) {
-            if (menuOpen) {
+            if (streamError != null) {
+                finish()
+            } else if (menuOpen) {
                 menuOpen = false
             } else {
                 openMenu()
@@ -357,6 +365,26 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         finish()
     }
 
+    /**
+     * "Quit and start again" after a broken stream: the game is quit on the PC first, then the same
+     * stream starts as a new session.
+     */
+    private fun relaunchStream() {
+        menuOpen = false
+        val port = intent.getIntExtra(EXTRA_PORT, 47989)
+        val httpsPort = intent.getIntExtra(EXTRA_HTTPS_PORT, 0)
+        val crypto = PlatformBinding.getCryptoProvider(applicationContext)
+        val relaunch = Intent(intent)
+        thread {
+            runCatching { NvHTTP(ComputerDetails.AddressTuple(host, port), httpsPort, uniqueId, serverCert, crypto).quitApp() }
+                .onFailure { Log.w(TAG, "quit before relaunch failed", it) }
+            runOnUiThread {
+                startActivity(relaunch)
+                finish()
+            }
+        }
+    }
+
     /** Overlay switched in the side panel: the stats are measured all along, only their view toggles. */
     private fun showPerfOverlay(show: Boolean) {
         if (connected) statusText.visibility = if (show) View.VISIBLE else View.GONE
@@ -426,10 +454,21 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
 
     override fun connectionTerminated(errorCode: Int) {
         runOnUiThread {
-            if (errorCode != MoonBridge.ML_ERROR_GRACEFUL_TERMINATION) {
-                SnackbarManager.show(getString(R.string.rift_stream_terminated, errorCode))
+            if (errorCode == MoonBridge.ML_ERROR_GRACEFUL_TERMINATION || isFinishing) {
+                finish()
+                return@runOnUiThread
             }
-            finish()
+            // The panel stays over the stream with the reason and a way out, instead of a silent return
+            // home. No video at all usually means the game's session on the PC is stuck.
+            Log.i(TAG, "stream terminated: $errorCode")
+            stopStream()
+            streamError = if (errorCode == MoonBridge.ML_ERROR_NO_VIDEO_TRAFFIC || errorCode == MoonBridge.ML_ERROR_NO_VIDEO_FRAME) {
+                getString(R.string.rift_stream_no_video)
+            } else {
+                getString(R.string.rift_stream_terminated, errorCode)
+            }
+            statusText.visibility = View.GONE
+            openMenu()
         }
     }
 
@@ -533,7 +572,9 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         if (menuOpen) {
             Log.i(TAG, "panel key ${KeyEvent.keyCodeToString(event.keyCode)} action=${event.action} focus=${menuView.hasFocus()}")
             if (event.keyCode == KeyEvent.KEYCODE_BUTTON_B) {
-                if (event.action == KeyEvent.ACTION_UP) menuOpen = false
+                if (event.action == KeyEvent.ACTION_UP) {
+                    if (streamError != null) finish() else menuOpen = false
+                }
                 return true
             }
             // Compose clicks on Enter / d-pad center, not on the pad's A.

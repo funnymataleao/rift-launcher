@@ -54,4 +54,6 @@
     <string name="rift_stream_settings_now">Сразу</string>
     <string name="rift_stream_settings_restart">После перезапуска</string>
     <string name="rift_stream_restart">Применить и перезапустить стрим</string>
+    <string name="rift_stream_no_video">ПК не присылает картинку. Похоже, сессия игры на ПК зависла.</string>
+    <string name="rift_stream_relaunch">Закрыть игру на ПК и запустить заново</string>
 </resources>
