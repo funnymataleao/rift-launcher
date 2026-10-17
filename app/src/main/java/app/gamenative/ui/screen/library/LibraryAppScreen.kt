@@ -2011,7 +2011,18 @@ internal fun AppScreenContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(heroHeight)
-                    .onSizeChanged { heroHeightPx = it.height },
+                    .onSizeChanged { heroHeightPx = it.height }
+                    // Rift: d-pad back up into the first screen lands at the very top, like LB: the whole
+                    // first screen, nothing of the tabs below it (Denis 17.10). One frame later so this
+                    // scroll replaces the default bring-into-view that focus starts.
+                    .onFocusChanged {
+                        if (it.hasFocus && scrollState.value > 0) {
+                            heroMediaScope.launch {
+                                androidx.compose.runtime.withFrameNanos { }
+                                scrollState.animateScrollTo(0)
+                            }
+                        }
+                    },
             ) {
                 Box(
                     modifier = Modifier
