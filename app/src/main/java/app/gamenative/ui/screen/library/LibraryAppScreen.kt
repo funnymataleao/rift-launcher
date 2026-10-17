@@ -2,6 +2,15 @@
 
 package app.gamenative.ui.screen.library
 
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.ScrollState
 import android.content.Intent
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
@@ -836,6 +845,400 @@ private fun FullscreenStoreMediaDialog(
 }
 
 @OptIn(ExperimentalLayoutApi::class)
+/** Rift: the game page's sections under the hero, in page order; LB/RB and the tabs jump between them. */
+private enum class GamePageSection(val labelRes: Int) {
+    Overview(R.string.rift_game_section_overview),
+    Media(R.string.rift_game_section_media),
+    Achievements(R.string.rift_game_achievements),
+    Compatibility(R.string.rift_game_section_compatibility),
+    Details(R.string.rift_game_section_details),
+}
+
+/** Rift: a small LB / RB glyph next to the section tabs. */
+@Composable
+private fun ShoulderGlyph(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
+        color = Color.White,
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color.White.copy(alpha = 0.14f))
+            .padding(horizontal = 7.dp, vertical = 3.dp),
+    )
+}
+
+/**
+ * Rift: the section tabs. The current section is filled with the accent. In the content they take focus
+ * (A jumps there); in the sticky header they are touch-only so the gamepad never lands up there.
+ */
+@Composable
+private fun GamePageSectionTabs(
+    sections: List<GamePageSection>,
+    current: GamePageSection,
+    onSelect: (GamePageSection) -> Unit,
+    focusable: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        ShoulderGlyph("LB")
+        Spacer(modifier = Modifier.width(6.dp))
+        sections.forEach { section ->
+            val interactionSource = remember { MutableInteractionSource() }
+            val isFocused by interactionSource.collectIsFocusedAsState()
+            val selected = section == current
+            val tabModifier = if (focusable) {
+                Modifier
+                    .focusRing(interactionSource, RoundedCornerShape(50), width = 2.dp)
+                    .selectable(
+                        selected = selected,
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = { onSelect(section) },
+                    )
+            } else {
+                Modifier
+                    .focusProperties { canFocus = false }
+                    .clickable(interactionSource = interactionSource, indication = null) { onSelect(section) }
+            }
+            Text(
+                text = stringResource(section.labelRes),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold),
+                color = if (selected) dev.rift.launcher.ui.theme.RiftColors.OnPrimary else Color.White.copy(alpha = 0.8f),
+                maxLines = 1,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(
+                        when {
+                            selected -> dev.rift.launcher.ui.theme.RiftColors.Primary
+                            isFocused -> Color.White.copy(alpha = 0.14f)
+                            else -> Color.Transparent
+                        },
+                    )
+                    .then(tabModifier)
+                    .padding(horizontal = 18.dp, vertical = 9.dp),
+            )
+        }
+        Spacer(modifier = Modifier.width(6.dp))
+        ShoulderGlyph("RB")
+    }
+}
+
+/** Rift: one section of the page: a small caps title, then its content. Records where it starts in the scroll. */
+@Composable
+private fun GamePageSectionBlock(
+    section: GamePageSection,
+    offsets: MutableMap<GamePageSection, Int>,
+    scrollState: ScrollState,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { offsets[section] = (it.positionInRoot().y + scrollState.value).roundToInt() }
+            .padding(bottom = 40.dp),
+    ) {
+        Text(
+            text = stringResource(section.labelRes).uppercase(Locale.getDefault()),
+            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 14.dp),
+        )
+        content()
+    }
+}
+
+/** Rift: once the hero scrolls away, a slim bar keeps the name and the section tabs on top. */
+@Composable
+private fun GamePageStickyHeader(
+    name: String,
+    sections: List<GamePageSection>,
+    current: GamePageSection,
+    onSelect: (GamePageSection) -> Unit,
+) {
+    val sidePadding = if (LocalConfiguration.current.screenWidthDp >= 840) 48.dp else 20.dp
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    0f to Color.Black.copy(alpha = 0.92f),
+                    0.75f to Color.Black.copy(alpha = 0.8f),
+                    1f to Color.Transparent,
+                ),
+            )
+            .windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top))
+            .padding(start = sidePadding, end = sidePadding, top = 14.dp, bottom = 18.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        GamePageSectionTabs(sections = sections, current = current, onSelect = onSelect, focusable = false)
+    }
+}
+
+/** Rift: "Об игре" with the critics' rating and the HowLongToBeat card beside it, all one height. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun GamePageOverview(info: GameDisplayInfo, wide: Boolean) {
+    val details = info.storeDetails
+    var expanded by rememberSaveable(info.appId) { mutableStateOf(false) }
+    val about: @Composable (Modifier) -> Unit = { modifier ->
+        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (details.description.isNotBlank()) {
+                Text(
+                    text = details.description,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.88f),
+                    maxLines = if (expanded) Int.MAX_VALUE else 6,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                ActionPillButton(
+                    icon = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    text = stringResource(if (expanded) R.string.rift_game_read_less else R.string.rift_game_read_more),
+                    onClick = { expanded = !expanded },
+                )
+            }
+            if (details.tags.isNotEmpty()) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    details.tags.forEach { tag ->
+                        Text(
+                            text = tag,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(MaterialTheme.colorScheme.surfaceContainer)
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+    val hasAbout = details.description.isNotBlank() || details.tags.isNotEmpty()
+    if (wide) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            if (hasAbout) about(Modifier.weight(1f))
+            if (details.reviewPercentage != null) GamePageRatingCard(info, Modifier.width(300.dp).fillMaxHeight())
+            info.hltbStats?.let { GamePageHltbCard(it, Modifier.width(330.dp).fillMaxHeight()) }
+        }
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            if (hasAbout) about(Modifier.fillMaxWidth())
+            if (details.reviewPercentage != null) GamePageRatingCard(info, Modifier.fillMaxWidth())
+            info.hltbStats?.let { GamePageHltbCard(it, Modifier.fillMaxWidth()) }
+        }
+    }
+}
+
+@Composable
+private fun GamePageRatingCard(info: GameDisplayInfo, modifier: Modifier = Modifier) {
+    val details = info.storeDetails
+    val percent = details.reviewPercentage ?: return
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(26.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(modifier = Modifier.size(66.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(
+                    progress = { percent / 100f },
+                    modifier = Modifier.fillMaxSize(),
+                    color = dev.rift.launcher.ui.theme.RiftColors.Primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    strokeWidth = 6.dp,
+                )
+                Text(
+                    text = percent.toString(),
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold, fontFeatureSettings = "tnum"),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = details.reviewSummary?.takeIf { it.isNotBlank() } ?: stringResource(R.string.rift_game_rating_title),
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                details.reviewCount?.takeIf { it > 0 }?.let {
+                    Text(
+                        text = stringResource(R.string.rift_game_rating_count, it),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+        val releaseDate = remember(info.releaseDate) {
+            if (info.releaseDate > 0) {
+                SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(info.releaseDate * 1000))
+            } else {
+                ""
+            }
+        }
+        listOf(
+            stringResource(R.string.developer) to info.developer,
+            stringResource(R.string.release_date) to releaseDate,
+        ).filter { it.second.isNotBlank() }.forEach { (label, value) ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GamePageHltbCard(stats: HltbService.Stats, modifier: Modifier = Modifier) {
+    val items = listOf(
+        R.string.hltb_main_story to stats.mainHours,
+        R.string.hltb_main_plus_extras to stats.mainPlusHours,
+        R.string.hltb_completionist to stats.completeHours,
+    ).filter { it.second != HltbService.UNKNOWN_HOURS }
+    if (items.isEmpty()) return
+    val max = items.maxOf { it.second.replace(',', '.').toFloatOrNull() ?: 0f }.coerceAtLeast(1f)
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(26.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(R.string.rift_game_hltb_title),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "HOWLONGTOBEAT",
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        items.forEach { (labelRes, hours) ->
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Row {
+                    Text(
+                        text = stringResource(labelRes),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = stringResource(R.string.rift_game_hours, hours),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, fontFeatureSettings = "tnum"),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+                GradientProgressBar(
+                    progress = (hours.replace(',', '.').toFloatOrNull() ?: 0f) / max,
+                    modifier = Modifier.fillMaxWidth(),
+                    height = 8.dp,
+                )
+            }
+        }
+    }
+}
+
+/** Rift: trailers and screenshots as one row of 16:9 tiles; A opens the fullscreen viewer there. */
+@Composable
+private fun GamePageMediaRow(
+    media: List<StoreMediaItem>,
+    videoFallback: String,
+    gameName: String,
+    onOpen: (Int) -> Unit,
+) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        itemsIndexed(media, key = { _, item -> item.url }) { index, item ->
+            val interactionSource = remember { MutableInteractionSource() }
+            val isFocused by interactionSource.collectIsFocusedAsState()
+            val scale by animateFloatAsState(
+                targetValue = if (isFocused) 1.04f else 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium,
+                ),
+                label = "mediaTileScale",
+            )
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 8.dp)
+                    .height(200.dp)
+                    .aspectRatio(16f / 9f)
+                    .scale(scale)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .focusRing(interactionSource, RoundedCornerShape(22.dp), width = 3.dp)
+                    .selectable(
+                        selected = isFocused,
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = { onOpen(index) },
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                CoilImage(
+                    imageModel = { if (item.isVideo) videoFallback else item.url },
+                    imageOptions = ImageOptions(contentDescription = gameName, contentScale = ContentScale.Crop),
+                    modifier = Modifier.fillMaxSize(),
+                )
+                if (item.isVideo) {
+                    Box(
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.55f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            tint = dev.rift.launcher.ui.theme.RiftColors.Primary,
+                            modifier = Modifier.size(32.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun StoreDetailsSection(
     details: StoreGameDetails,
@@ -1249,6 +1652,33 @@ internal fun AppScreenContent(
         }
     }
 
+    // Rift: the sections under the hero, where each starts in the scroll, and which one is on screen.
+    val pageSections = remember(displayInfo.storeDetails, displayInfo.hltbStats, heroMedia, achievements, riftStream) {
+        buildList {
+            val details = displayInfo.storeDetails
+            if (details.description.isNotBlank() || details.tags.isNotEmpty() || details.reviewPercentage != null || displayInfo.hltbStats != null) {
+                add(GamePageSection.Overview)
+            }
+            if (heroMedia.any { it.isVideo || it.url != displayInfo.heroImageUrl }) add(GamePageSection.Media)
+            if (!achievements.isNullOrEmpty()) add(GamePageSection.Achievements)
+            if (riftStream == null) add(GamePageSection.Compatibility)
+            add(GamePageSection.Details)
+        }
+    }
+    val sectionOffsets = remember(displayInfo.appId) { mutableStateMapOf<GamePageSection, Int>() }
+    val stickyHeaderPx = with(LocalDensity.current) { 88.dp.roundToPx() }
+    val currentSection by remember(pageSections) {
+        derivedStateOf {
+            pageSections.lastOrNull { (sectionOffsets[it] ?: Int.MAX_VALUE) <= scrollState.value + stickyHeaderPx + 8 }
+                ?: pageSections.first()
+        }
+    }
+    val goToSection: (GamePageSection) -> Unit = { section ->
+        heroMediaScope.launch {
+            scrollState.animateScrollTo(((sectionOffsets[section] ?: 0) - stickyHeaderPx).coerceAtLeast(0))
+        }
+    }
+
     // Handle gamepad button presses
     val handleKeyEvent: (KeyEvent) -> Boolean = { event ->
         if (event.action == KeyEvent.ACTION_DOWN) {
@@ -1266,6 +1696,23 @@ internal fun AppScreenContent(
                         onStartAction()
                     }
                     true
+                }
+
+                // Rift: LB/RB jump between the page's sections; LB from the first goes back up to the hero.
+                KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_R1 -> {
+                    if (riftOptionsOnly == null && !optionsMenuVisible && !propertiesOpen) {
+                        val atTop = heroHeightPx > 0 && scrollState.value < heroHeightPx - stickyHeaderPx
+                        val index = if (atTop) -1 else pageSections.indexOf(currentSection)
+                        val next = index + if (event.keyCode == KeyEvent.KEYCODE_BUTTON_L1) -1 else 1
+                        if (next < 0) {
+                            heroMediaScope.launch { scrollState.animateScrollTo(0) }
+                        } else {
+                            pageSections.getOrNull(next)?.let(goToSection)
+                        }
+                        true
+                    } else {
+                        false
+                    }
                 }
 
                 // B button - back
@@ -1766,12 +2213,12 @@ internal fun AppScreenContent(
                 )
             }
 
-            // Content section below hero with solid background
+            // Rift: under the hero the page's sections run as one scroll; the tabs and LB/RB jump between them.
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.background)
-                    .padding(20.dp),
+                    .padding(start = sidePadding, end = sidePadding, top = 8.dp),
             ) {
                 // Update available banner
                 if (isUpdatePending) {
@@ -1812,6 +2259,36 @@ internal fun AppScreenContent(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
+                GamePageSectionTabs(
+                    sections = pageSections,
+                    current = currentSection,
+                    onSelect = goToSection,
+                    focusable = true,
+                )
+                Spacer(modifier = Modifier.height(28.dp))
+
+                if (GamePageSection.Overview in pageSections) {
+                    GamePageSectionBlock(GamePageSection.Overview, sectionOffsets, scrollState) {
+                        GamePageOverview(displayInfo, wide = configuration.screenWidthDp >= 840)
+                    }
+                }
+                if (GamePageSection.Media in pageSections) {
+                    GamePageSectionBlock(GamePageSection.Media, sectionOffsets, scrollState) {
+                        GamePageMediaRow(
+                            media = heroMedia,
+                            videoFallback = videoFallback,
+                            gameName = displayInfo.name,
+                            onOpen = { fullscreenHeroPage = it },
+                        )
+                    }
+                }
+                if (!achievements.isNullOrEmpty()) {
+                    GamePageSectionBlock(GamePageSection.Achievements, sectionOffsets, scrollState) {
+                        AchievementsRow(achievements = achievements)
+                    }
+                }
+                if (GamePageSection.Compatibility in pageSections) {
+                    GamePageSectionBlock(GamePageSection.Compatibility, sectionOffsets, scrollState) {
                 // Rift: Wine compatibility is about GameNative's own (PC Games) games; streaming, cloud, Android and emulator pages have none.
                 if (riftStream == null) {
                 // Rift: community run stats moved off the hero, next to the compatibility verdict.
@@ -1836,20 +2313,9 @@ internal fun AppScreenContent(
                 Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                if (displayInfo.storeDetails.hasOverview) {
-                    StoreDetailsSection(
-                        details = displayInfo.storeDetails,
-                        gameKey = displayInfo.appId,
-                    )
-                    Spacer(modifier = Modifier.height(22.dp))
+                    }
                 }
-                // Game information section
-                Text(
-                    text = stringResource(R.string.game_information),
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    modifier = Modifier.padding(bottom = 12.dp),
-                )
-
+                GamePageSectionBlock(GamePageSection.Details, sectionOffsets, scrollState) {
                 // Info cards in 2-column grid (Rift: not for a cloud game, nothing of it is on the device)
                 if (riftStream?.showLocalDetails != false) {
                 Row(
@@ -1887,13 +2353,6 @@ internal fun AppScreenContent(
                     )
                 }
                 }
-
-                displayInfo.hltbStats?.let { hltb ->
-                    Spacer(modifier = Modifier.height(10.dp))
-                    HltbInfoBar(hltb)
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1962,14 +2421,27 @@ internal fun AppScreenContent(
                     }
                 }
 
-                // Achievements
-                if (!achievements.isNullOrEmpty()) {
-                    AchievementsRow(achievements = achievements)
                 }
 
                 // Rift: room under the last card for the gamepad footer, so it is not cut off.
                 Spacer(modifier = Modifier.height(96.dp).navigationBarsPadding())
             }
+        }
+
+        // Rift: once the hero scrolls away a slim header keeps the name and the section tabs on top.
+        val showStickyHeader by remember { derivedStateOf { heroHeightPx > 0 && scrollState.value > heroHeightPx - stickyHeaderPx } }
+        AnimatedVisibility(
+            visible = showStickyHeader,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopCenter),
+        ) {
+            GamePageStickyHeader(
+                name = displayInfo.name,
+                sections = pageSections,
+                current = currentSection,
+                onSelect = goToSection,
+            )
         }
         }
 
