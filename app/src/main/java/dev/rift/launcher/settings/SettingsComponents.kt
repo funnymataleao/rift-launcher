@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -513,8 +514,9 @@ internal fun NoteText(text: String, modifier: Modifier = Modifier, underGroup: B
 }
 
 /**
- * A row whose answer is one of a few options shown as chips under the title. Left and right move
- * between chips, so a short list needs no dialog.
+ * A row whose answer is one of two to four options WITHOUT an order (a mode, a type), shown as pills under the
+ * title. Left and right move between them. Answers that go from less to more (resolution, frame rate, bitrate,
+ * quality, volume, a scale) are a [StepSliderRow] instead.
  */
 @Composable
 internal fun ChoiceChipsRow(
@@ -607,8 +609,9 @@ internal fun RiftChip(
             text = text,
             fontSize = 14.5.sp,
             fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            // A long answer takes a second line, never an ellipsis.
+            maxLines = 2,
+            textAlign = TextAlign.Center,
         )
     }
 }

@@ -117,7 +117,7 @@ internal fun ControllerSettings() {
             },
         )
         val vibrationValues = listOf(0, 25, 50, 75, 100)
-        ChoiceChipsRow(
+        StepSliderRow(
             title = stringResource(R.string.vibration_intensity),
             icon = Icons.Rounded.Vibration,
             options = vibrationValues.map { if (it == 0) stringResource(R.string.rift_settings_off) else "$it%" },

@@ -51,12 +51,12 @@ internal fun CloudQuickSettings(
         )
     }
 
-    // A few answers are pills, a longer list or a scale is a slider.
+    // Answers that go from less to more are a slider with a stop at each, the others are pills.
     @Composable
     fun Choice(setting: CloudSetting.Choice) {
         val labels = setting.options.associate { it.value to it.label() }
         val value = values[setting.key] ?: setting.default
-        if (setting.options.size <= 3) {
+        if (!setting.slider) {
             ChoiceRow(
                 title = stringResource(setting.title),
                 choices = setting.options.map { it.value },

@@ -143,7 +143,16 @@ private fun CloudSettingRow(setting: CloudSetting, value: Any?, onChange: (Any) 
         is CloudSetting.Choice -> {
             val labels = setting.options.map { it.label() }
             val index = setting.options.indexOfFirst { it.value == (value ?: setting.default) }
-            if (setting.chips) {
+            if (setting.slider) {
+                StepSliderRow(
+                    title = title,
+                    subtitle = subtitle,
+                    icon = setting.icon,
+                    options = labels,
+                    selectedIndex = index,
+                    onSelect = { onChange(setting.options[it].value) },
+                )
+            } else if (setting.chips) {
                 ChoiceChipsRow(
                     title = title,
                     subtitle = subtitle,

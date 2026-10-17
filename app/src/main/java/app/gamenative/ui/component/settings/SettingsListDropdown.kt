@@ -56,19 +56,35 @@ fun SettingsListDropdown(
     shadowElevation: Dp = ListItemDefaults.Elevation,
     action: @Composable (() -> Unit)? = null,
 ) {
-    // A few short answers are pills under the title, like in Rift's own Settings.
-    if (fitsAsPills(items, hasMuted = itemMuted != null, hasAction = action != null)) {
-        RiftChoiceTile(
-            items = items,
-            selectedIndex = value,
-            onSelect = onItemSelected,
-            title = title,
-            subtitle = subtitle,
-            icon = icon,
-            enabled = enabled,
-            modifier = modifier,
-        )
-        return
+    // Answers that go from less to more are a slider, a few others pills, like in Rift's own Settings.
+    when (choiceLook(items, hasMuted = itemMuted != null, hasAction = action != null)) {
+        ChoiceLook.Slider -> {
+            RiftStepTile(
+                items = items,
+                selectedIndex = value,
+                onSelect = onItemSelected,
+                title = title,
+                subtitle = subtitle,
+                icon = icon,
+                enabled = enabled,
+                modifier = modifier,
+            )
+            return
+        }
+        ChoiceLook.Pills -> {
+            RiftChoiceTile(
+                items = items,
+                selectedIndex = value,
+                onSelect = onItemSelected,
+                title = title,
+                subtitle = subtitle,
+                icon = icon,
+                enabled = enabled,
+                modifier = modifier,
+            )
+            return
+        }
+        ChoiceLook.Dropdown -> Unit
     }
 
     var isDropdownExpanded by remember { mutableStateOf(false) }

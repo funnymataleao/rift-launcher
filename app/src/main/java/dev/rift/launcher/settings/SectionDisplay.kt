@@ -110,14 +110,14 @@ internal fun DisplaySettings() {
         )
         if (effectIndex > 0) {
             val levels = listOf(25, 50, 75, 100)
-            ChoiceChipsRow(
+            StepSliderRow(
                 title = stringResource(R.string.sharpness_level),
                 icon = Icons.Rounded.Tune,
                 options = levels.map { "$it%" },
                 selectedIndex = levels.indexOfFirst { it >= data.sharpnessLevel }.let { if (it < 0) levels.lastIndex else it },
                 onSelect = { index -> defaults.update { it.copy(sharpnessLevel = levels[index]) } },
             )
-            ChoiceChipsRow(
+            StepSliderRow(
                 title = stringResource(R.string.sharpness_denoise),
                 icon = Icons.Rounded.Tune,
                 options = levels.map { "$it%" },

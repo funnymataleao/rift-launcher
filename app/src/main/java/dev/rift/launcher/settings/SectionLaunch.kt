@@ -76,14 +76,26 @@ internal fun LaunchSettings() {
                 PrefManager.powerControlDefaultEnabled = it
             },
         )
-        ChoiceChipsRow(
-            title = stringResource(R.string.startup_selection),
-            subtitle = stringResource(R.string.rift_settings_startup_summary),
-            icon = Icons.Rounded.PowerSettingsNew,
-            options = startupLabels,
-            selectedIndex = startupIndex,
-            onSelect = { index -> defaults.update { it.copy(startupSelection = index.toByte()) } },
-        )
+        // Normal, essential, aggressive go from less to more; with two answers left they are pills.
+        if (startupLabels.size >= 3) {
+            StepSliderRow(
+                title = stringResource(R.string.startup_selection),
+                subtitle = stringResource(R.string.rift_settings_startup_summary),
+                icon = Icons.Rounded.PowerSettingsNew,
+                options = startupLabels,
+                selectedIndex = startupIndex,
+                onSelect = { index -> defaults.update { it.copy(startupSelection = index.toByte()) } },
+            )
+        } else {
+            ChoiceChipsRow(
+                title = stringResource(R.string.startup_selection),
+                subtitle = stringResource(R.string.rift_settings_startup_summary),
+                icon = Icons.Rounded.PowerSettingsNew,
+                options = startupLabels,
+                selectedIndex = startupIndex,
+                onSelect = { index -> defaults.update { it.copy(startupSelection = index.toByte()) } },
+            )
+        }
         ChoiceChipsRow(
             title = stringResource(R.string.rift_settings_suspend),
             subtitle = stringResource(R.string.rift_settings_suspend_summary),

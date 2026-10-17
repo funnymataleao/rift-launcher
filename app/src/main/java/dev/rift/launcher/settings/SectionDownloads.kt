@@ -97,7 +97,7 @@ internal fun DownloadsSettings() {
                 PrefManager.downloadOnWifiOnly = it
             },
         )
-        ChoiceChipsRow(
+        StepSliderRow(
             title = stringResource(R.string.settings_download_speed),
             subtitle = stringResource(R.string.settings_download_heat_warning),
             icon = Icons.Rounded.Speed,
