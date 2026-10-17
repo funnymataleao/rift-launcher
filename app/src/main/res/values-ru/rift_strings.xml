@@ -407,6 +407,9 @@
     <string name="rift_overlay_service_description">Кнопка Home на геймпаде открывает боковую шторку Rift поверх Android-игр и эмуляторов, запущенных из Rift. Rift смотрит только на кнопки геймпада и только пока такая игра на экране, больше ничего не читает.</string>
     <string name="rift_overlay_back_to_rift">Вернуться в Rift</string>
     <string name="rift_overlay_back_to_rift_summary">Игра останется открытой в фоне</string>
+    <string name="rift_overlay_close_game">Закрыть игру</string>
+    <string name="rift_overlay_close_game_summary">Закроет игру и эмулятор и вернёт в Rift</string>
+    <string name="rift_overlay_close_game_confirm">Нажмите ещё раз, чтобы закрыть. Несохранённый прогресс пропадёт</string>
     <string name="rift_overlay_volume">Громкость</string>
     <string name="rift_overlay_game_menu">Меню игры</string>
     <string name="rift_overlay_game_menu_summary">Как жест «Назад»: в эмуляторах открывает их меню с выходом</string>
