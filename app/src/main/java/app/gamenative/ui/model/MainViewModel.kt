@@ -777,7 +777,7 @@ class MainViewModel @Inject constructor(
                 try {
                     // Show feedback for all stores except custom games.
                     val feedbackGameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
-                    if (feedbackGameSource != GameSource.CUSTOM_GAME && !Constants.Misc.HIDE_UPSTREAM_SERVICES) {
+                    if (feedbackGameSource != GameSource.CUSTOM_GAME) {
                         val container = ContainerUtils.getContainer(context, appId)
 
                         val shown = container.getExtra("discord_support_prompt_shown", "false") == "true"

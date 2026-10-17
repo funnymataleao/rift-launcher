@@ -30,7 +30,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import app.gamenative.PluviaApp
-import app.gamenative.Constants
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.api.isValidCommunityConfig
@@ -527,7 +526,7 @@ abstract class BaseAppScreen {
         libraryItem: LibraryItem,
         onAiDebugRun: () -> Unit,
     ): AppMenuOption? {
-        if (Constants.Misc.HIDE_UPSTREAM_SERVICES || PrefManager.hideAiFeatures) return null
+        if (PrefManager.hideAiFeatures) return null
         return AppMenuOption(
             AppOptionMenuType.AiDebugRun,
             onClick = { onAiDebugRun() },
