@@ -18,6 +18,7 @@ import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material.icons.rounded.Tab
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.gamenative.R
@@ -56,14 +57,28 @@ enum class RiftSettingsSection(
     Controller(RiftSettingsGroup.Rift, R.string.rift_settings_controller, R.string.rift_settings_controller_summary, Icons.Rounded.Gamepad, SettingsAccent.Rose),
     Sound(RiftSettingsGroup.Rift, R.string.rift_settings_sound, R.string.rift_settings_sound_summary, Icons.Rounded.MusicNote, SettingsAccent.Lemon),
     Home(RiftSettingsGroup.Rift, R.string.rift_settings_home, R.string.rift_settings_home_summary, Icons.Rounded.Home, SettingsAccent.Peach),
+    Artwork(RiftSettingsGroup.Rift, R.string.rift_settings_artwork, R.string.rift_settings_artwork_summary, Icons.Rounded.Image, SettingsAccent.Mint),
 
     Graphics(RiftSettingsGroup.Windows, R.string.rift_settings_graphics, R.string.rift_settings_graphics_summary, Icons.Rounded.Videocam, SettingsAccent.Blue),
     Display(RiftSettingsGroup.Windows, R.string.rift_settings_display, R.string.rift_settings_display_summary, Icons.Rounded.DesktopWindows, SettingsAccent.Mint),
     Launch(RiftSettingsGroup.Windows, R.string.rift_settings_launch, R.string.rift_settings_launch_summary, Icons.Rounded.RocketLaunch, SettingsAccent.Rose),
     Downloads(RiftSettingsGroup.Windows, R.string.rift_settings_downloads, R.string.rift_settings_downloads_summary, Icons.Rounded.CloudDownload, SettingsAccent.Green),
 
-    Assistant(RiftSettingsGroup.System, R.string.rift_settings_assistant, R.string.rift_settings_assistant_summary, Icons.Rounded.AutoAwesome, SettingsAccent.Teal),
+    Assistant(RiftSettingsGroup.System, R.string.rift_settings_assistant, R.string.rift_settings_assistant_summary, Icons.Rounded.AutoAwesome, SettingsAccent.Green),
     Device(RiftSettingsGroup.System, R.string.rift_settings_device, R.string.rift_settings_device_summary, Icons.Rounded.Memory, SettingsAccent.Sky),
     About(RiftSettingsGroup.System, R.string.rift_settings_about, R.string.rift_settings_about_summary, Icons.Rounded.Info, SettingsAccent.Lilac),
     Debug(RiftSettingsGroup.System, R.string.rift_settings_debug, R.string.rift_settings_debug_summary, Icons.Rounded.BugReport, SettingsAccent.Lemon),
+    ;
+
+    companion object {
+        /** A section another screen wants the settings to open on (the art picker sends people to the key). Read once. */
+        @Volatile
+        private var requested: RiftSettingsSection? = null
+
+        fun request(section: RiftSettingsSection) {
+            requested = section
+        }
+
+        internal fun takeRequested(): RiftSettingsSection? = requested.also { requested = null }
+    }
 }

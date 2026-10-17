@@ -370,6 +370,7 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.ChangePreferredCopy -> Icons.Filled.Face4
         AppOptionMenuType.AddToFavorites -> Icons.Filled.StarOutline
         AppOptionMenuType.RemoveFromFavorites -> Icons.Filled.Star
+        AppOptionMenuType.ChangeArt -> Icons.Default.Image
     }
 }
 
@@ -392,6 +393,7 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             AppOptionMenuType.CopyLaunchLink,
             AppOptionMenuType.AddToFavorites,
             AppOptionMenuType.RemoveFromFavorites,
+            AppOptionMenuType.ChangeArt,
             -> quickActions.add(option)
 
             // Game Management

@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -1213,6 +1214,11 @@ abstract class BaseAppScreen {
         // Always available: Edit Container
         menuOptions.add(getEditContainerOption(context, libraryItem, onEditContainer))
 
+        // Rift: the SteamGridDB art picker, offered wherever the Rift home provides it.
+        dev.rift.launcher.art.LocalRiftArtPicker.current?.let { openArtPicker ->
+            menuOptions.add(AppMenuOption(optionType = AppOptionMenuType.ChangeArt, onClick = { openArtPicker(libraryItem) }))
+        }
+
         if (isInstalled) {
             // Options only available when game is installed
             getRunContainerOption(context, libraryItem, onClickPlay)?.let { menuOptions.add(it) }
@@ -1320,7 +1326,13 @@ abstract class BaseAppScreen {
                 locale = storeLocale,
             )
         }
+        // Rift: the banner and icon the user picked replace the store's.
+        val pickedArt by dev.rift.launcher.art.GameArtStore.version.collectAsState()
+        val pickedHero = remember(pickedArt, appId) { dev.rift.launcher.art.GameArtStore.get(context, appId, dev.rift.launcher.art.ArtKind.Hero) }
+        val pickedIcon = remember(pickedArt, appId) { dev.rift.launcher.art.GameArtStore.get(context, appId, dev.rift.launcher.art.ArtKind.Icon) }
         val displayInfo = displayInfoBase.copy(
+            heroImageUrl = pickedHero.ifEmpty { displayInfoBase.heroImageUrl },
+            iconUrl = pickedIcon.ifEmpty { displayInfoBase.iconUrl },
             hltbStats = hltbStats,
             storeDetails = storeDetails.mergedWith(localStoreDetails),
         )
