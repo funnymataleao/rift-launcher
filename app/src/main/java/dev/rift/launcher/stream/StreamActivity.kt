@@ -40,6 +40,7 @@ import com.limelight.nvstream.http.NvHTTP
 import com.limelight.nvstream.input.ControllerPacket
 import com.limelight.nvstream.input.MouseButtonPacket
 import com.limelight.nvstream.jni.MoonBridge
+import dev.rift.launcher.home.RiftControls
 import java.io.ByteArrayInputStream
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
@@ -52,7 +53,8 @@ import kotlin.math.roundToInt
 /**
  * Full-screen stream on top of the Artemis core, configured from [StreamSettings].
  * Input: one gamepad (with vibration) and touch as an absolute mouse.
- * Leave: Select + Start (or Back) opens the side panel with "End stream".
+ * Leave: Select + Start (or Back, or the button set in [RiftControls.streamMenuKey]) opens the side
+ * panel with "End stream".
  */
 class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnectionListener, PerfOverlayListener {
 
@@ -69,11 +71,15 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         const val EXTRA_APP_HDR = "appHdr"
 
         private const val MENU_COMBO = ControllerPacket.BACK_FLAG or ControllerPacket.PLAY_FLAG
+
+        /** How long Select or Start waits for the other one before it goes to the PC. */
+        private const val COMBO_WINDOW_MS = 150L
         private const val DPAD_FLAGS = ControllerPacket.UP_FLAG or ControllerPacket.DOWN_FLAG or
             ControllerPacket.LEFT_FLAG or ControllerPacket.RIGHT_FLAG
     }
 
     private lateinit var surfaceView: SurfaceView
+    private lateinit var menuView: ComposeView
     private lateinit var statusText: TextView
     private lateinit var messageText: TextView
     private val hideMessage = Runnable { messageText.visibility = View.GONE }
@@ -86,6 +92,17 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
     private var streamWidth = 1920
     private var streamHeight = 1080
     private var menuOpen by mutableStateOf(false)
+    private var menuKey = KeyEvent.KEYCODE_UNKNOWN
+
+    /** Select or Start held back from the PC while the other half of the combo may still come. */
+    private var pendingFlags = 0
+    private val sendPending = Runnable {
+        if (pendingFlags != 0) {
+            buttons = buttons or pendingFlags
+            pendingFlags = 0
+            sendController()
+        }
+    }
     private lateinit var host: String
     private lateinit var uniqueId: String
     private var serverCert: X509Certificate? = null
@@ -101,6 +118,7 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settings = StreamSettings(this)
+        menuKey = RiftControls.streamMenuKey(this)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         hideSystemBars()
 
@@ -123,20 +141,20 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
                 setBackgroundColor(Color.BLACK)
                 addView(surfaceView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT, Gravity.CENTER))
                 addView(statusText, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.START))
-                addView(
-                    ComposeView(context).apply {
-                        setContent {
-                            StreamMenu(
-                                isOpen = menuOpen,
-                                appName = intent.getStringExtra(EXTRA_APP_NAME).orEmpty(),
-                                pcName = intent.getStringExtra(EXTRA_PC_NAME).orEmpty(),
-                                onDismiss = { menuOpen = false },
-                                onEndStream = ::endStream,
-                            )
-                        }
-                    },
-                    FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT),
-                )
+                menuView = ComposeView(context).apply {
+                    isFocusable = true
+                    isFocusableInTouchMode = true
+                    setContent {
+                        StreamMenu(
+                            isOpen = menuOpen,
+                            appName = intent.getStringExtra(EXTRA_APP_NAME).orEmpty(),
+                            pcName = intent.getStringExtra(EXTRA_PC_NAME).orEmpty(),
+                            onDismiss = { menuOpen = false },
+                            onEndStream = ::endStream,
+                        )
+                    }
+                }
+                addView(menuView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
                 addView(
                     messageText,
                     FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
@@ -329,6 +347,8 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
 
     /** Opens the side panel; the host gets a released pad so nothing stays held in the game. */
     private fun openMenu() {
+        surfaceView.removeCallbacks(sendPending)
+        pendingFlags = 0
         buttons = 0
         leftTrigger = 0
         rightTrigger = 0
@@ -337,6 +357,8 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         rsX = 0
         rsY = 0
         sendController()
+        // The panel's buttons live in the Compose layer; it takes the focus so the d-pad and A work there.
+        menuView.requestFocus()
         menuOpen = true
     }
 
@@ -449,8 +471,9 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         KeyEvent.KEYCODE_BUTTON_R1 -> ControllerPacket.RB_FLAG
         KeyEvent.KEYCODE_BUTTON_THUMBL -> ControllerPacket.LS_CLK_FLAG
         KeyEvent.KEYCODE_BUTTON_THUMBR -> ControllerPacket.RS_CLK_FLAG
-        KeyEvent.KEYCODE_BUTTON_START -> ControllerPacket.PLAY_FLAG
-        KeyEvent.KEYCODE_BUTTON_SELECT -> ControllerPacket.BACK_FLAG
+        // Some pads (and some Android builds) send Menu for Start and Back for Select.
+        KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_MENU -> ControllerPacket.PLAY_FLAG
+        KeyEvent.KEYCODE_BUTTON_SELECT, KeyEvent.KEYCODE_BACK -> ControllerPacket.BACK_FLAG
         KeyEvent.KEYCODE_BUTTON_MODE -> ControllerPacket.SPECIAL_BUTTON_FLAG
         KeyEvent.KEYCODE_DPAD_UP -> ControllerPacket.UP_FLAG
         KeyEvent.KEYCODE_DPAD_DOWN -> ControllerPacket.DOWN_FLAG
@@ -460,6 +483,13 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // The panel's own button opens and closes it and never reaches the PC.
+        if (menuKey != KeyEvent.KEYCODE_UNKNOWN && event.keyCode == menuKey) {
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                if (menuOpen) menuOpen = false else openMenu()
+            }
+            return true
+        }
         // With the panel open the pad drives the panel: B closes it, A and the d-pad reach Compose.
         if (menuOpen) {
             if (event.keyCode == KeyEvent.KEYCODE_BUTTON_B) {
@@ -470,15 +500,30 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         }
         val flag = if (isGamepad(event.source)) buttonFlag(event.keyCode) else 0
         if (flag == 0) return super.dispatchKeyEvent(event)
+        if (event.repeatCount > 0) return true
         when (event.action) {
             KeyEvent.ACTION_DOWN -> {
-                buttons = buttons or flag
-                if (buttons and MENU_COMBO == MENU_COMBO) {
-                    openMenu()
+                if (flag and MENU_COMBO != 0) {
+                    // Select + Start opens the panel; neither button reaches the game when pressed together.
+                    if ((pendingFlags or (buttons and MENU_COMBO) or flag) == MENU_COMBO) {
+                        openMenu()
+                        return true
+                    }
+                    pendingFlags = pendingFlags or flag
+                    surfaceView.removeCallbacks(sendPending)
+                    surfaceView.postDelayed(sendPending, COMBO_WINDOW_MS)
                     return true
                 }
+                buttons = buttons or flag
             }
-            KeyEvent.ACTION_UP -> buttons = buttons and flag.inv()
+            KeyEvent.ACTION_UP -> {
+                // A quick tap of Select or Start still reaches the PC as a press and a release.
+                if (pendingFlags and flag != 0) {
+                    surfaceView.removeCallbacks(sendPending)
+                    sendPending.run()
+                }
+                buttons = buttons and flag.inv()
+            }
         }
         sendController()
         return true
