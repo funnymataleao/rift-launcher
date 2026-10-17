@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -100,7 +101,11 @@ fun StreamMenu(
                     )
                 }
             }
-            LaunchedEffect(Unit) { runCatching { endFocus.requestFocus() } }
+            LaunchedEffect(Unit) {
+                // One frame first, so the panel is laid out in the focused view before it takes the focus.
+                withFrameNanos { }
+                runCatching { endFocus.requestFocus() }
+            }
         }
     }
 }
