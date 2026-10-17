@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import app.gamenative.data.LibraryItem
 import dev.rift.launcher.settings.RiftPrefs
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -48,4 +49,21 @@ object RiftAutoMeta {
             }
         }
     }
+
+    /**
+     * Looks up every game that has no metadata yet, one after the other (IGDB allows four requests a second),
+     * so a library that was just added is filled in before its pages are opened. [games] pairs a game with
+     * its emulator system (null for Android games).
+     */
+    suspend fun prefetch(context: Context, games: List<Pair<LibraryItem, String?>>) {
+        val rift = RiftPrefs.of(context)
+        if (rift.igdbClientId.isBlank() || rift.igdbClientSecret.isBlank()) return
+        for ((item, platformId) in games) {
+            if (cached(context, item.appId) != null) continue
+            ensure(context, item, platformId)
+            delay(PREFETCH_GAP_MS)
+        }
+    }
+
+    private const val PREFETCH_GAP_MS = 400L
 }

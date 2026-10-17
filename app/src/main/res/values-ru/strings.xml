@@ -1693,7 +1693,7 @@ https://gamenative.app
     <string name="recommended_buy_button">Купить в GOG</string>
     <string name="rec_buy_with_price">%1$s · Купить в GOG</string>
     <string name="recommended_support_message">Мы получаем комиссию с покупок, совершённых по этой ссылке.</string>
-    <string name="recommended_about_heading">Об этой игре</string>
+    <string name="recommended_about_heading">Об игре</string>
     <string name="recommended_review_count">На основе %1$s отзывов</string>
     <string name="library_store_media_page">%1$d из %2$d</string>
     <string name="library_store_media_fullscreen">Открыть медиафайлы на весь экран</string>
