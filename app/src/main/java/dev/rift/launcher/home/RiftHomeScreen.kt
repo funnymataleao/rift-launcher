@@ -3055,16 +3055,12 @@ private fun GameLogo(item: LibraryItem) {
         var logoFailed by remember(appId) { mutableStateOf(url.isEmpty()) }
         Box(modifier = Modifier.width(LogoWidth).height(LogoHeight), contentAlignment = Alignment.BottomStart) {
             if (!logoFailed) {
-                CoilImage(
+                RiftLogo(
+                    url = url,
+                    contentDescription = item.name,
                     modifier = Modifier.fillMaxSize(),
-                    imageModel = { url },
-                    imageOptions = ImageOptions(
-                        contentScale = ContentScale.Fit,
-                        alignment = Alignment.BottomStart,
-                        contentDescription = item.name,
-                    ),
-                    loading = {},
-                    failure = { LaunchedEffect(Unit) { logoFailed = true } },
+                    alignment = Alignment.BottomStart,
+                    onFailed = { logoFailed = true },
                 )
             } else if (!CloudLibrary.isCloud(item.appId)) {
                 // A cloud game shows no name in its place: its logo comes in once it is found.
