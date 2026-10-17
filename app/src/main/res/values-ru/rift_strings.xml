@@ -216,6 +216,10 @@
     <string name="rift_settings_remove_platform">Убрать систему</string>
     <string name="rift_platform_switch">Nintendo Switch</string>
     <string name="rift_platform_ps2">PlayStation 2</string>
+    <string name="rift_platform_ps3">PlayStation 3</string>
+    <string name="rift_platform_ps4">PlayStation 4</string>
+    <string name="rift_platform_ps3_note">Эмулятору нужна прошивка PS3, её ставят внутри самого эмулятора. Эмуляция PS3 тяжёлая: нормально идёт только на самых мощных чипах.</string>
+    <string name="rift_platform_ps4_note">Bachata S4 экспериментальный и запускает только игры, установленные внутри него. Rift берёт код игры (CUSA…) из имени файла; если его нет, эмулятор просто откроется.</string>
     <string name="rift_platform_ps1">PlayStation</string>
     <string name="rift_platform_psp">PSP</string>
     <string name="rift_platform_vita">PS Vita</string>
