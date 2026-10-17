@@ -38,6 +38,7 @@ import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import dev.rift.launcher.home.CoverImage
 import dev.rift.launcher.home.GameLogos
+import dev.rift.launcher.home.RiftLogo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.sqrt
@@ -78,12 +79,12 @@ fun StreamSplash(visible: Boolean, appName: String, heroUrl: String, logoUrl: St
             var logoFailed by remember(logo) { mutableStateOf(logo.isNullOrEmpty()) }
             val url = logo
             if (url != null && !logoFailed) {
-                CoilImage(
+                RiftLogo(
+                    url = url,
+                    contentDescription = appName,
                     modifier = Modifier.fillMaxWidth(LOGO_WIDTH).height(LOGO_HEIGHT),
-                    imageModel = { url },
-                    imageOptions = ImageOptions(contentScale = ContentScale.Fit, alignment = Alignment.Center, contentDescription = appName),
-                    loading = {},
-                    failure = { LaunchedEffect(Unit) { logoFailed = true } },
+                    alignment = Alignment.Center,
+                    onFailed = { logoFailed = true },
                 )
             } else if (url != null) {
                 Text(

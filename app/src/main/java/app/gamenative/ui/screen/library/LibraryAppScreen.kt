@@ -2231,27 +2231,18 @@ internal fun AppScreenContent(
                     Column {
                     // Logo art, else the name.
                     val logoUrl = displayInfo.logoUrl?.takeIf { it.isNotBlank() }
-                    if (logoUrl != null) {
-                        CoilImage(
-                            imageModel = { logoUrl },
-                            imageOptions = ImageOptions(
-                                contentDescription = displayInfo.name,
-                                contentScale = ContentScale.Fit,
-                                alignment = Alignment.BottomStart,
-                            ),
+                    // Rift: logos are trimmed and sized alike (RiftLogo); one that does not load falls back to the name.
+                    var logoFailed by remember(logoUrl) { mutableStateOf(false) }
+                    if (logoUrl != null && !logoFailed) {
+                        dev.rift.launcher.home.RiftLogo(
+                            url = logoUrl,
+                            contentDescription = displayInfo.name,
                             modifier = Modifier
                                 .widthIn(max = 460.dp)
                                 .fillMaxWidth()
                                 .height(if (isPortrait) 96.dp else 132.dp),
-                            failure = {
-                                Text(
-                                    text = displayInfo.name,
-                                    style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
-                                    color = Color.White,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            },
+                            alignment = Alignment.BottomStart,
+                            onFailed = { logoFailed = true },
                         )
                     } else {
                         Text(
