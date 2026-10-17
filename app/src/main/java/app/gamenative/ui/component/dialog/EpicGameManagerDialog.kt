@@ -88,6 +88,7 @@ fun EpicGameManagerDialog(
     // cancelled animateScrollTo and with it this whole load (list empty, 0 bytes, Install disabled).
     // Upstream fixed the same bug in GameManagerDialog for Steam.
     LaunchedEffect(visible) {
+        Timber.tag("Epic").i("Game manager: opened for gameId=$gameId")
         allDownloadableGames.clear()
         selectedGameIds.clear()
 
@@ -105,6 +106,10 @@ fun EpicGameManagerDialog(
             allDownloadableGames.add(dlc)
             selectedGameIds[dlc.id ?: 0] = true
         }
+        Timber.tag("Epic").i(
+            "Game manager: ${allDownloadableGames.size} item(s) listed, stored sizes " +
+                "download=${baseGame?.downloadSize} install=${baseGame?.installSize}",
+        )
 
         // Fetch manifests for accurate sizes, updating each entry as it arrives
         sizesLoading = true
@@ -112,6 +117,9 @@ fun EpicGameManagerDialog(
             allDownloadableGames.toList().forEach { game ->
                 val id = game.id ?: return@forEach
                 val sizes = EpicService.fetchManifestSizes(context, id)
+                Timber.tag("Epic").i(
+                    "Game manager: manifest sizes for ${game.appName}: download=${sizes.downloadSize} install=${sizes.installSize}",
+                )
                 if (sizes.downloadSize <= 0L && sizes.installSize <= 0L) return@forEach
                 val index = allDownloadableGames.indexOfFirst { it.id == id }
                 if (index >= 0) {
@@ -121,6 +129,9 @@ fun EpicGameManagerDialog(
                     )
                 }
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            Timber.tag("Epic").w("Game manager: size loading cancelled for gameId=$gameId")
+            throw e
         } finally {
             sizesLoading = false
         }
@@ -203,6 +214,7 @@ fun EpicGameManagerDialog(
                     .filter { it.value }
                     .keys
                     .toList()
+                Timber.tag("Epic").i("Game manager: Install pressed for gameId=$gameId, items=$selectedIds")
                 onInstall(selectedIds)
             },
             onDismiss = onDismissRequest,
