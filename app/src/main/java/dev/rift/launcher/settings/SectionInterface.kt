@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Wifi
+import androidx.compose.material.icons.rounded.Theaters
+import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.BatteryStd
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -77,7 +79,70 @@ internal fun InterfaceSettings() {
     TopBarGroup()
     LookGroup()
     LibraryGroup()
+    GamePageGroup()
     AchievementsGroup()
+}
+
+/** Rift: what fills the game page's first screen and how the trailer behaves there. */
+@Composable
+private fun GamePageGroup() {
+    val context = LocalContext.current
+    val prefs = remember { dev.rift.launcher.settings.RiftPrefs.of(context) }
+    val modes = listOf("trailer", "art", "cover")
+    var mode by remember { mutableStateOf(prefs.gamePageBackground) }
+    var sound by remember { mutableStateOf(prefs.gamePageTrailerSound) }
+    var wifiOnly by remember { mutableStateOf(prefs.gamePageTrailerWifiOnly) }
+    var loop by remember { mutableStateOf(prefs.gamePageTrailerLoop) }
+    SettingsGroup(title = stringResource(R.string.rift_game_page_settings)) {
+        ChoiceChipsRow(
+            title = stringResource(R.string.rift_game_page_background),
+            subtitle = stringResource(R.string.rift_game_page_background_summary),
+            icon = Icons.Rounded.Theaters,
+            options = listOf(
+                stringResource(R.string.rift_game_page_bg_trailer),
+                stringResource(R.string.rift_game_page_bg_art),
+                stringResource(R.string.rift_game_page_bg_cover),
+            ),
+            selectedIndex = modes.indexOf(mode).coerceAtLeast(0),
+            onSelect = {
+                mode = modes[it]
+                prefs.gamePageBackground = mode
+            },
+        )
+        SwitchRow(
+            title = stringResource(R.string.rift_game_page_trailer_sound),
+            subtitle = stringResource(R.string.rift_game_page_trailer_sound_summary),
+            icon = Icons.Rounded.VolumeUp,
+            checked = sound,
+            enabled = mode == "trailer",
+            onCheckedChange = {
+                sound = it
+                prefs.gamePageTrailerSound = it
+            },
+        )
+        SwitchRow(
+            title = stringResource(R.string.rift_game_page_wifi_only),
+            subtitle = stringResource(R.string.rift_game_page_wifi_only_summary),
+            icon = Icons.Rounded.Wifi,
+            checked = wifiOnly,
+            enabled = mode == "trailer",
+            onCheckedChange = {
+                wifiOnly = it
+                prefs.gamePageTrailerWifiOnly = it
+            },
+        )
+        SwitchRow(
+            title = stringResource(R.string.rift_game_page_loop),
+            subtitle = stringResource(R.string.rift_game_page_loop_summary),
+            icon = Icons.Rounded.Repeat,
+            checked = loop,
+            enabled = mode == "trailer",
+            onCheckedChange = {
+                loop = it
+                prefs.gamePageTrailerLoop = it
+            },
+        )
+    }
 }
 
 @Composable

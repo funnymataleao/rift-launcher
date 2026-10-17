@@ -55,6 +55,8 @@ internal fun VideoHero(
     active: Boolean = true,
     muted: Boolean = true,
     autoplay: Boolean = true,
+    loop: Boolean = true,
+    onEnded: () -> Unit = {},
 ) {
     val youTubeId = remember(videoUrl) { videoUrl?.let(::extractYouTubeId) }
     var manuallyStarted by remember(videoUrl) { mutableStateOf(false) }
@@ -79,6 +81,8 @@ internal fun VideoHero(
             contentDescription = contentDescription,
             modifier = modifier,
             muted = muted,
+            loop = loop,
+            onEnded = onEnded,
         )
         active && videoUrl != null -> VideoPlaceholder(
             contentDescription = contentDescription,
@@ -105,8 +109,11 @@ private fun ExoVideoHero(
     contentDescription: String,
     modifier: Modifier,
     muted: Boolean,
+    loop: Boolean = true,
+    onEnded: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val currentOnEnded by androidx.compose.runtime.rememberUpdatedState(onEnded)
     val lifecycleOwner = LocalLifecycleOwner.current
     var showFallback by remember(videoUrl) { mutableStateOf(true) }
     var playbackFailed by remember(videoUrl) { mutableStateOf(false) }
@@ -118,15 +125,25 @@ private fun ExoVideoHero(
                 .apply { if (videoUrl.contains(".m3u8")) setMimeType(MimeTypes.APPLICATION_M3U8) }
                 .build()
             setMediaItem(item)
-            repeatMode = Player.REPEAT_MODE_ALL
-            volume = if (muted) 0f else 1f
+            repeatMode = if (loop) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF
+            volume = 0f
             playWhenReady = true
             prepare()
         }
     }
 
+    // Rift: sound comes in over about a second instead of at full volume at once.
     LaunchedEffect(exoPlayer, muted) {
-        exoPlayer.volume = if (muted) 0f else 1f
+        if (muted) {
+            exoPlayer.volume = 0f
+        } else {
+            val start = exoPlayer.volume
+            val steps = 24
+            for (step in 1..steps) {
+                exoPlayer.volume = start + (1f - start) * step / steps
+                kotlinx.coroutines.delay(50)
+            }
+        }
     }
 
     DisposableEffect(exoPlayer, lifecycleOwner) {
@@ -134,6 +151,10 @@ private fun ExoVideoHero(
         val listener = object : Player.Listener {
             override fun onRenderedFirstFrame() {
                 showFallback = false
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED) currentOnEnded()
             }
 
             override fun onPlayerError(error: PlaybackException) {

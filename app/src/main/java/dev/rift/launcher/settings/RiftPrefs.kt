@@ -23,6 +23,25 @@ class RiftPrefs private constructor(
     private val homePrefs: SharedPreferences,
 ) {
 
+    // --- Game page ---
+
+    /** What fills the game page's first screen: "trailer", "art" or "cover". */
+    var gamePageBackground: String
+        get() = prefs.getString(GAME_PAGE_BACKGROUND, "trailer") ?: "trailer"
+        set(value) = prefs.edit().putString(GAME_PAGE_BACKGROUND, value).apply()
+
+    var gamePageTrailerSound: Boolean
+        get() = prefs.getBoolean(GAME_PAGE_TRAILER_SOUND, true)
+        set(value) = prefs.edit().putBoolean(GAME_PAGE_TRAILER_SOUND, value).apply()
+
+    var gamePageTrailerWifiOnly: Boolean
+        get() = prefs.getBoolean(GAME_PAGE_TRAILER_WIFI_ONLY, true)
+        set(value) = prefs.edit().putBoolean(GAME_PAGE_TRAILER_WIFI_ONLY, value).apply()
+
+    var gamePageTrailerLoop: Boolean
+        get() = prefs.getBoolean(GAME_PAGE_TRAILER_LOOP, true)
+        set(value) = prefs.edit().putBoolean(GAME_PAGE_TRAILER_LOOP, value).apply()
+
     // --- PC streaming (Artemis) ---
 
     /** "device" for the tablet's own screen size, otherwise "WIDTHxHEIGHT" such as "1920x1080". */
@@ -226,6 +245,10 @@ class RiftPrefs private constructor(
         private const val COMMUNITY_SHARE = "community_share"
         private const val COMMUNITY_INSTALL_ID = "community_install_id"
 
+        private const val GAME_PAGE_BACKGROUND = "game_page_background"
+        private const val GAME_PAGE_TRAILER_SOUND = "game_page_trailer_sound"
+        private const val GAME_PAGE_TRAILER_WIFI_ONLY = "game_page_trailer_wifi_only"
+        private const val GAME_PAGE_TRAILER_LOOP = "game_page_trailer_loop"
         private const val STREAM_RESOLUTION = "stream_resolution"
         private const val STREAM_FPS = "stream_fps"
         private const val STREAM_BITRATE = "stream_bitrate_mbps"

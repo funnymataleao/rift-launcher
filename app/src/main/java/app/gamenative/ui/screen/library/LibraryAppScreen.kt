@@ -27,6 +27,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarOutline
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.ColorFilter
@@ -134,6 +136,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
@@ -664,6 +667,9 @@ private fun StoreMediaPage(
     fullscreen: Boolean,
     autoplay: Boolean,
     modifier: Modifier = Modifier,
+    muted: Boolean = !fullscreen,
+    loop: Boolean = true,
+    onEnded: () -> Unit = {},
 ) {
     if (item.isVideo) {
         VideoHero(
@@ -671,8 +677,10 @@ private fun StoreMediaPage(
             fallbackImageUrl = videoFallback,
             contentDescription = gameName,
             active = active,
-            muted = !fullscreen,
+            muted = muted,
             autoplay = autoplay,
+            loop = loop,
+            onEnded = onEnded,
             modifier = modifier.background(Color.Black),
         )
     } else {
@@ -997,6 +1005,11 @@ private fun GamePageOverview(info: GameDisplayInfo, wide: Boolean) {
         Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (details.description.isNotBlank()) {
                 Text(
+                    text = stringResource(R.string.rift_game_about),
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
                     text = details.description,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.88f),
@@ -1050,6 +1063,20 @@ private fun GamePageOverview(info: GameDisplayInfo, wide: Boolean) {
     }
 }
 
+/** Rift: Steam's review verdict ("Mostly Positive") as a string in the interface language, null when it is not Steam's. */
+private fun steamReviewVerdict(summary: String?): Int? = when (summary?.trim()?.lowercase(Locale.ROOT)) {
+    "overwhelmingly positive" -> R.string.rift_steam_reviews_overwhelmingly_positive
+    "very positive" -> R.string.rift_steam_reviews_very_positive
+    "positive" -> R.string.rift_steam_reviews_positive
+    "mostly positive" -> R.string.rift_steam_reviews_mostly_positive
+    "mixed" -> R.string.rift_steam_reviews_mixed
+    "mostly negative" -> R.string.rift_steam_reviews_mostly_negative
+    "negative" -> R.string.rift_steam_reviews_negative
+    "very negative" -> R.string.rift_steam_reviews_very_negative
+    "overwhelmingly negative" -> R.string.rift_steam_reviews_overwhelmingly_negative
+    else -> null
+}
+
 @Composable
 private fun GamePageRatingCard(info: GameDisplayInfo, modifier: Modifier = Modifier) {
     val details = info.storeDetails
@@ -1071,17 +1098,33 @@ private fun GamePageRatingCard(info: GameDisplayInfo, modifier: Modifier = Modif
                     strokeWidth = 6.dp,
                 )
                 Text(
-                    text = percent.toString(),
+                    text = if (steamReviewVerdict(details.reviewSummary) != null) "$percent%" else percent.toString(),
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold, fontFeatureSettings = "tnum"),
                     color = MaterialTheme.colorScheme.onSurface,
                 )
             }
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                // Rift: say where the score comes from; Steam's English verdict is shown in the interface language.
+                val steamVerdict = steamReviewVerdict(details.reviewSummary)
                 Text(
-                    text = details.reviewSummary?.takeIf { it.isNotBlank() } ?: stringResource(R.string.rift_game_rating_title),
+                    text = stringResource(if (steamVerdict != null) R.string.rift_game_rating_steam else R.string.rift_game_rating_critics)
+                        .uppercase(Locale.getDefault()),
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = steamVerdict?.let { stringResource(it) }
+                        ?: stringResource(R.string.rift_game_rating_of_100, percent),
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface,
                 )
+                if (steamVerdict != null) {
+                    Text(
+                        text = stringResource(R.string.rift_game_rating_positive, percent),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 details.reviewCount?.takeIf { it > 0 }?.let {
                     Text(
                         text = stringResource(R.string.rift_game_rating_count, it),
@@ -1777,7 +1820,38 @@ internal fun AppScreenContent(
             val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
             val sidePadding = if (configuration.screenWidthDp >= 840) 48.dp else 20.dp
             val heroHeight = (configuration.screenHeightDp.dp - 64.dp).coerceAtLeast(420.dp)
-            val heroBackground = remember(heroMedia) { heroMedia.firstOrNull { it.isVideo } ?: heroMedia.firstOrNull() }
+            // Rift: Settings → Внешний вид → Страница игры picks the background; the trailer starts 3 s
+            // after the page opens and the art stays when there is no trailer, it ended, or Wi-Fi is required.
+            val pagePrefs = remember { dev.rift.launcher.settings.RiftPrefs.of(context) }
+            val backgroundMode = remember { pagePrefs.gamePageBackground }
+            var trailerSound by remember { mutableStateOf(pagePrefs.gamePageTrailerSound) }
+            val trailerLoop = remember { pagePrefs.gamePageTrailerLoop }
+            val trailerAllowed = backgroundMode == "trailer" &&
+                (hasWifiOrEthernet || !remember { pagePrefs.gamePageTrailerWifiOnly })
+            var trailerDue by remember(displayInfo.appId) { mutableStateOf(false) }
+            var trailerEnded by remember(displayInfo.appId) { mutableStateOf(false) }
+            LaunchedEffect(displayInfo.appId) {
+                delay(3000)
+                trailerDue = true
+            }
+            val artItem = remember(heroMedia) { heroMedia.firstOrNull { !it.isVideo } }
+            val videoItem = remember(heroMedia) { heroMedia.firstOrNull { it.isVideo } }
+            val heroBackground = when {
+                trailerAllowed && videoItem != null && (trailerDue || artItem == null) && !trailerEnded -> videoItem
+                else -> artItem ?: videoItem.takeIf { backgroundMode == "trailer" }
+            }
+            // Rift: while the trailer plays with sound, the launcher music fades out; it comes back when
+            // the trailer is muted, scrolled away or ended, and when the page closes.
+            val trailerAudible = fullscreenHeroPage != null ||
+                (heroBackground?.isVideo == true && trailerSound && trailerAllowed && heroPlaybackVisible)
+            val musicHold = remember { Any() }
+            LaunchedEffect(trailerAudible) {
+                if (trailerAudible) dev.rift.launcher.sound.RiftMusic.hold(musicHold) else dev.rift.launcher.sound.RiftMusic.release(musicHold)
+            }
+            DisposableEffect(Unit) { onDispose { dev.rift.launcher.sound.RiftMusic.release(musicHold) } }
+            val coverUrl = displayInfo.capsuleUrl?.takeIf {
+                backgroundMode == "cover" && it.isNotBlank() && configuration.screenWidthDp >= 840 && !isPortrait
+            }
             val firstVideoPage = remember(heroMedia) { heroMedia.indexOfFirst { it.isVideo } }
             Box(
                 modifier = Modifier
@@ -1801,8 +1875,13 @@ internal fun AppScreenContent(
                             videoFallback = videoFallback,
                             active = fullscreenHeroPage == null && heroPlaybackVisible,
                             fullscreen = false,
-                            autoplay = hasWifiOrEthernet,
-                            modifier = Modifier.fillMaxSize(),
+                            autoplay = trailerAllowed,
+                            muted = !trailerSound,
+                            loop = trailerLoop,
+                            onEnded = { trailerEnded = true },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .then(if (coverUrl != null) Modifier.blur(28.dp) else Modifier),
                         )
                     } else {
                         Box(
@@ -1870,6 +1949,22 @@ internal fun AppScreenContent(
                         .fillMaxWidth()
                         .padding(start = sidePadding, end = sidePadding, bottom = 24.dp),
                 ) {
+                    Row(
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.spacedBy(40.dp),
+                    ) {
+                    // Rift: the "cover" background puts the vertical cover next to the title.
+                    if (coverUrl != null) {
+                        CoilImage(
+                            imageModel = { coverUrl },
+                            imageOptions = ImageOptions(contentDescription = null, contentScale = ContentScale.Crop),
+                            modifier = Modifier
+                                .height((heroHeight * 0.56f).coerceAtMost(450.dp))
+                                .aspectRatio(2f / 3f)
+                                .clip(RoundedCornerShape(26.dp)),
+                        )
+                    }
+                    Column {
                     // Logo art, else the name.
                     val logoUrl = displayInfo.logoUrl?.takeIf { it.isNotBlank() }
                     if (logoUrl != null) {
@@ -1959,6 +2054,8 @@ internal fun AppScreenContent(
                             modifier = Modifier.widthIn(max = 560.dp),
                         )
                     }
+                    }
+                    }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
@@ -2037,6 +2134,18 @@ internal fun AppScreenContent(
                                 app.gamenative.ui.screen.library.components.toggleFavorite(context, displayInfo.appId, displayInfo.name)
                             },
                         )
+
+                        // Rift: mute the background trailer (and bring the launcher music back); the choice is kept.
+                        if (heroBackground?.isVideo == true && trailerAllowed) {
+                            ActionIconButton(
+                                icon = if (trailerSound) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
+                                contentDescription = stringResource(if (trailerSound) R.string.rift_game_mute else R.string.rift_game_unmute),
+                                onClick = {
+                                    trailerSound = !trailerSound
+                                    pagePrefs.gamePageTrailerSound = trailerSound
+                                },
+                            )
+                        }
 
                         if (riftStream == null && (isInstalled || hasPartialDownload || hasLeftoverInstall)) {
                             ActionIconButton(

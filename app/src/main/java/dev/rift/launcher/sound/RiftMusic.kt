@@ -17,6 +17,47 @@ object RiftMusic {
     private var player: MediaPlayer? = null
     private var playing: File? = null
 
+    // Screens that play their own sound (the game page trailer) hold the music: it fades out and pauses,
+    // and fades back in once nobody holds it.
+    private val holds = mutableSetOf<Any>()
+    private var fade: android.animation.ValueAnimator? = null
+    private var level = 1f
+    private var target = 1f
+
+    private fun setLevel(value: Float) {
+        level = value
+        player?.setVolume(level * target, level * target)
+    }
+
+    private fun fadeTo(to: Float, then: () -> Unit = {}) {
+        fade?.cancel()
+        fade = android.animation.ValueAnimator.ofFloat(level, to).apply {
+            duration = 1200L
+            addUpdateListener { setLevel(it.animatedValue as Float) }
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                private var cancelled = false
+                override fun onAnimationCancel(animation: android.animation.Animator) { cancelled = true }
+                override fun onAnimationEnd(animation: android.animation.Animator) { if (!cancelled) then() }
+            })
+            start()
+        }
+    }
+
+    /** Fades the music out and pauses it while [owner] plays its own sound. Call from the main thread. */
+    @Synchronized
+    fun hold(owner: Any) {
+        if (!holds.add(owner) || holds.size > 1) return
+        fadeTo(0f) { runCatching { player?.takeIf { it.isPlaying }?.pause() } }
+    }
+
+    /** Lets the music fade back in once no one holds it. Call from the main thread. */
+    @Synchronized
+    fun release(owner: Any) {
+        if (!holds.remove(owner) || holds.isNotEmpty()) return
+        runCatching { player?.takeIf { !it.isPlaying }?.start() }
+        fadeTo(1f)
+    }
+
     /** Starts the chosen track, or stops when music is off or no pack is picked. Safe to call again at any time. */
     @Synchronized
     fun apply(context: Context) {
@@ -31,8 +72,10 @@ object RiftMusic {
             return
         }
         val volume = RiftSoundSettings.musicVolume(app) / 100f
+        target = volume
+        level = if (holds.isEmpty()) 1f else 0f
         if (playing == track && player != null) {
-            player?.setVolume(volume, volume)
+            setLevel(level)
             return
         }
         stop()
@@ -46,8 +89,8 @@ object RiftMusic {
                 )
                 setDataSource(track.path)
                 isLooping = true
-                setVolume(volume, volume)
-                setOnPreparedListener { it.start() }
+                setVolume(volume * level, volume * level)
+                setOnPreparedListener { if (holds.isEmpty()) it.start() }
                 prepareAsync()
             }
             playing = track

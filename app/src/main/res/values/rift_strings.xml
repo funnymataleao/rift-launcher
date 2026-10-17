@@ -481,4 +481,33 @@
     <string name="rift_compat_added">Added</string>
     <string name="rift_compat_apply">Apply</string>
     <string name="rift_compat_all_profiles">All profiles</string>
+    <!-- Game page: overview and page settings -->
+    <string name="rift_game_about">About the game</string>
+    <string name="rift_game_rating_steam">Steam player reviews</string>
+    <string name="rift_game_rating_critics">Critics score</string>
+    <string name="rift_game_rating_of_100">%1$d out of 100</string>
+    <string name="rift_game_rating_positive">%1$d%% of reviews are positive</string>
+    <string name="rift_steam_reviews_overwhelmingly_positive">Overwhelmingly positive</string>
+    <string name="rift_steam_reviews_very_positive">Very positive</string>
+    <string name="rift_steam_reviews_positive">Positive</string>
+    <string name="rift_steam_reviews_mostly_positive">Mostly positive</string>
+    <string name="rift_steam_reviews_mixed">Mixed</string>
+    <string name="rift_steam_reviews_mostly_negative">Mostly negative</string>
+    <string name="rift_steam_reviews_negative">Negative</string>
+    <string name="rift_steam_reviews_very_negative">Very negative</string>
+    <string name="rift_steam_reviews_overwhelmingly_negative">Overwhelmingly negative</string>
+    <string name="rift_game_page_settings">Game page</string>
+    <string name="rift_game_page_background">Page background</string>
+    <string name="rift_game_page_background_summary">The trailer starts 3 s after the page opens; without one the art is shown.</string>
+    <string name="rift_game_page_bg_trailer">Trailer</string>
+    <string name="rift_game_page_bg_art">Art</string>
+    <string name="rift_game_page_bg_cover">Cover</string>
+    <string name="rift_game_page_trailer_sound">Trailer sound in the background</string>
+    <string name="rift_game_page_trailer_sound_summary">The launcher music fades out while the trailer plays</string>
+    <string name="rift_game_page_wifi_only">Wi-Fi only</string>
+    <string name="rift_game_page_wifi_only_summary">On mobile data the art is shown</string>
+    <string name="rift_game_page_loop">Repeat the trailer</string>
+    <string name="rift_game_page_loop_summary">Otherwise the art stays after the trailer</string>
+    <string name="rift_game_mute">Mute</string>
+    <string name="rift_game_unmute">Unmute</string>
 </resources>
