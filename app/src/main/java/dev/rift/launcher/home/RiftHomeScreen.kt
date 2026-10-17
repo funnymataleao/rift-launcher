@@ -343,11 +343,15 @@ fun RiftHomeScreen(
     val homeLifecycle = LocalLifecycleOwner.current
     // The SteamGridDB key, read again each time Rift comes back (it is entered in settings).
     var artKey by remember { mutableStateOf(RiftPrefs.of(context).steamGridDbKey) }
+    // The hint footer; the switch lives in settings, so it is read again each time Rift comes back.
+    var showHintBar by remember { mutableStateOf(RiftPrefs.of(context).showHintBar) }
+    SideEffect { HintBarState.shown = showHintBar }
     DisposableEffect(homeLifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 EmulatorLibrary.refresh(context)
                 artKey = RiftPrefs.of(context).steamGridDbKey
+                showHintBar = RiftPrefs.of(context).showHintBar
             }
         }
         homeLifecycle.lifecycle.addObserver(observer)
@@ -1232,7 +1236,19 @@ fun RiftHomeScreen(
 
                 // Black glass on the home blurs the backdrop art (not the row itself, which is drawn here).
                 CompositionLocalProvider(LocalGlassBackdrop provides heroLayer) {
-                Column(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = if (ready) 1f else 0f }) {
+                // Without the footer the whole content sits one footer's height lower: the column is made taller
+                // than the screen by that much (its lowest part is off screen) instead of ending above the glass.
+                val hintBarShift = with(LocalDensity.current) { if (showHintBar) 0 else FooterHeight.roundToPx() }
+                Column(
+                    modifier = Modifier
+                        .layout { measurable, constraints ->
+                            val taller = constraints.copy(minHeight = constraints.maxHeight + hintBarShift, maxHeight = constraints.maxHeight + hintBarShift)
+                            val placeable = measurable.measure(taller)
+                            layout(placeable.width, constraints.maxHeight) { placeable.place(0, 0) }
+                        }
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = if (ready) 1f else 0f },
+                ) {
                     Box(modifier = Modifier.graphicsLayer { alpha = intro.value }) {
                     TopBar(
                         glass = heroLayer,
@@ -1391,7 +1407,7 @@ fun RiftHomeScreen(
                 }
                 }
               }
-                Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(FooterHeight).graphicsLayer { alpha = intro.value }) {
+                if (showHintBar) Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(FooterHeight).graphicsLayer { alpha = intro.value }) {
                     FrostedGlass(backdrop = backdrop, modifier = Modifier.matchParentSize())
                     HintsBar(showFilters = section != null)
                 }
@@ -1939,13 +1955,14 @@ private fun PcLibraryGrid(
     val clock = key(tabSwitch) { rememberShelfClock(ShelfEntry.Library, started = entryReady) }
     // The focused row stays whole above the footer and below the tabs, not flush with the screen's edge.
     val edgeMargin = with(LocalDensity.current) { 24.dp.toPx() }
-    val bottomMargin = with(LocalDensity.current) { (FooterHeight + 40.dp).toPx() }
+    val hintBar = HintBarState.shown
+    val bottomMargin = with(LocalDensity.current) { ((if (hintBar) FooterHeight else 0.dp) + 40.dp).toPx() }
     val spec = remember(edgeMargin, bottomMargin) { KeepInView(edgeMargin, bottomMargin) }
     CompositionLocalProvider(LocalBringIntoViewSpec provides spec) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(LibraryCoverWidth),
         state = gridState,
-        contentPadding = PaddingValues(start = ScreenPadding, end = ScreenPadding, top = 16.dp, bottom = 120.dp),
+        contentPadding = PaddingValues(start = ScreenPadding, end = ScreenPadding, top = 16.dp, bottom = if (hintBar) 120.dp else 120.dp - FooterHeight),
         horizontalArrangement = Arrangement.spacedBy(28.dp),
         verticalArrangement = Arrangement.spacedBy(30.dp),
         modifier = Modifier.fillMaxSize(),
@@ -2813,6 +2830,11 @@ private fun EmptyState(message: String, onConnect: () -> Unit, modifier: Modifie
 }
 
 private val FooterHeight = 58.dp
+
+/** Whether the hint footer is on, read by the library grids to keep their bottom space in step. */
+private object HintBarState {
+    var shown by androidx.compose.runtime.mutableStateOf(true)
+}
 private const val STARTUP_SETTLE_MS = 2500L
 private const val FIRST_IMAGES_TIMEOUT_MS = 3500L
 private const val FIRST_IMAGES_COUNT = 7
