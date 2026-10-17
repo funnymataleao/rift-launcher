@@ -33,6 +33,7 @@
     <string name="rift_stream_pair_failed">The PC refused pairing.</string>
     <string name="rift_stream_retry">Try again</string>
     <string name="rift_stream_pc_offline">%1$s is offline.</string>
+    <string name="rift_stream_pc_no_https">%1$s is on, but Vibepollo is not answering on its secure port %2$d. On the PC, restart Vibepollo from the tray icon and check that Windows Firewall allows it.</string>
     <string name="rift_stream_offline_help">Turn on the PC and start the host app.</string>
     <string name="rift_stream_apps_error">Could not load apps: %1$s</string>
     <string name="rift_stream_connecting">Connecting to %1$s…</string>
