@@ -11,6 +11,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -19,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -28,6 +30,7 @@ import app.gamenative.R
 import app.gamenative.api.SupportApi
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.enums.AppOptionMenuType
+import app.gamenative.ui.screen.support.LocalSupportButton
 import app.gamenative.ui.screen.support.SuggestionCard
 import dev.rift.launcher.assistant.ai.AiSettings
 import dev.rift.launcher.settings.RiftDialog
@@ -124,25 +127,36 @@ private fun OptimizeDialog(target: RiftOptimizeRequest.Target, onDismiss: () -> 
 internal fun ProposalCard(proposal: OptimizeProposal) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Note(stringResource(R.string.rift_optimize_model, proposal.model, riskLabel(proposal.risk)))
-        SuggestionCard(
-            message = SupportApi.Message(
-                id = proposal.id,
-                kind = "assistant",
-                text = proposal.summary,
-                createdAt = proposal.id,
-                authorName = null,
-                isReport = false,
-                attachments = emptyList(),
-                notice = null,
+        // The card's buttons as Rift's pills: grey, or filled with the accent while focused; no ring, no outline.
+        CompositionLocalProvider(LocalSupportButton provides RiftSupportButton) {
+            SuggestionCard(
+                message = SupportApi.Message(
+                    id = proposal.id,
+                    kind = "assistant",
+                    text = proposal.summary,
+                    createdAt = proposal.id,
+                    authorName = null,
+                    isReport = false,
+                    attachments = emptyList(),
+                    notice = null,
+                    suggestion = proposal.suggestion,
+                ),
                 suggestion = proposal.suggestion,
-            ),
-            suggestion = proposal.suggestion,
-            appId = proposal.appId,
-            conversationId = Optimizer.CONVERSATION_ID,
-            // No test runs are offered (rerun is always false), so this is never called.
-            onStartDebugRun = {},
-        )
+                appId = proposal.appId,
+                conversationId = Optimizer.CONVERSATION_ID,
+                // No test runs are offered (rerun is always false), so this is never called.
+                onStartDebugRun = {},
+            )
+        }
     }
+}
+
+private val RiftSupportButton: @Composable (String, Boolean, () -> Unit, Modifier) -> Unit = { text, enabled, onClick, modifier ->
+    RiftPillButton(
+        text = text,
+        onClick = { if (enabled) onClick() },
+        modifier = modifier.alpha(if (enabled) 1f else 0.4f),
+    )
 }
 
 @Composable
