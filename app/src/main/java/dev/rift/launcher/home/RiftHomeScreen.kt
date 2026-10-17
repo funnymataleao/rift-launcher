@@ -1284,8 +1284,9 @@ fun RiftHomeScreen(
                             true
                         }
                         // Y: the search, on every tab (it opens the PC games' search, whatever tab it is pressed on).
+                        // (This `when` only ever sees key downs; a key-up check here would never fire.)
                         KeyEvent.KEYCODE_BUTTON_Y -> {
-                            if (event.type == KeyEventType.KeyUp) openSearch()
+                            if (native.repeatCount == 0) openSearch()
                             true
                         }
                         // Start: a small menu in the middle, its own lines on every tab. On PC games it is
