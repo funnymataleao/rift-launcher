@@ -120,4 +120,33 @@
     <string name="rift_optimize_limit">Лимит токенов на этот месяц исчерпан. Его можно поменять в Настройки › AI-помощник.</string>
     <string name="rift_optimize_no_container">У игры ещё нет контейнера. Запустите её один раз и попробуйте снова.</string>
     <string name="rift_optimize_invalid">Модель дважды предложила настройки, которые Rift не может применить. Попробуйте ещё раз или выберите другую модель.</string>
+    <!-- Assistant page (chat) -->
+    <string name="rift_chat_not_configured">Сначала подключите провайдера: выберите его и вставьте ключ API.</string>
+    <string name="rift_chat_setup_intro">Выберите провайдера и вставьте свой ключ API. Потом с помощником можно общаться здесь, текстом или голосом.</string>
+    <string name="rift_chat_to_chat">К чату</string>
+    <string name="rift_chat_setup">Подключение</string>
+    <string name="rift_chat_new">Новый чат</string>
+    <string name="rift_chat_game_none">Без игры</string>
+    <string name="rift_chat_game">Игра: %1$s</string>
+    <string name="rift_chat_pick_game">О какой игре речь?</string>
+    <string name="rift_chat_empty">Спросите про игру или устройство. Удерживайте Y, чтобы сказать голосом.</string>
+    <string name="rift_chat_placeholder">Сообщение…</string>
+    <string name="rift_chat_send">Отправить</string>
+    <string name="rift_chat_voice">Голос</string>
+    <string name="rift_chat_listening">Слушаю…</string>
+    <string name="rift_chat_collecting">Собираю, что Rift знает об устройстве и игре…</string>
+    <string name="rift_chat_thinking">Думаю…</string>
+    <string name="rift_chat_you">Вы</string>
+    <string name="rift_chat_assistant">Помощник</string>
+    <string name="rift_chat_truncated">Ответ обрезан по лимиту длины (Настройки › AI-помощник › Лимиты).</string>
+    <string name="rift_chat_rejected">Предложенные настройки не прошли проверку Rift, поэтому не показаны:</string>
+    <string name="rift_chat_voice_unavailable">Распознавание речи на этом устройстве недоступно.</string>
+    <string name="rift_chat_voice_not_heard">Не расслышал. Попробуйте ещё раз.</string>
+    <string name="rift_chat_voice_failed">Распознавание речи не сработало.</string>
+    <string name="rift_chat_voice_permission">Разрешите микрофон, чтобы говорить с помощником.</string>
+    <string name="rift_chat_chip_optimize">Оптимизируй эту игру</string>
+    <string name="rift_chat_chip_slow">Почему тормозит?</string>
+    <string name="rift_chat_chip_crash">Почему вылетает?</string>
+    <string name="rift_chat_chip_drivers">Есть ли новые драйверы?</string>
+    <string name="rift_chat_chip_community">Сравни с сообществом</string>
 </resources>

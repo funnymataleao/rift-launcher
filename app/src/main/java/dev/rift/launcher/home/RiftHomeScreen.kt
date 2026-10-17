@@ -186,6 +186,9 @@ import dev.rift.launcher.art.LocalRiftArtPicker
 import dev.rift.launcher.art.RiftArtPicker
 import dev.rift.launcher.settings.RiftPrefs
 import dev.rift.launcher.settings.RiftSettingsSection
+import dev.rift.launcher.assistant.chat.AssistantChat
+import dev.rift.launcher.assistant.chat.ChatGame
+import dev.rift.launcher.assistant.chat.RIFT_ASSISTANT_ROUTE
 import app.gamenative.ui.screen.PluviaScreen
 import dev.rift.launcher.sound.RiftSound
 import dev.rift.launcher.sound.rememberRiftSoundPlayer
@@ -1077,7 +1080,15 @@ fun RiftHomeScreen(
                     onDismiss = { systemMenuOpen = false },
                     onNavigateRoute = { route ->
                         systemMenuOpen = false
-                        onNavigateRoute(route)
+                        if (route == PluviaScreen.Support.route) {
+                            // "AI Help" opens Rift's assistant (the user's own provider) instead of GameNative's support,
+                            // about the game under the cursor when it is installed.
+                            val games = library.filter { it.isInstalled }.map { ChatGame(it.appId, it.name) }
+                            AssistantChat.open(games, focusedItem?.let { ChatGame(it.appId, it.name) })
+                            onNavigateRoute(RIFT_ASSISTANT_ROUTE)
+                        } else {
+                            onNavigateRoute(route)
+                        }
                     },
                     onDownloadsClick = {
                         systemMenuOpen = false

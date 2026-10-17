@@ -110,6 +110,21 @@ class AiSettings private constructor(private val prefs: SharedPreferences) {
         return runCatching { AiClients.create(chosen, baseUrl(chosen), apiKey(chosen)) }.getOrNull()
     }
 
+    /** A provider and a model are chosen, and the key is there where the provider needs one. */
+    val isReady: Boolean
+        get() {
+            val chosen = provider ?: return false
+            return model(chosen) != null && (!chosen.needsKey || hasKey(chosen))
+        }
+
+    /** Calls [listener] after any assistant setting is saved; call the returned function to stop. */
+    fun onChange(listener: () -> Unit): () -> Unit {
+        // SharedPreferences keeps listeners weakly; the returned function holds this one.
+        val callback = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> listener() }
+        prefs.registerOnSharedPreferenceChangeListener(callback)
+        return { prefs.unregisterOnSharedPreferenceChangeListener(callback) }
+    }
+
     private fun keyName(provider: AiProvider) = "api_key_${provider.id}"
 
     companion object {

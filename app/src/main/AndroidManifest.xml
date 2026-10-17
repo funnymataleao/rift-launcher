@@ -52,6 +52,10 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <!-- Rift: the assistant's voice input finds Android's speech recognition service. -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
     </queries>
 
     <!-- Rift: no android:isGame / android:appCategory="game" (GameNative has both). Rift is a
