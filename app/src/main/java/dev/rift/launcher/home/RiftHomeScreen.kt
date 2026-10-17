@@ -1625,7 +1625,7 @@ private val StoreBadgeSize = 26.dp
  * under it shows through and the card's rounded corners stay as they are while it grows.
  */
 @Composable
-private fun BoxScope.GameCoverArt(item: LibraryItem, urls: List<String>, dimmed: Boolean) {
+private fun BoxScope.GameCoverArt(item: LibraryItem, urls: List<String>, dimmed: Boolean, wide: Boolean = false) {
     if (urls.none { it.isNotBlank() }) {
         Text(
             text = item.name,
@@ -1637,7 +1637,7 @@ private fun BoxScope.GameCoverArt(item: LibraryItem, urls: List<String>, dimmed:
             modifier = Modifier.align(Alignment.Center).padding(12.dp),
         )
     }
-    CoverImage(urls = urls, contentDescription = item.name, modifier = Modifier.fillMaxSize())
+    CoverImage(urls = urls, contentDescription = item.name, modifier = Modifier.fillMaxSize(), lateUrls = remember(item.appId, wide) { storeCoverLookup(item, portrait = !wide) })
     if (dimmed) Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = UNINSTALLED_DIM)))
 }
 
@@ -1785,7 +1785,7 @@ private fun PcGamesShelf(
                 },
                 onClick = { onOpen(item) },
                 cover = {
-                    GameCoverArt(item = item, urls = urls, dimmed = dimUninstalled && !item.isInstalled)
+                    GameCoverArt(item = item, urls = urls, dimmed = dimUninstalled && !item.isInstalled, wide = wide)
                 },
                 badge = { if (badges) CoverBadges(item, libraryState) },
             )

@@ -6,13 +6,19 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
+import dev.rift.launcher.art.GameArtStore
+import dev.rift.launcher.art.SteamStoreArt
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import timber.log.Timber
 
 private const val RETRY_DELAY_MS = 2_000L
 private const val MAX_ROUNDS = 3
@@ -24,11 +30,27 @@ private const val MAX_ROUNDS = 3
  * starts a fresh load instead of keeping the old, empty one.
  */
 @Composable
-fun CoverImage(urls: List<String>, contentDescription: String?, modifier: Modifier = Modifier.fillMaxSize()) {
-    val candidates = remember(urls) { urls.filter { it.isNotBlank() }.distinct() }
-    if (candidates.isEmpty()) return
-    var attempt by remember(candidates) { mutableIntStateOf(0) }
-    if (attempt >= candidates.size * MAX_ROUNDS) return
+fun CoverImage(
+    urls: List<String>,
+    contentDescription: String?,
+    modifier: Modifier = Modifier.fillMaxSize(),
+    lateUrls: (suspend () -> List<String>)? = null,
+) {
+    val base = remember(urls) { urls.filter { it.isNotBlank() }.distinct() }
+    // Asked for once, when every address of the list has failed.
+    var late by remember(base) { mutableStateOf(emptyList<String>()) }
+    val candidates = remember(base, late) { (base + late).distinct() }
+    if (candidates.isEmpty() && lateUrls == null) return
+    var attempt by remember(base) { mutableIntStateOf(0) }
+    val firstRoundFailed = attempt >= base.size
+    if (lateUrls != null && firstRoundFailed) {
+        LaunchedEffect(base) {
+            late = withContext(Dispatchers.IO) { runCatching { lateUrls() }.getOrDefault(emptyList()) }
+                .filter { it.isNotBlank() }
+            if (late.isEmpty() || late.all { it in base }) Timber.tag("RiftArt").w("No cover loads for %s", base.firstOrNull())
+        }
+    }
+    if (candidates.isEmpty() || attempt >= candidates.size * MAX_ROUNDS) return
     val url = candidates[attempt % candidates.size]
     key(url, attempt) {
         CoilImage(
@@ -48,19 +70,43 @@ fun CoverImage(urls: List<String>, contentDescription: String?, modifier: Modifi
 }
 
 /**
- * The art for a 2:3 cover, best first. Steam games start with Steam's own 600x900 library cover,
- * built from the app id, so the cover is right from the first frame and does not change when the
- * library learns the game's art later; the wide header is only the last resort.
+ * The art for a 2:3 cover, best first. A picture the user picked comes before everything. Then Steam games
+ * use Steam's own 600x900 library cover, built from the app id, so the cover is right from the first frame
+ * and does not change when the library learns the game's art later; the wide header is the last resort.
  */
-fun portraitCoverUrls(item: app.gamenative.data.LibraryItem): List<String> =
-    listOfNotNull(steamAsset(item, "library_600x900.jpg"), item.capsuleImageUrl, steamAsset(item, "library_600x900_2x.jpg"), item.headerImageUrl, item.heroImageUrl)
+fun portraitCoverUrls(item: app.gamenative.data.LibraryItem): List<String> = listOfNotNull(
+    item.capsuleImageUrl.takeIf { GameArtStore.isPicked(it) },
+    steamAsset(item, "library_600x900.jpg"),
+    item.capsuleImageUrl,
+    steamAsset(item, "library_600x900_2x.jpg"),
+    steamAsset(item, "library_600x900.jpg", AKAMAI),
+    item.headerImageUrl,
+    steamAsset(item, "header.jpg", AKAMAI),
+    item.heroImageUrl,
+)
 
-/** The art for a wide tile, best first: the header (built from the app id for Steam), then the hero. */
-fun wideCoverUrls(item: app.gamenative.data.LibraryItem): List<String> =
-    listOfNotNull(steamAsset(item, "header.jpg"), item.headerImageUrl, item.heroImageUrl, item.capsuleImageUrl)
+/** The art for a wide tile, best first: a picked picture, then the header (built from the app id for Steam), then the hero. */
+fun wideCoverUrls(item: app.gamenative.data.LibraryItem): List<String> = listOfNotNull(
+    item.headerImageUrl.takeIf { GameArtStore.isPicked(it) },
+    steamAsset(item, "header.jpg"),
+    item.headerImageUrl,
+    steamAsset(item, "header.jpg", AKAMAI),
+    item.heroImageUrl,
+    item.capsuleImageUrl,
+)
 
-private fun steamAsset(item: app.gamenative.data.LibraryItem, file: String): String? {
+/** What a Steam game's card still tries when none of its pictures loads: the ones the store page names. Null for other games. */
+fun storeCoverLookup(item: app.gamenative.data.LibraryItem, portrait: Boolean): (suspend () -> List<String>)? {
     if (item.gameSource != app.gamenative.data.GameSource.STEAM) return null
     val id = item.appId.substringAfter('_', "").toIntOrNull() ?: return null
-    return "https://shared.steamstatic.com/store_item_assets/steam/apps/$id/$file"
+    return { SteamStoreArt.urls(id, portrait) }
+}
+
+private const val AKAMAI = "https://cdn.akamai.steamstatic.com/steam/apps/"
+private const val SHARED = "https://shared.steamstatic.com/store_item_assets/steam/apps/"
+
+private fun steamAsset(item: app.gamenative.data.LibraryItem, file: String, host: String = SHARED): String? {
+    if (item.gameSource != app.gamenative.data.GameSource.STEAM) return null
+    val id = item.appId.substringAfter('_', "").toIntOrNull() ?: return null
+    return "$host$id/$file"
 }

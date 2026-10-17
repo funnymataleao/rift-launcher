@@ -36,6 +36,9 @@ object GameArtStore {
 
     private fun key(appId: String, kind: ArtKind) = "$appId|${kind.key}"
 
+    /** Whether [url] is a picture the user picked: saved on the device, or (if the download failed) SteamGridDB's own address. */
+    fun isPicked(url: String): Boolean = url.startsWith("file:") || url.contains("steamgriddb.com")
+
     /** The picked picture's URL, or empty when the game still uses its own. */
     fun get(context: Context, appId: String, kind: ArtKind): String =
         prefs(context).getString(key(appId, kind), "").orEmpty()
