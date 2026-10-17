@@ -80,6 +80,9 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.focus.onFocusChanged
+import kotlinx.coroutines.delay
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -125,6 +128,10 @@ fun LibraryOptionsPanel(
     // Rift: a tab other than PC games has its own short list of groups instead of GameNative's.
     tabGroups: List<TabFilterGroup>? = null,
     extraGroup: TabFilterGroup? = null,
+    // Rift: a counter the home bumps when gamepad input arrives while the panel has no focus, and a report of
+    // whether the panel holds focus, so input never leaks to the covers under the blur.
+    focusAsk: Int = 0,
+    onFocusChanged: (Boolean) -> Unit = {},
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
     // Accordion: only one group is open at a time. B closes the open group first, then the panel.
@@ -135,9 +142,11 @@ fun LibraryOptionsPanel(
         openGroup = if (openGroup == key) null else key
     }
 
+    // The active group is open when the panel opens: the only group of a short list, else the top one.
+    val onlyGroup = tabGroups?.size == 1
     BackHandler(enabled = isOpen) {
         val open = openGroup
-        if (open != null) {
+        if (open != null && !onlyGroup) {
             openGroup = null
             runCatching { headerRequester(open).requestFocus() }
         } else {
@@ -145,7 +154,7 @@ fun LibraryOptionsPanel(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize().onFocusChanged { onFocusChanged(it.hasFocus) }) {
         AnimatedVisibility(
             visible = isOpen,
             enter = fadeIn(animationSpec = tween(200)),
@@ -244,8 +253,8 @@ fun LibraryOptionsPanel(
                                         label = group.label,
                                         valueText = group.value,
                                         icon = group.icon,
-                                        expanded = openGroup == key,
-                                        onToggle = { toggleGroup(key) },
+                                        expanded = onlyGroup || openGroup == key,
+                                        onToggle = { if (!onlyGroup) toggleGroup(key) },
                                         headerFocus = if (index == 0) firstItemFocusRequester else headerRequester(key),
                                     ) {
                                         group.options.forEach { option ->
@@ -412,12 +421,17 @@ fun LibraryOptionsPanel(
     }
 
     LaunchedEffect(isOpen) {
-        if (isOpen) {
-            try {
-                firstItemFocusRequester.requestFocus()
-            } catch (_: Exception) {
-                // Focus request may fail if composition is not ready
-            }
+        if (isOpen) openGroup = if (tabGroups != null) "tab0" else "sort"
+    }
+    // After a touch the window is in touch mode, where nothing takes gamepad focus: leave it, and retry while the
+    // panel is still sliding in and the first header is not attached yet.
+    val view = LocalView.current
+    LaunchedEffect(isOpen, focusAsk) {
+        if (!isOpen) return@LaunchedEffect
+        repeat(15) {
+            if (view.isInTouchMode) view.requestFocusFromTouch()
+            if (runCatching { firstItemFocusRequester.requestFocus() }.isSuccess) return@LaunchedEffect
+            delay(60)
         }
     }
 }
