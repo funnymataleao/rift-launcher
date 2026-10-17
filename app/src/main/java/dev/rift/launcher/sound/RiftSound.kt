@@ -10,7 +10,7 @@ import app.gamenative.R
 
 /** Interface sounds. A custom pack is a folder with files named after these ids (ogg, wav, mp3). */
 enum class RiftSound(val id: String, val rawRes: Int, val gain: Float = 1f) {
-    Move("move", R.raw.rift_ui_move, 0.5f),
+    Move("move", R.raw.rift_ui_move, 0.6f),
     Select("select", R.raw.rift_ui_select),
     Back("back", R.raw.rift_ui_back),
     Tab("tab", R.raw.rift_ui_tab),
@@ -29,8 +29,8 @@ object RiftSoundSettings {
     const val KEY_VOLUME = "volume"
     const val KEY_PACK_URI = "pack_uri"
 
-    // Quiet by default: this is background feedback, not music.
-    const val DEFAULT_VOLUME = 35
+    // Soft sounds, but audible on a stock phone: the synthesized tones are short and peak at 80%.
+    const val DEFAULT_VOLUME = 60
 
     private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -54,6 +54,12 @@ object RiftSounds {
     private var loadedPack: String? = null
     private var lastPlayed = 0L
 
+    /** Loads the set ahead of the first press: SoundPool decodes asynchronously and drops sounds played before that. */
+    fun preload(context: Context) {
+        val app = context.applicationContext
+        ensureLoaded(app, RiftSoundSettings.packUri(app))
+    }
+
     fun play(context: Context, sound: RiftSound) {
         val app = context.applicationContext
         if (!RiftSoundSettings.isEnabled(app)) return
@@ -76,7 +82,7 @@ object RiftSounds {
             .setMaxStreams(4)
             .setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_GAME)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build(),
             )
