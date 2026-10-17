@@ -89,6 +89,7 @@ internal fun RiftGamePage(
                     reviewCount = m.ratingCount,
                     reviewSummary = m.rating?.let { m.ratingText.ifBlank { ratingLabel } },
                     tags = m.genres + m.tags,
+                    source = m.source,
                     screenshots = media.screenshots,
                     videos = media.videos,
                 )

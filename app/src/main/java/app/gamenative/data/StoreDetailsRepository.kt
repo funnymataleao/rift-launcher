@@ -715,7 +715,7 @@ internal fun parseSteamReleaseDate(releaseDate: JSONObject?): Long {
     return 0L
 }
 
-private fun looseTitleKey(title: String): String =
+internal fun looseTitleKey(title: String): String =
     GogMapRepository.normalizeTitle(title.replace(Regex("['\u2019\u2018`\u00B4]"), ""))
 
 /**

@@ -5,8 +5,8 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.StoreDetailsRepository
-import dev.rift.launcher.art.SteamGridDbClient
 import timber.log.Timber
+import java.util.Locale
 import dev.rift.launcher.settings.RiftPrefs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -14,15 +14,15 @@ import kotlinx.coroutines.sync.withLock
 
 /**
  * The description, rating, genres, tags, developer and release date of an Android or emulator game, from IGDB
- * with the user's own key. Fetched once when the game's page opens and kept on the device; a game IGDB does not
- * know is asked again after a day, a failed request (no network, no key) the next time the page opens.
+ * (the user's own key) or, without one, from the free sources below. Fetched once when the game is added or its
+ * page opens and kept on the device.
  */
 object RiftAutoMeta {
     private const val PREFS = "rift_game_meta"
     private const val RETRY_MS = 24 * 60 * 60 * 1000L
-    // "tried2_": the title matching got softer, so games Steam "did not know" before are asked again.
-    private const val TRIED = "tried2_"
-    private const val TRIED_IGDB = "tried2_igdb_"
+    // "tried3_": new sources and title cleaning, so games nobody knew before are asked again.
+    private const val TRIED = "tried3_"
+    private const val TRIED_IGDB = "tried3_igdb_"
     private const val TAG = "RiftMeta"
     private val lock = Mutex()
 
@@ -39,9 +39,10 @@ object RiftAutoMeta {
     }
 
     /**
-     * The saved metadata, or a fresh lookup when there is none (and the retry delay is over). IGDB (the
-     * user's keys) is asked first; without keys, or when IGDB does not know the game, the Steam store's
-     * game of exactly the same name is used. Steam-sourced data is upgraded once IGDB keys are saved.
+     * The saved metadata, or a fresh lookup when there is none (and the retry delay is over). Order: IGDB (the
+     * user's keys), then sources that need none: for Android games the Google Play page of the package, then the
+     * Steam store's game of the same name, then Wikipedia. Data from a free source is upgraded to IGDB's once keys
+     * are saved. A game nobody knows is asked again after a day.
      */
     suspend fun ensure(context: Context, item: LibraryItem, platformId: String?): GameMeta? {
         val saved = cached(context, item.appId)
@@ -53,53 +54,80 @@ object RiftAutoMeta {
             val p = prefs(context)
             val current = cached(context, item.appId)
             if (current != null && (current.source == "igdb" || !hasKeys)) return@withLock current
-            // A Steam result is only upgraded once a day; a game nobody knows is asked again after a day too.
             val triedKey = if (current == null) TRIED + item.appId else TRIED_IGDB + item.appId
             if (System.currentTimeMillis() - p.getLong(triedKey, 0L) < RETRY_MS) return@withLock current
-            val platforms = IgdbClient.platformsFor(platformId).ifEmpty {
-                if (item.appId.startsWith("ANDROID_")) listOf(IgdbClient.ANDROID_PLATFORM) else emptyList()
+
+            val title = TitleCleaner.clean(item.name)
+            val android = item.appId.startsWith("ANDROID_")
+            val language = Locale.getDefault().language.ifEmpty { "en" }
+            Timber.tag(TAG).i("%s: searching as \"%s\"", item.name, title)
+            val why = mutableListOf<String>()
+            var unreachable = false
+
+            fun found(meta: GameMeta): GameMeta {
+                Timber.tag(TAG).i("%s: source %s", item.name, meta.source)
+                p.edit { putString(item.appId, meta.toJson()) }
+                return meta
             }
-            var igdbMissing = !hasKeys
+
             if (hasKeys) {
-                try {
-                    val meta = IgdbClient.find(rift.igdbClientId, rift.igdbClientSecret, item.name, platforms)
-                    Timber.tag(TAG).i("%s: source igdb", item.name)
-                    p.edit { putString(item.appId, meta.toJson()) }
-                    return@withLock meta
-                } catch (e: MetaError) {
-                    Timber.tag(TAG).i("%s: igdb gave nothing (%s)", item.name, e.javaClass.simpleName)
-                    // Not found or a bad key: Steam is tried; no network: nothing to try.
-                    if (e === MetaError.Network) return@withLock current
-                    igdbMissing = true
+                val platforms = IgdbClient.platformsFor(platformId).ifEmpty { if (android) listOf(IgdbClient.ANDROID_PLATFORM) else emptyList() }
+                when (val r = igdb(rift.igdbClientId, rift.igdbClientSecret, title, platforms)) {
+                    is MetaResult.Found -> return@withLock found(r.meta)
+                    is MetaResult.Miss -> why += "igdb: ${r.reason}"
+                    is MetaResult.Unreachable -> {
+                        Timber.tag(TAG).i("%s: igdb unreachable (%s)", item.name, r.reason)
+                        return@withLock current
+                    }
                 }
+            } else {
+                why += "igdb: no key"
             }
             if (current != null) {
-                // Already has Steam data; IGDB did not know the game, so this is the end of the upgrade attempt.
+                // Already has free-source data; IGDB did not know the game, so the upgrade is tried again tomorrow.
+                Timber.tag(TAG).i("%s: igdb gave nothing (%s), keeping %s", item.name, why.joinToString(), current.source)
                 p.edit { putLong(triedKey, System.currentTimeMillis()) }
                 return@withLock current
             }
-            val steam = fromSteam(item.name)
-            if (steam == null) {
-                Timber.tag(TAG).i("%s: steam not reachable", item.name)
-                return@withLock null
+
+            val steps = buildList<Pair<String, suspend () -> MetaResult>> {
+                if (android) add(Pair<String, suspend () -> MetaResult>("play", { PlayStoreClient.find(item.appId.removePrefix("ANDROID_"), language) }))
+                add(Pair<String, suspend () -> MetaResult>("steam", { steam(title) }))
+                add(Pair<String, suspend () -> MetaResult>("wikipedia", { WikipediaClient.find(title, platformId, android, language) }))
             }
-            if (steam.isEmpty) {
-                Timber.tag(TAG).i("%s: source none", item.name)
-                p.edit { putLong(triedKey, System.currentTimeMillis()) }
-                return@withLock null
+            for ((name, step) in steps) {
+                when (val r = step()) {
+                    is MetaResult.Found -> return@withLock found(r.meta)
+                    is MetaResult.Miss -> why += "$name: ${r.reason}"
+                    is MetaResult.Unreachable -> {
+                        unreachable = true
+                        why += "$name: unreachable (${r.reason})"
+                    }
+                }
             }
-            Timber.tag(TAG).i("%s: source steam", item.name)
-            p.edit { putString(item.appId, steam.toJson()) }
-            if (igdbMissing && hasKeys) p.edit { putLong(TRIED_IGDB + item.appId, System.currentTimeMillis()) }
-            steam
+            Timber.tag(TAG).i("%s: source none (%s)", item.name, why.joinToString("; "))
+            // A source that could not be reached means "ask again next time", not "nobody knows it".
+            if (!unreachable) p.edit { putLong(triedKey, System.currentTimeMillis()) }
+            null
         }
     }
 
-    /** The Steam store's game of exactly this name, or null when Steam cannot be reached. */
-    private suspend fun fromSteam(name: String): GameMeta? {
-        val found = StoreDetailsRepository.getMetaByTitle(SteamGridDbClient.cleanTitle(name)) ?: return null
+    private suspend fun igdb(id: String, secret: String, title: String, platforms: List<Int>): MetaResult = try {
+        MetaResult.Found(IgdbClient.find(id, secret, title, platforms))
+    } catch (e: MetaError) {
+        when (e) {
+            MetaError.Network -> MetaResult.Unreachable("network")
+            MetaError.BadKey -> MetaResult.Miss("key refused")
+            MetaError.NotFound -> MetaResult.Miss("not found")
+            MetaError.NoKey -> MetaResult.Miss("no key")
+        }
+    }
+
+    /** The Steam store's game of exactly this name. */
+    private suspend fun steam(title: String): MetaResult {
+        val found = StoreDetailsRepository.getMetaByTitle(title) ?: return MetaResult.Unreachable("Steam search failed")
         val d = found.details
-        return GameMeta(
+        val meta = GameMeta(
             description = d.description,
             rating = d.reviewPercentage,
             ratingCount = d.reviewCount,
@@ -110,7 +138,8 @@ object RiftAutoMeta {
             releaseDate = found.releaseDate,
             source = "steam",
             ratingText = d.reviewSummary.orEmpty(),
-        ).takeUnless { it.isEmpty } ?: GameMeta(source = "steam")
+        )
+        return if (found.isEmpty || meta.isEmpty) MetaResult.Miss("no game with this name") else MetaResult.Found(meta)
     }
 
     /**

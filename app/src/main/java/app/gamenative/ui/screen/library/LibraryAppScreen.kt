@@ -1083,6 +1083,14 @@ private fun GamePageOverview(info: GameDisplayInfo, wide: Boolean, facts: List<P
                     text = stringResource(if (expanded) R.string.rift_game_read_less else R.string.rift_game_read_more),
                     onClick = { expanded = !expanded },
                 )
+                // Rift: Wikipedia's text is CC BY-SA; the credit stays under it.
+                if (details.source == "wikipedia") {
+                    Text(
+                        text = stringResource(R.string.rift_game_source_wikipedia),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    )
+                }
             }
             if (details.tags.isNotEmpty()) {
                 FlowRow(

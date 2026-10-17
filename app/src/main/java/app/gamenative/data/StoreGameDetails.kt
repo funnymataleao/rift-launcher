@@ -11,6 +11,8 @@ data class StoreGameDetails(
     val tags: List<String> = emptyList(),
     val screenshots: List<String> = emptyList(),
     val videos: List<String> = emptyList(),
+    /** Rift: where a description from outside the stores comes from ("wikipedia" needs a credit line); empty = the store itself. */
+    val source: String = "",
 ) {
     val hasOverview: Boolean
         get() = description.isNotBlank() || reviewPercentage != null || tags.isNotEmpty()

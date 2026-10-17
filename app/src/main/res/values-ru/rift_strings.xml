@@ -516,4 +516,5 @@
     <string name="rift_game_ach_unlocked">Полученные</string>
     <string name="rift_game_ach_locked">Ещё не получены · %1$d</string>
     <string name="rift_game_ach_all">Все достижения · %1$d</string>
+    <string name="rift_game_source_wikipedia">Википедия, CC BY-SA 4.0</string>
 </resources>
