@@ -1417,7 +1417,7 @@ fun RiftHomeScreen(
                                 cardHeight = cardHeight,
                                 pendingFocusKey = pendingFocusKey,
                                 onFocusConsumed = { pendingFocusKey = null },
-                                onFocused = { if (androidSaved) focusedPackage = it.packageName },
+                                onFocused = { if (androidSaved) focusedPackage = it.packageName.takeUnless { p -> p == androidShown.firstOrNull()?.packageName } },
                                 onOpen = { openGame(it.toPageItem()) },
                                 entry = switchEntry,
                             )
@@ -1436,7 +1436,7 @@ fun RiftHomeScreen(
                                 pendingFocusKey = pendingFocusKey,
                                 onFocusConsumed = { pendingFocusKey = null },
                                 onFocused = {
-                                    if (streamSaved) focusedStreamId = it.appId
+                                    if (streamSaved) focusedStreamId = it.appId.takeUnless { id -> id == streamHomeRow.firstOrNull()?.appId }
                                     streamCardFocused = false
                                 },
                                 onOpen = { openGame(it, forStream = true) },
@@ -1461,7 +1461,7 @@ fun RiftHomeScreen(
                                 pendingFocusKey = pendingFocusKey,
                                 onFocusConsumed = { pendingFocusKey = null },
                                 onFocused = {
-                                    if (emulatorSaved) focusedEmulatorId = it.appId
+                                    if (emulatorSaved) focusedEmulatorId = it.appId.takeUnless { id -> id == emulatorHomeRow.firstOrNull()?.appId }
                                     emulatorCardFocused = false
                                 },
                                 onOpen = { item -> openGame(item) },
@@ -1488,7 +1488,7 @@ fun RiftHomeScreen(
                                 pendingFocusKey = pendingFocusKey,
                                 onFocusConsumed = { pendingFocusKey = null },
                                 onFocused = {
-                                    if (cloudSaved) focusedCloudId = it.appId
+                                    if (cloudSaved) focusedCloudId = it.appId.takeUnless { id -> id == cloudHomeRow.firstOrNull()?.appId }
                                     cloudCardFocused = false
                                 },
                                 onOpen = { openGame(it) },
@@ -1514,7 +1514,7 @@ fun RiftHomeScreen(
                                 pendingFocusKey = pendingFocusKey,
                                 onFocusConsumed = { pendingFocusKey = null },
                                 onFocused = {
-                                    if (pcSaved) focusedAppId = it.appId
+                                    if (pcSaved) focusedAppId = it.appId.takeUnless { id -> id == homeRow.firstOrNull()?.appId }
                                     libraryCardFocused = false
                                 },
                                 // A opens the game page; games never start straight from the home (Denis).
