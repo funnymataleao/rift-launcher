@@ -5,16 +5,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -53,6 +52,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -278,9 +278,6 @@ internal fun CheckRow(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val accent = RiftAccent.current
-    // On the accent plate the box turns dark, so it still reads.
-    val on = if (focused) accent.onAccent else accent.main
     RowChrome(
         title = title,
         subtitle = subtitle,
@@ -297,15 +294,7 @@ internal fun CheckRow(
             onValueChange = onCheckedChange,
         ),
     ) {
-        Checkbox(
-            checked = checked,
-            onCheckedChange = null,
-            colors = CheckboxDefaults.colors(
-                checkedColor = on,
-                uncheckedColor = if (focused) accent.onAccent.copy(alpha = 0.6f) else RiftColors.Outline,
-                checkmarkColor = if (focused) accent.main else accent.onAccent,
-            ),
-        )
+        RiftCheckMark(checked, focused)
     }
 }
 
@@ -325,35 +314,87 @@ internal fun SectionTabs(tabs: List<String>, selectedIndex: Int, onSelect: (Int)
 }
 
 /**
- * Material 3 Expressive switch: the thumb grows and carries a check mark when on. Accent outline, thumb and
- * a faint tint when on, a grey outline when off, so a switch stays a small accent on black.
+ * Switch in the Material 3 Expressive shape: the thumb grows and carries a check mark when on. The track is
+ * filled with the accent brush (a gradient accent shows as a gradient), a grey outline when off. The
+ * stock Material switch takes only flat colours, so it is drawn here.
  */
 @Composable
 internal fun RiftSwitch(checked: Boolean, focused: Boolean) {
     val accent = RiftAccent.current
     // On the accent plate the switch turns dark, so it still reads.
-    val on = if (focused) accent.onAccent else accent.main
-    Switch(
-        checked = checked,
-        onCheckedChange = null,
-        thumbContent = {
+    val border = when {
+        checked && focused -> accent.onAccent
+        checked -> Color.Transparent
+        focused -> accent.onAccent.copy(alpha = 0.6f)
+        else -> RiftColors.Outline
+    }
+    val thumb = when {
+        checked -> accent.onAccent
+        focused -> accent.onAccent.copy(alpha = 0.6f)
+        else -> RiftColors.Outline
+    }
+    val thumbSize by animateDpAsState(if (checked) 24.dp else 20.dp, label = "switchThumb")
+    val thumbStart by animateDpAsState(if (checked) 24.dp else 6.dp, label = "switchThumbX")
+    Box(
+        modifier = Modifier
+            .size(width = 56.dp, height = 32.dp)
+            .clip(CircleShape)
+            .then(
+                when {
+                    checked && focused -> Modifier.background(accent.onAccent.copy(alpha = 0.22f))
+                    checked -> Modifier.background(accent.brush)
+                    focused -> Modifier
+                    else -> Modifier.background(RiftColors.SurfaceContainerHigh)
+                },
+            )
+            .border(2.dp, border, CircleShape),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(start = thumbStart)
+                .size(thumbSize)
+                .clip(CircleShape)
+                .background(thumb),
+            contentAlignment = Alignment.Center,
+        ) {
             Icon(
                 imageVector = if (checked) Icons.Rounded.Check else Icons.Rounded.Close,
                 contentDescription = null,
-                modifier = Modifier.size(SwitchDefaults.IconSize),
+                tint = if (checked || focused) accent.main else RiftColors.SurfaceContainerHigh,
+                modifier = Modifier.size(16.dp),
             )
-        },
-        colors = SwitchDefaults.colors(
-            checkedThumbColor = on,
-            checkedTrackColor = on.copy(alpha = if (focused) 0.22f else 0.26f),
-            checkedBorderColor = on,
-            checkedIconColor = if (focused) accent.main else accent.onAccent,
-            uncheckedThumbColor = if (focused) accent.onAccent.copy(alpha = 0.6f) else RiftColors.Outline,
-            uncheckedTrackColor = if (focused) Color.Transparent else RiftColors.SurfaceContainerHigh,
-            uncheckedBorderColor = if (focused) accent.onAccent.copy(alpha = 0.6f) else RiftColors.Outline,
-            uncheckedIconColor = if (focused) accent.main else RiftColors.SurfaceContainerHigh,
-        ),
-    )
+        }
+    }
+}
+
+/** The box of a [CheckRow]: filled with the accent brush when ticked, a grey outline when not. */
+@Composable
+private fun RiftCheckMark(checked: Boolean, focused: Boolean) {
+    val accent = RiftAccent.current
+    val shape = RoundedCornerShape(6.dp)
+    Box(
+        modifier = Modifier
+            .size(24.dp)
+            .clip(shape)
+            .then(
+                when {
+                    checked && focused -> Modifier.background(accent.onAccent)
+                    checked -> Modifier.background(accent.brush)
+                    else -> Modifier.border(2.dp, if (focused) accent.onAccent.copy(alpha = 0.6f) else RiftColors.Outline, shape)
+                },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (checked) {
+            Icon(
+                imageVector = Icons.Rounded.Check,
+                contentDescription = null,
+                tint = if (focused) accent.main else accent.onAccent,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+    }
 }
 
 /**
@@ -565,7 +606,7 @@ internal fun RiftChip(
                 modifier = Modifier
                     .size(8.dp)
                     .clip(CircleShape)
-                    .background(if (focused) accent.onAccent else accent.main),
+                    .background(if (focused) SolidColor(accent.onAccent) else accent.brush),
             )
             Spacer(Modifier.width(8.dp))
         }

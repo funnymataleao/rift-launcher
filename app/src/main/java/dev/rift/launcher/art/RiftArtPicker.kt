@@ -1,6 +1,7 @@
 package dev.rift.launcher.art
 
 import android.view.KeyEvent
+import dev.rift.launcher.ui.theme.RiftAccent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -369,7 +370,7 @@ private fun ArtGrid(
                                                 .padding(8.dp)
                                                 .size(26.dp)
                                                 .clip(CircleShape)
-                                                .background(RiftColors.Primary),
+                                                .background(RiftAccent.current.brush),
                                             contentAlignment = Alignment.Center,
                                         ) { Icon(Icons.Rounded.Check, null, tint = RiftColors.OnPrimary, modifier = Modifier.size(18.dp)) }
                                     }

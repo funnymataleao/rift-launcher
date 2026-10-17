@@ -1,6 +1,7 @@
 package dev.rift.launcher.settings
 
 import android.widget.ImageView
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -499,7 +500,7 @@ private fun IconVariantCard(
                     modifier = Modifier
                         .size(8.dp)
                         .clip(CircleShape)
-                        .background(if (focused) plateText(true) else RiftAccent.current.main),
+                        .background(if (focused) SolidColor(plateText(true)) else RiftAccent.current.brush),
                 )
             }
             Text(

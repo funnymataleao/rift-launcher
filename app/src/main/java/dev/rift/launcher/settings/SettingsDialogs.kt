@@ -217,12 +217,12 @@ private fun ChoiceOptionRow(
             modifier = Modifier
                 .size(24.dp)
                 .clip(CircleShape)
-                .background(
+                .then(
                     when {
-                        selected && focused -> RiftAccent.current.onAccent
-                        selected -> RiftColors.Primary
-                        focused -> RiftAccent.current.onAccent.copy(alpha = 0.25f)
-                        else -> RiftColors.Outline.copy(alpha = 0.35f)
+                        selected && focused -> Modifier.background(RiftAccent.current.onAccent)
+                        selected -> Modifier.background(RiftAccent.current.brush)
+                        focused -> Modifier.background(RiftAccent.current.onAccent.copy(alpha = 0.25f))
+                        else -> Modifier.background(RiftColors.Outline.copy(alpha = 0.35f))
                     },
                 ),
             contentAlignment = Alignment.Center,
