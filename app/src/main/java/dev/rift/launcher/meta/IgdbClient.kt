@@ -35,7 +35,7 @@ object IgdbClient {
     private const val TAG = "RiftMeta"
     private const val GAMES = "https://api.igdb.com/v4/games"
     private const val TOKEN = "https://id.twitch.tv/oauth2/token"
-    private const val FIELDS = "name,summary,storyline,total_rating,total_rating_count,first_release_date," +
+    private const val FIELDS = "id,name,summary,storyline,total_rating,total_rating_count,first_release_date," +
         "genres.name,themes.name,game_modes.name,player_perspectives.name," +
         "involved_companies.developer,involved_companies.company.name"
 
@@ -54,7 +54,23 @@ object IgdbClient {
         if (clientId.isBlank() || secret.isBlank()) throw MetaError.NoKey
         val term = SteamGridDbClient.cleanTitle(name)
         if (term.isEmpty()) throw MetaError.NotFound
-        return pick(query(clientId, secret, term, platforms), term)
+        val (meta, gameId) = pick(query(clientId, secret, term, platforms), term)
+        val (main, extras, complete) = beatTimes(clientId, secret, gameId)
+        return meta.copy(beatMain = main, beatExtras = extras, beatComplete = complete)
+    }
+
+    /** IGDB's time to beat for a game id; zeros when IGDB has none or the request fails (the rest is still shown). */
+    private suspend fun beatTimes(clientId: String, secret: String, gameId: Long): Triple<Long, Long, Long> {
+        return try {
+            val arr = JSONArray(post(clientId, secret, "fields hastily,normally,completely,count; where game_id = $gameId; limit 1;", refreshed = false))
+            val o = arr.optJSONObject(0) ?: return Triple(0, 0, 0)
+            Triple(o.optLong("hastily"), o.optLong("normally"), o.optLong("completely"))
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "IGDB time to beat unavailable for %d", gameId)
+            Triple(0, 0, 0)
+        }
     }
 
     private suspend fun query(clientId: String, secret: String, term: String, platforms: List<Int>): JSONArray {
@@ -134,7 +150,7 @@ object IgdbClient {
     }
 
     /** Exact name wins, otherwise IGDB's own first (best) hit. */
-    private fun pick(results: JSONArray, term: String): GameMeta {
+    private fun pick(results: JSONArray, term: String): Pair<GameMeta, Long> {
         if (results.length() == 0) throw MetaError.NotFound
         val wanted = normalize(term)
         val list = (0 until results.length()).mapNotNull { results.optJSONObject(it) }
@@ -149,7 +165,7 @@ object IgdbClient {
         }.orEmpty()
         val summary = game.optString("summary").trim()
         val story = game.optString("storyline").trim()
-        return GameMeta(
+        return Pair(GameMeta(
             description = if (summary.isEmpty()) story else summary,
             rating = if (game.has("total_rating")) game.optDouble("total_rating").toInt() else null,
             ratingCount = if (game.has("total_rating_count")) game.optInt("total_rating_count") else null,
@@ -157,7 +173,7 @@ object IgdbClient {
             tags = (names(game.optJSONArray("themes")) + names(game.optJSONArray("game_modes")) + names(game.optJSONArray("player_perspectives"))).distinct(),
             developer = developer,
             releaseDate = game.optLong("first_release_date"),
-        )
+        ), game.optLong("id"))
     }
 
     private fun names(array: JSONArray?): List<String> = if (array == null) emptyList() else

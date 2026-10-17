@@ -416,7 +416,7 @@ private fun HltbInfoBar(
         stringResource(R.string.hltb_main_plus_extras) to stats.mainPlusHours,
         stringResource(R.string.hltb_completionist) to stats.completeHours,
         stringResource(R.string.hltb_all_styles) to stats.allStylesHours,
-    )
+    ).filter { it.second != HltbService.UNKNOWN_HOURS } // Rift: only the times the source has
     val canOpenHltb = stats.gameId > 0
 
     Column(
