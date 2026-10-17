@@ -2655,8 +2655,6 @@ private fun TopBar(
     // Big Picture style: the section tabs between the bumpers, the search in the middle of what is left, the
     // status icons in the right corner. The corner is measured first and keeps its room; the tabs shrink.
     val gap = with(LocalDensity.current) { 10.dp.roundToPx() }
-    val minSearch = with(LocalDensity.current) { 240.dp.roundToPx() }
-    val rowGapPx = with(LocalDensity.current) { 8.dp.roundToPx() }
     val pad = with(LocalDensity.current) { ScreenPadding.roundToPx() }
     // The bumper's picture sits a little inside its touch box; its edge, not the box, lines up with the covers.
     val bumperInset = with(LocalDensity.current) { 8.dp.roundToPx() }
@@ -2675,44 +2673,23 @@ private fun TopBar(
         val lb = measurables[0].measure(loose)
         val rb = measurables[2].measure(loose)
         val inner = constraints.maxWidth - 2 * pad
-        val iconsX = constraints.maxWidth - pad - icons.width
         // The tabs get what the bumpers and the corner leave (plus a little room for the search).
         val tabsMax = (inner + bumperInset - lb.width - rb.width - icons.width - 3 * gap).coerceAtLeast(0)
-        val tabsOneRow = measurables[1].measure(loose.copy(maxWidth = tabsMax))
-        val leftEnd = pad - bumperInset + lb.width + gap + tabsOneRow.width + gap + rb.width
+        val tabs = measurables[1].measure(loose.copy(maxWidth = tabsMax))
+        val leftEnd = pad - bumperInset + lb.width + gap + tabs.width + gap + rb.width
+        val iconsX = constraints.maxWidth - pad - icons.width
         val free = (iconsX - gap - (leftEnd + gap)).coerceAtLeast(0)
-        if (free >= minSearch || search == null) {
-            // One row: bumpers and tabs, the search in the middle of what is left, the corner.
-            val searchBox = measurables[3].measure(loose.copy(maxWidth = free))
-            val height = maxOf(icons.height, lb.height, tabsOneRow.height, searchBox.height)
-            layout(constraints.maxWidth, height) {
-                // Everything hangs from the same top line, so the tabs, the search and the avatar share the inset.
-                var x = pad - bumperInset
-                lb.placeRelative(x, 0); x += lb.width + gap
-                tabsOneRow.placeRelative(x, 0); x += tabsOneRow.width + gap
-                rb.placeRelative(x, 0)
-                val centre = leftEnd + gap + free / 2
-                searchBox.placeRelative(centre - searchBox.width / 2, 0)
-                icons.placeRelative(iconsX, 0)
-            }
-        } else {
-            // Too many tabs for one row with a search of a decent width: the search keeps the middle of the first
-            // row with the corner, the tabs (all of them, between the bumpers) take a row of their own below.
-            val tabs = measurables[1].measure(loose.copy(maxWidth = (inner + bumperInset - lb.width - rb.width - 2 * gap).coerceAtLeast(0)))
-            val searchFree = (iconsX - gap - (pad + gap)).coerceAtLeast(0)
-            val searchBox = measurables[3].measure(loose.copy(maxWidth = searchFree))
-            val firstRow = maxOf(icons.height, searchBox.height)
-            val secondRow = maxOf(lb.height, tabs.height)
-            layout(constraints.maxWidth, firstRow + rowGapPx + secondRow) {
-                val centre = pad + gap + searchFree / 2
-                searchBox.placeRelative(centre - searchBox.width / 2, (firstRow - searchBox.height) / 2)
-                icons.placeRelative(iconsX, (firstRow - icons.height) / 2)
-                var x = pad - bumperInset
-                val y = firstRow + rowGapPx
-                lb.placeRelative(x, y + (secondRow - lb.height) / 2); x += lb.width + gap
-                tabs.placeRelative(x, y + (secondRow - tabs.height) / 2); x += tabs.width + gap
-                rb.placeRelative(x, y + (secondRow - rb.height) / 2)
-            }
+        val searchBox = measurables[3].measure(loose.copy(maxWidth = free))
+        val height = maxOf(icons.height, lb.height, tabs.height, searchBox.height)
+        layout(constraints.maxWidth, height) {
+            // Everything hangs from the same top line, so the tabs, the search and the avatar share the inset.
+            var x = pad - bumperInset
+            lb.placeRelative(x, 0); x += lb.width + gap
+            tabs.placeRelative(x, 0); x += tabs.width + gap
+            rb.placeRelative(x, 0)
+            val centre = leftEnd + gap + free / 2
+            searchBox.placeRelative(centre - searchBox.width / 2, 0)
+            icons.placeRelative(iconsX, 0)
         }
     }
 }
