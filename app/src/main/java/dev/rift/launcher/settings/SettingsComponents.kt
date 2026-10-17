@@ -381,7 +381,7 @@ internal fun InfoRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        if (icon != null) RowIcon(icon, focused = false)
+        if (icon != null) RowIcon(icon, focused = false, colors = LocalSettingsAccent.current.icon)
         RowTexts(title, null, danger = false, modifier = Modifier.weight(1f))
         Text(text = value, color = RiftColors.OnSurfaceVariant, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
     }
@@ -421,7 +421,7 @@ internal fun ChoiceChipsRow(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            if (icon != null) RowIcon(icon, focused = false)
+            if (icon != null) RowIcon(icon, focused = false, colors = LocalSettingsAccent.current.icon)
             RowTexts(title, subtitle, danger = false, modifier = Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
