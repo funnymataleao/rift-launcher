@@ -150,6 +150,9 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -2271,6 +2274,29 @@ private fun AndroidHero(item: LibraryItem?, modifier: Modifier = Modifier) {
     }
 }
 
+/** Share of the screen height the banner covers; below it the background and the shelf take over. */
+private const val HERO_HEIGHT_FRACTION = 0.66f
+
+/** Fades the element to transparent toward its bottom edge, starting at [from] of its height. */
+private fun Modifier.fadeOut(from: Float): Modifier = this
+    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        drawRect(Brush.verticalGradient(from to Color.Black, 1f to Color.Transparent), blendMode = BlendMode.DstIn)
+    }
+
+/** A soft blur that grows toward the bottom of the banner and fades out at its very edge. */
+private fun Modifier.fadeBand(): Modifier = this
+    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        drawRect(
+            Brush.verticalGradient(0.4f to Color.Transparent, 0.7f to Color.Black, 1f to Color.Transparent),
+            blendMode = BlendMode.DstIn,
+        )
+    }
+    .blur(18.dp, BlurredEdgeTreatment.Unbounded)
+
 @Composable
 private fun HeroBackdrop(item: LibraryItem?) {
     val url = item?.let { it.heroImageUrl.ifEmpty { it.headerImageUrl.ifEmpty { it.capsuleImageUrl } } }.orEmpty()
@@ -2281,17 +2307,30 @@ private fun HeroBackdrop(item: LibraryItem?) {
     ) { heroUrl ->
         val zoom = remember(heroUrl) { Animatable(1.04f) }
         LaunchedEffect(heroUrl) { zoom.animateTo(1f, tween(1200, easing = FastOutSlowInEasing)) }
+        // The banner fills the width and the top part of the screen only, so a wide hero keeps its
+        // proportions (no heavy zoom into the middle); its lower edge fades into the shelf area, first
+        // into a soft blur, then into the background.
         Box(modifier = Modifier.fillMaxSize()) {
             if (heroUrl.isNotEmpty()) {
+                val zoomed = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(HERO_HEIGHT_FRACTION)
+                    .graphicsLayer {
+                        scaleX = zoom.value
+                        scaleY = zoom.value
+                    }
                 CoilImage(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            scaleX = zoom.value
-                            scaleY = zoom.value
-                        },
+                    modifier = zoomed.fadeOut(from = 0.55f),
                     imageModel = { heroUrl },
-                    imageOptions = ImageOptions(contentScale = ContentScale.Crop, contentDescription = null),
+                    imageOptions = ImageOptions(contentScale = ContentScale.Crop, alignment = Alignment.TopCenter, contentDescription = null),
+                    loading = {},
+                    failure = {},
+                )
+                // The same picture blurred, visible only toward the bottom of the banner.
+                CoilImage(
+                    modifier = zoomed.fadeBand(),
+                    imageModel = { heroUrl },
+                    imageOptions = ImageOptions(contentScale = ContentScale.Crop, alignment = Alignment.TopCenter, contentDescription = null),
                     loading = {},
                     failure = {},
                 )
