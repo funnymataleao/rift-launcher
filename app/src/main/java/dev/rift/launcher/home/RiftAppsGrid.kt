@@ -210,7 +210,7 @@ private fun AppsGridContent(onDismiss: () -> Unit, focusRequester: FocusRequeste
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingIndicator(color = RiftColors.OnSurface) }
             } else {
                 val density = LocalDensity.current
-                val spec = remember(density) { KeepInView(with(density) { 24.dp.toPx() }, with(density) { 100.dp.toPx() }) }
+                val spec = remember(density) { KeepInView(with(density) { 48.dp.toPx() }, with(density) { 100.dp.toPx() }) }
                 CompositionLocalProvider(LocalBringIntoViewSpec provides spec) {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 132.dp),

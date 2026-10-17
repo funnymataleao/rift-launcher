@@ -1974,9 +1974,9 @@ private fun PcLibraryGrid(
     // on one clock for the grid (a tile composed late or reused can never stay unseen).
     val clock = key(tabSwitch) { rememberShelfClock(ShelfEntry.Library, started = entryReady) }
     // The focused row stays whole above the footer and below the tabs, not flush with the screen's edge.
-    val edgeMargin = with(LocalDensity.current) { 24.dp.toPx() }
+    val edgeMargin = with(LocalDensity.current) { 48.dp.toPx() }
     val hintBar = HintBarState.shown
-    val bottomMargin = with(LocalDensity.current) { ((if (hintBar) FooterHeight else 0.dp) + 40.dp).toPx() }
+    val bottomMargin = with(LocalDensity.current) { ((if (hintBar) FooterHeight else 0.dp) + 48.dp).toPx() }
     val spec = remember(edgeMargin, bottomMargin) { KeepInView(edgeMargin, bottomMargin) }
     CompositionLocalProvider(LocalBringIntoViewSpec provides spec) {
     LazyVerticalGrid(
