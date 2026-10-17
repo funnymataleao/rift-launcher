@@ -69,8 +69,8 @@ enum class RiftSettingsSection(
 
     Assistant(RiftSettingsGroup.System, R.string.rift_settings_assistant, R.string.rift_settings_assistant_summary, Icons.Rounded.AutoAwesome),
     Device(RiftSettingsGroup.System, R.string.rift_settings_device, R.string.rift_settings_device_summary, Icons.Rounded.Memory),
-    About(RiftSettingsGroup.System, R.string.rift_settings_about, R.string.rift_settings_about_summary, Icons.Rounded.Info),
     Debug(RiftSettingsGroup.System, R.string.rift_settings_debug, R.string.rift_settings_debug_summary, Icons.Rounded.BugReport),
+    About(RiftSettingsGroup.System, R.string.rift_settings_about, R.string.rift_settings_about_summary, Icons.Rounded.Info),
     ;
 
     companion object {

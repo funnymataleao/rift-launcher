@@ -45,8 +45,8 @@
     <string name="rift_settings_downloads_summary">Сеть, скорость, место установки и сервер Steam</string>
     <string name="rift_settings_accounts">Магазины ПК</string>
     <string name="rift_settings_accounts_summary">Аккаунты Steam, Epic, GOG и другие</string>
-    <string name="rift_settings_about">О приложении</string>
-    <string name="rift_settings_about_summary">Версия, исходный код, приватность и поддержка</string>
+    <string name="rift_settings_about">О программе</string>
+    <string name="rift_settings_about_summary">Версия, лицензия, исходный код, приватность и поддержка</string>
     <string name="rift_settings_debug">Отладка</string>
     <string name="rift_settings_debug_summary">Журналы, отладка Wine и сбросы</string>
     <string name="rift_settings_group_look">Вид и поведение</string>
@@ -421,4 +421,10 @@
     <string name="rift_settings_meta_remove">Удалить ключи</string>
     <string name="rift_settings_meta_note">Когда заданы оба, на странице Android-игры или игры эмулятора показываются описание, рейтинг, жанры, теги, разработчик и дата выхода из IGDB. Они хранятся на этом устройстве и отправляются только на twitch.tv и igdb.com.</string>
     <string name="rift_meta_rating">Рейтинг IGDB</string>
+    <string name="rift_about_license_title">Лицензия</string>
+    <string name="rift_about_license_value">GPL-3.0</string>
+    <string name="rift_about_licenses_title">Лицензии открытого ПО</string>
+    <string name="rift_about_licenses_summary">Проекты, на которых построен Rift, и их лицензии</string>
+    <string name="rift_licenses_title">Компоненты</string>
+    <string name="rift_licenses_source">Исходный код</string>
 </resources>
