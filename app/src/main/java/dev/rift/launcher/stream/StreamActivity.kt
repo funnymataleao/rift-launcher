@@ -1,5 +1,6 @@
 package dev.rift.launcher.stream
 
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Point
 import android.os.Build
@@ -88,6 +89,7 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
     private lateinit var settings: StreamSettings
     private var ready = false
     private var started = false
+    private var connected = false
     private var stopped = false
     private var streamWidth = 1920
     private var streamHeight = 1080
@@ -151,6 +153,8 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
                             pcName = intent.getStringExtra(EXTRA_PC_NAME).orEmpty(),
                             onDismiss = { menuOpen = false },
                             onEndStream = ::endStream,
+                            onPerfOverlayChange = ::showPerfOverlay,
+                            onRestart = ::restartStream,
                         )
                     }
                 }
@@ -218,7 +222,8 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
                 DecoderConfiguration.FRAME_PACING_MIN_LATENCY,
                 DecoderConfiguration.FRAME_PACING_MAX_SMOOTHNESS,
             )
-            enablePerfOverlay = settings.perfOverlay
+            // Always measured, so the overlay can be switched on from the side panel mid-stream.
+            enablePerfOverlay = true
         }
         // HDR only when the app supports it and the screen takes HDR10, as Artemis checks.
         val displayHdr10 = display.hdrCapabilities?.supportedHdrTypes?.contains(Display.HdrCapabilities.HDR_TYPE_HDR10) == true
@@ -345,6 +350,22 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         finish()
     }
 
+    /** Overlay switched in the side panel: the stats are measured all along, only their view toggles. */
+    private fun showPerfOverlay(show: Boolean) {
+        if (connected) statusText.visibility = if (show) View.VISIBLE else View.GONE
+    }
+
+    /**
+     * "Apply and restart stream": a new connection with the new picture settings. The game keeps
+     * running on the PC, and the same app is resumed.
+     */
+    private fun restartStream() {
+        menuOpen = false
+        stopStream()
+        startActivity(Intent(intent))
+        finish()
+    }
+
     /** Opens the side panel; the host gets a released pad so nothing stays held in the game. */
     private fun openMenu() {
         surfaceView.removeCallbacks(sendPending)
@@ -380,6 +401,7 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
 
     override fun connectionStarted() {
         runOnUiThread {
+            connected = true
             if (!settings.perfOverlay) statusText.visibility = View.GONE
             showMessage(getString(R.string.rift_stream_menu_hint), 4000)
         }
