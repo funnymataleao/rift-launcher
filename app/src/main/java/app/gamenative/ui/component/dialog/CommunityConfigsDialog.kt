@@ -799,7 +799,7 @@ private fun CommunityConfigEmptyState(
 }
 
 @Composable
-private fun CommunityConfigPreviewDialog(
+internal fun CommunityConfigPreviewDialog(
     run: CommunityConfigRun,
     matchType: String,
     currentLaunchArguments: String,

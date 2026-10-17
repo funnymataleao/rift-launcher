@@ -1111,6 +1111,7 @@ abstract class BaseAppScreen {
                                 )
                                 if (!forced.isNullOrEmpty()) {
                                     val container = ContainerUtils.getOrCreateContainer(context, appId)
+                                    dev.rift.launcher.community.RiftProfileBackup.snapshot(container)
                                     val currentData = ContainerUtils.toContainerData(container)
                                     val updatedData = ContainerUtils.applyBestConfigMapToContainerData(currentData, forced)
                                     ContainerUtils.applyToContainer(context, container, updatedData)
@@ -1137,6 +1138,7 @@ abstract class BaseAppScreen {
             } else if (parsedConfig.isNotEmpty()) {
                 withContext(Dispatchers.IO) {
                     val container = ContainerUtils.getOrCreateContainer(context, appId)
+                    dev.rift.launcher.community.RiftProfileBackup.snapshot(container)
                     val currentData = ContainerUtils.toContainerData(container)
                     val updatedData = ContainerUtils.applyBestConfigMapToContainerData(currentData, parsedConfig)
                     ContainerUtils.applyToContainer(context, container, updatedData)
@@ -1546,6 +1548,34 @@ abstract class BaseAppScreen {
             }
         }
 
+        // Rift: "Мой профиль" and "Лучший для вас" on the compatibility cards.
+        var riftProfileKey by remember(appId) { mutableStateOf(0) }
+        var riftProfile by remember(appId) { mutableStateOf<List<Pair<String, String>>?>(null) }
+        var riftProfileFromCommunity by remember(appId) { mutableStateOf(false) }
+        var riftBest by remember(appId) { mutableStateOf<dev.rift.launcher.community.RiftBestConfig?>(null) }
+        var riftBestLoading by remember(appId) { mutableStateOf(false) }
+        var riftBestPreview by remember(appId) { mutableStateOf<ContainerData?>(null) }
+        LaunchedEffect(appId, isInstalledState, riftProfileKey, showConfigDialog) {
+            if (showConfigDialog) return@LaunchedEffect
+            val loaded = withContext(Dispatchers.IO) {
+                runCatching {
+                    if (ContainerUtils.hasContainer(context, appId)) {
+                        dev.rift.launcher.community.riftProfileSummary(context, loadContainerData(context, libraryItem)) to
+                            dev.rift.launcher.community.RiftProfileBackup.exists(context, appId)
+                    } else {
+                        null
+                    }
+                }.getOrNull()
+            }
+            riftProfile = loaded?.first
+            riftProfileFromCommunity = loaded?.second == true
+        }
+        LaunchedEffect(appId, displayInfo.name) {
+            riftBestLoading = true
+            riftBest = dev.rift.launcher.community.RiftBestConfigs.load(context, displayInfo.name)
+            riftBestLoading = false
+        }
+
         // Export for Frontend launcher
         val exportFrontendLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.CreateDocument("application/octet-stream"),
@@ -1911,6 +1941,33 @@ abstract class BaseAppScreen {
                     }
                     requestCommunityConfigs(appId, scope)
                 },
+                profile = riftProfile,
+                profileFromCommunity = riftProfileFromCommunity,
+                onEditProfile = onEditContainer,
+                onRollback = {
+                    uiScope.launch {
+                        val restored = withContext(Dispatchers.IO) {
+                            dev.rift.launcher.community.RiftProfileBackup.restore(context, appId)
+                        }
+                        SnackbarManager.show(
+                            context.getString(
+                                if (restored) R.string.rift_compat_rolled_back else R.string.rift_compat_rollback_failed,
+                            ),
+                        )
+                        riftProfileKey += 1
+                    }
+                },
+                best = riftBest,
+                bestLoading = riftBestLoading,
+                onApplyBest = {
+                    uiScope.launch {
+                        riftBestPreview = if (isInstalledState) {
+                            withContext(Dispatchers.IO) { loadContainerData(context, libraryItem) }
+                        } else {
+                            ContainerData(envVars = "", execArgs = "")
+                        }
+                    }
+                },
             ),
         )
 
@@ -1936,6 +1993,35 @@ abstract class BaseAppScreen {
                 onSave = {
                     saveContainerConfig(context, libraryItem, it)
                     showConfigDialog = false
+                },
+            )
+        }
+
+        val bestPreviewData = riftBestPreview
+        val bestRun = riftBest
+        if (bestPreviewData != null && bestRun != null) {
+            app.gamenative.ui.component.dialog.CommunityConfigPreviewDialog(
+                run = bestRun.run,
+                matchType = bestRun.matchType,
+                currentLaunchArguments = bestPreviewData.execArgs,
+                currentEnvironmentVariables = bestPreviewData.envVars,
+                canApply = isInstalledState,
+                onDismissRequest = { riftBestPreview = null },
+                onApply = { options ->
+                    riftBestPreview = null
+                    uiScope.launch(Dispatchers.IO) {
+                        applyCommunityConfigForLibraryItem(
+                            context = context,
+                            libraryItem = libraryItem,
+                            configJson = bestRun.run.config,
+                            matchType = bestRun.matchType,
+                            matchedGpu = bestRun.run.device.gpu,
+                            storeMatch = bestRun.run.gameStore.equals(libraryItem.gameSource.name, ignoreCase = true),
+                            applyLaunchArguments = options.applyLaunchArguments,
+                            applyEnvironmentVariables = options.applyEnvironmentVariables,
+                        )
+                        riftProfileKey += 1
+                    }
                 },
             )
         }
@@ -1989,6 +2075,7 @@ abstract class BaseAppScreen {
                                 applyLaunchArguments = options.applyLaunchArguments,
                                 applyEnvironmentVariables = options.applyEnvironmentVariables,
                             )
+                            riftProfileKey += 1
                         }
                     },
                 )

@@ -173,7 +173,6 @@ import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.StoreGameDetails
 import app.gamenative.service.SteamService
-import app.gamenative.ui.component.CommunityCompatibilitySection
 import app.gamenative.ui.component.GamepadAction
 import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
@@ -1430,6 +1429,14 @@ internal data class CommunityCompatibilityUiState(
     val loadError: Boolean = false,
     val onRetry: () -> Unit = {},
     val onViewReports: () -> Unit = {},
+    // Rift: the game's own profile and the best community one, for the three compatibility cards.
+    val profile: List<Pair<String, String>>? = null,
+    val profileFromCommunity: Boolean = false,
+    val onEditProfile: () -> Unit = {},
+    val onRollback: () -> Unit = {},
+    val best: dev.rift.launcher.community.RiftBestConfig? = null,
+    val bestLoading: Boolean = false,
+    val onApplyBest: () -> Unit = {},
 )
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -2302,13 +2309,21 @@ internal fun AppScreenContent(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
-                CommunityCompatibilitySection(
-                    gameKey = displayInfo.appId.toString(),
+                app.gamenative.ui.component.RiftCompatibilityCards(
                     summary = communityCompatibility.summary,
                     loading = communityCompatibility.loading,
                     loadError = communityCompatibility.loadError,
                     onRetry = communityCompatibility.onRetry,
                     onViewReports = communityCompatibility.onViewReports,
+                    gpuRuns = gameStats?.runsGpu,
+                    profile = communityCompatibility.profile,
+                    profileFromCommunity = communityCompatibility.profileFromCommunity,
+                    onEditProfile = communityCompatibility.onEditProfile,
+                    onRollback = communityCompatibility.onRollback,
+                    best = communityCompatibility.best,
+                    bestLoading = communityCompatibility.bestLoading,
+                    onApplyBest = communityCompatibility.onApplyBest,
+                    wide = LocalConfiguration.current.screenWidthDp >= 840,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 }

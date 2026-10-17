@@ -444,4 +444,36 @@
     <string name="rift_game_rating_count">Оценок: %1$d</string>
     <string name="rift_game_hltb_title">Сколько проходить</string>
     <string name="rift_game_hours">%1$s ч</string>
+    <!-- Game page: compatibility cards -->
+    <string name="rift_compat_community">Оценка сообщества</string>
+    <string name="rift_compat_median_fps">медиана FPS</string>
+    <string name="rift_compat_sessions">сессий</string>
+    <string name="rift_compat_reports">отчётов</string>
+    <string name="rift_compat_on_gpu">на вашем GPU</string>
+    <string name="rift_compat_all_reports">Все отчёты</string>
+    <string name="rift_compat_my_profile">Мой профиль</string>
+    <string name="rift_compat_from_community">из профиля сообщества</string>
+    <string name="rift_compat_no_profile">Профиль появится после установки игры.</string>
+    <string name="rift_compat_edit">Изменить</string>
+    <string name="rift_compat_rollback">Откатить</string>
+    <string name="rift_compat_rolled_back">Профиль откачен</string>
+    <string name="rift_compat_rollback_failed">Не удалось откатить профиль</string>
+    <string name="rift_compat_dx">DXVK / VKD3D</string>
+    <string name="rift_compat_resolution">Разрешение</string>
+    <string name="rift_compat_fps_limit">Лимит FPS</string>
+    <string name="rift_compat_no_limit">Без лимита</string>
+    <string name="rift_compat_best">Лучший для вас</string>
+    <string name="rift_compat_scope_device">Это устройство</string>
+    <string name="rift_compat_scope_gpu">Тот же GPU</string>
+    <string name="rift_compat_scope_family">Похожий GPU</string>
+    <string name="rift_compat_best_loading">Ищу профили…</string>
+    <string name="rift_compat_best_none">Для вашего железа профилей пока нет.</string>
+    <string name="rift_compat_of_five">из 5</string>
+    <string name="rift_compat_fps_value">%1$d FPS</string>
+    <string name="rift_compat_session_hm">%1$d ч %2$d мин</string>
+    <string name="rift_compat_session_m">%1$d мин</string>
+    <string name="rift_compat_device">Устройство</string>
+    <string name="rift_compat_added">Добавлен</string>
+    <string name="rift_compat_apply">Применить</string>
+    <string name="rift_compat_all_profiles">Все профили</string>
 </resources>

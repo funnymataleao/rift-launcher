@@ -449,4 +449,36 @@
     <string name="rift_game_rating_count">%1$d ratings</string>
     <string name="rift_game_hltb_title">How long to beat</string>
     <string name="rift_game_hours">%1$s h</string>
+    <!-- Game page: compatibility cards -->
+    <string name="rift_compat_community">Community rating</string>
+    <string name="rift_compat_median_fps">median FPS</string>
+    <string name="rift_compat_sessions">sessions</string>
+    <string name="rift_compat_reports">reports</string>
+    <string name="rift_compat_on_gpu">on your GPU</string>
+    <string name="rift_compat_all_reports">All reports</string>
+    <string name="rift_compat_my_profile">My profile</string>
+    <string name="rift_compat_from_community">from a community profile</string>
+    <string name="rift_compat_no_profile">The profile appears once the game is installed.</string>
+    <string name="rift_compat_edit">Edit</string>
+    <string name="rift_compat_rollback">Roll back</string>
+    <string name="rift_compat_rolled_back">Profile rolled back</string>
+    <string name="rift_compat_rollback_failed">Could not roll back the profile</string>
+    <string name="rift_compat_dx">DXVK / VKD3D</string>
+    <string name="rift_compat_resolution">Resolution</string>
+    <string name="rift_compat_fps_limit">FPS limit</string>
+    <string name="rift_compat_no_limit">No limit</string>
+    <string name="rift_compat_best">Best for you</string>
+    <string name="rift_compat_scope_device">This device</string>
+    <string name="rift_compat_scope_gpu">Same GPU</string>
+    <string name="rift_compat_scope_family">Similar GPU</string>
+    <string name="rift_compat_best_loading">Looking for profiles…</string>
+    <string name="rift_compat_best_none">No profiles for your hardware yet.</string>
+    <string name="rift_compat_of_five">of 5</string>
+    <string name="rift_compat_fps_value">%1$d FPS</string>
+    <string name="rift_compat_session_hm">%1$d h %2$d min</string>
+    <string name="rift_compat_session_m">%1$d min</string>
+    <string name="rift_compat_device">Device</string>
+    <string name="rift_compat_added">Added</string>
+    <string name="rift_compat_apply">Apply</string>
+    <string name="rift_compat_all_profiles">All profiles</string>
 </resources>
