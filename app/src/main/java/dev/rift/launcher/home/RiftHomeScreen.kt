@@ -1803,14 +1803,14 @@ private const val SWITCH_ENTRY_MS = 700L
 private const val WIDE_TILE_RATIO = 460f / 215f
 
 /**
- * GameNative's own card badges, kept small: compatibility verdict top left, store icon top right,
- * per-device stats (engine, runs, FPS) along the bottom.
+ * GameNative's own card badges, kept small and along the bottom edge (a cover's title is usually at its
+ * top, and the badges covered it): compatibility verdict bottom left, store icon bottom right.
  */
 @Composable
 internal fun BoxScope.CoverBadges(item: LibraryItem, libraryState: LibraryState) {
     val community = libraryState.communityCompatibilityFor(item)
     val status = libraryState.compatibilityMap[item.name]
-    val badgeModifier = Modifier.align(Alignment.TopStart).padding(8.dp)
+    val badgeModifier = Modifier.align(Alignment.BottomStart).padding(8.dp)
     when {
         community != null -> CommunityCompatibilityBadge(
             verdict = community.verdict,
@@ -1826,7 +1826,7 @@ internal fun BoxScope.CoverBadges(item: LibraryItem, libraryState: LibraryState)
     // through the filters and the not-installed choice, not a dot here.
     Box(
         modifier = Modifier
-            .align(Alignment.TopEnd)
+            .align(Alignment.BottomEnd)
             .padding(6.dp)
             .size(StoreBadgeSize)
             .clip(CircleShape)
