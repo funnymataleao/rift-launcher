@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.view.Display
 import android.view.Gravity
 import android.view.InputDevice
 import android.view.KeyEvent
@@ -23,6 +24,7 @@ import com.limelight.binding.PlatformBinding
 import com.limelight.binding.audio.AndroidAudioRenderer
 import com.limelight.binding.video.DecoderConfiguration
 import com.limelight.binding.video.MediaCodecDecoderRenderer
+import com.limelight.binding.video.MediaCodecHelper
 import com.limelight.binding.video.PerfOverlayListener
 import com.limelight.nvstream.NvConnection
 import com.limelight.nvstream.NvConnectionListener
@@ -170,8 +172,14 @@ class StreamActivity : Activity(), SurfaceHolder.Callback, NvConnectionListener,
             )
             enablePerfOverlay = settings.perfOverlay
         }
-        val wantHdr = settings.hdr && appSupportsHdr
-        decoder = MediaCodecDecoderRenderer(this, decoderConfig, { }, 0, false, wantHdr, false, null, this)
+        // HDR only when the app supports it and the screen takes HDR10, as Artemis checks.
+        val displayHdr10 = display.hdrCapabilities?.supportedHdrTypes?.contains(Display.HdrCapabilities.HDR_TYPE_HDR10) == true
+        val wantHdr = settings.hdr && appSupportsHdr && displayHdr10
+
+        // Artemis initializes the decoder quirks table before any decoder is created.
+        val glRenderer = GlRenderer.get(this)
+        MediaCodecHelper.initialize(this, glRenderer)
+        decoder = MediaCodecDecoderRenderer(this, decoderConfig, { }, 0, false, wantHdr, false, glRenderer, this)
         if (!decoder.isAvcSupported) {
             SnackbarManager.show(getString(R.string.rift_stream_no_decoder))
             return finish()
