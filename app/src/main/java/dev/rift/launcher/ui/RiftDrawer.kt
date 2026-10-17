@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -60,6 +61,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.utils.BrightnessManager
+import dev.rift.launcher.settings.LocalPlateRest
 import kotlin.coroutines.resume
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -85,11 +87,17 @@ object RiftDrawer {
     /** The one space between the panel's edge and its outermost plates, pictures and buttons, on all four sides. */
     val Edge = 20.dp
 
-    /** The black over the blurred picture. */
-    val Tint = Color.Black.copy(alpha = 0.62f)
+    /**
+     * The black over the blurred picture: nearly black, so the panel is always darker than the dimmed
+     * screen beside it and what is behind only just shows through (Denis 2026-10-17).
+     */
+    val Tint = Color.Black.copy(alpha = 0.88f)
 
     /** With nothing to blur. */
-    val Solid = Color.Black.copy(alpha = 0.94f)
+    val Solid = Color.Black.copy(alpha = 0.96f)
+
+    /** The plates in a panel (a profile, a row) without focus: black, not grey. */
+    val Plate = Color.Black
 
     val Blur = 40.dp
 
@@ -170,6 +178,7 @@ fun RiftDrawerPanel(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Box(modifier = modifier.drawerGlass(backdrop)) {
+      CompositionLocalProvider(LocalPlateRest provides RiftDrawer.Plate) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
@@ -199,6 +208,7 @@ fun RiftDrawerPanel(
                 )
             }
         }
+      }
     }
 }
 
