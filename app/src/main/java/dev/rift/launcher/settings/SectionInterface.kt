@@ -71,6 +71,7 @@ import dev.rift.launcher.ui.theme.RiftShapes
 /** Language, app icon, status bar, the library and achievement notifications. */
 @Composable
 internal fun InterfaceSettings() {
+    AccentSettings()
     TopBarGroup()
     LookGroup()
     LibraryGroup()
@@ -367,7 +368,7 @@ private fun IconStyleRow(selectedVariant: Int, onSelect: (Int) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(RiftColors.SurfaceContainer)
+            .plateFill(focused = false)
             .padding(horizontal = 18.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -406,19 +407,11 @@ private fun IconVariantCard(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val shape = RiftShapes.sheet
     Column(
         modifier = Modifier
-            .clip(shape)
-            .background(if (selected) RiftColors.SurfaceContainerHigh else RiftColors.Surface)
-            .border(
-                width = if (focused) 3.dp else 2.dp,
-                color = when {
-                    focused -> Color.White
-                    selected -> RiftColors.Primary
-                    else -> Color.Transparent
-                },
-                shape = shape,
+            .plateFill(focused, rest = if (selected) RiftColors.SurfaceContainerHigh else RiftColors.Surface)
+            .then(
+                if (selected && !focused) Modifier.border(2.dp, RiftColors.Primary, PlateShape) else Modifier,
             )
             .clickable(interactionSource = interaction, indication = null, role = Role.RadioButton, onClick = onClick)
             .padding(16.dp),
@@ -443,7 +436,7 @@ private fun IconVariantCard(
         }
         Text(
             text = label,
-            color = if (selected) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
+            color = if (focused) plateText(true) else if (selected) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
         )

@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import dev.rift.launcher.ui.theme.RiftAccent
 import dev.rift.launcher.ui.theme.RiftColors
 import dev.rift.launcher.ui.theme.RiftShapes
 import dev.rift.launcher.ui.theme.RiftSizes
@@ -191,14 +192,11 @@ private fun ChoiceOptionRow(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val shape = RiftShapes.full
     Row(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = RiftSizes.button)
-            .clip(shape)
-            .background(if (focused) RiftColors.SurfaceContainerHigh else RiftColors.SurfaceContainer)
-            .border(if (focused) 2.dp else 1.dp, if (focused) Color.White.copy(alpha = 0.9f) else RiftColors.OutlineVariant, shape)
+            .plateFill(focused)
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -213,22 +211,22 @@ private fun ChoiceOptionRow(
             modifier = Modifier
                 .size(24.dp)
                 .clip(CircleShape)
-                .background(if (selected) RiftColors.Primary else Color.Transparent)
-                .border(2.dp, if (selected) RiftColors.Primary else RiftColors.Outline, CircleShape),
+                .background(if (selected) (if (focused) RiftAccent.current.onAccent else RiftColors.Primary) else Color.Transparent)
+                .border(2.dp, if (selected) (if (focused) RiftAccent.current.onAccent else RiftColors.Primary) else if (focused) RiftAccent.current.onAccent else RiftColors.Outline, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             if (selected) {
                 Icon(
                     imageVector = Icons.Rounded.Check,
                     contentDescription = null,
-                    tint = RiftColors.OnPrimary,
+                    tint = if (focused) RiftAccent.current.main else RiftColors.OnPrimary,
                     modifier = Modifier.size(16.dp),
                 )
             }
         }
         Text(
             text = label,
-            color = RiftColors.OnSurface,
+            color = plateText(focused),
             fontSize = 16.sp,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
         )
