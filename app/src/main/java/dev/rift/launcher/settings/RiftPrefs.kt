@@ -179,6 +179,18 @@ class RiftPrefs private constructor(
         get() = prefs.getString(STEAMGRIDDB_KEY, "") ?: ""
         set(value) = prefs.edit().putString(STEAMGRIDDB_KEY, value.trim()).apply()
 
+    // --- Game metadata ---
+
+    /** The Client ID of the user's own Twitch application, which IGDB (descriptions, ratings, genres) needs; empty when none. */
+    var igdbClientId: String
+        get() = prefs.getString(IGDB_CLIENT_ID, "") ?: ""
+        set(value) = prefs.edit().putString(IGDB_CLIENT_ID, value.trim()).apply()
+
+    /** The Client Secret of that application; stays on this device. */
+    var igdbClientSecret: String
+        get() = prefs.getString(IGDB_CLIENT_SECRET, "") ?: ""
+        set(value) = prefs.edit().putString(IGDB_CLIENT_SECRET, value.trim()).apply()
+
     // --- Emulator folders ---
 
     /** Content URI of the folder the user picked, empty when none. */
@@ -241,6 +253,8 @@ class RiftPrefs private constructor(
         private const val SHOW_NETWORK = "show_network"
         private const val QUICK_ACCESS = "quick_access_keycode"
         private const val STEAMGRIDDB_KEY = "steamgriddb_api_key"
+        private const val IGDB_CLIENT_ID = "igdb_client_id"
+        private const val IGDB_CLIENT_SECRET = "igdb_client_secret"
         private const val ROMS_URI = "emulators_roms_uri"
         private const val BIOS_URI = "emulators_bios_uri"
         private const val ESDE_URI = "emulators_esde_uri"

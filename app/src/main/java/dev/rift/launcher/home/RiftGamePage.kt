@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
@@ -22,6 +23,8 @@ import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.screen.library.AppScreenContent
 import dev.rift.launcher.art.GameArtStore
 import dev.rift.launcher.art.RiftAutoArt
+import dev.rift.launcher.meta.RiftAutoMeta
+import app.gamenative.data.StoreGameDetails
 import dev.rift.launcher.settings.EmulatorChoiceDialog
 
 /** The library entry an Android game's page and its art are known by. */
@@ -47,11 +50,23 @@ internal fun RiftGamePage(
     val artVersion by GameArtStore.version.collectAsStateWithLifecycle()
     val shown = remember(item, artVersion) { GameArtStore.apply(context, item) }
     LaunchedEffect(item.appId) { RiftAutoArt.ensure(context, item) }
-    val displayInfo = remember(shown) {
+    var meta by remember(item.appId) { mutableStateOf(RiftAutoMeta.cached(context, item.appId)) }
+    LaunchedEffect(item.appId) { RiftAutoMeta.ensure(context, item, platformId)?.let { meta = it } }
+    val ratingLabel = stringResource(R.string.rift_meta_rating)
+    val displayInfo = remember(shown, meta) {
         GameDisplayInfo(
             name = shown.name,
-            developer = "",
-            releaseDate = 0L,
+            developer = meta?.developer.orEmpty(),
+            releaseDate = meta?.releaseDate ?: 0L,
+            storeDetails = meta?.let { m ->
+                StoreGameDetails(
+                    description = m.description,
+                    reviewPercentage = m.rating,
+                    reviewCount = m.ratingCount,
+                    reviewSummary = m.rating?.let { ratingLabel },
+                    tags = m.genres + m.tags,
+                )
+            } ?: StoreGameDetails(),
             heroImageUrl = shown.heroImageUrl.ifEmpty { null },
             iconUrl = shown.customIconUrl.ifEmpty { null },
             gameId = 0,

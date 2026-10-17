@@ -292,7 +292,7 @@
     <string name="rift_sort_date_added">Date added</string>
     <string name="rift_sort_last_played">Last played</string>
     <string name="rift_settings_artwork">Artwork</string>
-    <string name="rift_settings_artwork_summary">Your SteamGridDB key for changing game covers</string>
+    <string name="rift_settings_artwork_summary">Your keys for covers and game info</string>
     <string name="rift_settings_art_key">SteamGridDB API key</string>
     <string name="rift_settings_art_key_summary">Needed to look up covers, banners, logos and icons</string>
     <string name="rift_settings_art_key_none">Not set</string>
@@ -415,4 +415,15 @@
     <string name="rift_overlay_game_menu_summary">Like the Back gesture: emulators open their menu with Exit</string>
     <string name="rift_settings_overlay">Panel in Android games</string>
     <string name="rift_settings_overlay_summary">Home on the gamepad opens Rift\'s panel in Android games and emulators. Turn on \"Rift panel in games\" in Accessibility.</string>
+    <string name="rift_settings_meta_group">Game info</string>
+    <string name="rift_settings_meta_id">IGDB Client ID</string>
+    <string name="rift_settings_meta_id_summary">From your free Twitch application</string>
+    <string name="rift_settings_meta_secret">IGDB Client Secret</string>
+    <string name="rift_settings_meta_secret_summary">From the same Twitch application</string>
+    <string name="rift_settings_meta_hint">Paste it from your Twitch application on dev.twitch.tv.</string>
+    <string name="rift_settings_meta_get">How to get them</string>
+    <string name="rift_settings_meta_get_summary">Opens the IGDB guide: sign in with Twitch, register an application, copy its Client ID and Secret</string>
+    <string name="rift_settings_meta_remove">Remove the keys</string>
+    <string name="rift_settings_meta_note">With both set, the page of an Android or emulator game shows its description, rating, genres, tags, developer and release date from IGDB. They are saved on this device and sent only to twitch.tv and igdb.com.</string>
+    <string name="rift_meta_rating">IGDB rating</string>
 </resources>

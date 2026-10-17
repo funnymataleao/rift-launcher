@@ -39,6 +39,7 @@ import dev.rift.launcher.ui.theme.RiftShapes
 import dev.rift.launcher.ui.theme.RiftSizes
 
 private const val API_KEY_PAGE = "https://www.steamgriddb.com/profile/preferences/api"
+private const val IGDB_KEY_PAGE = "https://api-docs.igdb.com/#account-creation"
 
 /** The user's own SteamGridDB key, which the game-art picker (Y, "Change art") needs. */
 @Composable
@@ -47,6 +48,9 @@ internal fun ArtworkSettings() {
     val uriHandler = LocalUriHandler.current
     var key by remember { mutableStateOf(prefs.steamGridDbKey) }
     var editing by remember { mutableStateOf(false) }
+    var igdbId by remember { mutableStateOf(prefs.igdbClientId) }
+    var igdbSecret by remember { mutableStateOf(prefs.igdbClientSecret) }
+    var editingIgdb by remember { mutableStateOf<IgdbField?>(null) }
 
     SettingsGroup {
         LinkRow(
@@ -76,8 +80,66 @@ internal fun ArtworkSettings() {
     }
     NoteText(stringResource(R.string.rift_settings_art_note), underGroup = true)
 
+    SettingsGroup(title = stringResource(R.string.rift_settings_meta_group)) {
+        LinkRow(
+            title = stringResource(R.string.rift_settings_meta_id),
+            subtitle = stringResource(R.string.rift_settings_meta_id_summary),
+            icon = Icons.Rounded.Key,
+            value = if (igdbId.isBlank()) stringResource(R.string.rift_settings_art_key_none) else maskedKey(igdbId),
+            onClick = { editingIgdb = IgdbField.Id },
+        )
+        LinkRow(
+            title = stringResource(R.string.rift_settings_meta_secret),
+            subtitle = stringResource(R.string.rift_settings_meta_secret_summary),
+            icon = Icons.Rounded.Key,
+            value = if (igdbSecret.isBlank()) stringResource(R.string.rift_settings_art_key_none) else maskedKey(igdbSecret),
+            onClick = { editingIgdb = IgdbField.Secret },
+        )
+        LinkRow(
+            title = stringResource(R.string.rift_settings_meta_get),
+            subtitle = stringResource(R.string.rift_settings_meta_get_summary),
+            icon = Icons.Rounded.OpenInNew,
+            onClick = { uriHandler.openUri(IGDB_KEY_PAGE) },
+        )
+        if (igdbId.isNotBlank() || igdbSecret.isNotBlank()) {
+            LinkRow(
+                title = stringResource(R.string.rift_settings_meta_remove),
+                icon = Icons.Rounded.Delete,
+                danger = true,
+                onClick = {
+                    prefs.igdbClientId = ""
+                    prefs.igdbClientSecret = ""
+                    igdbId = ""
+                    igdbSecret = ""
+                },
+            )
+        }
+    }
+    NoteText(stringResource(R.string.rift_settings_meta_note), underGroup = true)
+
+    editingIgdb?.let { field ->
+        KeyDialog(
+            title = stringResource(if (field == IgdbField.Id) R.string.rift_settings_meta_id else R.string.rift_settings_meta_secret),
+            hint = stringResource(R.string.rift_settings_meta_hint),
+            initial = if (field == IgdbField.Id) igdbId else igdbSecret,
+            onSave = {
+                if (field == IgdbField.Id) {
+                    prefs.igdbClientId = it
+                    igdbId = prefs.igdbClientId
+                } else {
+                    prefs.igdbClientSecret = it
+                    igdbSecret = prefs.igdbClientSecret
+                }
+                editingIgdb = null
+            },
+            onDismiss = { editingIgdb = null },
+        )
+    }
+
     if (editing) {
         KeyDialog(
+            title = stringResource(R.string.rift_settings_art_key),
+            hint = stringResource(R.string.rift_settings_art_key_hint),
             initial = key,
             onSave = {
                 prefs.steamGridDbKey = it
@@ -89,17 +151,19 @@ internal fun ArtworkSettings() {
     }
 }
 
+private enum class IgdbField { Id, Secret }
+
 /** "••••1a2b": enough to recognise the key, never the whole of it. */
 private fun maskedKey(key: String): String = "••••" + key.trim().takeLast(4)
 
 @Composable
-private fun KeyDialog(initial: String, onSave: (String) -> Unit, onDismiss: () -> Unit) {
+private fun KeyDialog(title: String, hint: String, initial: String, onSave: (String) -> Unit, onDismiss: () -> Unit) {
     var text by remember { mutableStateOf(initial) }
     val clipboard = LocalClipboardManager.current
     val field = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { field.requestFocus() } }
     RiftDialog(
-        title = stringResource(R.string.rift_settings_art_key),
+        title = title,
         onDismiss = onDismiss,
         actions = {
             RiftPillButton(
@@ -132,7 +196,7 @@ private fun KeyDialog(initial: String, onSave: (String) -> Unit, onDismiss: () -
                 modifier = Modifier.weight(1f).focusRequester(field),
             )
         }
-        NoteText(stringResource(R.string.rift_settings_art_key_hint))
+        NoteText(hint)
     }
 }
 
