@@ -133,16 +133,24 @@ class PcStreamingTab internal constructor(internal val hosts: PcHosts) {
     fun launch(context: Context, item: LibraryItem): Boolean {
         val game = games.firstOrNull { it.item.appId == item.appId } ?: return false
         usage(context).edit().putLong(item.appId, System.currentTimeMillis()).apply()
-        // The panel in the stream shows the game's wide cover, the one its tile has.
-        return start(context, game.pc, game.app, wideCoverUrls(GameArtStore.apply(context, item)))
+        // The stream shows the game's own pictures: the tile's wide cover in its panel, the home's hero
+        // and logo on the splash while the game starts.
+        val shown = GameArtStore.apply(context, item)
+        val art = StreamArt(
+            coverUrls = wideCoverUrls(shown),
+            heroUrl = shown.heroImageUrl.ifEmpty { shown.headerImageUrl.ifEmpty { shown.capsuleImageUrl } },
+            logoUrl = shown.customLogoUrl,
+            steamAppId = if (shown.gameSource == GameSource.STEAM) shown.gameId else 0,
+        )
+        return start(context, game.pc, game.app, art)
     }
 
     /** Starts the stream of a host app listed in settings. */
     fun launch(context: Context, service: StreamService): Boolean = start(context, service.pc, service.app)
 
-    private fun start(context: Context, pc: ComputerDetails, app: NvApp, coverUrls: List<String> = emptyList()): Boolean {
+    private fun start(context: Context, pc: ComputerDetails, app: NvApp, art: StreamArt = StreamArt()): Boolean {
         val uniqueId = hosts.uniqueId ?: return false
-        PcStreaming.startStream(context, pc, app, uniqueId, coverUrls)
+        PcStreaming.startStream(context, pc, app, uniqueId, art)
         return true
     }
 

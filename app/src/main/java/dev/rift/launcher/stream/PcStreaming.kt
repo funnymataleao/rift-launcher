@@ -128,10 +128,10 @@ object PcStreaming {
      * PC online (just resumed, network change), its known addresses are asked directly first, so a PC
      * that is on is never reported offline.
      */
-    fun startStream(context: Context, pc: ComputerDetails, app: NvApp, uniqueId: String, coverUrls: List<String> = emptyList()) {
+    fun startStream(context: Context, pc: ComputerDetails, app: NvApp, uniqueId: String, art: StreamArt = StreamArt()) {
         val address = pc.activeAddress
         if (isOnline(pc) && address != null) {
-            launchStream(context, pc, address, pc.httpsPort, pc.vDisplaySupported && pc.vDisplayDriverReady, app, uniqueId, coverUrls)
+            launchStream(context, pc, address, pc.httpsPort, pc.vDisplaySupported && pc.vDisplayDriverReady, app, uniqueId, art)
             return
         }
         if (checking) return
@@ -143,7 +143,7 @@ object PcStreaming {
             withContext(Dispatchers.Main) {
                 checking = false
                 when (reach) {
-                    is Reach.Online -> launchStream(context, pc, reach.address, reach.httpsPort, reach.virtualDisplay, app, uniqueId, coverUrls)
+                    is Reach.Online -> launchStream(context, pc, reach.address, reach.httpsPort, reach.virtualDisplay, app, uniqueId, art)
                     is Reach.NoHttps -> SnackbarManager.show(context.getString(R.string.rift_stream_pc_no_https, pc.name, reach.httpsPort))
                     Reach.Offline -> SnackbarManager.show(context.getString(R.string.rift_stream_pc_offline, pc.name))
                 }
@@ -193,7 +193,7 @@ object PcStreaming {
         virtualDisplay: Boolean,
         app: NvApp,
         uniqueId: String,
-        coverUrls: List<String>,
+        art: StreamArt,
     ) {
         context.startActivity(
             Intent(context, StreamActivity::class.java).apply {
@@ -208,7 +208,10 @@ object PcStreaming {
                 putExtra(StreamActivity.EXTRA_APP_UUID, app.appUUID)
                 putExtra(StreamActivity.EXTRA_APP_HDR, app.isHdrSupported)
                 putExtra(StreamActivity.EXTRA_VIRTUAL_DISPLAY_READY, virtualDisplay)
-                putExtra(StreamActivity.EXTRA_COVER_URLS, coverUrls.toTypedArray())
+                putExtra(StreamActivity.EXTRA_COVER_URLS, art.coverUrls.toTypedArray())
+                putExtra(StreamActivity.EXTRA_HERO_URL, art.heroUrl)
+                putExtra(StreamActivity.EXTRA_LOGO_URL, art.logoUrl)
+                putExtra(StreamActivity.EXTRA_STEAM_APP_ID, art.steamAppId)
                 if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             },
         )
@@ -305,3 +308,14 @@ fun rememberPcHosts(): PcHosts {
     }
     return pcHosts
 }
+
+/**
+ * The game's pictures the stream shows: the wide cover in its panel, the hero and logo on the splash
+ * while the game starts. [logoUrl] is a picked logo; [steamAppId] finds Steam's own.
+ */
+class StreamArt(
+    val coverUrls: List<String> = emptyList(),
+    val heroUrl: String = "",
+    val logoUrl: String = "",
+    val steamAppId: Int = 0,
+)

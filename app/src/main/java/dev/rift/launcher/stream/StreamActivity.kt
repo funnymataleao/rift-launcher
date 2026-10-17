@@ -94,6 +94,15 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         const val EXTRA_APP_UUID = "appUuid"
         const val EXTRA_APP_HDR = "appHdr"
         const val EXTRA_COVER_URLS = "coverUrls"
+        const val EXTRA_HERO_URL = "heroUrl"
+        const val EXTRA_LOGO_URL = "logoUrl"
+        const val EXTRA_STEAM_APP_ID = "steamAppId"
+
+        /** Set on a reconnect of the same session (new picture settings): the game is already up. */
+        private const val EXTRA_RECONNECT = "reconnect"
+
+        /** The splash never outlasts this, whatever the game does. */
+        private const val SPLASH_MAX_MS = 90_000L
 
         /** The host can make a virtual screen of the stream's own size and rate (Apollo/Vibepollo). */
         const val EXTRA_VIRTUAL_DISPLAY_READY = "virtualDisplayReady"
@@ -161,6 +170,10 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
     private var backdropFailed = false
     private val copyBackdrop: Runnable = Runnable { requestBackdrop() }
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    /** The game's art over the stream until the game is up on the PC (see [StreamSplash]). */
+    private var splashShown by mutableStateOf(false)
+    private val splashTimeout = Runnable { hideSplash("timeout") }
     private var panelRow by mutableStateOf(StreamMenuRow.RESOLUTION)
     private var maxFps by mutableStateOf(60)
     private var screenSize by mutableStateOf<Pair<Int, Int>?>(null)
@@ -218,6 +231,20 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
             FrameLayout(this).apply {
                 setBackgroundColor(Color.BLACK)
                 addView(surfaceView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT, Gravity.CENTER))
+                addView(
+                    ComposeView(this@StreamActivity).apply {
+                        setContent {
+                            StreamSplash(
+                                visible = splashShown,
+                                appName = intent.getStringExtra(EXTRA_APP_NAME).orEmpty(),
+                                heroUrl = intent.getStringExtra(EXTRA_HERO_URL).orEmpty(),
+                                logoUrl = intent.getStringExtra(EXTRA_LOGO_URL).orEmpty(),
+                                steamAppId = intent.getIntExtra(EXTRA_STEAM_APP_ID, 0),
+                            )
+                        }
+                    },
+                    FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT),
+                )
                 addView(statusText, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.START))
                 addView(
                     messageText,
@@ -227,6 +254,11 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
             },
         )
         panel = PanelWindow()
+        // A game's new session starts on the PC's desktop or Big Picture until the game opens; a reconnect
+        // is already in the game, and Desktop or a launcher from settings has no game to wait for.
+        val hasArt = !intent.getStringExtra(EXTRA_HERO_URL).isNullOrBlank() ||
+            !intent.getStringExtra(EXTRA_LOGO_URL).isNullOrBlank() || intent.getIntExtra(EXTRA_STEAM_APP_ID, 0) != 0
+        splashShown = hasArt && !intent.getBooleanExtra(EXTRA_RECONNECT, false)
         onBackPressedDispatcher.addCallback(this) {
             if (streamError != null) {
                 finish()
@@ -381,7 +413,9 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         if (ready && !started) {
             started = true
             decoder.setRenderTarget(holder.surface)
-            conn.start(AndroidAudioRenderer(this, false), decoder, this)
+            val audio = SoundWatch(AndroidAudioRenderer(this, false)) { runOnUiThread { hideSplash("sound") } }
+            audio.armed = splashShown
+            conn.start(audio, decoder, this)
         }
     }
 
@@ -433,7 +467,10 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         val port = intent.getIntExtra(EXTRA_PORT, 47989)
         val httpsPort = intent.getIntExtra(EXTRA_HTTPS_PORT, 0)
         val crypto = PlatformBinding.getCryptoProvider(applicationContext)
-        val relaunch = Intent(intent).apply { removeExtra(EXTRA_PANEL_ROW) }
+        val relaunch = Intent(intent).apply {
+            removeExtra(EXTRA_PANEL_ROW)
+            removeExtra(EXTRA_RECONNECT)
+        }
         thread {
             runCatching { NvHTTP(ComputerDetails.AddressTuple(host, port), httpsPort, uniqueId, serverCert, crypto).quitApp() }
                 .onFailure { Log.w(TAG, "quit before relaunch failed", it) }
@@ -464,7 +501,12 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         if (isFinishing) return
         Log.i(TAG, "reconnecting with new picture settings from $row")
         stopStream()
-        startActivity(Intent(intent).apply { if (menuOpen) putExtra(EXTRA_PANEL_ROW, row) else removeExtra(EXTRA_PANEL_ROW) })
+        startActivity(
+            Intent(intent).apply {
+                if (menuOpen) putExtra(EXTRA_PANEL_ROW, row) else removeExtra(EXTRA_PANEL_ROW)
+                putExtra(EXTRA_RECONNECT, true)
+            },
+        )
         finish()
         @Suppress("DEPRECATION")
         overridePendingTransition(0, 0)
@@ -515,6 +557,7 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         sendController()
         runOnUiThread {
             connected = true
+            if (splashShown) mainHandler.postDelayed(splashTimeout, SPLASH_MAX_MS)
             if (!settings.perfOverlay) statusText.visibility = View.GONE
             val row = intent.getStringExtra(EXTRA_PANEL_ROW)
             if (row != null) {
@@ -535,6 +578,7 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
             // The panel stays over the stream with the reason and a way out, instead of a silent return
             // home. No video at all usually means the game's session on the PC is stuck.
             Log.i(TAG, "stream terminated: $errorCode")
+            hideSplash("stream ended")
             stopStream()
             streamError = if (errorCode == MoonBridge.ML_ERROR_NO_VIDEO_TRAFFIC || errorCode == MoonBridge.ML_ERROR_NO_VIDEO_FRAME) {
                 getString(R.string.rift_stream_no_video)
@@ -640,6 +684,8 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // Any button on the pad lifts the splash and still reaches the PC (a launcher may ask for a press).
+        if (splashShown && event.action == KeyEvent.ACTION_DOWN && isGamepad(event.source)) hideSplash("button")
         // The panel's own button opens and closes it and never reaches the PC.
         if (menuKey != KeyEvent.KEYCODE_UNKNOWN && event.keyCode == menuKey) {
             if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
@@ -814,7 +860,16 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         override fun dispatchKeyEvent(event: KeyEvent) = panelKey(event) { super.dispatchKeyEvent(it) }
     }
 
+    /** Fades the splash out over the running stream; [reason] goes to the log. */
+    private fun hideSplash(reason: String) {
+        if (!splashShown) return
+        Log.i(TAG, "splash off: $reason")
+        splashShown = false
+        mainHandler.removeCallbacks(splashTimeout)
+    }
+
     override fun onDestroy() {
+        mainHandler.removeCallbacks(splashTimeout)
         if (::panel.isInitialized) panel.dismiss()
         super.onDestroy()
     }
