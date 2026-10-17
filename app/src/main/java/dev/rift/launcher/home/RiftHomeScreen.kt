@@ -44,6 +44,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -777,7 +779,7 @@ fun RiftHomeScreen(
     // One back press closes the keyboard and the field together; the keyboard may eat the press itself, so its
     // hiding while typing counts as the press too.
     BackHandler(enabled = searchOpen) { closeSearch() }
-    val imeVisible = androidx.compose.foundation.layout.WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     var imeSeen by remember { mutableStateOf(false) }
     LaunchedEffect(searchTyping, imeVisible) {
         if (!searchTyping) { imeSeen = false; return@LaunchedEffect }
