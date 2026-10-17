@@ -33,24 +33,31 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.PhotoAlbum
-import androidx.compose.material.icons.filled.PhotoSizeSelectActual
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material.icons.filled.ViewCarousel
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Stars
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -80,12 +87,9 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.SteamCollection
-import app.gamenative.ui.component.GameStatsKey
 import app.gamenative.ui.component.OptionListItem
-import app.gamenative.ui.component.OptionRadioItem
 import app.gamenative.ui.component.OptionSectionHeader
 import app.gamenative.ui.enums.AppFilter
-import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.enums.SortOption
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.adaptivePanelWidth
@@ -99,8 +103,6 @@ fun LibraryOptionsPanel(
     onFilterChanged: (AppFilter) -> Unit,
     currentSortOption: SortOption,
     onSortOptionChanged: (SortOption) -> Unit,
-    currentView: PaneType,
-    onViewChanged: (PaneType) -> Unit,
     steamCollections: List<SteamCollection>?,
     selectedSteamCollectionIds: Set<String>,
     steamCollectionCounts: Map<String, Int>,
@@ -184,7 +186,7 @@ fun LibraryOptionsPanel(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = stringResource(R.string.options_panel_title),
+                            text = stringResource(R.string.rift_filters_title),
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.SemiBold
                             ),
@@ -212,131 +214,39 @@ fun LibraryOptionsPanel(
                             .verticalScroll(rememberScrollState())
                             .padding(vertical = 12.dp)
                     ) {
-                        GameStatsKey(modifier = Modifier.padding(horizontal = 8.dp))
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        OptionSectionHeader(text = stringResource(R.string.options_sort_by))
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .focusGroup()
                                 .padding(horizontal = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            SortOption.entries.forEachIndexed { index, option ->
-                                OptionRadioItem(
-                                    text = stringResource(option.displayTextRes),
-                                    selected = currentSortOption == option,
-                                    onClick = { onSortOptionChanged(option) },
-                                    icon = option.icon(),
-                                    focusRequester = if (index == 0) firstItemFocusRequester else remember { FocusRequester() },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        OptionSectionHeader(text = stringResource(R.string.library_app_type))
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusGroup()
-                                .padding(horizontal = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            AppFilter.entries.forEach { appFilter ->
-                                if (appFilter in listOf(
-                                        AppFilter.GAME,
-                                        AppFilter.APPLICATION,
-                                        AppFilter.TOOL,
-                                        AppFilter.DEMO,
-                                        AppFilter.PLAYTEST,
+                            FilterDropdown(
+                                label = stringResource(R.string.options_sort_by),
+                                valueText = stringResource(currentSortOption.displayTextRes),
+                                icon = currentSortOption.icon(),
+                                focusRequester = firstItemFocusRequester,
+                                entries = SortOption.entries.map { option ->
+                                    DropdownEntry(
+                                        text = stringResource(option.displayTextRes),
+                                        selected = currentSortOption == option,
+                                        icon = option.icon(),
+                                        onClick = { onSortOptionChanged(option) },
                                     )
-                                ) {
-                                    OptionListItem(
-                                        text = stringResource(appFilter.displayTextRes),
-                                        selected = selectedFilters.contains(appFilter),
-                                        onClick = { onFilterChanged(appFilter) },
-                                        icon = appFilter.icon,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        OptionSectionHeader(text = stringResource(R.string.library_app_status))
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusGroup()
-                                .padding(horizontal = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            AppFilter.entries.forEach { appFilter ->
-                                if (appFilter in listOf(
-                                        AppFilter.INSTALLED,
-                                        AppFilter.SHARED,
-                                        AppFilter.COMPATIBLE,
-                                        AppFilter.EXPIRED,
-                                        AppFilter.PLAYABLE,
-                                        AppFilter.FIVE_STAR,
-                                        AppFilter.FIVE_STAR_GPU,
-                                        AppFilter.PROVEN_GPU,
-                                        AppFilter.VR,
-                                    )
-                                ) {
-                                    OptionListItem(
-                                        text = stringResource(appFilter.displayTextRes),
-                                        selected = selectedFilters.contains(appFilter),
-                                        onClick = { onFilterChanged(appFilter) },
-                                        icon = appFilter.icon,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        OptionSectionHeader(text = stringResource(R.string.library_layout_title))
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusGroup()
-                                .padding(horizontal = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            OptionRadioItem(
-                                text = stringResource(R.string.library_layout_list),
-                                selected = currentView == PaneType.LIST,
-                                onClick = { onViewChanged(PaneType.LIST) },
-                                icon = Icons.AutoMirrored.Filled.List,
-                                modifier = Modifier.fillMaxWidth()
+                                },
+                                closeOnPick = true,
                             )
-                            OptionRadioItem(
-                                text = stringResource(R.string.library_layout_capsule),
-                                selected = currentView == PaneType.GRID_CAPSULE,
-                                onClick = { onViewChanged(PaneType.GRID_CAPSULE) },
-                                icon = Icons.Default.PhotoAlbum,
-                                modifier = Modifier.fillMaxWidth()
+                            FilterDropdown(
+                                label = stringResource(R.string.library_app_type),
+                                valueText = summarize(TYPE_FILTERS, selectedFilters),
+                                icon = Icons.Default.Category,
+                                entries = TYPE_FILTERS.map { f -> f.toEntry(selectedFilters, onFilterChanged) },
                             )
-                            OptionRadioItem(
-                                text = stringResource(R.string.library_layout_hero),
-                                selected = currentView == PaneType.GRID_HERO,
-                                onClick = { onViewChanged(PaneType.GRID_HERO) },
-                                icon = Icons.Default.PhotoSizeSelectActual,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            OptionRadioItem(
-                                text = stringResource(R.string.library_layout_carousel),
-                                selected = currentView == PaneType.CAROUSEL,
-                                onClick = { onViewChanged(PaneType.CAROUSEL) },
-                                icon = Icons.Default.ViewCarousel,
-                                modifier = Modifier.fillMaxWidth()
+                            FilterDropdown(
+                                label = stringResource(R.string.library_app_status),
+                                valueText = summarize(STATUS_FILTERS, selectedFilters),
+                                icon = Icons.Default.FilterList,
+                                entries = STATUS_FILTERS.map { f -> f.toEntry(selectedFilters, onFilterChanged) },
                             )
                         }
 
@@ -497,6 +407,164 @@ private fun CollectionFilterMessage(@StringRes messageRes: Int) {
     )
 }
 
+private val TYPE_FILTERS = listOf(
+    AppFilter.GAME,
+    AppFilter.APPLICATION,
+    AppFilter.TOOL,
+    AppFilter.DEMO,
+    AppFilter.PLAYTEST,
+)
+
+private val STATUS_FILTERS = listOf(
+    AppFilter.INSTALLED,
+    AppFilter.SHARED,
+    AppFilter.COMPATIBLE,
+    AppFilter.EXPIRED,
+    AppFilter.PLAYABLE,
+    AppFilter.FIVE_STAR,
+    AppFilter.FIVE_STAR_GPU,
+    AppFilter.PROVEN_GPU,
+    AppFilter.VR,
+)
+
+private class DropdownEntry(
+    val text: String,
+    val selected: Boolean,
+    val icon: ImageVector?,
+    val onClick: () -> Unit,
+)
+
+@Composable
+private fun AppFilter.toEntry(selected: EnumSet<AppFilter>, onToggle: (AppFilter) -> Unit) = DropdownEntry(
+    text = stringResource(displayTextRes),
+    selected = selected.contains(this),
+    icon = icon,
+    onClick = { onToggle(this) },
+)
+
+@Composable
+private fun summarize(options: List<AppFilter>, selected: EnumSet<AppFilter>): String {
+    val chosen = options.filter { selected.contains(it) }
+    return when (chosen.size) {
+        0 -> stringResource(R.string.rift_filter_any)
+        1 -> stringResource(chosen.first().displayTextRes)
+        else -> stringResource(chosen.first().displayTextRes) + " +" + (chosen.size - 1)
+    }
+}
+
+/**
+ * One filter parameter on one line: label, current value, chevron. A opens the list, picking
+ * closes it (single choice) or toggles (multi choice), B closes it and focus returns to the row.
+ */
+@Composable
+private fun FilterDropdown(
+    label: String,
+    valueText: String,
+    icon: ImageVector,
+    entries: List<DropdownEntry>,
+    modifier: Modifier = Modifier,
+    focusRequester: FocusRequester = remember { FocusRequester() },
+    closeOnPick: Boolean = false,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val shape = RoundedCornerShape(12.dp)
+    val itemFocus = remember { FocusRequester() }
+
+    Box(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .background(
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = if (isFocused) 0.14f else 0.06f)
+                )
+                .then(
+                    if (isFocused) {
+                        Modifier.border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f), shape)
+                    } else Modifier
+                )
+                .focusRequester(focusRequester)
+                .clickable(interactionSource = interactionSource, indication = null) { expanded = true }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp),
+            )
+            Spacer(modifier = Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = valueText,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Icon(
+                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = {
+                expanded = false
+                // Back to the row so the gamepad focus is never lost.
+                runCatching { focusRequester.requestFocus() }
+            },
+            shape = shape,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = Modifier.heightIn(max = 420.dp),
+        ) {
+            entries.forEachIndexed { index, entry ->
+                DropdownMenuItem(
+                    text = { Text(entry.text, style = MaterialTheme.typography.bodyLarge) },
+                    leadingIcon = entry.icon?.let { vec ->
+                        { Icon(vec, contentDescription = null, modifier = Modifier.size(20.dp)) }
+                    },
+                    trailingIcon = if (entry.selected) {
+                        {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    } else null,
+                    onClick = {
+                        entry.onClick()
+                        if (closeOnPick) {
+                            expanded = false
+                            runCatching { focusRequester.requestFocus() }
+                        }
+                    },
+                    modifier = if (index == entries.indexOfFirst { it.selected }.coerceAtLeast(0)) {
+                        Modifier.focusRequester(itemFocus)
+                    } else Modifier,
+                )
+            }
+        }
+    }
+
+    LaunchedEffect(expanded) {
+        if (expanded) runCatching { itemFocus.requestFocus() }
+    }
+}
+
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
 @Preview(
     uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL,
@@ -530,8 +598,6 @@ private fun Preview_LibraryOptionsPanel() {
                     onFilterChanged = { },
                     currentSortOption = SortOption.INSTALLED_FIRST,
                     onSortOptionChanged = { },
-                    currentView = PaneType.GRID_HERO,
-                    onViewChanged = { },
                     steamCollections = listOf(
                         SteamCollection(id = "fav", name = "Favorites", appIds = setOf(440, 570)),
                         SteamCollection(id = "rpg", name = "RPGs", appIds = setOf(292030)),

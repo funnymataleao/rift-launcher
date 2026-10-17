@@ -681,11 +681,6 @@ fun RiftHomeScreen(
                     onFilterChanged = viewModel::onFilterChanged,
                     currentSortOption = libraryState.currentSortOption,
                     onSortOptionChanged = viewModel::onSortOptionChanged,
-                    currentView = libraryLayout,
-                    onViewChanged = { layout ->
-                        PrefManager.libraryLayout = layout
-                        libraryLayout = layout
-                    },
                     steamCollections = libraryState.steamCollections,
                     selectedSteamCollectionIds = libraryState.selectedSteamCollectionIds,
                     steamCollectionCounts = libraryState.steamCollectionCounts,
