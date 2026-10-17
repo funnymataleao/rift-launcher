@@ -1,0 +1,44 @@
+# Rift: app code on the path from tap to home screen, so ART compiles it ahead of time
+# (Compose and other AndroidX libraries ship their own profiles; AGP merges all of them).
+# Applies to non-debuggable builds only (assembleModernRelease); see tools/rift/README.md.
+
+# Application, Hilt graph, activity
+HSPLapp/gamenative/PluviaApp**;->**(**)**
+HSPLapp/gamenative/Hilt_PluviaApp**;->**(**)**
+HSPLapp/gamenative/DaggerPluviaApp_HiltComponents**;->**(**)**
+HSPLapp/gamenative/PluviaApp_HiltComponents**;->**(**)**
+HSPLapp/gamenative/MainActivity**;->**(**)**
+HSPLapp/gamenative/Hilt_MainActivity**;->**(**)**
+HSPLapp/gamenative/PrefManager**;->**(**)**
+HSPLapp/gamenative/NetworkMonitor**;->**(**)**
+HSPLapp/gamenative/CrashHandler**;->**(**)**
+HSPLapp/gamenative/events/**;->**(**)**
+HSPLapp/gamenative/di/**;->**(**)**
+
+# Navigation host, main and library view models, the library list and its database
+HSPLapp/gamenative/ui/PluviaMain**;->**(**)**
+HSPLapp/gamenative/ui/model/MainViewModel**;->**(**)**
+HSPLapp/gamenative/ui/model/LibraryViewModel**;->**(**)**
+HSPLapp/gamenative/ui/screen/HomeScreen**;->**(**)**
+HSPLapp/gamenative/ui/screen/PluviaScreen**;->**(**)**
+HSPLapp/gamenative/ui/theme/**;->**(**)**
+HSPLapp/gamenative/ui/data/**;->**(**)**
+HSPLapp/gamenative/data/**;->**(**)**
+HSPLapp/gamenative/db/**;->**(**)**
+
+# Rift's own UI: home, theme, sounds, PC streaming shelf
+HSPLdev/rift/launcher/home/**;->**(**)**
+HSPLdev/rift/launcher/ui/**;->**(**)**
+HSPLdev/rift/launcher/sound/**;->**(**)**
+HSPLdev/rift/launcher/stream/PcStreaming**;->**(**)**
+HSPLdev/rift/launcher/settings/RiftPrefs**;->**(**)**
+HSPLdev/rift/launcher/platform/**;->**(**)**
+
+# The same classes, loaded at start-up
+Lapp/gamenative/PluviaApp**;
+Lapp/gamenative/MainActivity**;
+Lapp/gamenative/ui/PluviaMain**;
+Lapp/gamenative/ui/model/LibraryViewModel**;
+Lapp/gamenative/ui/theme/**;
+Ldev/rift/launcher/home/**;
+Ldev/rift/launcher/ui/**;
