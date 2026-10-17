@@ -378,6 +378,7 @@ internal fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.AddToFavorites -> Icons.Filled.StarOutline
         AppOptionMenuType.RemoveFromFavorites -> Icons.Filled.Star
         AppOptionMenuType.ChangeArt -> Icons.Default.Image
+        AppOptionMenuType.ChooseEmulator -> Icons.Default.Apps
     }
 }
 
@@ -401,6 +402,7 @@ internal fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, Lis
             AppOptionMenuType.AddToFavorites,
             AppOptionMenuType.RemoveFromFavorites,
             AppOptionMenuType.ChangeArt,
+            AppOptionMenuType.ChooseEmulator,
             -> quickActions.add(option)
 
             // Game Management

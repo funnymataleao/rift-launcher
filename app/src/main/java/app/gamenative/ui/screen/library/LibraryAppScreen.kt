@@ -1135,7 +1135,7 @@ internal fun AppScreenContent(
             when (event.keyCode) {
                 // SELECT button - open options menu
                 KeyEvent.KEYCODE_BUTTON_SELECT -> {
-                    if (riftStream == null) propertiesOpen = true
+                    if (riftStream == null || riftStream.showOptions) propertiesOpen = true
                     true
                 }
 
@@ -1238,8 +1238,8 @@ internal fun AppScreenContent(
                                 .background(
                                     brush = Brush.verticalGradient(
                                         colors = listOf(
-                                            MaterialTheme.colorScheme.primary,
-                                            MaterialTheme.colorScheme.primaryContainer,
+                                            dev.rift.launcher.ui.theme.RiftColors.SurfaceContainerHigh,
+                                            Color.Black,
                                         ),
                                     ),
                                 ),
@@ -1487,7 +1487,7 @@ internal fun AppScreenContent(
                         }
 
                         // Secondary action icons (right-aligned); a streamed game has no local options.
-                        if (riftStream == null) {
+                        if (riftStream == null || riftStream.showOptions) {
                             ActionIconButton(
                                 icon = Icons.Default.Settings,
                                 contentDescription = stringResource(R.string.options),
@@ -1868,7 +1868,7 @@ internal fun AppScreenContent(
                         onClick = { if (startActionEnabled) onStartAction() },
                     )
                 },
-                if (riftStream == null) {
+                if (riftStream == null || riftStream.showOptions) {
                     GamepadAction(
                         button = GamepadButton.SELECT,
                         labelResId = R.string.options,
