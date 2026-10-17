@@ -2,6 +2,8 @@ package dev.rift.launcher.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -32,6 +34,8 @@ object RiftStartup {
 
     const val CURTAIN_FADE_MS = 320
     private const val CURTAIN_MAX_MS = 9000L
+    private const val INDICATOR_AFTER_MS = 600L
+    private const val INDICATOR_FADE_MS = 240
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     @Composable
@@ -46,9 +50,18 @@ object RiftStartup {
             enter = androidx.compose.animation.EnterTransition.None,
             exit = fadeOut(tween(CURTAIN_FADE_MS)),
         ) {
-            RiftTheme {
-                Box(modifier = Modifier.fillMaxSize().background(RiftColors.Background), contentAlignment = Alignment.Center) {
-                    LoadingIndicator(color = RiftColors.Primary, modifier = Modifier.size(72.dp))
+            // Plain black first; the indicator only on a slow start, so a fast one never flashes it
+            // (and the first frame does not pay for its shape morphing).
+            var slow by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                delay(INDICATOR_AFTER_MS)
+                slow = true
+            }
+            Box(modifier = Modifier.fillMaxSize().background(RiftColors.Background), contentAlignment = Alignment.Center) {
+                AnimatedVisibility(visible = slow, enter = fadeIn(tween(INDICATOR_FADE_MS)), exit = ExitTransition.None) {
+                    RiftTheme {
+                        LoadingIndicator(color = RiftColors.Primary, modifier = Modifier.size(72.dp))
+                    }
                 }
             }
         }

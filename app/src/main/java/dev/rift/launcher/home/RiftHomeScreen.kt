@@ -258,6 +258,8 @@ fun RiftHomeScreen(
             if (!RiftStartup.homeReady) {
                 withTimeoutOrNull(FIRST_IMAGES_TIMEOUT_MS) { preloadFirstImages(context, library) }
                 RiftStartup.homeReady = true
+                // Marks the moment the home is really ready, for start-up traces.
+                (context as? android.app.Activity)?.reportFullyDrawn()
                 delay(RiftStartup.CURTAIN_FADE_MS.toLong())
             }
             intro.animateTo(1f, introSpec)
