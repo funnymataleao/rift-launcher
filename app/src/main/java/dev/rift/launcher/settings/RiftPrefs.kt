@@ -233,6 +233,11 @@ class RiftPrefs private constructor(
         get() = prefs.getBoolean(COMMUNITY_SHARE, true)
         set(value) = prefs.edit().putBoolean(COMMUNITY_SHARE, value).apply()
 
+    /** The footer with the button hints (Filters, Quick Access, Options, Details) on the home; off moves the content down. */
+    var showHintBar: Boolean
+        get() = prefs.getBoolean(SHOW_HINT_BAR, true)
+        set(value) = prefs.edit().putBoolean(SHOW_HINT_BAR, value).apply()
+
     /** A random id made once per install, so the server can tell one tablet's repeated answers apart. */
     val communityInstallId: String
         get() = prefs.getString(COMMUNITY_INSTALL_ID, null)
@@ -243,6 +248,7 @@ class RiftPrefs private constructor(
     companion object {
         internal const val FILE = "rift_settings"
         private const val COMMUNITY_SHARE = "community_share"
+        private const val SHOW_HINT_BAR = "show_hint_bar"
         private const val COMMUNITY_INSTALL_ID = "community_install_id"
 
         private const val GAME_PAGE_BACKGROUND = "game_page_background"

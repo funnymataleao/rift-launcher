@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.ExitToApp
 import androidx.compose.material.icons.rounded.Fullscreen
+import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.OpenInNew
@@ -199,6 +200,16 @@ private fun LookGroup() {
             },
         )
         SwitchRow(
+            title = stringResource(R.string.rift_settings_show_hint_bar_title),
+            subtitle = stringResource(R.string.rift_settings_show_hint_bar_subtitle),
+            icon = Icons.Rounded.Keyboard,
+            checked = showHintBar,
+            onCheckedChange = {
+                showHintBar = it
+                riftPrefs.showHintBar = it
+            },
+        )
+        SwitchRow(
             title = stringResource(R.string.settings_interface_external_links_title),
             subtitle = stringResource(R.string.settings_interface_external_links_subtitle),
             icon = Icons.Rounded.OpenInNew,
@@ -263,6 +274,8 @@ private fun LookGroup() {
 @Composable
 private fun LibraryGroup() {
     var showHidden by rememberSaveable { mutableStateOf(PrefManager.showHiddenGamesByDefault) }
+    val riftPrefs = RiftPrefs.of(LocalContext.current)
+    var showHintBar by rememberSaveable { mutableStateOf(riftPrefs.showHintBar) }
     var hideAi by rememberSaveable { mutableStateOf(PrefManager.hideAiFeatures) }
     var importAsSteam by rememberSaveable { mutableStateOf(PrefManager.importCustomGameAsSteamGame) }
     var libraryTabs by remember { mutableStateOf(PrefManager.libraryTabs) }
