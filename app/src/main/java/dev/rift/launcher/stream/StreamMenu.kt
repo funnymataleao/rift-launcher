@@ -147,7 +147,6 @@ fun StreamMenu(
                     Log.i("RiftStream", "panel focus attempt $attempt touch mode=${view.isInTouchMode} view focus=${view.hasFocus()}")
                 }
             }
-            }
         }
     }
 }
