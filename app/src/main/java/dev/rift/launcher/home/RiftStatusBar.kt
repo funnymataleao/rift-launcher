@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -68,10 +70,12 @@ internal fun StatusIcons() {
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(18.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         if (showNetwork) NetworkIcon()
         if (showBattery) BatteryStatus()
+        // The avatar sits a little apart from the status icons.
+        Spacer(modifier = Modifier.width(6.dp))
         ProfileIcon()
     }
 }
@@ -108,7 +112,7 @@ private fun NetworkIcon() {
         wifi -> Icons.Rounded.Wifi
         else -> Icons.Rounded.SignalCellularAlt
     }
-    Icon(icon, contentDescription = null, tint = RiftColors.OnSurface, modifier = Modifier.size(28.dp))
+    Icon(icon, contentDescription = null, tint = RiftColors.OnSurface, modifier = Modifier.size(22.dp))
 }
 
 @Composable
@@ -138,8 +142,8 @@ private fun BatteryStatus() {
             if (charging) Icons.Rounded.BatteryChargingFull else Icons.Rounded.BatteryStd,
             contentDescription = null,
             tint = RiftColors.OnSurface,
-            modifier = Modifier.size(28.dp),
+            modifier = Modifier.size(22.dp),
         )
-        Text("$level%", color = RiftColors.OnSurface, fontSize = 17.sp)
+        Text("$level%", color = RiftColors.OnSurface, fontSize = 14.sp)
     }
 }
