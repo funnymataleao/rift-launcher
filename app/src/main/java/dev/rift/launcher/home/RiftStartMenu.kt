@@ -82,6 +82,8 @@ fun RiftStartMenu(
     modifier: Modifier = Modifier,
     subTitle: String? = null,
     sub: List<RiftStartMenuItem>? = null,
+    // A new key means a new list in place: the cursor goes back to its first line.
+    listKey: Any? = null,
 ) {
     var inSub by remember { mutableStateOf(false) }
     LaunchedEffect(isOpen) { if (!isOpen) inSub = false }
@@ -104,8 +106,8 @@ fun RiftStartMenu(
             contentAlignment = Alignment.Center,
         ) {
             val view = LocalView.current
-            val first = remember(inSub) { FocusRequester() }
-            LaunchedEffect(inSub) {
+            val first = remember(inSub, listKey) { FocusRequester() }
+            LaunchedEffect(inSub, listKey) {
                 // After a touch Compose gives no focus in touch mode: ask for it, then once more.
                 if (view.isInTouchMode) view.requestFocusFromTouch()
                 runCatching { first.requestFocus() }
