@@ -1,5 +1,6 @@
 package dev.rift.launcher.home
 
+import dev.rift.launcher.ui.theme.RiftAccent
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -194,7 +195,7 @@ private fun PropertiesRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(if (focused) RiftColors.Primary else Color.Transparent)
+            .then(if (focused) Modifier.background(RiftAccent.current.brush) else Modifier)
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .onFocusChanged { if (it.isFocused) onFocused() }
             .selectable(selected = focused, interactionSource = interaction, indication = null, onClick = onClick)

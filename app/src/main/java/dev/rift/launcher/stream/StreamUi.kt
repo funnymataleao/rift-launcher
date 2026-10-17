@@ -1,5 +1,8 @@
 package dev.rift.launcher.stream
 
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
+import dev.rift.launcher.ui.theme.RiftAccent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -56,7 +59,7 @@ fun FocusSurface(
     modifier: Modifier = Modifier,
     shape: Shape = RiftShapes.card,
     focusedScale: Float = 1.04f,
-    background: (focused: Boolean) -> Color = { if (it) RiftColors.Primary else RiftColors.SurfaceContainer },
+    background: (focused: Boolean) -> Brush = { if (it) RiftAccent.current.brush else SolidColor(RiftColors.SurfaceContainer) },
     focusRequester: FocusRequester? = null,
     // Kept for callers; focus is shown by the fill alone (no rings anywhere).
     outline: Boolean = false,

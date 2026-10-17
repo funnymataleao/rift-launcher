@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.library.components
 
+import dev.rift.launcher.ui.theme.RiftAccent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -278,13 +279,7 @@ private fun OptionItem(
             .scale(scale)
             .padding(horizontal = 16.dp, vertical = 2.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(
-                if (isFocused) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    Color.Transparent
-                },
-            )
+            .then(if (isFocused) Modifier.background(RiftAccent.current.brush) else Modifier)
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)

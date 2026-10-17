@@ -299,7 +299,8 @@ private fun AppSearchField(
         modifier = Modifier
             .width(360.dp)
             .height(52.dp)
-            .background(if (focused && !typing) RiftAccent.current.main else Color.White.copy(alpha = if (typing) 0.14f else 0.08f), RiftShapes.full)
+            .clip(RiftShapes.full)
+            .background(if (focused && !typing) RiftAccent.current.brush else SolidColor(Color.White.copy(alpha = if (typing) 0.14f else 0.08f)))
             .focusRequester(focusRequester)
             .then(if (typing) Modifier else Modifier.clickable(interactionSource = interaction, indication = null, onClick = onStart))
             .padding(horizontal = 18.dp),
@@ -346,7 +347,8 @@ private fun AppTile(app: AndroidGame, focusRequester: FocusRequester?, onClick: 
                 scaleX = scale
                 scaleY = scale
             }
-            .background(if (focused) RiftAccent.current.main else Color.White.copy(alpha = 0.04f), RiftShapes.card)
+            .clip(RiftShapes.card)
+            .background(if (focused) RiftAccent.current.brush else SolidColor(Color.White.copy(alpha = 0.04f)))
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(vertical = 16.dp, horizontal = 10.dp),

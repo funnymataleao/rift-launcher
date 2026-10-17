@@ -2579,7 +2579,7 @@ private fun SearchField(search: SearchState, pillFocus: FocusRequester) {
         // Not typing: a plain pill with the query; A opens the keyboard again.
         PillButton(
             onClick = search.onOpen,
-            background = { focused -> solid(if (focused) RiftAccent.current.main else Color.Transparent) },
+            background = { focused -> if (focused) RiftAccent.current.brush else solid(Color.Transparent) },
             modifier = Modifier.widthIn(max = 320.dp).height(RiftSizes.button).clip(RiftShapes.full).blackGlass(RiftShapes.full),
             focusRequester = pillFocus,
         ) { focused ->
@@ -2795,7 +2795,7 @@ private fun SectionTab(title: String, selected: Boolean, onClick: () -> Unit, on
                 report()
             }
             .clip(RiftShapes.full)
-            .background(if (focused) RiftAccent.current.main else Color.Transparent)
+            .then(if (focused) Modifier.background(RiftAccent.current.brush) else Modifier)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = 18.dp),
         contentAlignment = Alignment.Center,
