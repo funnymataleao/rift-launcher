@@ -12,6 +12,7 @@ import androidx.compose.material.icons.rounded.Stop
 import dev.rift.launcher.sound.pack.PackPreview
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.RestartAlt
@@ -143,11 +144,11 @@ internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit, hold: () -> 
                 value = stringResource(if (pack.id == selected) R.string.rift_settings_packs_selected else R.string.rift_settings_packs_choose),
                 onClick = { select(pack.id) },
                 onLongClick = { removing = pack },
+                onDelete = { removing = pack },
                 playing = previewing == pack.id,
                 onPreview = { hear(pack.id, pack.dir, null) },
             )
         }
-        if (installed.isNotEmpty()) NoteText(stringResource(R.string.rift_settings_packs_remove_hint))
     }
 
     val onDevice = installed.map { it.id }.toSet()
@@ -236,6 +237,7 @@ private fun PackRow(
     onPreview: () -> Unit,
     busy: Boolean = false,
     onLongClick: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier,
@@ -257,6 +259,13 @@ private fun PackRow(
             modifier = Modifier.riftSilentPress(),
             onClick = { if (!busy) onPreview() },
         )
+        if (onDelete != null) {
+            RiftRoundButton(
+                icon = Icons.Rounded.Delete,
+                description = stringResource(R.string.rift_settings_packs_remove),
+                onClick = onDelete,
+            )
+        }
     }
 }
 
