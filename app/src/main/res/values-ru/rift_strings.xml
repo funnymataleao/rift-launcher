@@ -309,4 +309,9 @@
     <string name="rift_art_network">Не удалось связаться с SteamGridDB.</string>
     <string name="rift_art_open_settings">Открыть настройки</string>
     <string name="rift_art_retry">Повторить</string>
+    <string name="rift_uninstalled_title">Неустановленные игры</string>
+    <string name="rift_uninstalled_summary">Как вкладка PC-игр показывает игры, которые у вас есть, но не установлены</string>
+    <string name="rift_uninstalled_dim">Полупрозрачные</string>
+    <string name="rift_uninstalled_hide">Не показывать</string>
+    <string name="rift_uninstalled_show">Как все</string>
 </resources>

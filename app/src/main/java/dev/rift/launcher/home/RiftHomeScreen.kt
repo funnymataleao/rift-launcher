@@ -249,8 +249,15 @@ fun RiftHomeScreen(
 
     // The pictures the user picked (art picker) replace the store's, everywhere the games show.
     val pickedArt by GameArtStore.version.collectAsStateWithLifecycle()
-    val loadedLibrary = remember(libraryState.appInfoList, pickedArt) {
-        GameArtStore.apply(context, libraryState.appInfoList.filterNot { it.isRecommended || it.isFeatured || it.isRecTeaser || it.isRecLoading })
+    val uninstalledMode by rememberUninstalledMode()
+    val loadedLibrary = remember(libraryState.appInfoList, pickedArt, uninstalledMode) {
+        GameArtStore.apply(
+            context,
+            libraryState.appInfoList.filterNot {
+                it.isRecommended || it.isFeatured || it.isRecTeaser || it.isRecLoading ||
+                    (uninstalledMode == UninstalledMode.HIDE && !it.isInstalled)
+            },
+        )
     }
     // While GameNative reloads the list (it empties it first), keep showing the last one: no flashes.
     var lastLibrary by remember { mutableStateOf(emptyList<LibraryItem>()) }
@@ -940,6 +947,7 @@ fun RiftHomeScreen(
                                 onOpenLibrary = ::openLibrary,
                                 onLibraryFocused = { libraryCardFocused = true },
                                 libraryState = libraryState,
+                                dimUninstalled = uninstalledMode == UninstalledMode.DIM,
                                 listState = pcRowState,
                                 cardHeight = cardHeight,
                                 pendingFocusKey = pendingFocusKey,
@@ -1002,6 +1010,7 @@ fun RiftHomeScreen(
             ) {
                 PcLibraryGrid(
                     items = library,
+                    dimUninstalled = uninstalledMode == UninstalledMode.DIM,
                     loading = libraryState.isLoading,
                     tabSwitch = libraryTabSwitch,
                     libraryState = libraryState,
@@ -1263,6 +1272,7 @@ private fun PcLibraryGrid(
     onOpen: (LibraryItem) -> Unit,
     onNearEnd: () -> Unit,
     badges: Boolean = true,
+    dimUninstalled: Boolean = false,
     // The PC library reloads its list on a tab switch; a list already in memory has nothing to wait for.
     waitForReload: Boolean = true,
 ) {
@@ -1322,7 +1332,15 @@ private fun PcLibraryGrid(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.align(Alignment.Center).padding(12.dp),
                         )
-                        CoverImage(urls = urls, contentDescription = item.name)
+                        CoverImage(
+                            urls = urls,
+                            contentDescription = item.name,
+                            modifier = if (dimUninstalled && !item.isInstalled) {
+                                Modifier.fillMaxSize().graphicsLayer { alpha = 0.4f }
+                            } else {
+                                Modifier.fillMaxSize()
+                            },
+                        )
                     },
                     badge = { if (badges) CoverBadges(item, libraryState) },
                     reflection = false,
