@@ -2,7 +2,7 @@ package dev.rift.launcher.home
 
 import android.content.SharedPreferences
 import android.graphics.Bitmap
-import android.widget.Toast
+import app.gamenative.ui.util.SnackbarManager
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
@@ -834,11 +834,11 @@ fun RiftHomeScreen(
             openMetaPicker(item, platformId)
             return
         }
-        Toast.makeText(context, R.string.rift_meta_refreshing, Toast.LENGTH_SHORT).show()
+        SnackbarManager.show(context.getString(R.string.rift_meta_refreshing))
         homeScope.launch {
             val meta = withContext(Dispatchers.IO) { RiftAutoMeta.refresh(context, item, platformId) }
             if (meta != null) {
-                Toast.makeText(context, R.string.rift_meta_refreshed, Toast.LENGTH_SHORT).show()
+                SnackbarManager.show(context.getString(R.string.rift_meta_refreshed))
             } else {
                 openMetaPicker(item, platformId)
             }
@@ -1928,7 +1928,7 @@ fun RiftHomeScreen(
                 onDismiss = { metaItem = null },
                 onChosen = {
                     metaItem = null
-                    Toast.makeText(context, R.string.rift_meta_chosen, Toast.LENGTH_SHORT).show()
+                    SnackbarManager.show(context.getString(R.string.rift_meta_chosen))
                 },
             )
         }
