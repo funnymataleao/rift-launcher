@@ -324,7 +324,20 @@ fun RiftHomeScreen(
         }
     }
 
+    // The side a tab switch goes to, so the new shelf's covers slide in from there; cleared once in.
+    var switchDirection by remember { mutableIntStateOf(0) }
+    LaunchedEffect(switchDirection) {
+        if (switchDirection != 0) {
+            delay(SWITCH_ENTRY_MS)
+            switchDirection = 0
+        }
+    }
+    val switchEntry = if (switchDirection != 0) ShelfEntry.switch(switchDirection) else null
+
     fun selectSection(target: RiftSection) {
+        val from = section?.let(sections::indexOf) ?: -1
+        val to = sections.indexOf(target)
+        if (from >= 0 && to >= 0 && from != to) switchDirection = if (to > from) 1 else -1
         sectionKey = target.key
         focusSection(target)
     }
@@ -332,6 +345,8 @@ fun RiftHomeScreen(
     fun switchSection(step: Int) {
         if (sections.size < 2 || section == null) return
         selectSection(sections[(sections.indexOf(section) + step).mod(sections.size)])
+        // Wrapping round still slides the way the bumper points.
+        switchDirection = if (step > 0) 1 else -1
     }
 
     // The game page opens over the home instead of replacing it, so the home keeps its state, its
@@ -645,6 +660,7 @@ fun RiftHomeScreen(
                                 onFocusConsumed = { pendingFocusKey = null },
                                 onFocused = { focusedPackage = it.packageName },
                                 onOpen = { AndroidGames.launch(context, it) },
+                                entry = switchEntry,
                             )
                         }
                         section == RiftSection.PcStreaming && streamTab != null -> PcStreamingContent(
@@ -665,7 +681,7 @@ fun RiftHomeScreen(
                             HeroLogo(item = focusedItem, modifier = Modifier.weight(1f).graphicsLayer { alpha = intro.value })
                             PcGamesShelf(
                                 shown = library,
-                                rollIn = !introPlayed,
+                                entry = if (!introPlayed) ShelfEntry.Intro else switchEntry,
                                 libraryState = libraryState,
                                 listState = pcRowState,
                                 cardHeight = cardHeight,
@@ -797,6 +813,9 @@ private fun focusKeyFor(item: LibraryItem): String = item.appId
 /** The game page grows from slightly smaller than the screen and shrinks back to it. */
 private const val PAGE_START_SCALE = 0.94f
 
+/** How long a tab switch counts as one, for the new shelf's entrance. */
+private const val SWITCH_ENTRY_MS = 700L
+
 /** Steam's library header art ratio (460×215), used for the first, wide tile. */
 private const val WIDE_TILE_RATIO = 460f / 215f
 
@@ -873,7 +892,7 @@ private fun androidFocusKey(game: AndroidGame): String = "android:${game.package
 @Composable
 private fun PcGamesShelf(
     shown: List<LibraryItem>,
-    rollIn: Boolean,
+    entry: ShelfEntry?,
     libraryState: LibraryState,
     listState: LazyListState,
     cardHeight: Dp,
@@ -917,22 +936,8 @@ private fun PcGamesShelf(
             }
             val url = urls.firstOrNull { it.isNotEmpty() }.orEmpty()
             val context = LocalContext.current
-            // Entrance: the covers on screen roll in from the right one after another.
-            val appear = remember { Animatable(if (rollIn) 0f else 1f) }
-            val appearSpec = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
-            LaunchedEffect(Unit) {
-                if (appear.value < 1f) {
-                    delay(ROLL_IN_START_MS + ROLL_IN_STEP_MS * index.coerceAtMost(10))
-                    appear.animateTo(1f, appearSpec)
-                }
-            }
-            Box(
-                modifier = Modifier.graphicsLayer {
-                    val p = appear.value
-                    translationX = (1f - p) * ROLL_IN_DISTANCE.toPx()
-                    alpha = p.coerceIn(0f, 1f)
-                },
-            ) {
+            // Entrance: the covers on screen roll in one after another (app start, tab switch).
+            Box(modifier = Modifier.shelfEntry(entry, index)) {
             CoverCard(
                 height = cardHeight,
                 aspectRatio = if (wide) WIDE_TILE_RATIO else 2f / 3f,
@@ -982,6 +987,7 @@ private fun AndroidShelf(
     onFocusConsumed: () -> Unit,
     onFocused: (AndroidGame) -> Unit,
     onOpen: (AndroidGame) -> Unit,
+    entry: ShelfEntry?,
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -992,6 +998,7 @@ private fun AndroidShelf(
     ) {
         itemsIndexed(games, key = { _, game -> game.packageName }) { index, game ->
             val icon = rememberAppIcon(game.packageName)
+            Box(modifier = Modifier.shelfEntry(entry, index)) {
             CoverCard(
                 height = cardHeight,
                 paletteKey = "android:${game.packageName}",
@@ -1031,6 +1038,7 @@ private fun AndroidShelf(
                     }
                 },
             )
+            }
         }
     }
 }
@@ -1522,9 +1530,6 @@ private const val STARTUP_SETTLE_MS = 2500L
 private const val FIRST_IMAGES_TIMEOUT_MS = 3500L
 private const val FIRST_IMAGES_COUNT = 7
 private const val APPS_PRELOAD_DELAY_MS = 4000L
-private const val ROLL_IN_START_MS = 120L
-private const val ROLL_IN_STEP_MS = 55L
-private val ROLL_IN_DISTANCE = 180.dp
 private const val SELECT_HOLD_MS = 450L
 
 /**
