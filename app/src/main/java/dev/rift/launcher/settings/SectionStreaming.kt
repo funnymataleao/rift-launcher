@@ -17,6 +17,8 @@ import androidx.compose.material.icons.rounded.Monitor
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Router
 import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.SportsEsports
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material.icons.rounded.VolumeUp
@@ -25,6 +27,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.rift.launcher.home.RiftHiddenGames
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
@@ -70,7 +76,6 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
     var keepGamepads by remember { mutableStateOf(prefs.streamKeepGamepads) }
     var vibration by remember { mutableStateOf(prefs.streamGamepadVibration) }
 
-    // Connecting a PC comes first: the paired PCs, then a big card to add one; the stream settings follow.
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     // Null until the first read, so the PC block appears once in its final shape instead of jumping.
@@ -88,7 +93,17 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
             scope.cancel()
         }
     }
-    pairedPcs?.let { pcs -> PcBlock(pcs, onOpenPcPairing) }
+    // Two tabs: the stream settings, in Artemis' order, and the PCs with their games.
+    var tab by rememberSaveable { mutableIntStateOf(0) }
+    SectionTabs(
+        tabs = listOf(stringResource(R.string.rift_settings_stream_tab_settings), stringResource(R.string.rift_settings_stream_tab_games)),
+        selectedIndex = tab,
+        onSelect = { tab = it },
+    )
+    if (tab == 1) {
+        pairedPcs?.let { pcs -> GamesTab(pcs, onOpenPcPairing) }
+        return
+    }
 
     NoteText(stringResource(R.string.rift_settings_stream_note))
 
@@ -130,6 +145,107 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
                 prefs.streamBitrateMbps = bitrate
             },
         )
+    }
+
+    SettingsGroup(title = stringResource(R.string.rift_settings_group_stream_audio)) {
+        val layouts = listOf("stereo", "5.1", "7.1")
+        ChoiceChipsRow(
+            title = stringResource(R.string.rift_settings_stream_audio),
+            icon = Icons.Rounded.GraphicEq,
+            options = listOf(stringResource(R.string.rift_settings_stream_stereo), "5.1", "7.1"),
+            selectedIndex = layouts.indexOf(audio),
+            onSelect = {
+                audio = layouts[it]
+                prefs.streamAudio = audio
+            },
+        )
+    }
+
+    SettingsGroup(title = stringResource(R.string.rift_settings_group_stream_gamepad)) {
+        val counts = listOf(0, 1, 2, 3, 4)
+        ChoiceChipsRow(
+            title = stringResource(R.string.rift_settings_stream_gamepads),
+            subtitle = stringResource(R.string.rift_settings_stream_gamepads_summary),
+            icon = Icons.Rounded.Gamepad,
+            options = counts.map { if (it == 0) stringResource(R.string.rift_settings_auto) else "$it" },
+            selectedIndex = counts.indexOf(gamepads),
+            onSelect = {
+                gamepads = counts[it]
+                prefs.streamGamepadCount = gamepads
+            },
+        )
+        SwitchRow(
+            title = stringResource(R.string.rift_settings_stream_keep_gamepads),
+            subtitle = stringResource(R.string.rift_settings_stream_keep_gamepads_summary),
+            icon = Icons.Rounded.Gamepad,
+            checked = keepGamepads,
+            onCheckedChange = {
+                keepGamepads = it
+                prefs.streamKeepGamepads = it
+            },
+        )
+        SwitchRow(
+            title = stringResource(R.string.rift_settings_stream_vibration),
+            subtitle = stringResource(R.string.rift_settings_stream_vibration_summary),
+            icon = Icons.Rounded.Vibration,
+            checked = vibration,
+            onCheckedChange = {
+                vibration = it
+                prefs.streamGamepadVibration = it
+            },
+        )
+    }
+
+    SettingsGroup(title = stringResource(R.string.rift_settings_group_stream_host)) {
+        val connections = listOf("auto", "local", "remote")
+        ChoiceChipsRow(
+            title = stringResource(R.string.rift_settings_stream_connection),
+            subtitle = stringResource(R.string.rift_settings_stream_connection_summary),
+            icon = Icons.Rounded.Router,
+            options = listOf(
+                stringResource(R.string.rift_settings_auto),
+                stringResource(R.string.rift_settings_stream_local),
+                stringResource(R.string.rift_settings_stream_remote),
+            ),
+            selectedIndex = connections.indexOf(connection),
+            onSelect = {
+                connection = connections[it]
+                prefs.streamConnection = connection
+            },
+        )
+        SwitchRow(
+            title = stringResource(R.string.rift_settings_stream_sops),
+            subtitle = stringResource(R.string.rift_settings_stream_sops_summary),
+            icon = Icons.Rounded.Dns,
+            checked = sops,
+            onCheckedChange = {
+                sops = it
+                prefs.streamOptimizeGameSettings = it
+            },
+        )
+        SwitchRow(
+            title = stringResource(R.string.rift_settings_stream_local_audio),
+            subtitle = stringResource(R.string.rift_settings_stream_local_audio_summary),
+            icon = Icons.Rounded.VolumeUp,
+            checked = localAudio,
+            onCheckedChange = {
+                localAudio = it
+                prefs.streamPlayLocalAudio = it
+            },
+        )
+        SwitchRow(
+            title = stringResource(R.string.rift_settings_stream_virtual_display),
+            subtitle = stringResource(R.string.rift_settings_stream_virtual_display_summary),
+            icon = Icons.Rounded.Cast,
+            checked = virtualDisplay,
+            onCheckedChange = {
+                virtualDisplay = it
+                prefs.streamVirtualDisplay = it
+            },
+        )
+    }
+
+    SettingsGroup(title = stringResource(R.string.rift_settings_group_stream_advanced)) {
         val codecs = listOf("auto", "h264", "hevc", "av1")
         ChoiceChipsRow(
             title = stringResource(R.string.rift_settings_stream_codec),
@@ -162,9 +278,6 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
                 prefs.streamFullRange = it
             },
         )
-    }
-
-    SettingsGroup(title = stringResource(R.string.rift_settings_group_stream_latency)) {
         val pacings = listOf(0, 1, 2, 3)
         ChoiceChipsRow(
             title = stringResource(R.string.rift_settings_stream_pacing),
@@ -213,115 +326,19 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
             },
         )
     }
-
-    SettingsGroup(title = stringResource(R.string.rift_settings_group_stream_audio)) {
-        val layouts = listOf("stereo", "5.1", "7.1")
-        ChoiceChipsRow(
-            title = stringResource(R.string.rift_settings_stream_audio),
-            icon = Icons.Rounded.GraphicEq,
-            options = listOf(stringResource(R.string.rift_settings_stream_stereo), "5.1", "7.1"),
-            selectedIndex = layouts.indexOf(audio),
-            onSelect = {
-                audio = layouts[it]
-                prefs.streamAudio = audio
-            },
-        )
-        SwitchRow(
-            title = stringResource(R.string.rift_settings_stream_local_audio),
-            subtitle = stringResource(R.string.rift_settings_stream_local_audio_summary),
-            icon = Icons.Rounded.VolumeUp,
-            checked = localAudio,
-            onCheckedChange = {
-                localAudio = it
-                prefs.streamPlayLocalAudio = it
-            },
-        )
-    }
-
-    SettingsGroup(title = stringResource(R.string.rift_settings_group_stream_host)) {
-        val connections = listOf("auto", "local", "remote")
-        ChoiceChipsRow(
-            title = stringResource(R.string.rift_settings_stream_connection),
-            subtitle = stringResource(R.string.rift_settings_stream_connection_summary),
-            icon = Icons.Rounded.Router,
-            options = listOf(
-                stringResource(R.string.rift_settings_auto),
-                stringResource(R.string.rift_settings_stream_local),
-                stringResource(R.string.rift_settings_stream_remote),
-            ),
-            selectedIndex = connections.indexOf(connection),
-            onSelect = {
-                connection = connections[it]
-                prefs.streamConnection = connection
-            },
-        )
-        SwitchRow(
-            title = stringResource(R.string.rift_settings_stream_sops),
-            subtitle = stringResource(R.string.rift_settings_stream_sops_summary),
-            icon = Icons.Rounded.Dns,
-            checked = sops,
-            onCheckedChange = {
-                sops = it
-                prefs.streamOptimizeGameSettings = it
-            },
-        )
-        SwitchRow(
-            title = stringResource(R.string.rift_settings_stream_virtual_display),
-            subtitle = stringResource(R.string.rift_settings_stream_virtual_display_summary),
-            icon = Icons.Rounded.Cast,
-            checked = virtualDisplay,
-            onCheckedChange = {
-                virtualDisplay = it
-                prefs.streamVirtualDisplay = it
-            },
-        )
-    }
-
-    SettingsGroup(title = stringResource(R.string.rift_settings_group_stream_gamepad)) {
-        val counts = listOf(0, 1, 2, 3, 4)
-        ChoiceChipsRow(
-            title = stringResource(R.string.rift_settings_stream_gamepads),
-            subtitle = stringResource(R.string.rift_settings_stream_gamepads_summary),
-            icon = Icons.Rounded.Gamepad,
-            options = counts.map { if (it == 0) stringResource(R.string.rift_settings_auto) else "$it" },
-            selectedIndex = counts.indexOf(gamepads),
-            onSelect = {
-                gamepads = counts[it]
-                prefs.streamGamepadCount = gamepads
-            },
-        )
-        SwitchRow(
-            title = stringResource(R.string.rift_settings_stream_keep_gamepads),
-            subtitle = stringResource(R.string.rift_settings_stream_keep_gamepads_summary),
-            icon = Icons.Rounded.Gamepad,
-            checked = keepGamepads,
-            onCheckedChange = {
-                keepGamepads = it
-                prefs.streamKeepGamepads = it
-            },
-        )
-        SwitchRow(
-            title = stringResource(R.string.rift_settings_stream_vibration),
-            subtitle = stringResource(R.string.rift_settings_stream_vibration_summary),
-            icon = Icons.Rounded.Vibration,
-            checked = vibration,
-            onCheckedChange = {
-                vibration = it
-                prefs.streamGamepadVibration = it
-            },
-        )
-    }
 }
 
 /** Vibepollo's official releases (Windows installer and Linux packages). */
 private const val VIBEPOLLO_DOWNLOAD_URL = "https://github.com/Nonary/Vibepollo/releases"
 
 /**
- * The paired PCs, the card to add one, how to get PC games when there are none yet, and the PCs'
- * other host apps. Things that load from the network come last, so nothing above them moves.
+ * The Games tab: the paired PCs and the card to add one, the PCs' games with check boxes to hide several
+ * at once (they come back in Hidden games, as games hidden from the Start menu do), how to get PC games
+ * when there are none yet, and the PCs' other host apps. Things that load from the network come last,
+ * so nothing above them moves.
  */
 @Composable
-private fun PcBlock(pairedPcs: List<String>, onOpenPcPairing: (() -> Unit)?) {
+private fun GamesTab(pairedPcs: List<String>, onOpenPcPairing: (() -> Unit)?) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     SettingsGroup(title = if (pairedPcs.isNotEmpty()) stringResource(R.string.rift_settings_group_pcs) else null) {
@@ -340,6 +357,36 @@ private fun PcBlock(pairedPcs: List<String>, onOpenPcPairing: (() -> Unit)?) {
         )
     }
     val streamTab = if (pairedPcs.isNotEmpty()) rememberPcStreamingTab() else null
+    val hidden by RiftHiddenGames.hidden(context).collectAsStateWithLifecycle()
+    val games = streamTab?.games.orEmpty().filter { it.item.appId !in hidden }
+    if (games.isNotEmpty()) {
+        var picked by remember { mutableStateOf(emptySet<String>()) }
+        SettingsGroup(title = stringResource(R.string.rift_stream_group_games)) {
+            NoteText(stringResource(R.string.rift_stream_games_note))
+            games.forEach { game ->
+                val appId = game.item.appId
+                CheckRow(
+                    title = game.item.name,
+                    subtitle = game.pc.name,
+                    icon = Icons.Rounded.SportsEsports,
+                    checked = appId in picked,
+                    onCheckedChange = { picked = if (it) picked + appId else picked - appId },
+                )
+            }
+            val chosen = games.filter { it.item.appId in picked }
+            if (chosen.isNotEmpty()) {
+                RiftPillButton(
+                    text = stringResource(R.string.rift_stream_hide_selected, chosen.size),
+                    icon = Icons.Rounded.VisibilityOff,
+                    primary = true,
+                    onClick = {
+                        chosen.forEach { RiftHiddenGames.hide(context, it.item.appId, it.item.name) }
+                        picked = emptySet()
+                    },
+                )
+            }
+        }
+    }
     // No PC games, so the home has no PC streaming tab: how to get them there. With PCs, only once
     // their apps have loaded, so the hint does not flash while they load.
     if (streamTab == null || (streamTab.apps.isNotEmpty() && streamTab.games.isEmpty())) {

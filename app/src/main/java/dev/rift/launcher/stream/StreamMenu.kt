@@ -241,6 +241,12 @@ private fun StreamQuickSettings(
         focusRequester = requester(StreamMenuRow.VIBRATION),
     )
 
+    // The picture is set when a session starts, so these reconnect the stream (the game keeps running).
+    QuickMenuSectionHeader(
+        title = stringResource(R.string.rift_settings_group_stream_video),
+        subtitle = stringResource(R.string.rift_stream_settings_picture_note),
+        modifier = Modifier.padding(top = 12.dp),
+    )
     // Smallest to largest picture; "Screen" is the tablet's own size, wherever that falls.
     val screenLabel = stringResource(R.string.rift_settings_stream_device_screen)
     val resolutions = remember(screenSize) {
