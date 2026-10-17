@@ -17,6 +17,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarOutline
+import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
@@ -269,9 +271,11 @@ private fun PrimaryActionButton(
     val buttonColor = dev.rift.launcher.ui.theme.RiftColors.Primary
     val contentColor = dev.rift.launcher.ui.theme.RiftColors.OnPrimary
 
+    // Rift: every button on the game page is one height (RiftSizes.button); Play is a wider pill.
     Box(
         modifier = modifier
-            .heightIn(min = 52.dp)
+            .height(dev.rift.launcher.ui.theme.RiftSizes.button)
+            .widthIn(min = 180.dp)
             .scale(scale)
             .clip(RoundedCornerShape(50))
             .background(
@@ -286,7 +290,7 @@ private fun PrimaryActionButton(
                 enabled = enabled,
                 onClick = onClick,
             )
-            .padding(horizontal = 24.dp, vertical = 14.dp),
+            .padding(horizontal = 32.dp),
         contentAlignment = Alignment.Center,
     ) {
         if (isDownloading) {
@@ -377,7 +381,7 @@ private fun ActionIconButton(
     Box(
         modifier = modifier
             .scale(scale)
-            .size(48.dp)
+            .size(dev.rift.launcher.ui.theme.RiftSizes.button)
             .clip(CircleShape)
             .background(
                 if (isFocused) {
@@ -402,6 +406,121 @@ private fun ActionIconButton(
             modifier = Modifier.size(24.dp),
         )
     }
+}
+
+/**
+ * Rift: text action on the game page, same height and look as [ActionIconButton] (e.g. "Трейлер").
+ */
+@Composable
+private fun ActionPillButton(
+    icon: ImageVector,
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isFocused) 1.06f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "actionPillScale",
+    )
+    Row(
+        modifier = modifier
+            .scale(scale)
+            .height(dev.rift.launcher.ui.theme.RiftSizes.button)
+            .clip(RoundedCornerShape(50))
+            .background(Color.White.copy(alpha = if (isFocused) 0.2f else 0.1f))
+            .focusRing(interactionSource, RoundedCornerShape(50), width = 2.dp)
+            .selectable(
+                selected = isFocused,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(start = 20.dp, end = 24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(imageVector = icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = Color.White,
+            maxLines = 1,
+        )
+    }
+}
+
+/** Rift: one fact on the game page hero (rating, time to beat, genre, year). */
+@Composable
+private fun HeroFactChip(text: String, accent: String? = null) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color.Black.copy(alpha = 0.5f))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (accent != null) {
+            Text(
+                text = accent,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold, fontFeatureSettings = "tnum"),
+                color = dev.rift.launcher.ui.theme.RiftColors.Primary,
+            )
+        }
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+            color = Color.White,
+            maxLines = 1,
+        )
+    }
+}
+
+/** Rift: the stats plate at the right of the hero action row. */
+@Composable
+private fun HeroStatsPlate(stats: List<Pair<String, String>>, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(26.dp))
+            .background(Color.Black.copy(alpha = 0.45f))
+            .padding(horizontal = 22.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(28.dp),
+    ) {
+        stats.forEach { (label, value) ->
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = label.uppercase(Locale.getDefault()),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp),
+                    color = Color.White.copy(alpha = 0.6f),
+                    maxLines = 1,
+                )
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontFeatureSettings = "tnum"),
+                    color = Color.White,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+/** Rift: the store description as one short plain-text teaser for the hero. */
+private fun heroTeaser(description: String): String {
+    val plain = androidx.core.text.HtmlCompat.fromHtml(description, androidx.core.text.HtmlCompat.FROM_HTML_MODE_COMPACT)
+        .toString()
+        .replace(Regex("\\s+"), " ")
+        .trim()
+    if (plain.length <= 220) return plain
+    val cut = plain.take(220)
+    val sentence = cut.lastIndexOf(". ")
+    return if (sentence > 80) cut.take(sentence + 1) else cut.substringBeforeLast(' ') + "…"
 }
 
 @Composable
@@ -910,6 +1029,7 @@ internal data class CommunityCompatibilityUiState(
     val onViewReports: () -> Unit = {},
 )
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun AppScreenContent(
     modifier: Modifier = Modifier,
@@ -1197,13 +1317,20 @@ internal fun AppScreenContent(
                 .fillMaxSize()
                 .verticalScroll(scrollState),
         ) {
-            // Hero Section (Parallax)
+            // Rift: the hero fills the screen (trailer or art) with the next section peeking under it;
+            // logo, facts, a short teaser and the action row sit over it at the bottom left.
+            val configuration = LocalConfiguration.current
+            val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+            val sidePadding = if (configuration.screenWidthDp >= 840) 48.dp else 20.dp
+            val heroHeight = (configuration.screenHeightDp.dp - 64.dp).coerceAtLeast(420.dp)
+            val heroBackground = remember(heroMedia) { heroMedia.firstOrNull { it.isVideo } ?: heroMedia.firstOrNull() }
+            val firstVideoPage = remember(heroMedia) { heroMedia.indexOfFirst { it.isVideo } }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(heroHeight)
                     .onSizeChanged { heroHeightPx = it.height },
             ) {
-                // Store media carousel with the same parallax treatment as the former hero image.
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -1213,24 +1340,16 @@ internal fun AppScreenContent(
                             translationY = scrollState.value * 0.5f
                         },
                 ) {
-                    if (heroMedia.isNotEmpty()) {
-                        HorizontalPager(
-                            state = heroPagerState,
-                            key = { heroMedia[it].url },
+                    if (heroBackground != null) {
+                        StoreMediaPage(
+                            item = heroBackground,
+                            gameName = displayInfo.name,
+                            videoFallback = videoFallback,
+                            active = fullscreenHeroPage == null && heroPlaybackVisible,
+                            fullscreen = false,
+                            autoplay = hasWifiOrEthernet,
                             modifier = Modifier.fillMaxSize(),
-                        ) { page ->
-                            StoreMediaPage(
-                                item = heroMedia[page],
-                                gameName = displayInfo.name,
-                                videoFallback = videoFallback,
-                                active = fullscreenHeroPage == null &&
-                                    heroPlaybackVisible &&
-                                    page == heroPagerState.currentPage,
-                                fullscreen = false,
-                                autoplay = hasWifiOrEthernet,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
+                        )
                     } else {
                         Box(
                             modifier = Modifier
@@ -1247,86 +1366,30 @@ internal fun AppScreenContent(
                     }
                 }
 
-                // Gradient overlay (bottom, for title/action bar)
+                // Scrims: bottom (action row), left (logo and text), top (back button).
                 Box(
                     modifier = Modifier
                         .matchParentSize()
                         .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    Color.Black.copy(alpha = 0.3f),
-                                    Color.Black.copy(alpha = 0.85f),
-                                ),
-                                startY = 0f,
-                                endY = Float.POSITIVE_INFINITY,
+                            Brush.verticalGradient(
+                                0f to Color.Black.copy(alpha = 0.5f),
+                                0.18f to Color.Transparent,
+                                0.42f to Color.Transparent,
+                                0.78f to Color.Black.copy(alpha = 0.78f),
+                                1f to Color.Black,
                             ),
                         ),
                 )
-
-                // Top gradient overlay (so back button is visible on light/white images)
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp)
-                        .align(Alignment.TopCenter)
+                        .matchParentSize()
                         .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Black.copy(alpha = 0.5f),
-                                    Color.Black.copy(alpha = 0.15f),
-                                    Color.Transparent,
-                                ),
-                                startY = 0f,
-                                endY = Float.POSITIVE_INFINITY,
+                            Brush.horizontalGradient(
+                                0f to Color.Black.copy(alpha = 0.72f),
+                                0.55f to Color.Transparent,
                             ),
                         ),
                 )
-
-                if (heroMedia.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .windowInsetsPadding(
-                                WindowInsets.statusBars
-                                    .union(WindowInsets.displayCutout)
-                                    .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-                            )
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        if (heroMedia.size > 1) {
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = Color.Black.copy(alpha = 0.62f),
-                            ) {
-                                Text(
-                                    text = stringResource(
-                                        R.string.library_store_media_page,
-                                        heroPagerState.currentPage + 1,
-                                        heroMedia.size,
-                                    ),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White,
-                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-                                )
-                            }
-                        }
-                        Surface(
-                            shape = CircleShape,
-                            color = Color.Black.copy(alpha = 0.62f),
-                        ) {
-                            IconButton(onClick = { fullscreenHeroPage = heroPagerState.currentPage }) {
-                                Icon(
-                                    imageVector = Icons.Filled.Fullscreen,
-                                    contentDescription = stringResource(R.string.library_store_media_fullscreen),
-                                    tint = Color.White,
-                                )
-                            }
-                        }
-                    }
-                }
 
                 // Back button (top left).
                 // The hero image is intentionally drawn full-bleed through the status bar
@@ -1344,32 +1407,58 @@ internal fun AppScreenContent(
                                 .union(WindowInsets.displayCutout)
                                 .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
                         )
-                        .padding(16.dp),
+                        .padding(horizontal = sidePadding - 8.dp, vertical = 16.dp),
                 )
 
-                // Bottom overlay with title and action bar
                 Column(
                     modifier = Modifier
+                        .align(Alignment.BottomStart)
                         .fillMaxWidth()
-                        .padding(top = 128.dp, start = 20.dp, end = 20.dp, bottom = 16.dp),
+                        .padding(start = sidePadding, end = sidePadding, bottom = 24.dp),
                 ) {
-                    // Game title
-                    Text(
-                        text = displayInfo.name,
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            shadow = Shadow(
-                                color = Color.Black.copy(alpha = 0.6f),
-                                offset = Offset(0f, 2f),
-                                blurRadius = 8f,
+                    // Logo art, else the name.
+                    val logoUrl = displayInfo.logoUrl?.takeIf { it.isNotBlank() }
+                    if (logoUrl != null) {
+                        CoilImage(
+                            imageModel = { logoUrl },
+                            imageOptions = ImageOptions(
+                                contentDescription = displayInfo.name,
+                                contentScale = ContentScale.Fit,
+                                alignment = Alignment.BottomStart,
                             ),
-                        ),
-                        color = Color.White,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                            modifier = Modifier
+                                .widthIn(max = 460.dp)
+                                .fillMaxWidth()
+                                .height(if (isPortrait) 96.dp else 132.dp),
+                            failure = {
+                                Text(
+                                    text = displayInfo.name,
+                                    style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                                    color = Color.White,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            },
+                        )
+                    } else {
+                        Text(
+                            text = displayInfo.name,
+                            style = MaterialTheme.typography.displaySmall.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                shadow = Shadow(
+                                    color = Color.Black.copy(alpha = 0.6f),
+                                    offset = Offset(0f, 2f),
+                                    blurRadius = 8f,
+                                ),
+                            ),
+                            color = Color.White,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = 720.dp),
+                        )
+                    }
 
-                    // Developer and year
+                    // Facts: rating, time to beat, genres, year and developer.
                     val releaseYear = remember(displayInfo.releaseDate) {
                         if (displayInfo.releaseDate > 0) {
                             SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(displayInfo.releaseDate * 1000))
@@ -1377,23 +1466,49 @@ internal fun AppScreenContent(
                             ""
                         }
                     }
-                    Text(
-                        text = "${displayInfo.developer} • $releaseYear",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.85f),
-                    )
+                    val ratingLabel = stringResource(R.string.rift_game_rating)
+                    val beatLabel = stringResource(R.string.rift_game_beat_main)
+                    val facts = remember(displayInfo, releaseYear, ratingLabel, beatLabel) {
+                        buildList<Pair<String?, String>> {
+                            displayInfo.storeDetails.reviewPercentage?.let { add(it.toString() to ratingLabel) }
+                            displayInfo.hltbStats?.mainHours
+                                ?.takeIf { it != app.gamenative.utils.HltbService.UNKNOWN_HOURS }
+                                ?.let { add(null to beatLabel.format(it)) }
+                            displayInfo.storeDetails.tags.take(2).takeIf { it.isNotEmpty() }
+                                ?.let { add(null to it.joinToString(" · ")) }
+                            listOf(releaseYear, displayInfo.developer).filter { it.isNotBlank() }
+                                .takeIf { it.isNotEmpty() }
+                                ?.let { add(null to it.joinToString(" · ")) }
+                        }
+                    }
+                    if (facts.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            facts.forEach { (accent, text) -> HeroFactChip(text = text, accent = accent) }
+                        }
+                    }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    val teaser = remember(displayInfo.storeDetails.description) {
+                        heroTeaser(displayInfo.storeDetails.description)
+                    }
+                    if (teaser.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = teaser,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.White.copy(alpha = 0.85f),
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = 560.dp),
+                        )
+                    }
 
-                    // Integrated action bar - overlaid on hero
-                    val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color.Black.copy(alpha = 0.5f))
-                            .padding(12.dp),
-                    ) {
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Action row: Play, then the other actions right next to it, the stats plate at the far right.
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1401,7 +1516,6 @@ internal fun AppScreenContent(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        // Primary action button (left-aligned)
                         if (riftStream != null) {
                             PrimaryActionButton(
                                 text = stringResource(riftStream.labelRes),
@@ -1441,52 +1555,15 @@ internal fun AppScreenContent(
                             )
                         }
 
-                        // Download size / ETA text — inline only in landscape
-                        if (isDownloading && !isPortrait) {
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(horizontal = 8.dp),
-                                verticalArrangement = Arrangement.Center,
-                            ) {
-                                if (downloadSizeText.isNotEmpty()) {
-                                    Text(
-                                        text = downloadSizeText,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color.White.copy(alpha = 0.9f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                                if (downloadTimeLeftText.isNotEmpty()) {
-                                    Text(
-                                        text = downloadTimeLeftText,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Color.White.copy(alpha = 0.65f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                            }
-                        } else {
-                            // Rift: community stats spread evenly on the action bar plate between Install/Play and settings.
-                            val hasStats = gameStats != null &&
-                                (gameStats.runsGpu > 0 || gameStats.reviewsGpu > 0 || gameStats.reviewsDevice > 0 ||
-                                    gameStats.fps != null || gameStats.sessionSec != null)
-                            if (hasStats) {
-                                app.gamenative.ui.component.GameStatsStrip(
-                                    stats = gameStats,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .heightIn(min = 48.dp)
-                                        .padding(horizontal = 12.dp),
-                                )
-                            } else {
-                                Spacer(modifier = Modifier.weight(1f))
-                            }
+                        if (firstVideoPage >= 0) {
+                            ActionPillButton(
+                                icon = Icons.Filled.Theaters,
+                                text = stringResource(R.string.rift_game_trailer),
+                                onClick = { fullscreenHeroPage = firstVideoPage },
+                            )
                         }
 
-                        // Secondary action icons (right-aligned); a streamed game has no local options.
+                        // A streamed game has no local options.
                         if (riftStream == null || riftStream.showOptions) {
                             ActionIconButton(
                                 icon = Icons.Default.Settings,
@@ -1495,12 +1572,64 @@ internal fun AppScreenContent(
                             )
                         }
 
+                        val favoriteIds by app.gamenative.data.FavoritesManager.favorites.collectAsState()
+                        val isFavorite = displayInfo.appId in favoriteIds
+                        ActionIconButton(
+                            icon = if (isFavorite) Icons.Filled.Star else Icons.Filled.StarOutline,
+                            contentDescription = stringResource(
+                                if (isFavorite) R.string.option_remove_from_favorites else R.string.option_add_to_favorites,
+                            ),
+                            onClick = {
+                                app.gamenative.ui.screen.library.components.toggleFavorite(context, displayInfo.appId, displayInfo.name)
+                            },
+                        )
+
                         if (riftStream == null && (isInstalled || hasPartialDownload || hasLeftoverInstall)) {
                             ActionIconButton(
                                 icon = Icons.Default.Delete,
                                 contentDescription = if (isInstalled || hasLeftoverInstall) stringResource(R.string.uninstall) else stringResource(R.string.delete_app),
                                 onClick = onDeleteDownloadClick,
                             )
+                        }
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        if (isDownloading && !isPortrait) {
+                            Column(
+                                horizontalAlignment = Alignment.End,
+                                verticalArrangement = Arrangement.Center,
+                            ) {
+                                if (downloadSizeText.isNotEmpty()) {
+                                    Text(
+                                        text = downloadSizeText,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color.White.copy(alpha = 0.9f),
+                                        maxLines = 1,
+                                    )
+                                }
+                                if (downloadTimeLeftText.isNotEmpty()) {
+                                    Text(
+                                        text = downloadTimeLeftText,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = Color.White.copy(alpha = 0.65f),
+                                        maxLines = 1,
+                                    )
+                                }
+                            }
+                        } else if (!isPortrait) {
+                            val lastPlayedLabel = stringResource(R.string.rift_game_last_played)
+                            val playTimeLabel = stringResource(R.string.rift_game_played)
+                            val achievementsLabel = stringResource(R.string.rift_game_achievements)
+                            val stats = remember(displayInfo.lastPlayedText, displayInfo.playtimeText, achievements) {
+                                buildList {
+                                    displayInfo.lastPlayedText?.let { add(lastPlayedLabel to it) }
+                                    displayInfo.playtimeText?.let { add(playTimeLabel to it) }
+                                    achievements?.takeIf { it.isNotEmpty() }?.let { list ->
+                                        add(achievementsLabel to "${list.count { it.isUnlocked }}/${list.size}")
+                                    }
+                                }
+                            }
+                            if (stats.isNotEmpty()) HeroStatsPlate(stats)
                         }
                     }
 
@@ -1620,8 +1749,6 @@ internal fun AppScreenContent(
                             )
                         }
                     }
-                    }
-
                 }
             }
 
@@ -1687,6 +1814,17 @@ internal fun AppScreenContent(
 
                 // Rift: Wine compatibility is about GameNative's own (PC Games) games; streaming, cloud, Android and emulator pages have none.
                 if (riftStream == null) {
+                // Rift: community run stats moved off the hero, next to the compatibility verdict.
+                if (gameStats != null &&
+                    (gameStats.runsGpu > 0 || gameStats.reviewsGpu > 0 || gameStats.reviewsDevice > 0 ||
+                        gameStats.fps != null || gameStats.sessionSec != null)
+                ) {
+                    app.gamenative.ui.component.GameStatsStrip(
+                        stats = gameStats,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
                 CommunityCompatibilitySection(
                     gameKey = displayInfo.appId.toString(),
                     summary = communityCompatibility.summary,

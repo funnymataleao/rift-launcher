@@ -421,4 +421,11 @@
     <string name="rift_settings_meta_remove">Удалить ключи</string>
     <string name="rift_settings_meta_note">Когда заданы оба, на странице Android-игры или игры эмулятора показываются описание, рейтинг, жанры, теги, разработчик и дата выхода из IGDB. Они хранятся на этом устройстве и отправляются только на twitch.tv и igdb.com.</string>
     <string name="rift_meta_rating">Рейтинг IGDB</string>
+    <!-- Страница игры, первый экран -->
+    <string name="rift_game_rating">рейтинг</string>
+    <string name="rift_game_beat_main">%1$s ч по сюжету</string>
+    <string name="rift_game_trailer">Трейлер</string>
+    <string name="rift_game_achievements">Достижения</string>
+    <string name="rift_game_last_played">Последний запуск</string>
+    <string name="rift_game_played">Вы играли</string>
 </resources>
