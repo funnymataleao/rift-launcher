@@ -134,7 +134,7 @@ object StoreDetailsRepository {
         val cacheKey = "media:" + GogMapRepository.normalizeTitle(title)
         cache[cacheKey]?.takeIf { now - it.loadedAt in 0..CACHE_TTL_MS }?.let { return@withContext it.details }
         val media = try {
-            fetchSteamSupplement(title, locale).let { StoreGameDetails(screenshots = it.screenshots, videos = it.videos) }
+            fetchSteamSupplement(title, locale).let { StoreGameDetails(screenshots = it.screenshots, videos = it.videos, videoThumbnails = it.videoThumbnails) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -511,11 +511,13 @@ internal fun parseSteamStoreDetails(
     val screenshots = data?.optJSONArray("screenshots").objects()
         .mapNotNull { it.optString("path_full").asHttpUrl() }
 
-    val videos = data?.optJSONArray("movies").objects().mapNotNull { movie ->
-        movie.optJSONObject("mp4")?.optString("max").asHttpUrl()
+    val movies = data?.optJSONArray("movies").objects().mapNotNull { movie ->
+        val url = movie.optJSONObject("mp4")?.optString("max").asHttpUrl()
             ?: movie.optJSONObject("webm")?.optString("max").asHttpUrl()
             ?: movie.optString("hls_h264").asHttpUrl()
+        url?.let { it to movie.optString("thumbnail").asHttpUrl() }
     }
+    val videos = movies.map { it.first }
 
     val genres = data?.optJSONArray("genres").objects()
         .map { it.optString("description") }
@@ -535,6 +537,7 @@ internal fun parseSteamStoreDetails(
         tags = (genres + categories).cleanStoreList(16),
         screenshots = screenshots.cleanStoreList(12),
         videos = videos.cleanStoreList(4),
+        videoThumbnails = movies.mapNotNull { (url, thumb) -> thumb?.let { url.trim() to it } }.toMap(),
     )
 }
 

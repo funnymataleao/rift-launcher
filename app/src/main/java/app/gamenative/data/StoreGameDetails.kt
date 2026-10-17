@@ -11,6 +11,8 @@ data class StoreGameDetails(
     val tags: List<String> = emptyList(),
     val screenshots: List<String> = emptyList(),
     val videos: List<String> = emptyList(),
+    /** Rift: a trailer's own preview image, keyed by its video URL, where the store gives one. */
+    val videoThumbnails: Map<String, String> = emptyMap(),
     /** Rift: where a description from outside the stores comes from ("wikipedia" needs a credit line); empty = the store itself. */
     val source: String = "",
 ) {
@@ -32,6 +34,7 @@ data class StoreGameDetails(
         tags = (tags + fallback.tags).cleanList(MAX_TAGS),
         screenshots = (screenshots + fallback.screenshots).cleanList(MAX_MEDIA),
         videos = (videos + fallback.videos).cleanList(MAX_MEDIA),
+        videoThumbnails = fallback.videoThumbnails + videoThumbnails,
     )
 
     private fun List<String>.cleanList(limit: Int): List<String> = asSequence()

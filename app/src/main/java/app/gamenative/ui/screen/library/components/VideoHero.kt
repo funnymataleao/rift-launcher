@@ -424,6 +424,10 @@ private fun youTubeEmbedHtml(videoId: String, muted: Boolean, fill: Boolean = fa
     """.trimIndent()
 }
 
+/** Rift: the trailer's own still from YouTube, or null when the link is not a YouTube one. */
+internal fun youTubePosterUrl(url: String): String? =
+    extractYouTubeId(url)?.let { "https://img.youtube.com/vi/$it/hqdefault.jpg" }
+
 private fun extractYouTubeId(url: String): String? {
     val patterns = listOf(
         Regex("""youtube(?:-nocookie)?\.com/embed/([\w-]{11})"""),

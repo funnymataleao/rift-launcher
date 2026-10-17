@@ -201,6 +201,8 @@ import app.gamenative.ui.screen.library.appscreen.GOGAppScreen
 import app.gamenative.ui.screen.library.appscreen.SteamAppScreen
 import app.gamenative.ui.screen.library.components.GameOptionsPanel
 import app.gamenative.ui.screen.library.components.VideoHero
+import app.gamenative.ui.screen.library.components.youTubePosterUrl
+import androidx.compose.ui.graphics.asImageBitmap
 import app.gamenative.utils.FormatUtils
 import app.gamenative.utils.HltbService
 import app.gamenative.ui.theme.PluviaTheme
@@ -661,7 +663,40 @@ private fun HltbInfoBar(
 private data class StoreMediaItem(
     val isVideo: Boolean,
     val url: String,
+    /** Rift: a trailer's own preview from its source (Steam, YouTube); null when the source has none. */
+    val poster: String? = null,
 )
+
+/** Rift: frames grabbed from trailers that came without a preview, kept for the session. */
+private val trailerFrames = java.util.concurrent.ConcurrentHashMap<String, androidx.compose.ui.graphics.ImageBitmap>()
+
+/** Rift: a still from the trailer itself (2 s in), for a trailer whose source gives no preview. Null until ready or when it can't be read. */
+@Composable
+private fun rememberTrailerFrame(url: String, enabled: Boolean): androidx.compose.ui.graphics.ImageBitmap? {
+    val frame by androidx.compose.runtime.produceState(trailerFrames[url], url, enabled) {
+        if (!enabled || value != null || url.contains(".m3u8", ignoreCase = true)) return@produceState
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching {
+                val retriever = android.media.MediaMetadataRetriever()
+                try {
+                    retriever.setDataSource(url, emptyMap())
+                    retriever.getFrameAtTime(2_000_000L, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                } finally {
+                    retriever.release()
+                }
+            }.getOrNull()?.let { bitmap ->
+                val width = 640
+                val scaled = if (bitmap.width > width) {
+                    android.graphics.Bitmap.createScaledBitmap(bitmap, width, (bitmap.height * width / bitmap.width).coerceAtLeast(1), true)
+                } else {
+                    bitmap
+                }
+                scaled.asImageBitmap()
+            }
+        }?.also { trailerFrames[url] = it }
+    }
+    return frame
+}
 
 @Composable
 private fun StoreMediaPage(
@@ -679,7 +714,8 @@ private fun StoreMediaPage(
     if (item.isVideo) {
         VideoHero(
             videoUrl = item.url,
-            fallbackImageUrl = videoFallback,
+            // Rift: opened from Media, a trailer shows its own preview while it loads, not the game's background.
+            fallbackImageUrl = if (fullscreen) item.poster ?: videoFallback else videoFallback,
             contentDescription = gameName,
             active = active,
             muted = muted,
@@ -716,7 +752,9 @@ private fun buildStoreMedia(
     fallbackImageUrl?.takeIf(String::isNotBlank)?.let {
         add(StoreMediaItem(isVideo = false, url = it))
     }
-    details.videos.forEach { add(StoreMediaItem(isVideo = true, url = it)) }
+    details.videos.forEach {
+        add(StoreMediaItem(isVideo = true, url = it, poster = details.videoThumbnails[it] ?: youTubePosterUrl(it)))
+    }
     details.screenshots.forEach { add(StoreMediaItem(isVideo = false, url = it)) }
 }.distinctBy(StoreMediaItem::url)
 
@@ -1350,16 +1388,20 @@ private fun GamePageHltbCard(stats: HltbService.Stats, modifier: Modifier = Modi
 @Composable
 private fun GamePageMediaRow(
     media: List<StoreMediaItem>,
-    videoFallback: String,
+    heroImageUrl: String?,
     gameName: String,
     onOpen: (Int) -> Unit,
     sidePadding: Dp = 0.dp,
 ) {
     // Rift: the row runs edge to edge (past the page's side padding) with that padding as content padding,
     // so a focused tile grows and casts its ring without being cut at the row's edge. Repeats are dropped.
-    val tiles = remember(media) {
-        media.withIndex().distinctBy { it.value.url.substringBefore('?').lowercase(Locale.ROOT) }
+    // The game's background (the hero art) is not media of its own: only trailers and screenshots are shown.
+    val tiles = remember(media, heroImageUrl) {
+        media.withIndex()
+            .filter { it.value.isVideo || it.value.url != heroImageUrl }
+            .distinctBy { it.value.url.substringBefore('?').lowercase(Locale.ROOT) }
     }
+    val firstScreenshot = remember(tiles) { tiles.firstOrNull { !it.value.isVideo }?.value?.url }
     // Sideways the row keeps the focused tile whole with room on both sides, not the page's vertical margins.
     val rowKeepInView = with(LocalDensity.current) { remember(sidePadding) { dev.rift.launcher.home.KeepInView((sidePadding + 16.dp).toPx()) } }
     androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides rowKeepInView) {
@@ -1407,11 +1449,25 @@ private fun GamePageMediaRow(
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                CoilImage(
-                    imageModel = { if (item.isVideo) videoFallback else item.url },
-                    imageOptions = ImageOptions(contentDescription = gameName, contentScale = ContentScale.Crop),
-                    modifier = Modifier.fillMaxSize(),
-                )
+                // A trailer shows its own preview; without one, a frame from the video, then a screenshot.
+                val frame = rememberTrailerFrame(item.url, enabled = item.isVideo && item.poster == null)
+                if (frame != null) {
+                    androidx.compose.foundation.Image(
+                        bitmap = frame,
+                        contentDescription = gameName,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    val still = if (item.isVideo) item.poster ?: firstScreenshot else item.url
+                    if (still != null) {
+                        CoilImage(
+                            imageModel = { still },
+                            imageOptions = ImageOptions(contentDescription = gameName, contentScale = ContentScale.Crop),
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
                 // Rift: no outline; the tile in focus is lifted and bright, the others are dimmed.
                 if (!isFocused) Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.38f)))
                 if (item.isVideo) {
@@ -2515,15 +2571,20 @@ internal fun AppScreenContent(
             }
 
             fullscreenHeroPage?.let { initialPage ->
+                // Rift: the full-screen gallery holds only trailers and screenshots, not the game's background.
+                val gallery = remember(heroMedia) {
+                    heroMedia.filter { it.isVideo || it.url != displayInfo.heroImageUrl }.ifEmpty { heroMedia }
+                }
                 FullscreenStoreMediaDialog(
-                    media = heroMedia,
-                    initialPage = initialPage,
+                    media = gallery,
+                    initialPage = gallery.indexOf(heroMedia.getOrNull(initialPage)).coerceAtLeast(0),
                     gameName = displayInfo.name,
                     videoFallback = videoFallback,
                     autoplay = hasWifiOrEthernet,
                     onDismiss = { lastPage ->
                         fullscreenHeroPage = null
-                        heroMediaScope.launch { heroPagerState.scrollToPage(lastPage) }
+                        val heroPage = heroMedia.indexOf(gallery.getOrNull(lastPage)).coerceAtLeast(0)
+                        heroMediaScope.launch { heroPagerState.scrollToPage(heroPage) }
                     },
                 )
             }
@@ -2616,7 +2677,7 @@ internal fun AppScreenContent(
                             GamePageMediaRow(
                                 media = heroMedia,
                                 sidePadding = sidePadding,
-                                videoFallback = videoFallback,
+                                heroImageUrl = displayInfo.heroImageUrl,
                                 gameName = displayInfo.name,
                                 onOpen = { fullscreenHeroPage = it },
                             )
