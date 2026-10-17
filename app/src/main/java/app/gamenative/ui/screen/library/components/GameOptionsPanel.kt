@@ -96,7 +96,13 @@ fun GameOptionsPanel(
     onDismiss: () -> Unit,
     options: List<AppMenuOption>,
     modifier: Modifier = Modifier,
+    onPlay: (() -> Unit)? = null,
 ) {
+    // Rift: Start on the home shows a small menu in the middle, not this side panel.
+    if (dev.rift.launcher.home.LocalRiftOptionsOnly.current != null) {
+        dev.rift.launcher.home.RiftGameStartMenu(isOpen, onDismiss, options, onPlay)
+        return
+    }
     val firstItemFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(isOpen) {
