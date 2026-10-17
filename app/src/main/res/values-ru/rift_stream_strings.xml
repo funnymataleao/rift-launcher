@@ -33,6 +33,7 @@
     <string name="rift_stream_pair_failed">ПК отклонил спаривание.</string>
     <string name="rift_stream_retry">Ещё раз</string>
     <string name="rift_stream_pc_offline">%1$s не в сети.</string>
+    <string name="rift_stream_pc_no_https">%1$s в сети, но Vibepollo не отвечает по защищённому порту %2$d. На ПК перезапустите Vibepollo через значок в трее и проверьте, что брандмауэр Windows его пропускает.</string>
     <string name="rift_stream_offline_help">Включите ПК и запустите хост.</string>
     <string name="rift_stream_apps_error">Не удалось загрузить приложения: %1$s</string>
     <string name="rift_stream_connecting">Подключаюсь к %1$s…</string>

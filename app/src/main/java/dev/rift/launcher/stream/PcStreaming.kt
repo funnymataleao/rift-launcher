@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateMapOf
@@ -119,18 +120,74 @@ object PcStreaming {
 
     private fun appsPrefs(context: Context) = context.applicationContext.getSharedPreferences("rift_stream_apps", Context.MODE_PRIVATE)
 
-    /** Starts the stream of [app] on [pc] with the user's stream settings. */
+    /**
+     * Starts the stream of [app] on [pc] with the user's stream settings. When polling has not marked the
+     * PC online (just resumed, network change), its known addresses are asked directly first, so a PC
+     * that is on is never reported offline.
+     */
     fun startStream(context: Context, pc: ComputerDetails, app: NvApp, uniqueId: String) {
         val address = pc.activeAddress
-        if (!isOnline(pc) || address == null) {
-            SnackbarManager.show(context.getString(R.string.rift_stream_pc_offline, pc.name))
+        if (isOnline(pc) && address != null) {
+            launchStream(context, pc, address, pc.httpsPort, app, uniqueId)
             return
         }
+        if (checking) return
+        checking = true
+        Log.i(TAG, "${pc.name} state=${pc.state} active=$address: checking its addresses before streaming")
+        SnackbarManager.show(context.getString(R.string.rift_stream_connecting, pc.name))
+        scope.launch {
+            val reach = reach(context, pc, uniqueId)
+            withContext(Dispatchers.Main) {
+                checking = false
+                when (reach) {
+                    is Reach.Online -> launchStream(context, pc, reach.address, reach.httpsPort, app, uniqueId)
+                    is Reach.NoHttps -> SnackbarManager.show(context.getString(R.string.rift_stream_pc_no_https, pc.name, reach.httpsPort))
+                    Reach.Offline -> SnackbarManager.show(context.getString(R.string.rift_stream_pc_offline, pc.name))
+                }
+            }
+        }
+    }
+
+    @Volatile
+    private var checking = false
+
+    private sealed interface Reach {
+        class Online(val address: ComputerDetails.AddressTuple, val httpsPort: Int) : Reach
+
+        /** The host answers over plain HTTP but not on its HTTPS port, which streaming needs. */
+        class NoHttps(val httpsPort: Int) : Reach
+
+        object Offline : Reach
+    }
+
+    /** Asks each of [pc]'s addresses directly: over HTTPS as streaming does, then over HTTP to tell a dead PC from a stuck host. */
+    private fun reach(context: Context, pc: ComputerDetails, uniqueId: String): Reach {
+        val crypto = PlatformBinding.getCryptoProvider(context)
+        var noHttps: Reach? = null
+        for (address in listOfNotNull(pc.activeAddress, pc.localAddress, pc.manualAddress, pc.remoteAddress, pc.ipv6Address).distinct()) {
+            runCatching { NvHTTP(address, 0, uniqueId, pc.serverCert, crypto).getComputerDetails(false) }
+                .onSuccess { if (it.uuid == pc.uuid) return Reach.Online(address, it.httpsPort) }
+                .onFailure { Log.i(TAG, "${pc.name} at $address over HTTPS: $it") }
+            if (noHttps == null) {
+                runCatching { NvHTTP(address, 0, uniqueId, null, crypto).getComputerDetails(false) }
+                    .onSuccess {
+                        if (it.uuid == pc.uuid) {
+                            Log.w(TAG, "${pc.name} at $address answers over HTTP, HTTPS port ${it.httpsPort} does not")
+                            noHttps = Reach.NoHttps(it.httpsPort)
+                        }
+                    }
+                    .onFailure { Log.i(TAG, "${pc.name} at $address over HTTP: $it") }
+            }
+        }
+        return noHttps ?: Reach.Offline
+    }
+
+    private fun launchStream(context: Context, pc: ComputerDetails, address: ComputerDetails.AddressTuple, httpsPort: Int, app: NvApp, uniqueId: String) {
         context.startActivity(
             Intent(context, StreamActivity::class.java).apply {
                 putExtra(StreamActivity.EXTRA_HOST, address.address)
                 putExtra(StreamActivity.EXTRA_PORT, address.port)
-                putExtra(StreamActivity.EXTRA_HTTPS_PORT, pc.httpsPort)
+                putExtra(StreamActivity.EXTRA_HTTPS_PORT, httpsPort)
                 putExtra(StreamActivity.EXTRA_UNIQUE_ID, uniqueId)
                 putExtra(StreamActivity.EXTRA_SERVER_CERT, pc.serverCert?.encoded)
                 putExtra(StreamActivity.EXTRA_PC_NAME, pc.name)
@@ -142,6 +199,8 @@ object PcStreaming {
             },
         )
     }
+
+    private const val TAG = "RiftStream"
 }
 
 /**
@@ -157,10 +216,30 @@ class PcHosts internal constructor() {
 
     val uniqueId: String? get() = binder?.uniqueId
 
-    internal val listener = ComputerManagerListener { details ->
+    internal val listener: ComputerManagerListener get() = PcPolling.listener
+}
+
+/**
+ * The service has a single listener and a single polling switch, so every [PcHosts] on screen (the
+ * home's tab, the streaming settings) shares them: polling stops only when the last one leaves.
+ */
+private object PcPolling {
+    /** Touched on the main thread only. */
+    private val watchers = mutableSetOf<PcHosts>()
+
+    val listener = ComputerManagerListener { details ->
         val uuid = details.uuid ?: return@ComputerManagerListener
         // The service calls back from its polling threads.
-        android.os.Handler(android.os.Looper.getMainLooper()).post { hosts[uuid] = details }
+        android.os.Handler(android.os.Looper.getMainLooper()).post { watchers.forEach { it.hosts[uuid] = details } }
+    }
+
+    fun start(hosts: PcHosts, binder: ComputerManagerService.ComputerManagerBinder) {
+        watchers += hosts
+        binder.startPolling(listener)
+    }
+
+    fun stop(hosts: PcHosts, binder: ComputerManagerService.ComputerManagerBinder?) {
+        if (watchers.remove(hosts) && watchers.isEmpty()) binder?.stopPolling()
     }
 }
 
@@ -179,7 +258,7 @@ fun rememberPcHosts(): PcHosts {
                     binder.waitForReady()
                     android.os.Handler(android.os.Looper.getMainLooper()).post {
                         pcHosts.binder = binder
-                        if (resumed) binder.startPolling(pcHosts.listener)
+                        if (resumed) PcPolling.start(pcHosts, binder)
                     }
                 }.start()
             }
@@ -192,11 +271,11 @@ fun rememberPcHosts(): PcHosts {
             when (event) {
                 Lifecycle.Event.ON_RESUME -> {
                     resumed = true
-                    pcHosts.binder?.startPolling(pcHosts.listener)
+                    pcHosts.binder?.let { PcPolling.start(pcHosts, it) }
                 }
                 Lifecycle.Event.ON_PAUSE -> {
                     resumed = false
-                    pcHosts.binder?.stopPolling()
+                    PcPolling.stop(pcHosts, pcHosts.binder)
                 }
                 else -> Unit
             }
@@ -205,7 +284,7 @@ fun rememberPcHosts(): PcHosts {
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            if (resumed) pcHosts.binder?.stopPolling()
+            PcPolling.stop(pcHosts, pcHosts.binder)
             pcHosts.binder = null
             context.unbindService(connection)
         }
