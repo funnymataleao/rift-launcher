@@ -21,6 +21,7 @@ import java.io.File
  */
 object PackPreview {
     private const val MUSIC_MILLIS = 20_000L
+    private const val TAG = "RiftPreview"
     private const val GAP_MILLIS = 300L
     private val SOUNDS = listOf(RiftSound.Move, RiftSound.Select, RiftSound.SidebarOpen, RiftSound.Back, RiftSound.Launch)
 
@@ -33,8 +34,13 @@ object PackPreview {
         private set
 
     fun playMusic(context: Context, key: String, dir: File) {
-        val track = InstalledPacks.musicTrack(dir) ?: return
-        val volume = RiftSoundSettings.musicVolume(context) / 100f
+        val track = InstalledPacks.musicTrack(dir)
+        if (track == null) {
+            Timber.tag(TAG).w("Music pack %s has no audio track in %s", key, dir.list()?.joinToString())
+            return
+        }
+        val volume = (RiftSoundSettings.musicVolume(context) / 100f).coerceAtLeast(0.3f)
+        Timber.tag(TAG).i("Preview music %s: %s (%d bytes) volume %.2f", key, track.name, track.length(), volume)
         val mine = begin(context, key)
         start(track, volume, onDone = { finish(context, mine) })
         handler.postDelayed({ finish(context, mine) }, MUSIC_MILLIS)
@@ -42,8 +48,12 @@ object PackPreview {
 
     fun playSounds(context: Context, key: String, dir: File) {
         val files = SOUNDS.mapNotNull { sound -> sound.deckNames.firstNotNullOfOrNull { InstalledPacks.file(dir, it) } }
-        if (files.isEmpty()) return
+        if (files.isEmpty()) {
+            Timber.tag(TAG).w("Sound pack %s has none of the preview sounds in %s", key, dir.list()?.joinToString())
+            return
+        }
         val volume = (RiftSoundSettings.volume(context) / 100f).coerceAtLeast(0.3f)
+        Timber.tag(TAG).i("Preview sounds %s: %s volume %.2f", key, files.joinToString { it.name }, volume)
         val mine = begin(context, key)
         fun next(i: Int) {
             if (mine != generation) return
@@ -96,13 +106,14 @@ object PackPreview {
             p.setVolume(volume, volume)
             p.setOnPreparedListener { if (mine == generation) it.start() }
             p.setOnCompletionListener { if (mine == generation) onDone() }
-            p.setOnErrorListener { _, _, _ ->
+            p.setOnErrorListener { _, what, extra ->
+                Timber.tag(TAG).w("Player error %d/%d on %s", what, extra, file.name)
                 if (mine == generation) onDone()
                 true
             }
             p.prepareAsync()
         }.onFailure {
-            Timber.tag("RiftPreview").w(it, "Cannot play %s", file.name)
+            Timber.tag(TAG).w(it, "Cannot play %s", file.name)
             onDone()
         }
     }

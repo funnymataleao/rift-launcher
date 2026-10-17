@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -45,10 +46,14 @@ fun Modifier.riftKeySounds(
         Modifier.pointerInput(Unit) {
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                RiftSounds.tapMuted = false
                 val up = waitForUpOrCancellation(PointerEventPass.Initial)
-                if (up != null && (up.position - down.position).getDistance() < viewConfiguration.touchSlop) {
+                if (up != null && (up.position - down.position).getDistance() < viewConfiguration.touchSlop &&
+                    !RiftSounds.tapMuted
+                ) {
                     player.play(RiftSound.Select)
                 }
+                RiftSounds.tapMuted = false
             }
         }
     } else {
@@ -60,7 +65,8 @@ fun Modifier.riftKeySounds(
             when (event.nativeKeyEvent.keyCode) {
                 KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
                 KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN -> player.play(RiftSound.Move)
-                KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> player.play(RiftSound.Select)
+                KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER ->
+                    if (!RiftSounds.pressMuted) player.play(RiftSound.Select)
                 KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_ESCAPE -> player.play(RiftSound.Back)
                 KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_R1 -> player.play(RiftSound.Tab)
                 KeyEvent.KEYCODE_BUTTON_SELECT, KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_MENU ->
@@ -81,5 +87,20 @@ fun RiftLayerSound(open: Boolean) {
     androidx.compose.runtime.LaunchedEffect(open) {
         if (open != previous) player.play(if (open) RiftSound.SidebarOpen else RiftSound.SidebarClose)
         previous = open
+    }
+}
+
+/**
+ * For a control that plays sound of its own: while it has the focus, A/Enter make no interface sound, and a tap on
+ * it makes none either. Put it on the control itself.
+ */
+@Composable
+fun Modifier.riftSilentPress(): Modifier {
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { RiftSounds.pressMuted = false } }
+    return onFocusChanged { RiftSounds.pressMuted = it.hasFocus }.pointerInput(Unit) {
+        awaitEachGesture {
+            awaitFirstDown(requireUnconsumed = false)
+            RiftSounds.tapMuted = true
+        }
     }
 }

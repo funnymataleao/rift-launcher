@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Stop
@@ -30,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import dev.rift.launcher.sound.RiftMusic
+import dev.rift.launcher.sound.riftSilentPress
 import dev.rift.launcher.sound.RiftSoundSettings
 import dev.rift.launcher.sound.pack.DeckPack
 import dev.rift.launcher.sound.pack.DeckThemesClient
@@ -97,11 +100,16 @@ internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit, hold: () -> 
         }
         scope.launch {
             val dir = ready ?: run {
-                if (pack == null || previewBusyId != null) return@launch
+                if (pack == null) return@launch
+                if (previewBusyId != null) {
+                    timber.log.Timber.tag("RiftPreview").i("Preview of %s ignored: %s is still downloading", key, previewBusyId)
+                    return@launch
+                }
                 previewBusyId = key
                 try {
                     DeckThemesClient.preview(context, pack).also { failed = false }
                 } catch (e: PackError) {
+                    timber.log.Timber.tag("RiftPreview").w(e, "Preview download of %s failed", key)
                     failed = true
                     null
                 } finally {
@@ -171,7 +179,7 @@ internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit, hold: () -> 
         if (failed) NoteText(stringResource(R.string.rift_settings_packs_error))
         if (hasMore || failed) {
             LinkRow(
-                modifier = Modifier.onFocusChanged { if (it.hasFocus && !failed) loadMore() },
+                modifier = Modifier.keepInView().onFocusChanged { if (it.hasFocus && !failed) loadMore() },
                 title = stringResource(
                     when {
                         loading -> R.string.rift_settings_packs_loading
@@ -221,7 +229,11 @@ private fun PackRow(
     busy: Boolean = false,
     onLongClick: (() -> Unit)? = null,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(
+        modifier = Modifier.keepInView(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         LinkRow(
             modifier = Modifier.weight(1f),
             title = title,
@@ -235,9 +247,28 @@ private fun PackRow(
         RiftRoundButton(
             icon = if (playing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
             description = stringResource(if (playing) R.string.rift_settings_packs_preview_stop else R.string.rift_settings_packs_preview),
+            modifier = Modifier.riftSilentPress(),
             onClick = { if (!busy) onPreview() },
         )
     }
+}
+
+/** When anything inside gains focus, scrolls so the whole row shows with a margin above and below, not flush with the edge. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun Modifier.keepInView(margin: androidx.compose.ui.unit.Dp = 48.dp): Modifier {
+    val requester = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+    val scope = rememberCoroutineScope()
+    val px = with(androidx.compose.ui.platform.LocalDensity.current) { margin.toPx() }
+    var size by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    return this
+        .onSizeChanged { size = it }
+        .bringIntoViewRequester(requester)
+        .onFocusChanged {
+            if (it.hasFocus) scope.launch {
+                requester.bringIntoView(androidx.compose.ui.geometry.Rect(0f, -px, size.width.toFloat(), size.height + px))
+            }
+        }
 }
 
 private fun selectedId(context: Context, music: Boolean) =
