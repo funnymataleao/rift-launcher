@@ -526,7 +526,7 @@ abstract class BaseAppScreen {
         libraryItem: LibraryItem,
         onAiDebugRun: () -> Unit,
     ): AppMenuOption? {
-        if (PrefManager.hideAiFeatures) return null
+        if (app.gamenative.Constants.Misc.HIDE_UPSTREAM_SERVICES || PrefManager.hideAiFeatures) return null
         return AppMenuOption(
             AppOptionMenuType.AiDebugRun,
             onClick = { onAiDebugRun() },
