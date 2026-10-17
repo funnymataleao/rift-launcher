@@ -15,7 +15,13 @@ data class GameMeta(
     val developer: String = "",
     /** Unix seconds, 0 when unknown. */
     val releaseDate: Long = 0L,
+    /** Time to beat in seconds (IGDB): the story, the story with extras, everything. 0 = unknown. */
+    val beatMain: Long = 0L,
+    val beatExtras: Long = 0L,
+    val beatComplete: Long = 0L,
 ) {
+    val hasBeatTimes: Boolean get() = beatMain > 0 || beatExtras > 0 || beatComplete > 0
+
     val isEmpty: Boolean get() = description.isBlank() && rating == null && genres.isEmpty() && tags.isEmpty() && developer.isBlank() && releaseDate == 0L
 
     fun toJson(): String = JSONObject().apply {
@@ -26,11 +32,19 @@ data class GameMeta(
         put("t", JSONArray(tags))
         put("dev", developer)
         put("rel", releaseDate)
+        put("b1", beatMain)
+        put("b2", beatExtras)
+        put("b3", beatComplete)
+        put("v", VERSION)
     }.toString()
 
     companion object {
+        private const val VERSION = 2
+
         fun fromJson(json: String): GameMeta? = try {
             val o = JSONObject(json)
+            // Saved before the time to beat was fetched: looked up again.
+            if (o.optInt("v") < VERSION) return null
             GameMeta(
                 description = o.optString("d"),
                 rating = if (o.has("r")) o.optInt("r") else null,
@@ -39,6 +53,9 @@ data class GameMeta(
                 tags = o.optJSONArray("t").strings(),
                 developer = o.optString("dev"),
                 releaseDate = o.optLong("rel"),
+                beatMain = o.optLong("b1"),
+                beatExtras = o.optLong("b2"),
+                beatComplete = o.optLong("b3"),
             )
         } catch (e: org.json.JSONException) {
             null

@@ -58,6 +58,14 @@ internal fun RiftGamePage(
             name = shown.name,
             developer = meta?.developer.orEmpty(),
             releaseDate = meta?.releaseDate ?: 0L,
+            hltbStats = meta?.takeIf { it.hasBeatTimes }?.let {
+                app.gamenative.utils.HltbService.Stats(
+                    mainHours = app.gamenative.utils.HltbService.formatHours(it.beatMain),
+                    mainPlusHours = app.gamenative.utils.HltbService.formatHours(it.beatExtras),
+                    completeHours = app.gamenative.utils.HltbService.formatHours(it.beatComplete),
+                    allStylesHours = app.gamenative.utils.HltbService.UNKNOWN_HOURS,
+                )
+            },
             storeDetails = meta?.let { m ->
                 StoreGameDetails(
                     description = m.description,
