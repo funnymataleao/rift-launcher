@@ -331,13 +331,13 @@
     <string name="rift_accent_lime">Lime</string>
     <string name="rift_accent_peach">Peach</string>
     <string name="rift_accent_coral">Coral</string>
-    <string name="rift_accent_lilac">Lilac</string>
+    <string name="rift_accent_aqua">Aqua</string>
     <string name="rift_accent_pearl">Pearl</string>
     <string name="rift_accent_lemonlime">Lemon lime</string>
     <string name="rift_accent_aurora">Aurora</string>
     <string name="rift_accent_sunset">Sunset</string>
     <string name="rift_accent_ocean">Ocean</string>
-    <string name="rift_accent_blush">Daybreak</string>
+    <string name="rift_accent_tropic">Tropic</string>
     <string name="rift_settings_tabs_hint">Drag a tab with your finger. With a gamepad: A picks a tab up, up and down move it, A puts it down, B puts it back.</string>
     <string name="rift_settings_tab_grabbed">Move with the arrows, A to drop</string>
     <string name="rift_settings_tab_drag">Reorder</string>

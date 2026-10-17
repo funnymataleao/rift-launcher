@@ -41,16 +41,17 @@ object RiftAccent {
         Choice("lime", R.string.rift_accent_lime, listOf(Color(0xFFB6F25E))),
         Choice("peach", R.string.rift_accent_peach, listOf(Color(0xFFFFB38A))),
         Choice("coral", R.string.rift_accent_coral, listOf(Color(0xFFFF8A80))),
-        Choice("lilac", R.string.rift_accent_lilac, listOf(Color(0xFFC3A6FF))),
+        Choice("aqua", R.string.rift_accent_aqua, listOf(Color(0xFF5CE6E6))),
     )
 
+    // Each gradient moves between clearly different hues and lightness, never pink or violet.
     val gradients = listOf(
-        Choice("pearl", R.string.rift_accent_pearl, listOf(Color(0xFFEAF4FF), Color(0xFFFFE9F6), Color(0xFFE8F0FF))),
+        Choice("pearl", R.string.rift_accent_pearl, listOf(Color(0xFFF4FAFA), Color(0xFFB7F0DC), Color(0xFF8CCBFF))),
         Choice("lemonlime", R.string.rift_accent_lemonlime, listOf(Color(0xFFFFF44F), Color(0xFFB6F25E))),
-        Choice("aurora", R.string.rift_accent_aurora, listOf(Color(0xFF7CF5D0), Color(0xFF7CB8FF))),
-        Choice("sunset", R.string.rift_accent_sunset, listOf(Color(0xFFFFD36E), Color(0xFFFF8FA3))),
-        Choice("ocean", R.string.rift_accent_ocean, listOf(Color(0xFF7CE7FF), Color(0xFF9AA5FF))),
-        Choice("blush", R.string.rift_accent_blush, listOf(Color(0xFFFFE1B8), Color(0xFFFFB3C7), Color(0xFFD9B8FF))),
+        Choice("tropic", R.string.rift_accent_tropic, listOf(Color(0xFFFFF44F), Color(0xFF4EE58A), Color(0xFF22C7E0))),
+        Choice("aurora", R.string.rift_accent_aurora, listOf(Color(0xFF9CFF7A), Color(0xFF2EE6B6), Color(0xFF2EA8FF))),
+        Choice("sunset", R.string.rift_accent_sunset, listOf(Color(0xFFFFE44D), Color(0xFFFF9A3C), Color(0xFFFF5C3A))),
+        Choice("ocean", R.string.rift_accent_ocean, listOf(Color(0xFF6CF2F2), Color(0xFF3DB4FF))),
     )
 
     private const val PREFS = "rift_prefs"

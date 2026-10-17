@@ -89,7 +89,7 @@ internal fun plateSubtext(focused: Boolean): Color =
     if (focused) RiftAccent.current.onAccent.copy(alpha = 0.72f) else RiftColors.OnSurfaceVariant
 
 /**
- * A titled group of settings rows: a large heading, then one plate per row.
+ * A group of settings rows under a small caption, one plate per row.
  */
 @Composable
 internal fun SettingsGroup(
@@ -97,14 +97,16 @@ internal fun SettingsGroup(
     title: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (title != null) {
+            // Same small caption as the group names in the section list.
             Text(
-                text = title,
-                color = RiftColors.OnSurface,
-                fontSize = 22.sp,
+                text = title.uppercase(),
+                color = RiftColors.OnSurfaceVariant,
+                fontSize = 12.5.sp,
                 fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier.padding(start = 6.dp),
+                letterSpacing = 1.5.sp,
+                modifier = Modifier.padding(start = 18.dp),
             )
         }
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(PlateGap)) {
@@ -564,69 +566,5 @@ internal fun RiftRoundButton(
         contentAlignment = Alignment.Center,
     ) {
         Icon(imageVector = icon, contentDescription = description, tint = plateText(focused))
-    }
-}
-
-/** A circular badge for a section: a light symbol on a faint disc. */
-@Composable
-internal fun SectionBadge(icon: ImageVector, size: Dp = RiftSizes.button, focused: Boolean = false) {
-    val colors = iconColors(focused)
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(colors.disc),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = colors.symbol,
-            modifier = Modifier.size(size * 0.5f),
-        )
-    }
-}
-
-/** A large card for the main action of a page, such as connecting a PC: big icon, big title, one press. */
-@Composable
-internal fun BigActionCard(
-    title: String,
-    subtitle: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
-    val colors = iconColors(focused)
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = 120.dp)
-            .focusChrome(focused = focused, shape = PlateShape)
-            .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 20.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(20.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .clip(CircleShape)
-                .background(colors.disc),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(imageVector = icon, contentDescription = null, tint = colors.symbol, modifier = Modifier.size(38.dp))
-        }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(text = title, color = plateText(focused), fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
-            Text(text = subtitle, color = plateSubtext(focused), fontSize = 16.sp, lineHeight = 22.sp)
-        }
-        Icon(
-            imageVector = Icons.Rounded.ChevronRight,
-            contentDescription = null,
-            tint = plateSubtext(focused),
-            modifier = Modifier.size(30.dp),
-        )
     }
 }
