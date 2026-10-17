@@ -59,6 +59,10 @@ import app.gamenative.ui.component.QuickMenuAdjustmentRow
 import app.gamenative.ui.component.QuickMenuToggleRow
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.MathUtils.normalizedProgress
+import dev.rift.launcher.settings.PlateShape
+import dev.rift.launcher.settings.plateFill
+import dev.rift.launcher.settings.plateSubtext
+import dev.rift.launcher.settings.plateText
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -714,7 +718,6 @@ private fun SelectorRow(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(14.dp)
     val menuFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(expanded) {
@@ -735,35 +738,8 @@ private fun SelectorRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 2.dp)
-                .clip(shape)
-                .background(
-                    if (isFocused) {
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                accentColor.copy(alpha = 0.16f),
-                                accentColor.copy(alpha = 0.08f),
-                            ),
-                        )
-                    } else {
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.10f),
-                            ),
-                        )
-                    },
-                )
-                .then(
-                    if (isFocused) {
-                        Modifier.border(
-                            width = 2.dp,
-                            color = accentColor.copy(alpha = 0.7f),
-                            shape = shape,
-                        )
-                    } else {
-                        Modifier
-                    }
-                )
+                // Rift: the focused plate is filled with the accent, dark text on it, no frame.
+                .plateFill(focused = isFocused, shape = PlateShape, rest = Color.Transparent)
                 .then(
                     if (focusRequester != null) {
                         Modifier.focusRequester(focusRequester)
@@ -805,21 +781,21 @@ private fun SelectorRow(
                 Text(
                     text = valueText,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = plateText(isFocused),
                     fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
                 )
                 if (!descriptionText.isNullOrBlank()) {
                     Text(
                         text = descriptionText,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = plateSubtext(isFocused),
                     )
                 }
             }
             Icon(
                 imageVector = Icons.Default.ArrowDropDown,
                 contentDescription = null,
-                tint = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = if (isFocused) plateText(true) else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 

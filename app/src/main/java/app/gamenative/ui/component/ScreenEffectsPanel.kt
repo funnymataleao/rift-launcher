@@ -42,6 +42,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -82,6 +83,11 @@ import app.gamenative.utils.BrightnessManager
 import com.winlator.container.Container
 import com.winlator.renderer.GLRenderer
 import com.winlator.renderer.VulkanRenderer
+import dev.rift.launcher.settings.PlateShape
+import dev.rift.launcher.settings.plateFill
+import dev.rift.launcher.settings.plateSubtext
+import dev.rift.launcher.settings.plateText
+import dev.rift.launcher.ui.theme.RiftAccent
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -960,6 +966,8 @@ fun ScreenEffectsPanel(
 }
 }
 
+// Rift: the effect rows are the in-game panel's own plates: the focused one is filled with the accent,
+// dark text on it, no frame.
 @Composable
 private fun ScreenEffectAdjustmentRow(
     title: String,
@@ -969,245 +977,15 @@ private fun ScreenEffectAdjustmentRow(
     onIncrease: () -> Unit,
     focusRequester: FocusRequester? = null,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
-    val accentColor = PluviaTheme.colors.accentPurple
-    val shape = RoundedCornerShape(14.dp)
-    var isAdjustmentLocked by remember { mutableStateOf(false) }
-    val inputBypass = LocalImmersiveInputBypass.current
-    LaunchedEffect(isFocused, isAdjustmentLocked) {
-        inputBypass.reportAdjustment(interactionSource, if (isFocused && isAdjustmentLocked) (onDecrease to onIncrease) else null)
-    }
-
-    Column(
-        modifier = Modifier
-            .padding(horizontal = 8.dp, vertical = 2.dp)
-            .clip(shape)
-            .background(
-                if (isFocused) {
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            accentColor.copy(alpha = 0.16f),
-                            accentColor.copy(alpha = 0.08f),
-                        ),
-                    )
-                } else {
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.10f),
-                        ),
-                    )
-                },
-            )
-            .then(
-                if (isFocused && !isAdjustmentLocked) {
-                    Modifier.border(
-                        width = 2.dp,
-                        color = accentColor.copy(alpha = 0.7f),
-                        shape = shape,
-                    )
-                } else {
-                    Modifier
-                },
-            )
-            .then(
-                if (focusRequester != null) {
-                    Modifier.focusRequester(focusRequester)
-                } else {
-                    Modifier
-                }
-            )
-            .onFocusChanged {
-                if (!it.isFocused) {
-                    isAdjustmentLocked = false
-                }
-            }
-            .focusable(interactionSource = interactionSource)
-            .onPreviewKeyEvent { keyEvent ->
-                if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN && isFocused) {
-                    when {
-                        // Immersive only: A only LOCKS, never toggles off — see
-                        // QuickMenuAdjustmentRow's identical handler for why. Flat mode keeps
-                        // the original A-toggles behavior.
-                        keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_A &&
-                            (!inputBypass.active || !isAdjustmentLocked) -> {
-                            isAdjustmentLocked = if (inputBypass.active) true else !isAdjustmentLocked
-                            true
-                        }
-
-                        isAdjustmentLocked &&
-                            (keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_B ||
-                                (inputBypass.active && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BACK)) -> {
-                            isAdjustmentLocked = false
-                            true
-                        }
-
-                        isAdjustmentLocked && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_LEFT -> {
-                            onDecrease()
-                            true
-                        }
-
-                        isAdjustmentLocked && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                            onIncrease()
-                            true
-                        }
-
-                        else -> false
-                    }
-                } else {
-                    false
-                }
-            }
-            .selectable(
-                selected = isFocused,
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = {},
-            )
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = valueText,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (isAdjustmentLocked) {
-                    Text(
-                        text = "●",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = accentColor,
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(36.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            ScreenEffectAdjustmentButton(
-                text = "-",
-                rowIsFocused = isFocused,
-                isAdjustmentLocked = isAdjustmentLocked,
-                accentColor = accentColor,
-                onClick = onDecrease,
-            )
-
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-                contentAlignment = Alignment.Center,
-            ) {
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(999.dp)),
-                    color = accentColor,
-                    trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-                )
-
-                Row(modifier = Modifier.fillMaxSize()) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onDecrease,
-                            ),
-                    )
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onIncrease,
-                            ),
-                    )
-                }
-            }
-
-            ScreenEffectAdjustmentButton(
-                text = "+",
-                rowIsFocused = isFocused,
-                isAdjustmentLocked = isAdjustmentLocked,
-                accentColor = accentColor,
-                onClick = onIncrease,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ScreenEffectAdjustmentButton(
-    text: String,
-    rowIsFocused: Boolean,
-    isAdjustmentLocked: Boolean,
-    accentColor: Color,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .width(44.dp)
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(10.dp))
-            .background(
-                if (isAdjustmentLocked) {
-                    accentColor.copy(alpha = 0.25f)
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (rowIsFocused) 0.32f else 0.45f)
-                },
-            )
-            .border(
-                width = if (isAdjustmentLocked) 2.dp else 1.dp,
-                color = if (isAdjustmentLocked) {
-                    accentColor.copy(alpha = 0.9f)
-                } else {
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
-                },
-                shape = RoundedCornerShape(10.dp),
-            )
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = if (isAdjustmentLocked) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
+    QuickMenuAdjustmentRow(
+        title = title,
+        valueText = valueText,
+        progress = progress,
+        onDecrease = onDecrease,
+        onIncrease = onIncrease,
+        accentColor = RiftAccent.current.main,
+        focusRequester = focusRequester,
+    )
 }
 
 @Composable
@@ -1217,77 +995,13 @@ private fun ScreenEffectToggleRow(
     enabled: Boolean,
     onToggle: () -> Unit,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
-    val accentColor = PluviaTheme.colors.accentPurple
-    val inputBypass = LocalImmersiveInputBypass.current
-    LaunchedEffect(isFocused) {
-        inputBypass.reportActivate(interactionSource, if (isFocused) onToggle else null)
-    }
-
-    Row(
-        modifier = Modifier
-            .padding(horizontal = 8.dp, vertical = 2.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(
-                if (isFocused) {
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            accentColor.copy(alpha = 0.16f),
-                            accentColor.copy(alpha = 0.08f),
-                        ),
-                    )
-                } else {
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.10f),
-                        ),
-                    )
-                },
-            )
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        width = 2.dp,
-                        color = accentColor.copy(alpha = 0.7f),
-                        shape = RoundedCornerShape(14.dp),
-                    )
-                } else {
-                    Modifier
-                },
-            )
-            .selectable(
-                selected = isFocused,
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onToggle,
-            )
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
-            )
-            if (!subtitle.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-
-        Box(contentAlignment = Alignment.CenterEnd) {
-            ScreenEffectSwitch(enabled = enabled, accentColor = accentColor)
-        }
-    }
+    QuickMenuToggleRow(
+        title = title,
+        subtitle = subtitle,
+        enabled = enabled,
+        onToggle = onToggle,
+        accentColor = RiftAccent.current.main,
+    )
 }
 
 @Composable
@@ -1304,37 +1018,12 @@ private fun ScreenEffectRadioRow(
     LaunchedEffect(isFocused) {
         inputBypass.reportActivate(interactionSource, if (isFocused) onSelect else null)
     }
-    val accentColor = PluviaTheme.colors.accentPurple
-    val shape = RoundedCornerShape(14.dp)
 
     Row(
         modifier = Modifier
+            .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 2.dp)
-            .clip(shape)
-            .background(
-                if (isFocused) {
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            accentColor.copy(alpha = 0.16f),
-                            accentColor.copy(alpha = 0.08f),
-                        ),
-                    )
-                } else {
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.10f),
-                        ),
-                    )
-                },
-            )
-            .then(
-                if (isFocused) {
-                    Modifier.border(width = 2.dp, color = accentColor.copy(alpha = 0.7f), shape = shape)
-                } else {
-                    Modifier
-                },
-            )
+            .plateFill(focused = isFocused, shape = PlateShape, rest = Color.Transparent)
             .then(
                 if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier,
             )
@@ -1348,13 +1037,11 @@ private fun ScreenEffectRadioRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        ScreenEffectRadioIndicator(selected = selected, accentColor = accentColor)
-
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = plateText(isFocused),
                 fontWeight = if (selected || isFocused) FontWeight.SemiBold else FontWeight.Medium,
             )
             if (!subtitle.isNullOrBlank()) {
@@ -1362,63 +1049,20 @@ private fun ScreenEffectRadioRow(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = plateSubtext(isFocused),
                 )
             }
         }
-    }
-}
 
-@Composable
-private fun ScreenEffectRadioIndicator(selected: Boolean, accentColor: Color) {
-    Box(
-        modifier = Modifier
-            .size(22.dp)
-            .clip(CircleShape)
-            .border(
-                width = 2.dp,
-                color = if (selected) accentColor else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                shape = CircleShape,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
+        // The chosen mode carries a check, as in Rift's lists.
         if (selected) {
-            Box(
-                modifier = Modifier
-                    .size(12.dp)
-                    .clip(CircleShape)
-                    .background(accentColor),
+            Icon(
+                imageVector = Icons.Rounded.Check,
+                contentDescription = null,
+                tint = if (isFocused) plateText(true) else RiftAccent.current.main,
+                modifier = Modifier.size(24.dp),
             )
         }
-    }
-}
-
-@Composable
-private fun ScreenEffectSwitch(
-    enabled: Boolean,
-    accentColor: Color,
-) {
-    Box(
-        modifier = Modifier
-            .width(56.dp)
-            .height(32.dp)
-            .clip(RoundedCornerShape(999.dp))
-            .background(
-                if (enabled) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
-            )
-            .border(
-                width = 1.dp,
-                color = if (enabled) accentColor.copy(alpha = 0.8f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
-                shape = RoundedCornerShape(999.dp),
-            )
-            .padding(4.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(22.dp)
-                .align(if (enabled) Alignment.CenterEnd else Alignment.CenterStart)
-                .background(Color.White, CircleShape),
-        )
     }
 }
 
