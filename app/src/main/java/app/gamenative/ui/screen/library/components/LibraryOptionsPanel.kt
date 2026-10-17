@@ -38,6 +38,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ExpandLess
@@ -120,6 +122,8 @@ fun LibraryOptionsPanel(
     panelShape: Shape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp),
     panelShadowElevation: Dp = 24.dp,
     showCloseButton: Boolean = true,
+    // Rift: a tab other than PC games has its own short list of groups instead of GameNative's.
+    tabGroups: List<TabFilterGroup>? = null,
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
     // Accordion: only one group is open at a time. B closes the open group first, then the panel.
@@ -225,6 +229,42 @@ fun LibraryOptionsPanel(
                             .verticalScroll(rememberScrollState())
                             .padding(vertical = 12.dp)
                     ) {
+                        if (tabGroups != null) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .focusGroup()
+                                    .padding(horizontal = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                tabGroups.forEachIndexed { index, group ->
+                                    val key = "tab$index"
+                                    FilterAccordion(
+                                        label = group.label,
+                                        valueText = group.value,
+                                        icon = group.icon,
+                                        expanded = openGroup == key,
+                                        onToggle = { toggleGroup(key) },
+                                        headerFocus = if (index == 0) firstItemFocusRequester else headerRequester(key),
+                                    ) {
+                                        group.options.forEach { option ->
+                                            OptionListItem(
+                                                text = option.text,
+                                                selected = option.selected,
+                                                onClick = {
+                                                    option.onPick()
+                                                    openGroup = null
+                                                    runCatching {
+                                                        (if (index == 0) firstItemFocusRequester else headerRequester(key)).requestFocus()
+                                                    }
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -290,7 +330,6 @@ fun LibraryOptionsPanel(
                                     )
                                 }
                             }
-                        }
 
                         // Steam collections — local view filter, shown only when Steam is connected.
                         if (isSteamConnected) {
@@ -299,6 +338,7 @@ fun LibraryOptionsPanel(
                                 selectedIds = selectedSteamCollectionIds,
                                 counts = steamCollectionCounts,
                                 titleRes = R.string.steam_collections_title,
+                                icon = Icons.Default.Folder,
                                 loadingRes = R.string.steam_collections_loading,
                                 clearRes = R.string.steam_collections_clear,
                                 // No static collections to list, but still explain why (offline /
@@ -322,6 +362,7 @@ fun LibraryOptionsPanel(
                                 selectedIds = selectedCuratedListIds,
                                 counts = curatedListCounts,
                                 titleRes = R.string.curated_lists_title,
+                                icon = Icons.Default.Star,
                                 loadingRes = R.string.curated_lists_loading,
                                 clearRes = R.string.curated_lists_clear,
                                 emptyRes = R.string.curated_lists_empty,
@@ -336,6 +377,8 @@ fun LibraryOptionsPanel(
                                 onToggle = onCuratedListToggle,
                                 onClear = onClearCuratedLists,
                             )
+                        }
+                        }
                         }
 
                         Spacer(modifier = Modifier.height(24.dp))
@@ -362,6 +405,7 @@ private fun CollectionFilterSection(
     selectedIds: Set<String>,
     counts: Map<String, Int>,
     @StringRes titleRes: Int,
+    icon: ImageVector,
     @StringRes loadingRes: Int,
     @StringRes clearRes: Int,
     @StringRes emptyRes: Int? = null,
@@ -372,77 +416,61 @@ private fun CollectionFilterSection(
     onToggle: (String) -> Unit,
     onClear: () -> Unit,
 ) {
-
-    Spacer(modifier = Modifier.height(20.dp))
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .focusRequester(headerFocus)
-            .clickable { onExpandedChange(!expanded) }
-            .padding(end = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+    val chosen = collections?.filter { it.id in selectedIds }.orEmpty()
+    val valueText = when (chosen.size) {
+        0 -> stringResource(R.string.rift_filter_any)
+        1 -> chosen.first().name
+        else -> chosen.first().name + " +" + (chosen.size - 1)
+    }
+    FilterAccordion(
+        label = stringResource(titleRes),
+        valueText = valueText,
+        icon = icon,
+        expanded = expanded,
+        onToggle = { onExpandedChange(!expanded) },
+        headerFocus = headerFocus,
     ) {
-        OptionSectionHeader(text = stringResource(titleRes))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (selectedIds.isNotEmpty()) {
-                TextButton(onClick = onClear) {
-                    Text(stringResource(clearRes))
+        when {
+            collections == null -> {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(loadingRes),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
-            Icon(
-                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-    AnimatedVisibility(visible = expanded) {
-        Column {
-            when {
-                collections == null -> {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = stringResource(loadingRes),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+            collections.isEmpty() -> {
+                val messages = messageRes.ifEmpty { listOfNotNull(emptyRes) }
+                messages.forEach { message -> CollectionFilterMessage(message) }
+            }
+            else -> {
+                if (selectedIds.isNotEmpty()) {
+                    OptionListItem(
+                        text = stringResource(clearRes),
+                        selected = false,
+                        onClick = onClear,
+                        icon = Icons.Default.Close,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
-                collections.isEmpty() -> {
-                    val messages = messageRes.ifEmpty { listOfNotNull(emptyRes) }
-                    messages.forEach { message -> CollectionFilterMessage(message) }
+                collections.sortedBy { it.name.lowercase() }.forEach { collection ->
+                    OptionListItem(
+                        text = collection.name,
+                        selected = collection.id in selectedIds,
+                        onClick = { onToggle(collection.id) },
+                        trailingText = counts[collection.id]?.toString(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
-                else -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusGroup()
-                            .padding(horizontal = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                    ) {
-                        collections.sortedBy { it.name.lowercase() }.forEach { collection ->
-                            OptionListItem(
-                                text = collection.name,
-                                selected = collection.id in selectedIds,
-                                onClick = { onToggle(collection.id) },
-                                trailingText = counts[collection.id]?.toString(),
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                    }
-                    messageRes.forEach { message -> CollectionFilterMessage(message) }
-                }
+                messageRes.forEach { message -> CollectionFilterMessage(message) }
             }
         }
     }
@@ -477,6 +505,11 @@ private val STATUS_FILTERS = listOf(
     AppFilter.PROVEN_GPU,
     AppFilter.VR,
 )
+
+/** One group of a non-PC tab's filters: its current value and the options (single choice). */
+class TabFilterGroup(val label: String, val value: String, val icon: ImageVector, val options: List<TabFilterOption>)
+
+class TabFilterOption(val text: String, val selected: Boolean, val onPick: () -> Unit)
 
 @Composable
 private fun summarize(options: List<AppFilter>, selected: EnumSet<AppFilter>): String {
