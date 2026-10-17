@@ -588,6 +588,11 @@ fun RiftHomeScreen(
         // Compose can hand focus back to the window (Back at the top of the focus tree), and then no
         // key reaches the screen at all: take the view's focus back first.
         if (!composeView.hasFocus()) composeView.requestFocus()
+        // Back from a stream the game's page is still open: the focus goes into it.
+        if (openedAppId != null && artItem == null && !appsOpen) {
+            if (!pageFocused) runCatching { pageFocus.requestFocus() }
+            return
+        }
         // Behind the apps grid the covers must not take focus; the grid keeps its own.
         if (appsOpen || openedAppId != null || artItem != null) return
         // Across a frame, so the cover sees its focus request change even if it was the last one.
@@ -1150,13 +1155,12 @@ fun RiftHomeScreen(
                 },
         ) {
             BackHandler(enabled = openedAppId != null) { closePage() }
-            // From the PC streaming tab the page streams the game; the page closes first, so the stream
-            // ends back on the same tab and cover.
+            // From the PC streaming tab the page streams the game; the page stays open, so the stream
+            // ends back on the game's page, and B from there returns to the same cover.
             val streamAction = remember(item.appId, openedForStream, streamTab) {
                 if (openedForStream && streamTab != null) {
                     RiftStreamAction {
                         sounds.play(RiftSound.Launch)
-                        closePage()
                         streamTab.launch(context, item)
                     }
                 } else {
