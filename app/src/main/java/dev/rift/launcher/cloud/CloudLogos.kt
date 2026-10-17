@@ -1,6 +1,7 @@
 package dev.rift.launcher.cloud
 
 import android.content.Context
+import android.graphics.BitmapFactory
 import app.gamenative.data.parseSteamSearchAppId
 import app.gamenative.utils.Net
 import dev.rift.launcher.art.ArtError
@@ -28,13 +29,25 @@ import timber.log.Timber
  * Transparent title logos for cloud games, shown over the home's art like the PC games' logos. The
  * Microsoft Store has no such logo (its "Logo" is a square tile), so the game is looked up on Steam by its
  * English name and Steam's library logo is used; a game Steam does not have is looked up on SteamGridDB
- * when a key is saved in the settings. Found logos and misses are kept in a file; a miss is tried again
- * after a week, a network failure on the next request.
+ * when a key is saved in the settings. Every picture is checked before it is used: a logo has see-through
+ * parts, so an opaque picture (a grey square, a store tile) is passed over for the
+ * next one. Found logos and misses are kept in a file; a miss is tried again after a week, a network
+ * failure on the next request.
  */
 object CloudLogos {
     private const val STEAM_ASSETS = "https://shared.steamstatic.com/store_item_assets/steam/apps"
     private const val MISS_RETRY_MS = 7L * 24 * 60 * 60 * 1000
     private const val PARALLEL = 2
+
+    /** SteamGridDB pictures tried per game before giving up on it. */
+    private const val SGDB_TRIES = 3
+
+    /** The picture is checked at about this size; a logo is a few hundred pixels wide. */
+    private const val CHECK_PX = 128
+
+    /** Share of see-through pixels a picture needs to count as a logo rather than a tile or a placeholder. */
+    private const val MIN_TRANSPARENT = 0.05f
+    private const val MAX_BYTES = 8L * 1024 * 1024
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val gate = Semaphore(PARALLEL)
@@ -49,7 +62,7 @@ object CloudLogos {
         RegexOption.IGNORE_CASE,
     )
 
-    private fun file(context: Context) = File(context.applicationContext.filesDir, "cloud/logos.json")
+    private fun file(context: Context) = File(context.applicationContext.filesDir, "cloud/logos-v2.json")
 
     /** Product id to logo URL, for the games looked up so far that have one. */
     fun logos(context: Context): StateFlow<Map<String, String>> {
@@ -100,9 +113,8 @@ object CloudLogos {
             if (steamAppId != null) break
         }
         steamAppId?.let { id ->
-            val url = "$STEAM_ASSETS/$id/logo.png"
-            when (exists(url)) {
-                true -> return url
+            when (isLogo("$STEAM_ASSETS/$id/logo.png")) {
+                true -> return "$STEAM_ASSETS/$id/logo.png"
                 null -> failed = true
                 false -> Unit
             }
@@ -115,7 +127,13 @@ object CloudLogos {
                 } else {
                     SteamGridDbClient.resolve(key, SteamGridDbClient.Game(null, names.first()))
                 }
-                SteamGridDbClient.options(key, path, ArtKind.Logo, 0).firstOrNull()?.url?.let { return it }
+                for (option in SteamGridDbClient.options(key, path, ArtKind.Logo, 0).take(SGDB_TRIES)) {
+                    when (isLogo(option.url)) {
+                        true -> return option.url
+                        null -> failed = true
+                        false -> Unit
+                    }
+                }
             } catch (e: ArtError) {
                 if (e === ArtError.Network) failed = true
             }
@@ -132,16 +150,45 @@ object CloudLogos {
         null
     }
 
-    /** Whether [url] is an image Steam has; null when the request failed. */
-    private fun exists(url: String): Boolean? = try {
-        Net.http.newCall(Request.Builder().url(url).head().build()).execute().use { it.isSuccessful }
-    } catch (e: IOException) {
-        null
+    /**
+     * Whether [url] is a usable logo: an image that loads and has see-through parts. False for a missing
+     * file, an opaque picture or something that is not an image; null when the request failed.
+     */
+    private fun isLogo(url: String): Boolean? {
+        val bytes = try {
+            Net.http.newCall(Request.Builder().url(url).build()).execute().use { response ->
+                if (!response.isSuccessful) return false
+                val body = response.body
+                if (body.contentLength() > MAX_BYTES) return false
+                body.bytes()
+            }
+        } catch (e: IOException) {
+            Timber.w(e, "Cloud logo download failed: %s", url)
+            return null
+        }
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return false
+        var sample = 1
+        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= CHECK_PX) sample *= 2
+        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
+            ?: return false
+        try {
+            if (!bitmap.hasAlpha()) return false
+            val pixels = IntArray(bitmap.width * bitmap.height)
+            bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+            val clear = pixels.count { (it ushr 24) < 0x20 }
+            return clear >= pixels.size * MIN_TRANSPARENT
+        } finally {
+            bitmap.recycle()
+        }
     }
 
     private fun load(context: Context) = synchronized(this) {
         if (loaded) return@synchronized
         loaded = true
+        // The first version's file kept pictures it never checked; they are looked up again.
+        File(context.applicationContext.filesDir, "cloud/logos.json").delete()
         runCatching {
             val f = file(context).takeIf { it.exists() } ?: return@runCatching
             val json = JSONObject(f.readText())
