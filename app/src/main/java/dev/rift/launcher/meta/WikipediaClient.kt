@@ -97,8 +97,7 @@ object WikipediaClient {
             ).optJSONObject("query")?.optJSONArray("search").objects()
             if (hits.isEmpty()) return@withContext MetaResult.Miss("no article found")
 
-            // The article's own name, without a "(2017 video game)" disambiguator.
-            fun bare(name: String) = name.replace(Regex("\\s*\\([^)]*\\)\\s*$"), "")
+            // The article's own name is compared without a "(2017 video game)" disambiguator.
             val exact = hits.filter { looseTitleKey(bare(it.optString("title"))) == key }
             val subtitled = hits.filter { hit ->
                 val name = bare(hit.optString("title"))
@@ -126,8 +125,11 @@ object WikipediaClient {
                 if (extract.isNotEmpty() && aboutAGame && onSystem) page else null
             }
             if (verified.isEmpty()) return@withContext MetaResult.Miss("article is not about this game on this system")
-            if (verified.size > 1) return@withContext MetaResult.Miss("several articles fit")
-            val page = verified.single()
+            // Several fit ("Batman Forever" the film and the game, or one game per system): the one whose first
+            // sentences name this system wins when it is alone in that.
+            val page = verified.singleOrNull()
+                ?: verified.filter { system != null && system.pattern.containsMatchIn(page300(it)) }.singleOrNull()
+                ?: return@withContext MetaResult.Miss("several articles fit")
 
             val facts = page.optJSONObject("pageprops")?.optString("wikibase_item")?.takeIf { it.isNotEmpty() }
                 ?.let { wikidata(it, language) }
@@ -144,6 +146,80 @@ object WikipediaClient {
             MetaResult.Unreachable(e.reason)
         }
     }
+
+    private fun page300(page: JSONObject): String = page.optString("extract").trim().take(300).lowercase()
+
+    /**
+     * What Wikipedia has for [query] as a list to choose from: articles about a video game in the app's
+     * language, then English (pages that are plainly not about a game are left out, nothing else is judged).
+     */
+    suspend fun candidates(query: String, platformId: String?, android: Boolean, appLanguage: String): List<MetaCandidate> =
+        withContext(Dispatchers.IO) {
+            val system = if (android) mobile else system(platformId)
+            val out = mutableListOf<MetaCandidate>()
+            for (language in listOf(appLanguage, "en").distinct()) {
+                try {
+                    val hits = json(
+                        api(language).newBuilder()
+                            .addQueryParameter("action", "query").addQueryParameter("list", "search")
+                            .addQueryParameter("srsearch", buildString {
+                                append(query)
+                                system?.let { append(' ').append(it.search) }
+                                append(if (language == "ru") " игра" else " video game")
+                            })
+                            .addQueryParameter("srlimit", "8").addQueryParameter("srnamespace", "0")
+                            .addQueryParameter("format", "json").addQueryParameter("utf8", "1")
+                            .build().toString(),
+                    ).optJSONObject("query")?.optJSONArray("search").objects()
+                    if (hits.isEmpty()) continue
+                    val pages = json(
+                        api(language).newBuilder()
+                            .addQueryParameter("action", "query").addQueryParameter("prop", "extracts|pageprops")
+                            .addQueryParameter("exintro", "1").addQueryParameter("explaintext", "1")
+                            .addQueryParameter("exlimit", "8").addQueryParameter("ppprop", "wikibase_item")
+                            .addQueryParameter("redirects", "1").addQueryParameter("format", "json")
+                            .addQueryParameter("pageids", hits.joinToString("|") { it.optLong("pageid").toString() })
+                            .build().toString(),
+                    ).optJSONObject("query")?.optJSONObject("pages") ?: continue
+                    for (hit in hits) {
+                        val id = hit.optLong("pageid")
+                        val page = pages.optJSONObject(id.toString()) ?: continue
+                        val extract = page.optString("extract").trim()
+                        val lead = extract.take(1500).lowercase()
+                        if (extract.isEmpty() || !gameWords.containsMatchIn(lead.take(400))) continue
+                        val title = hit.optString("title")
+                        val qid = page.optJSONObject("pageprops")?.optString("wikibase_item").orEmpty()
+                        val year = Regex("\\((\\d{4}) ").find(title)?.groupValues?.get(1)?.toIntOrNull()
+                            ?: Regex("\\b(19[7-9]\\d|20[0-3]\\d)\\b").find(lead.take(400))?.value?.toIntOrNull()
+                        out += MetaCandidate(
+                            source = "wikipedia",
+                            ref = "$language:$id:$qid",
+                            title = bare(title),
+                            platform = system?.takeIf { it.pattern.containsMatchIn(lead) }?.search.orEmpty(),
+                            year = year,
+                            meta = GameMeta(description = trim(extract), source = "wikipedia"),
+                        )
+                    }
+                } catch (e: Failure) {
+                    Timber.tag(TAG).i("Wikipedia candidates (%s) unavailable: %s", language, e.reason)
+                }
+            }
+            out.distinctBy { it.title.lowercase() + it.year }.take(8)
+        }
+
+    /** Adds Wikidata's genre, developer and date to a chosen article. */
+    suspend fun complete(candidate: MetaCandidate): GameMeta = withContext(Dispatchers.IO) {
+        val parts = candidate.ref.split(':')
+        val qid = parts.getOrNull(2).orEmpty()
+        val facts = if (qid.isEmpty()) null else wikidata(qid, parts[0])
+        candidate.meta.copy(
+            genres = facts?.genres.orEmpty(),
+            developer = facts?.developer.orEmpty(),
+            releaseDate = facts?.releaseDate ?: 0L,
+        )
+    }
+
+    private fun bare(name: String) = name.replace(Regex("\\s*\\([^)]*\\)\\s*$"), "")
 
     private class Facts(val genres: List<String>, val developer: String, val releaseDate: Long)
 
