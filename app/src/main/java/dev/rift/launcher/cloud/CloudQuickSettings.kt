@@ -1,6 +1,8 @@
 package dev.rift.launcher.cloud
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.VideogameAsset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -12,17 +14,24 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import app.gamenative.ui.component.QuickMenuItem
+import app.gamenative.ui.component.QuickMenuItemRow
 import app.gamenative.ui.component.QuickMenuSectionHeader
 import app.gamenative.ui.component.QuickMenuToggleRow
 import dev.rift.launcher.stream.StepRow
 import dev.rift.launcher.ui.theme.RiftAccent
 
 /**
- * The cloud game's settings in the in-game panel (the gamepad's Home): the ones worth changing while
- * playing, each applied to the stream at once by [onChange]. The rest are in Settings → Cloud streaming.
+ * The cloud game's part of the in-game panel (the gamepad's Home): xCloud's own guide, which Home no
+ * longer opens ([onXboxMenu]), then the settings worth changing while playing, each applied to the
+ * stream at once by [onChange]. The rest are in Settings → Cloud streaming.
  */
 @Composable
-internal fun CloudQuickSettings(requester: (String) -> FocusRequester, onChange: (CloudSetting, Any) -> Unit) {
+internal fun CloudQuickSettings(
+    requester: (String) -> FocusRequester,
+    onXboxMenu: () -> Unit,
+    onChange: (CloudSetting, Any) -> Unit,
+) {
     val context = LocalContext.current
     val accent = RiftAccent.current.main
     var values by remember { mutableStateOf(CloudPlaySettings.values(context)) }
@@ -31,6 +40,11 @@ internal fun CloudQuickSettings(requester: (String) -> FocusRequester, onChange:
         onChange(setting, value)
     }
 
+    QuickMenuItemRow(
+        item = QuickMenuItem(2, Icons.Rounded.VideogameAsset, R.string.rift_cloud_xbox_menu),
+        onClick = onXboxMenu,
+        focusRequester = requester(XBOX_MENU),
+    )
     QuickMenuSectionHeader(title = stringResource(R.string.rift_stream_settings), modifier = Modifier.padding(top = 12.dp))
     val stats = CloudPlaySettings.stats
     val statsOn = values[stats.key] == true
@@ -64,3 +78,5 @@ internal fun CloudQuickSettings(requester: (String) -> FocusRequester, onChange:
         )
     }
 }
+
+private const val XBOX_MENU = "xbox_menu"

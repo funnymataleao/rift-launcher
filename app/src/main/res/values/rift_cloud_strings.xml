@@ -21,6 +21,7 @@
 
     <!-- The cloud stream's settings and the in-game panel -->
     <string name="rift_cloud_menu_hint">Home: game menu</string>
+    <string name="rift_cloud_xbox_menu">Xbox menu</string>
     <string name="rift_cloud_tab_account">Account</string>
     <string name="rift_cloud_tab_stream">Stream</string>
     <string name="rift_cloud_tab_interface">Interface</string>
