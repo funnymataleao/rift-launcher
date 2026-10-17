@@ -2,6 +2,7 @@ package com.limelight.nvstream.http;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -492,7 +493,22 @@ public class NvHTTP {
         if (requestBody == null) request = _builder.get().build();
         else request = _builder.post(requestBody).build();
 
-        Response response = performAndroidTlsHack(client).newCall(request).execute();
+        Response response;
+        try {
+            response = performAndroidTlsHack(client).newCall(request).execute();
+        } catch (IOException e) {
+            throw e;
+        } catch (Exception e) {
+            // Rift: OkHttp 5 can throw a bare (undeclared) InterruptedException when a poll thread
+            // is interrupted mid-connect. Report it as the InterruptedIOException callers expect.
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+                InterruptedIOException interrupted = new InterruptedIOException(completeUrl.toString());
+                interrupted.initCause(e);
+                throw interrupted;
+            }
+            throw e;
+        }
 
         ResponseBody body = response.body();
         
