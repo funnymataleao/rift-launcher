@@ -133,7 +133,7 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
                 prefs.streamFps = fps
             },
         )
-        val bitrates = listOf(0, 10, 20, 40, 60, 80, 100)
+        val bitrates = listOf(0, 20, 50, 100, 150, 200, 300, 500)
         ChoiceChipsRow(
             title = stringResource(R.string.rift_settings_stream_bitrate),
             subtitle = stringResource(R.string.rift_settings_stream_bitrate_summary),

@@ -62,4 +62,7 @@
     <string name="rift_stream_games_note">Tick games to hide them from Rift. Hidden games come back in Settings → Hidden games.</string>
     <string name="rift_stream_hide_selected">Hide selected (%1$d)</string>
     <string name="rift_stream_settings_picture_note">Changing these reconnects the stream for a couple of seconds.</string>
+    <string name="rift_stream_tab_stream">Stream</string>
+    <string name="rift_stream_bitrate">Bitrate</string>
+    <string name="rift_stream_mbps">%1$d Mbps</string>
 </resources>

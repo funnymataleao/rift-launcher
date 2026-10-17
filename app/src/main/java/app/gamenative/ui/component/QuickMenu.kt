@@ -2152,7 +2152,7 @@ private fun QuickMenuCloseButton(
 }
 
 @Composable
-private fun QuickMenuTabButton(
+internal fun QuickMenuTabButton(
     icon: ImageVector,
     contentDescriptionResId: Int,
     selected: Boolean,
@@ -2207,7 +2207,7 @@ private fun QuickMenuTabButton(
 }
 
 @Composable
-private fun QuickMenuRailActionButton(
+internal fun QuickMenuRailActionButton(
     item: QuickMenuItem,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -2258,7 +2258,7 @@ private fun QuickMenuRailActionButton(
 }
 
 @Composable
-private fun QuickMenuChoiceChip(
+internal fun QuickMenuChoiceChip(
     text: String,
     selected: Boolean,
     accentColor: Color,
