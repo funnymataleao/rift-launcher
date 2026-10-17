@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.selectable
@@ -44,6 +45,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -62,9 +65,10 @@ import dev.rift.launcher.settings.NoteText
 import dev.rift.launcher.settings.RiftDialog
 import dev.rift.launcher.settings.RiftInputPlate
 import dev.rift.launcher.settings.RiftPillButton
-import dev.rift.launcher.settings.plateFill
 import dev.rift.launcher.settings.plateSubtext
 import dev.rift.launcher.settings.plateText
+import dev.rift.launcher.ui.blackGlass
+import dev.rift.launcher.ui.theme.RiftAccent
 import dev.rift.launcher.ui.theme.RiftColors
 import dev.rift.launcher.ui.theme.RiftShapes
 import kotlinx.coroutines.delay
@@ -184,12 +188,16 @@ fun RiftMetaPicker(
                     delay(FOCUS_RETRY_MS)
                 }
             }
-            Column(
+            // The screen behind is blurred by the home (it counts this picker as an open layer), like behind the Start
+            // menu; a little darker on top, and the list sits in a column in the middle.
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.82f))
+                    .background(Color.Black.copy(alpha = 0.55f))
                     .onFocusChanged { contentFocused = it.hasFocus },
+                contentAlignment = Alignment.TopCenter,
             ) {
+            Column(modifier = Modifier.fillMaxSize().widthIn(max = 820.dp)) {
                 Text(
                     text = stringResource(R.string.rift_meta_pick_title, current.name),
                     color = RiftColors.OnSurface,
@@ -197,18 +205,18 @@ fun RiftMetaPicker(
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 48.dp, end = 48.dp, top = 28.dp),
+                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 40.dp),
                 )
                 Text(
                     text = stringResource(R.string.rift_meta_pick_hint),
                     color = RiftColors.OnSurfaceVariant,
                     fontSize = 14.sp,
-                    modifier = Modifier.padding(horizontal = 48.dp, vertical = 4.dp),
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
                 )
                 SearchPlate(
                     query = query,
                     onClick = { editing = true },
-                    modifier = Modifier.padding(horizontal = 48.dp, vertical = 12.dp).focusRequester(plateFocus),
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp).focusRequester(plateFocus),
                 )
                 Box(modifier = Modifier.weight(1f).fillMaxSize()) {
                     when {
@@ -217,7 +225,7 @@ fun RiftMetaPicker(
                             stringResource(if (search?.unreachable == true) R.string.rift_meta_offline else R.string.rift_meta_empty),
                         )
                         else -> LazyColumn(
-                            contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 8.dp, bottom = 120.dp),
+                            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 120.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp),
                             modifier = Modifier.fillMaxSize().onFocusChanged { listFocused = it.hasFocus },
                         ) {
@@ -242,6 +250,7 @@ fun RiftMetaPicker(
                         }
                     }
                 }
+            }
             }
             if (editing) {
                 QueryDialog(
@@ -270,7 +279,7 @@ private fun SearchPlate(query: String, onClick: () -> Unit, modifier: Modifier =
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .plateFill(focused, RiftShapes.full, rest = RiftColors.SurfaceContainerHigh)
+            .glassPlate(focused, RiftShapes.full)
             .selectable(selected = focused, interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = 22.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -308,7 +317,7 @@ private fun CandidateRow(candidate: MetaCandidate, saving: Boolean, onClick: () 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .plateFill(focused, RiftShapes.card, rest = RiftColors.SurfaceContainerHigh)
+            .glassPlate(focused, RiftShapes.card)
             .selectable(selected = focused, interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = 22.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -386,3 +395,8 @@ private fun QueryDialog(initial: String, onSave: (String) -> Unit, onDismiss: ()
         NoteText(stringResource(R.string.rift_meta_query_hint))
     }
 }
+
+/** A black glass plate like the Start menu's; the accent fills it while it has focus. */
+@Composable
+private fun Modifier.glassPlate(focused: Boolean, shape: Shape): Modifier =
+    if (focused) clip(shape).background(RiftAccent.current.brush) else clip(shape).blackGlass(shape)

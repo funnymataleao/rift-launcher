@@ -1126,7 +1126,7 @@ fun RiftHomeScreen(
     }
     val blur by animateDpAsState(if (overlayOpen) 28.dp else 0.dp, tween(300), label = "backdropBlur")
     // A menu (or the art picker) over a library blurs the library itself, like the home under its menus.
-    val libraryBlur by animateDpAsState(if (libraryOpen && (libraryMenuOpen || gameOptionsOpen || artItem != null)) 28.dp else 0.dp, tween(300), label = "libraryBlur")
+    val libraryBlur by animateDpAsState(if (libraryOpen && (libraryMenuOpen || gameOptionsOpen || artItem != null || metaItem != null)) 28.dp else 0.dp, tween(300), label = "libraryBlur")
 
     val rightStick = rememberRightStick()
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
