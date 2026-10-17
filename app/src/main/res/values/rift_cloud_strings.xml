@@ -76,8 +76,9 @@
     <string name="rift_cloud_set_resolution">Stream resolution</string>
     <string name="rift_cloud_set_codec">Picture quality</string>
     <string name="rift_cloud_set_codec_summary">H.264 profile: higher is sharper but heavier</string>
-    <string name="rift_cloud_set_bitrate">Maximum bitrate</string>
-    <string name="rift_cloud_set_bitrate_summary">Mbit/s. A limit can make the picture worse</string>
+    <string name="rift_cloud_opt_server_max">Maximum</string>
+    <string name="rift_cloud_set_bitrate">Bitrate limit</string>
+    <string name="rift_cloud_set_bitrate_summary">“Maximum” is all Xbox\'s server sends. The numbers, in Mbit/s, only cut the stream for a weak network</string>
     <string name="rift_cloud_set_prevent_drops">Keep the resolution</string>
     <string name="rift_cloud_set_combine_audio">Combine sound and video</string>
     <string name="rift_cloud_set_combine_audio_summary">May fix lagging sound. Experimental</string>

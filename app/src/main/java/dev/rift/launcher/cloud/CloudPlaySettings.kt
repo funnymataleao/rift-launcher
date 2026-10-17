@@ -177,7 +177,8 @@ object CloudPlaySettings {
                 ),
                 CloudSetting.Choice(
                     "stream.video.maxBitrate", P, R.string.rift_cloud_set_bitrate, Icons.Rounded.Speed,
-                    listOf(CloudOpt(0, R.string.rift_cloud_opt_unlimited)) + listOf(2, 4, 6, 8, 10, 12).map { CloudOpt(it * MEGABIT, text = "$it") },
+                    // The page's own scale ends at 15: that is its "no limit", the most Xbox's server sends.
+                    listOf(3, 5, 8, 10, 12, 14).map { CloudOpt(it * MEGABIT, text = "$it") } + CloudOpt(0, R.string.rift_cloud_opt_server_max),
                     0, summary = R.string.rift_cloud_set_bitrate_summary, chips = true,
                 ),
                 CloudSetting.Toggle("stream.video.preventResolutionDrops", P, R.string.rift_cloud_set_prevent_drops, Icons.Rounded.Layers, false),
