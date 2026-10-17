@@ -2273,7 +2273,7 @@ private fun SearchField(search: SearchState) {
         PillButton(
             onClick = search.onOpen,
             background = { focused -> solid(if (focused) RiftColors.SurfaceContainerHigh else Color.Transparent) },
-            modifier = Modifier.width(320.dp).blackGlass(RiftShapes.full),
+            modifier = Modifier.widthIn(max = 320.dp).height(RiftSizes.button).clip(RiftShapes.full).blackGlass(RiftShapes.full),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -2296,8 +2296,8 @@ private fun SearchField(search: SearchState) {
     LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
     Row(
         modifier = Modifier
+            .widthIn(max = 320.dp)
             .height(RiftSizes.button)
-            .width(320.dp)
             .clip(RiftShapes.full)
             .blackGlass(RiftShapes.full)
             .padding(horizontal = 18.dp),
