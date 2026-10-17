@@ -125,12 +125,12 @@ private fun SwatchPlate(title: String, swatches: @Composable () -> Unit) {
     }
 }
 
-/** A round colour (or gradient) to pick. The focused one grows and gets a ring: it has no plate to fill. */
+/** A round colour (or gradient) to pick. It is the colour itself, so there is no plate to fill: the focused one just grows. */
 @Composable
 private fun Swatch(choice: RiftAccent.Choice, selected: Boolean, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val scale by animateFloatAsState(if (focused) 1.14f else 1f, RiftMotion.focusSpring(), label = "swatchScale")
+    val scale by animateFloatAsState(if (focused) 1.3f else 1f, RiftMotion.focusSpring(), label = "swatchScale")
     Box(
         modifier = Modifier
             .size(SwatchSize)
@@ -138,8 +138,6 @@ private fun Swatch(choice: RiftAccent.Choice, selected: Boolean, onClick: () -> 
                 scaleX = scale
                 scaleY = scale
             }
-            .then(if (focused) Modifier.border(3.dp, RiftColors.OnSurface, CircleShape) else Modifier)
-            .padding(if (focused) 5.dp else 0.dp)
             .clip(CircleShape)
             .background(choice.brush)
             .clickable(interactionSource = interaction, indication = null, role = Role.RadioButton, onClick = onClick),

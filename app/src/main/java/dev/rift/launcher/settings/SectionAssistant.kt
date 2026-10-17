@@ -1,6 +1,13 @@
 package dev.rift.launcher.settings
 
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.DeleteOutline
@@ -8,8 +15,6 @@ import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.NetworkCheck
 import androidx.compose.material.icons.rounded.SmartToy
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -369,24 +374,25 @@ private fun TextInputDialog(
             RiftPillButton(text = stringResource(R.string.rift_assistant_save), onClick = { onSave(text) }, primary = true)
         },
     ) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = { text = it },
-            singleLine = true,
-            placeholder = { Text(placeholder) },
-            visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = if (secret) KeyboardType.Password else KeyboardType.Uri,
-                autoCorrectEnabled = false,
-            ),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = RiftColors.Primary,
-                cursorColor = RiftColors.Primary,
-                focusedTextColor = RiftColors.OnSurface,
-                unfocusedTextColor = RiftColors.OnSurface,
-            ),
-            textStyle = TextStyle(fontSize = 18.sp),
-            modifier = Modifier.focusRequester(field),
-        )
+        RiftInputPlate { focused ->
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                if (text.isEmpty()) Text(placeholder, color = plateSubtext(focused), fontSize = 17.sp)
+                BasicTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    singleLine = true,
+                    textStyle = TextStyle(color = plateText(focused), fontSize = 17.sp),
+                    cursorBrush = SolidColor(plateText(focused)),
+                    visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = if (secret) KeyboardType.Password else KeyboardType.Uri,
+                        autoCorrectEnabled = false,
+                        imeAction = ImeAction.Done,
+                    ),
+                    keyboardActions = KeyboardActions(onDone = { onSave(text) }),
+                    modifier = Modifier.fillMaxWidth().focusRequester(field),
+                )
+            }
+        }
     }
 }

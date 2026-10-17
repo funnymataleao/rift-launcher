@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Wifi
@@ -70,6 +71,7 @@ import app.gamenative.utils.LocaleHelper
 import com.posthog.PostHog
 import dev.rift.launcher.home.RiftUninstalledMode
 import dev.rift.launcher.home.UninstalledMode
+import dev.rift.launcher.ui.theme.RiftAccent
 import dev.rift.launcher.ui.theme.RiftColors
 import dev.rift.launcher.ui.theme.RiftShapes
 
@@ -470,9 +472,6 @@ private fun IconVariantCard(
     Column(
         modifier = Modifier
             .plateFill(focused, rest = if (selected) RiftColors.SurfaceContainerHigh else RiftColors.Surface)
-            .then(
-                if (selected && !focused) Modifier.border(2.dp, RiftColors.Primary, PlateShape) else Modifier,
-            )
             .clickable(interactionSource = interaction, indication = null, role = Role.RadioButton, onClick = onClick)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -494,12 +493,22 @@ private fun IconVariantCard(
                 modifier = Modifier.size(24.dp),
             )
         }
-        Text(
-            text = label,
-            color = if (focused) plateText(true) else if (selected) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (selected) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(if (focused) plateText(true) else RiftAccent.current.main),
+                )
+            }
+            Text(
+                text = label,
+                color = if (focused) plateText(true) else if (selected) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
     }
 }
 
