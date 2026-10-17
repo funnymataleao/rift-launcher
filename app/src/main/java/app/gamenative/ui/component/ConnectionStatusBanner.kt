@@ -12,7 +12,20 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import android.os.Build
 import androidx.compose.foundation.border
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -61,6 +74,7 @@ fun ConnectionStatusBanner(
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    backdrop: GraphicsLayer? = null,
 ) {
     val isVisible = connectionState == ConnectionState.CONNECTING ||
                     connectionState == ConnectionState.DISCONNECTED
@@ -78,14 +92,35 @@ fun ConnectionStatusBanner(
                 .statusBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
+            var top by remember { mutableFloatStateOf(0f) }
+            var left by remember { mutableFloatStateOf(0f) }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .onGloballyPositioned {
+                        val pos = it.positionInRoot()
+                        top = pos.y
+                        left = pos.x
+                    }
                     .clip(MaterialTheme.shapes.large)
-                    .background(Color.Black.copy(alpha = 0.72f))
+                    .background(Color.Black.copy(alpha = 0.60f))
                     .border(1.dp, Color.White.copy(alpha = 0.10f), MaterialTheme.shapes.large)
                     .padding(horizontal = 16.dp, vertical = 10.dp)
             ) {
+                if (backdrop != null) {
+                    // Frosted glass as its own layer, so only the picture is blurred and not the text.
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .graphicsLayer {
+                                clip = true
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    renderEffect = BlurEffect(18.dp.toPx(), 18.dp.toPx(), TileMode.Clamp)
+                                }
+                            }
+                            .drawBehind { translate(left = -left, top = -top) { drawLayer(backdrop) } },
+                    )
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
