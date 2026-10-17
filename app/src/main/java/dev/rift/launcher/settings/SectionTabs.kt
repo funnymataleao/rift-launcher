@@ -363,21 +363,13 @@ private fun RenameTabDialog(initial: String, onSave: (String) -> Unit, onDismiss
             RiftPillButton(text = stringResource(R.string.rift_settings_tab_save), onClick = { onSave(text) }, primary = true)
         },
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = RiftSizes.button)
-                .background(RiftColors.SurfaceContainerHigh, RiftShapes.full)
-                .border(1.dp, RiftColors.OutlineVariant, RiftShapes.full)
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        RiftInputPlate { focused ->
             BasicTextField(
                 value = text,
                 onValueChange = { text = it.take(RiftTabPrefs.MAX_NAME_LENGTH) },
                 singleLine = true,
-                textStyle = TextStyle(color = RiftColors.OnSurface, fontSize = 17.sp),
-                cursorBrush = SolidColor(RiftColors.OnSurface),
+                textStyle = TextStyle(color = plateText(focused), fontSize = 17.sp),
+                cursorBrush = SolidColor(plateText(focused)),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { onSave(text) }),
                 modifier = Modifier.weight(1f).focusRequester(field),

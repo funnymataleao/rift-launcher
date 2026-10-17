@@ -226,6 +226,12 @@ internal fun FocusableButton(
     enabled: Boolean = true,
     leading: (@Composable () -> Unit)? = null,
 ) {
+    // Rift's style for the suggestion card (see LocalSupportButton).
+    val override = LocalSupportButton.current
+    if (override != null && leading == null) {
+        override(text, enabled, onClick, modifier)
+        return
+    }
     val interaction = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(12.dp)
     Button(

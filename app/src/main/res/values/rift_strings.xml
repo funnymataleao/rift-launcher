@@ -534,4 +534,8 @@
     <string name="rift_settings_cache_clear_message">Covers, backgrounds, logos and game descriptions will be downloaded again, so the library may load slower for a while. Games, saves, settings, covers you picked yourself and sound packs are not touched.</string>
     <string name="rift_settings_cache_clear_confirm">Clear</string>
     <string name="rift_settings_cache_cleared">Cache cleared, %1$s freed</string>
+    <string name="rift_accent_amber">Amber</string>
+    <string name="rift_accent_lagoon">Lagoon</string>
+    <string name="rift_accent_glacier">Glacier</string>
+    <string name="rift_accent_dawn">Dawn</string>
 </resources>
