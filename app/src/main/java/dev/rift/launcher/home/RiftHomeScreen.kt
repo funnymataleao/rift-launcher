@@ -1187,6 +1187,8 @@ fun RiftHomeScreen(
                         return@onPreviewKeyEvent true
                     }
                     if (overlayOpen) return@onPreviewKeyEvent false
+                    // Up from the row does nothing: the top bar and the tabs are reached with LB/RB only (Denis).
+                    if (native.keyCode == KeyEvent.KEYCODE_DPAD_UP && section != null && !searchOpen) return@onPreviewKeyEvent true
                     when (event.nativeKeyEvent.keyCode) {
                         KeyEvent.KEYCODE_BUTTON_L1 -> {
                             switchSection(-1)
@@ -2428,7 +2430,7 @@ private fun Modifier.fadeBand(): Modifier = this
     .drawWithContent {
         drawContent()
         drawRect(
-            Brush.verticalGradient(0.4f to Color.Transparent, 0.7f to Color.Black, 1f to Color.Transparent),
+            Brush.verticalGradient(0.46f to Color.Transparent, 0.76f to Color.Black, 1f to Color.Transparent),
             blendMode = BlendMode.DstIn,
         )
     }
@@ -2464,7 +2466,7 @@ private fun HeroBackdrop(item: LibraryItem?) {
                         scaleY = zoom.value
                     }
                 CoilImage(
-                    modifier = zoomed.fadeOut(from = 0.55f),
+                    modifier = zoomed.fadeOut(from = 0.6f),
                     imageModel = { heroUrl },
                     imageOptions = ImageOptions(contentScale = ContentScale.Crop, alignment = Alignment.TopCenter, contentDescription = null),
                     loading = {},
