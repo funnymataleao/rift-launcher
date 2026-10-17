@@ -2,11 +2,7 @@ package dev.rift.launcher.overlay
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
-import android.graphics.Color as AndroidColor
-import android.graphics.drawable.ColorDrawable
 import android.media.AudioManager
-import android.os.Build
-import android.view.Gravity
 import android.view.KeyEvent
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -36,6 +32,7 @@ import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -63,6 +60,7 @@ import androidx.compose.ui.unit.sp
 import app.gamenative.R
 import dev.rift.launcher.home.AndroidGames
 import dev.rift.launcher.settings.LinkRow
+import dev.rift.launcher.settings.PlateGap
 import dev.rift.launcher.settings.PlateShape
 import dev.rift.launcher.settings.RowIcon
 import dev.rift.launcher.settings.RowMinHeight
@@ -70,13 +68,16 @@ import dev.rift.launcher.settings.RowTexts
 import dev.rift.launcher.settings.plateFill
 import dev.rift.launcher.settings.plateSubtext
 import dev.rift.launcher.settings.plateText
+import dev.rift.launcher.ui.LocalWindowBlur
+import dev.rift.launcher.ui.RiftDrawerPanel
+import dev.rift.launcher.ui.layOutAsDrawer
 import dev.rift.launcher.ui.theme.RiftAccent
 import dev.rift.launcher.ui.theme.RiftColors
 import dev.rift.launcher.ui.theme.RiftGlassTheme
 
 /**
- * Rift's right-hand panel shown over another app: a full-height window of black glass that blurs the
- * game behind it where the device allows cross-window blur. B or a tap outside closes it.
+ * Rift's right-hand panel shown over another app: a full-height window in the frame and glass of every
+ * Rift panel ([RiftDrawerPanel]). B or a tap outside closes it.
  */
 internal class OverlayPanel(
     private val service: AccessibilityService,
@@ -89,26 +90,26 @@ internal class OverlayPanel(
     private val dialog = ComponentDialog(service, android.R.style.Theme_Material_NoActionBar)
 
     fun show() {
-        val density = service.resources.displayMetrics.density
         val window = dialog.window ?: return
         window.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY)
         dialog.setCanceledOnTouchOutside(true)
         dialog.setOnDismissListener { onDismissed() }
+        // Another app is behind the panel and can't be copied: the window blurs it where Android allows
+        // that, otherwise the glass is solid.
+        var windowBlur by mutableStateOf(false)
         dialog.setContentView(
             ComposeView(service).apply {
-                setContent { RiftGlassTheme { PanelContent() } }
+                setContent {
+                    RiftGlassTheme {
+                        CompositionLocalProvider(LocalWindowBlur provides windowBlur) {
+                            RiftDrawerPanel(modifier = Modifier.fillMaxSize()) { PanelContent() }
+                        }
+                    }
+                }
             },
             ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
         )
-        val blur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-            (service.getSystemService(Context.WINDOW_SERVICE) as WindowManager).isCrossWindowBlurEnabled
-        window.setBackgroundDrawable(ColorDrawable(if (blur) GLASS_OVER_BLUR else GLASS_SOLID))
-        if (blur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) window.setBackgroundBlurRadius((48 * density).toInt())
-        window.setDimAmount(0f)
-        window.setWindowAnimations(R.style.RiftOverlayPanelAnimation)
-        window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-        window.setLayout((PANEL_WIDTH_DP * density).toInt(), ViewGroup.LayoutParams.MATCH_PARENT)
-        window.setGravity(Gravity.END or Gravity.TOP)
+        window.layOutAsDrawer(service) { windowBlur = it }
         runCatching { dialog.show() }.onFailure { onDismissed() }
     }
 
@@ -128,14 +129,9 @@ internal class OverlayPanel(
         }
         val icon = remember { AndroidGames.icon(service, gamePackage) }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+        Column(verticalArrangement = Arrangement.spacedBy(PlateGap)) {
             Row(
-                modifier = Modifier.padding(start = 4.dp, bottom = 12.dp),
+                modifier = Modifier.padding(bottom = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (icon != null) {
@@ -244,11 +240,5 @@ internal class OverlayPanel(
                 )
             }
         }
-    }
-
-    internal companion object {
-        const val PANEL_WIDTH_DP = 440
-        val GLASS_OVER_BLUR = AndroidColor.argb(158, 8, 8, 8)
-        val GLASS_SOLID = AndroidColor.argb(235, 8, 8, 8)
     }
 }

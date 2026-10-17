@@ -122,7 +122,9 @@ import dev.rift.launcher.settings.RiftSwitch
 import dev.rift.launcher.settings.plateFill
 import dev.rift.launcher.settings.plateSubtext
 import dev.rift.launcher.settings.plateText
-import dev.rift.launcher.ui.blackGlass
+import dev.rift.launcher.ui.DrawerBackdrop
+import dev.rift.launcher.ui.RiftDrawer
+import dev.rift.launcher.ui.RiftDrawerPanel
 import dev.rift.launcher.ui.theme.RiftAccent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -420,6 +422,8 @@ fun QuickMenu(
     /** Lets the menu open itself when the running game asks for its Steam invite dialog. */
     onRequestOpen: () -> Unit = {},
     immersiveHooks: app.gamenative.ui.screen.xr.ImmersiveSessionHooks? = null,
+    /** Rift: a copy of the game's picture for the panel's glass to blur. */
+    glassBackdrop: DrawerBackdrop? = null,
     modifier: Modifier = Modifier,
 ) {
     val immersiveControls = immersiveHooks?.controls
@@ -787,102 +791,149 @@ fun QuickMenu(
             val panelWidth = if (selectedTab == QuickMenuTab.POWER) {
                 adaptivePanelWidth(800.dp, 0.95f)
             } else {
-                adaptivePanelWidth(440.dp)
+                adaptivePanelWidth(RiftDrawer.Width)
             }
 
-            Surface(
+            // Rift: the frame and glass of every Rift panel; the glass blurs a copy of the game behind it.
+            RiftDrawerPanel(
                 modifier = Modifier
                     .width(panelWidth)
-                    .fillMaxHeight()
-                    .blackGlass(),
-                shape = RectangleShape,
-                color = Color.Transparent,
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .statusBarsPadding(),
-                ) {
-                    Row(
+                    .fillMaxHeight(),
+                backdrop = glassBackdrop,
+                rowInset = 8.dp,
+                rail = {
+                    val tabScrollState = rememberScrollState()
+                    Column(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(start = 20.dp, end = 10.dp, top = 16.dp, bottom = 12.dp),
+                            .weight(1f)
+                            .verticalScroll(tabScrollState),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight(),
-                        ) {
-                            Text(
-                                text = stringResource(selectedTabLabelResId),
-                                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 12.dp),
+                        QuickMenuTabButton(
+                            icon = Icons.Default.QueryStats,
+                            contentDescriptionResId = R.string.performance_hud,
+                            selected = selectedTab == QuickMenuTab.HUD,
+                            accentColor = PluviaTheme.colors.accentPurple,
+                            onSelected = {
+                                selectedTab = QuickMenuTab.HUD
+                                PrefManager.quickMenuLastTab = selectedTab
+                            },
+                            focusRequester = hudTabFocusRequester,
+                        )
+                        if (isPowerDriverSupported) {
+                            QuickMenuTabButton(
+                                icon = Icons.Default.BatteryChargingFull,
+                                contentDescriptionResId = R.string.power_control,
+                                selected = selectedTab == QuickMenuTab.POWER,
+                                accentColor = PluviaTheme.colors.accentPurple,
+                                onSelected = {
+                                    selectedTab = QuickMenuTab.POWER
+                                    PrefManager.quickMenuLastTab = selectedTab
+                                },
+                                focusRequester = powerTabFocusRequester,
                             )
+                        }
+                        if (inviteMenu != null) {
+                            QuickMenuTabButton(
+                                icon = Icons.Default.PersonAdd,
+                                contentDescriptionResId = R.string.steam_invite_tab_title,
+                                selected = selectedTab == QuickMenuTab.INVITE,
+                                accentColor = PluviaTheme.colors.accentPurple,
+                                onSelected = {
+                                    selectedTab = QuickMenuTab.INVITE
+                                    PrefManager.quickMenuLastTab = selectedTab
+                                },
+                                focusRequester = inviteTabFocusRequester,
+                            )
+                        }
+                        if (renderer != null || glRenderer != null) {
+                            QuickMenuTabButton(
+                                icon = Icons.Default.AutoFixHigh,
+                                contentDescriptionResId = R.string.screen_effects,
+                                selected = selectedTab == QuickMenuTab.EFFECTS,
+                                accentColor = PluviaTheme.colors.accentPurple,
+                                onSelected = {
+                                    selectedTab = QuickMenuTab.EFFECTS
+                                    PrefManager.quickMenuLastTab = selectedTab
+                                },
+                                focusRequester = effectsTabFocusRequester,
+                            )
+                        }
+                        QuickMenuTabButton(
+                            icon = Icons.Default.Gamepad,
+                            contentDescriptionResId = R.string.quick_menu_tab_controller,
+                            selected = selectedTab == QuickMenuTab.CONTROLLER,
+                            accentColor = PluviaTheme.colors.accentPurple,
+                            onSelected = {
+                                selectedTab = QuickMenuTab.CONTROLLER
+                                PrefManager.quickMenuLastTab = selectedTab
+                            },
+                            focusRequester = controllerTabFocusRequester,
+                        )
+                        QuickMenuTabButton(
+                            icon = Icons.Default.BarChart,
+                            contentDescriptionResId = R.string.task_manager,
+                            selected = selectedTab == QuickMenuTab.TOOLS,
+                            accentColor = PluviaTheme.colors.accentPurple,
+                            onSelected = { selectedTab = QuickMenuTab.TOOLS },
+                            focusRequester = toolsTabFocusRequester,
+                        )
+                    }
 
-                            Box(
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                when (selectedTab) {
-                                    QuickMenuTab.HUD -> {
-                                        PerformanceHudQuickMenuTab(
-                                            isPerformanceHudEnabled = isPerformanceHudEnabled,
-                                            performanceHudConfig = performanceHudConfig,
-                                            fpsLimiterEnabled = fpsLimiterEnabled,
-                                            fpsLimiterTarget = fpsLimiterTarget,
-                                            fpsLimiterMax = fpsLimiterMax,
-                                            lsfgMultiplier = if (isLsfgAvailable) lsfgMultiplier else 0,
-                                            onTogglePerformanceHud = {
-                                                onItemSelected(QuickMenuAction.PERFORMANCE_HUD)
-                                            },
-                                            onPerformanceHudConfigChanged = onPerformanceHudConfigChanged,
-                                            onFpsLimiterEnabledChanged = onFpsLimiterEnabledChanged,
-                                            onFpsLimiterChanged = onFpsLimiterChanged,
-                                            scrollState = hudScrollState,
-                                            focusRequester = hudItemFocusRequester,
-                                            modifier = Modifier.fillMaxSize(),
-                                            adaptiveFpsCap = if (!isPowerDriverSupported) {
-                                                { AdaptiveFpsCapRow() }
-                                            } else {
-                                                null
-                                            },
-                                            frameGeneration = if (isLsfgAvailable) {
-                                                {
-                                                    QuickMenuSectionHeader(
-                                                        title = stringResource(R.string.rift_quick_menu_frame_generation),
-                                                        subtitle = stringResource(R.string.lsfg_description),
-                                                    )
-                                                    LsfgQuickMenuSection(
-                                                        multiplier = lsfgMultiplier,
-                                                        flowScale = lsfgFlowScale,
-                                                        performanceMode = lsfgPerformanceMode,
-                                                        onMultiplierChanged = onLsfgMultiplierChanged,
-                                                        onFlowScaleChanged = onLsfgFlowScaleChanged,
-                                                        onPerformanceModeChanged = onLsfgPerformanceModeChanged,
-                                                        backend = lsfgBackend,
-                                                        onBackendChanged = { backend ->
-                                                            lsfgBackend = backend
-                                                            container?.let {
-                                                                app.gamenative.utils.LsfgQuickMenuHelper.applyBackend(it, backend)
-                                                            }
-                                                        },
-                                                        presentMode = lsfgPresentMode,
-                                                        onPresentModeChanged = { mode ->
-                                                            lsfgPresentMode = mode
-                                                            container?.let {
-                                                                app.gamenative.utils.LsfgQuickMenuHelper.applyPresentMode(it, mode)
-                                                            }
-                                                        },
-                                                    )
-                                                }
-                                            } else {
-                                                null
-                                            },
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    QuickMenuRailActionButton(
+                        item = exitGameItem,
+                        onClick = {
+                            if (onItemSelected(QuickMenuAction.EXIT_GAME)) {
+                                onDismiss()
+                            }
+                        },
+                        focusRequester = exitFocusRequester,
+                    )
+                },
+            ) {
+                Text(
+                    text = stringResource(selectedTabLabelResId),
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 12.dp),
+                )
+
+                Box(
+                    modifier = Modifier.weight(1f),
+                ) {
+                    when (selectedTab) {
+                        QuickMenuTab.HUD -> {
+                            PerformanceHudQuickMenuTab(
+                                isPerformanceHudEnabled = isPerformanceHudEnabled,
+                                performanceHudConfig = performanceHudConfig,
+                                fpsLimiterEnabled = fpsLimiterEnabled,
+                                fpsLimiterTarget = fpsLimiterTarget,
+                                fpsLimiterMax = fpsLimiterMax,
+                                lsfgMultiplier = if (isLsfgAvailable) lsfgMultiplier else 0,
+                                onTogglePerformanceHud = {
+                                    onItemSelected(QuickMenuAction.PERFORMANCE_HUD)
+                                },
+                                onPerformanceHudConfigChanged = onPerformanceHudConfigChanged,
+                                onFpsLimiterEnabledChanged = onFpsLimiterEnabledChanged,
+                                onFpsLimiterChanged = onFpsLimiterChanged,
+                                scrollState = hudScrollState,
+                                focusRequester = hudItemFocusRequester,
+                                modifier = Modifier.fillMaxSize(),
+                                adaptiveFpsCap = if (!isPowerDriverSupported) {
+                                    { AdaptiveFpsCapRow() }
+                                } else {
+                                    null
+                                },
+                                frameGeneration = if (isLsfgAvailable) {
+                                    {
+                                        QuickMenuSectionHeader(
+                                            title = stringResource(R.string.rift_quick_menu_frame_generation),
+                                            subtitle = stringResource(R.string.lsfg_description),
                                         )
-                                    }
-
-                                    QuickMenuTab.LSFG -> {
-                                        LsfgQuickMenuTab(
+                                        LsfgQuickMenuSection(
                                             multiplier = lsfgMultiplier,
                                             flowScale = lsfgFlowScale,
                                             performanceMode = lsfgPerformanceMode,
@@ -903,262 +954,182 @@ fun QuickMenu(
                                                     app.gamenative.utils.LsfgQuickMenuHelper.applyPresentMode(it, mode)
                                                 }
                                             },
-                                            scrollState = lsfgScrollState,
-                                            focusRequester = lsfgItemFocusRequester,
-                                            modifier = Modifier.fillMaxSize(),
                                         )
                                     }
-
-                                    QuickMenuTab.INVITE -> {
-                                        if (inviteMenu != null) {
-                                            SteamInviteQuickMenuTab(
-                                                state = inviteMenu,
-                                                focusRequester = inviteItemFocusRequester,
-                                                modifier = Modifier.fillMaxSize(),
-                                            )
-                                        }
-                                    }
-
-                                    QuickMenuTab.EFFECTS -> {
-                                        if (renderer != null) {
-                                            ScreenEffectsTabContent(
-                                                renderer = renderer,
-                                                container = container,
-                                                modifier = Modifier.fillMaxSize(),
-                                                firstItemFocusRequester = effectsItemFocusRequester,
-                                                scrollState = effectsScrollState,
-                                            )
-                                        } else if (glRenderer != null) {
-                                            GLScreenEffectsTabContent(
-                                                renderer = glRenderer,
-                                                container = container,
-                                                modifier = Modifier.fillMaxSize(),
-                                                firstItemFocusRequester = effectsItemFocusRequester,
-                                                scrollState = effectsScrollState,
-                                            )
-                                        } else {
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                                    .padding(horizontal = 8.dp, vertical = 16.dp),
-                                                contentAlignment = Alignment.TopStart,
-                                            ) {
-                                                Text(
-                                                    text = stringResource(R.string.main_loading),
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    QuickMenuTab.POWER -> {
-                                        PowerControlQuickMenuTab(
-                                            focusRequester = powerItemFocusRequester,
-                                            modifier = Modifier.fillMaxSize(),
-                                        )
-                                    }
-
-                                    QuickMenuTab.TOOLS -> {
-                                        ToolsQuickMenuTab(
-                                            processes = wineProcesses,
-                                            isLoadingProcesses = isWineProcessesLoading,
-                                            onEndProcess = onEndWineProcess,
-                                            firstItemFocusRequester = toolsItemFocusRequester,
-                                            modifier = Modifier.fillMaxSize(),
-                                        )
-                                    }
-
-                                    QuickMenuTab.IMMERSIVE -> {
-                                        if (immersiveControls != null) {
-                                            ImmersiveQuickMenuTab(
-                                                controls = immersiveControls,
-                                                scrollState = immersiveScrollState,
-                                                focusRequester = immersiveItemFocusRequester,
-                                                modifier = Modifier.fillMaxSize(),
-                                            )
-                                        }
-                                    }
-
-                                    QuickMenuTab.CONTROLLER -> {
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .verticalScroll(controllerScrollState)
-                                                .focusGroup(),
-                                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                                        ) {
-                                            val gyroEnabled = gyroMenu?.settings?.mode
-                                                ?.let { it != GyroSettings.MODE_DISABLED } == true
-                                            val touchscreenEnabled = isTouchscreenModeActive
-                                            val shooterEnabled = isShooterModeActive
-                                            controllerItems.forEachIndexed { index, item ->
-                                                QuickMenuItemRow(
-                                                    item = item,
-                                                    isActive = if (item.id == QuickMenuAction.GYRO) {
-                                                        gyroEnabled
-                                                    } else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE) {
-                                                        touchscreenEnabled
-                                                    } else if (item.id == QuickMenuAction.SHOOTER_MODE) {
-                                                        shooterEnabled
-                                                    } else {
-                                                        item.id in activeToggleIds
-                                                    },
-                                                    onClick = {
-                                                        if (item.id == QuickMenuAction.GYRO && gyroMenu != null) {
-                                                            gyroMenu.setEnabled(!gyroEnabled)
-                                                        } else if (item.id == QuickMenuAction.CONTROL_PROFILES) {
-                                                            controlProfileReturnFocusRequester = lastControllerFocusRequester
-                                                            showControlProfiles = true
-                                                        } else if (onItemSelected(item.id)) {
-                                                            onDismiss()
-                                                        }
-                                                    },
-                                                    focusRequester = if (index == 0) controllerItemFocusRequester else null,
-                                                    onFocused = { lastControllerFocusRequester = it },
-                                                    secondaryIcon = if (item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER)
-                                                        Icons.Default.Settings
-                                                    else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && touchscreenEnabled)
-                                                        Icons.Default.Settings
-                                                    else if (item.id == QuickMenuAction.SHOOTER_MODE && shooterEnabled)
-                                                        Icons.Default.Settings
-                                                    else if (item.id == QuickMenuAction.GYRO && gyroEnabled)
-                                                        Icons.Default.Settings
-                                                    else null,
-                                                    secondaryContentDescriptionResId = if (item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER)
-                                                        R.string.physical_controller_settings_title
-                                                    else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && touchscreenEnabled)
-                                                        R.string.gesture_settings_title
-                                                    else if (item.id == QuickMenuAction.SHOOTER_MODE && shooterEnabled)
-                                                        R.string.shooter_mode_settings_title
-                                                    else if (item.id == QuickMenuAction.GYRO && gyroEnabled)
-                                                        R.string.gyro_settings_title
-                                                    else null,
-                                                    onSecondaryClick = if (item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER)
-                                                        ({ onItemSelected(QuickMenuAction.PHYSICAL_CONTROLLER_SETTINGS) })
-                                                    else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && touchscreenEnabled)
-                                                        onTouchGestureSettingsClick
-                                                    else if (item.id == QuickMenuAction.SHOOTER_MODE && shooterEnabled)
-                                                        onShooterModeSettingsClick
-                                                    else if (item.id == QuickMenuAction.GYRO && gyroEnabled)
-                                                        ({ showGyroSettingsDialog = true })
-                                                    else null,
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    else -> Unit
-                                }
-                            }
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .padding(start = 12.dp, end = 8.dp)
-                                .width(1.dp)
-                                .fillMaxHeight()
-                                .background(Color.White.copy(alpha = 0.06f)),
-                        )
-
-                        Column(
-                            modifier = Modifier
-                                .width(56.dp)
-                                .fillMaxHeight()
-                                .focusGroup(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            val tabScrollState = rememberScrollState()
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .verticalScroll(tabScrollState),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                QuickMenuTabButton(
-                                    icon = Icons.Default.QueryStats,
-                                    contentDescriptionResId = R.string.performance_hud,
-                                    selected = selectedTab == QuickMenuTab.HUD,
-                                    accentColor = PluviaTheme.colors.accentPurple,
-                                    onSelected = {
-                                        selectedTab = QuickMenuTab.HUD
-                                        PrefManager.quickMenuLastTab = selectedTab
-                                    },
-                                    focusRequester = hudTabFocusRequester,
-                                )
-                                if (isPowerDriverSupported) {
-                                    QuickMenuTabButton(
-                                        icon = Icons.Default.BatteryChargingFull,
-                                        contentDescriptionResId = R.string.power_control,
-                                        selected = selectedTab == QuickMenuTab.POWER,
-                                        accentColor = PluviaTheme.colors.accentPurple,
-                                        onSelected = {
-                                            selectedTab = QuickMenuTab.POWER
-                                            PrefManager.quickMenuLastTab = selectedTab
-                                        },
-                                        focusRequester = powerTabFocusRequester,
-                                    )
-                                }
-                                if (inviteMenu != null) {
-                                    QuickMenuTabButton(
-                                        icon = Icons.Default.PersonAdd,
-                                        contentDescriptionResId = R.string.steam_invite_tab_title,
-                                        selected = selectedTab == QuickMenuTab.INVITE,
-                                        accentColor = PluviaTheme.colors.accentPurple,
-                                        onSelected = {
-                                            selectedTab = QuickMenuTab.INVITE
-                                            PrefManager.quickMenuLastTab = selectedTab
-                                        },
-                                        focusRequester = inviteTabFocusRequester,
-                                    )
-                                }
-                                if (renderer != null || glRenderer != null) {
-                                    QuickMenuTabButton(
-                                        icon = Icons.Default.AutoFixHigh,
-                                        contentDescriptionResId = R.string.screen_effects,
-                                        selected = selectedTab == QuickMenuTab.EFFECTS,
-                                        accentColor = PluviaTheme.colors.accentPurple,
-                                        onSelected = {
-                                            selectedTab = QuickMenuTab.EFFECTS
-                                            PrefManager.quickMenuLastTab = selectedTab
-                                        },
-                                        focusRequester = effectsTabFocusRequester,
-                                    )
-                                }
-                                QuickMenuTabButton(
-                                    icon = Icons.Default.Gamepad,
-                                    contentDescriptionResId = R.string.quick_menu_tab_controller,
-                                    selected = selectedTab == QuickMenuTab.CONTROLLER,
-                                    accentColor = PluviaTheme.colors.accentPurple,
-                                    onSelected = {
-                                        selectedTab = QuickMenuTab.CONTROLLER
-                                        PrefManager.quickMenuLastTab = selectedTab
-                                    },
-                                    focusRequester = controllerTabFocusRequester,
-                                )
-                                QuickMenuTabButton(
-                                    icon = Icons.Default.BarChart,
-                                    contentDescriptionResId = R.string.task_manager,
-                                    selected = selectedTab == QuickMenuTab.TOOLS,
-                                    accentColor = PluviaTheme.colors.accentPurple,
-                                    onSelected = { selectedTab = QuickMenuTab.TOOLS },
-                                    focusRequester = toolsTabFocusRequester,
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            QuickMenuRailActionButton(
-                                item = exitGameItem,
-                                onClick = {
-                                    if (onItemSelected(QuickMenuAction.EXIT_GAME)) {
-                                        onDismiss()
-                                    }
+                                } else {
+                                    null
                                 },
-                                focusRequester = exitFocusRequester,
                             )
                         }
+
+                        QuickMenuTab.LSFG -> {
+                            LsfgQuickMenuTab(
+                                multiplier = lsfgMultiplier,
+                                flowScale = lsfgFlowScale,
+                                performanceMode = lsfgPerformanceMode,
+                                onMultiplierChanged = onLsfgMultiplierChanged,
+                                onFlowScaleChanged = onLsfgFlowScaleChanged,
+                                onPerformanceModeChanged = onLsfgPerformanceModeChanged,
+                                backend = lsfgBackend,
+                                onBackendChanged = { backend ->
+                                    lsfgBackend = backend
+                                    container?.let {
+                                        app.gamenative.utils.LsfgQuickMenuHelper.applyBackend(it, backend)
+                                    }
+                                },
+                                presentMode = lsfgPresentMode,
+                                onPresentModeChanged = { mode ->
+                                    lsfgPresentMode = mode
+                                    container?.let {
+                                        app.gamenative.utils.LsfgQuickMenuHelper.applyPresentMode(it, mode)
+                                    }
+                                },
+                                scrollState = lsfgScrollState,
+                                focusRequester = lsfgItemFocusRequester,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+
+                        QuickMenuTab.INVITE -> {
+                            if (inviteMenu != null) {
+                                SteamInviteQuickMenuTab(
+                                    state = inviteMenu,
+                                    focusRequester = inviteItemFocusRequester,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+                        }
+
+                        QuickMenuTab.EFFECTS -> {
+                            if (renderer != null) {
+                                ScreenEffectsTabContent(
+                                    renderer = renderer,
+                                    container = container,
+                                    modifier = Modifier.fillMaxSize(),
+                                    firstItemFocusRequester = effectsItemFocusRequester,
+                                    scrollState = effectsScrollState,
+                                )
+                            } else if (glRenderer != null) {
+                                GLScreenEffectsTabContent(
+                                    renderer = glRenderer,
+                                    container = container,
+                                    modifier = Modifier.fillMaxSize(),
+                                    firstItemFocusRequester = effectsItemFocusRequester,
+                                    scrollState = effectsScrollState,
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 8.dp, vertical = 16.dp),
+                                    contentAlignment = Alignment.TopStart,
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.main_loading),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+
+                        QuickMenuTab.POWER -> {
+                            PowerControlQuickMenuTab(
+                                focusRequester = powerItemFocusRequester,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+
+                        QuickMenuTab.TOOLS -> {
+                            ToolsQuickMenuTab(
+                                processes = wineProcesses,
+                                isLoadingProcesses = isWineProcessesLoading,
+                                onEndProcess = onEndWineProcess,
+                                firstItemFocusRequester = toolsItemFocusRequester,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+
+                        QuickMenuTab.IMMERSIVE -> {
+                            if (immersiveControls != null) {
+                                ImmersiveQuickMenuTab(
+                                    controls = immersiveControls,
+                                    scrollState = immersiveScrollState,
+                                    focusRequester = immersiveItemFocusRequester,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+                        }
+
+                        QuickMenuTab.CONTROLLER -> {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(controllerScrollState)
+                                    .focusGroup(),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                val gyroEnabled = gyroMenu?.settings?.mode
+                                    ?.let { it != GyroSettings.MODE_DISABLED } == true
+                                val touchscreenEnabled = isTouchscreenModeActive
+                                val shooterEnabled = isShooterModeActive
+                                controllerItems.forEachIndexed { index, item ->
+                                    QuickMenuItemRow(
+                                        item = item,
+                                        isActive = if (item.id == QuickMenuAction.GYRO) {
+                                            gyroEnabled
+                                        } else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE) {
+                                            touchscreenEnabled
+                                        } else if (item.id == QuickMenuAction.SHOOTER_MODE) {
+                                            shooterEnabled
+                                        } else {
+                                            item.id in activeToggleIds
+                                        },
+                                        onClick = {
+                                            if (item.id == QuickMenuAction.GYRO && gyroMenu != null) {
+                                                gyroMenu.setEnabled(!gyroEnabled)
+                                            } else if (item.id == QuickMenuAction.CONTROL_PROFILES) {
+                                                controlProfileReturnFocusRequester = lastControllerFocusRequester
+                                                showControlProfiles = true
+                                            } else if (onItemSelected(item.id)) {
+                                                onDismiss()
+                                            }
+                                        },
+                                        focusRequester = if (index == 0) controllerItemFocusRequester else null,
+                                        onFocused = { lastControllerFocusRequester = it },
+                                        secondaryIcon = if (item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER)
+                                            Icons.Default.Settings
+                                        else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && touchscreenEnabled)
+                                            Icons.Default.Settings
+                                        else if (item.id == QuickMenuAction.SHOOTER_MODE && shooterEnabled)
+                                            Icons.Default.Settings
+                                        else if (item.id == QuickMenuAction.GYRO && gyroEnabled)
+                                            Icons.Default.Settings
+                                        else null,
+                                        secondaryContentDescriptionResId = if (item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER)
+                                            R.string.physical_controller_settings_title
+                                        else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && touchscreenEnabled)
+                                            R.string.gesture_settings_title
+                                        else if (item.id == QuickMenuAction.SHOOTER_MODE && shooterEnabled)
+                                            R.string.shooter_mode_settings_title
+                                        else if (item.id == QuickMenuAction.GYRO && gyroEnabled)
+                                            R.string.gyro_settings_title
+                                        else null,
+                                        onSecondaryClick = if (item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER)
+                                            ({ onItemSelected(QuickMenuAction.PHYSICAL_CONTROLLER_SETTINGS) })
+                                        else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && touchscreenEnabled)
+                                            onTouchGestureSettingsClick
+                                        else if (item.id == QuickMenuAction.SHOOTER_MODE && shooterEnabled)
+                                            onShooterModeSettingsClick
+                                        else if (item.id == QuickMenuAction.GYRO && gyroEnabled)
+                                            ({ showGyroSettingsDialog = true })
+                                        else null,
+                                    )
+                                }
+                            }
+                        }
+
+                        else -> Unit
                     }
                 }
             }

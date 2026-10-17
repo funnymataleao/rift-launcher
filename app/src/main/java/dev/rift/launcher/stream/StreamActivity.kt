@@ -2,11 +2,8 @@ package dev.rift.launcher.stream
 
 import android.content.Intent
 import android.content.pm.ActivityInfo
-import android.graphics.Bitmap
 import android.graphics.Color
-import android.graphics.PixelFormat
 import android.graphics.Point
-import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -19,7 +16,6 @@ import android.view.Gravity
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
-import android.view.PixelCopy
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
@@ -30,21 +26,11 @@ import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.ComponentDialog
 import androidx.activity.addCallback
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
 import app.gamenative.R
 import app.gamenative.ui.util.SnackbarManager
 import com.limelight.binding.PlatformBinding
@@ -63,14 +49,15 @@ import com.limelight.nvstream.input.ControllerPacket
 import com.limelight.nvstream.input.MouseButtonPacket
 import com.limelight.nvstream.jni.MoonBridge
 import dev.rift.launcher.home.RiftControls
-import dev.rift.launcher.overlay.OverlayPanel
-import dev.rift.launcher.ui.BlackGlass
 import java.io.ByteArrayInputStream
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import kotlin.concurrent.thread
 import kotlin.math.abs
 import kotlin.math.max
+import dev.rift.launcher.ui.LocalWindowBlur
+import dev.rift.launcher.ui.layOutAsDrawer
+import dev.rift.launcher.ui.rememberSurfaceBackdrop
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -114,8 +101,6 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         private const val APPLY_DELAY_MS = 1200L
 
         /** The panel's copy of the stream is this many times smaller than the screen, and this fresh. */
-        private const val BACKDROP_SCALE = 8
-        private const val BACKDROP_FRAME_MS = 33L
 
         private const val TAG = "RiftStream"
         private const val MENU_COMBO = ControllerPacket.BACK_FLAG or ControllerPacket.PLAY_FLAG
@@ -152,23 +137,9 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         get() = panelOpen
         set(value) {
             panelOpen = value
-            surfaceView.removeCallbacks(copyBackdrop)
-            if (value) {
-                backdropFailed = false
-                panel.show()
-                surfaceView.post(copyBackdrop)
-            } else {
-                panel.dismiss()
-                backdrop = null
-            }
+            if (value) panel.show() else panel.dismiss()
         }
 
-    /** A small copy of the stream behind the panel, which the panel blurs into its glass. */
-    private var backdrop by mutableStateOf<ImageBitmap?>(null)
-    private val backdropBuffers = arrayOfNulls<Bitmap>(2)
-    private var backdropBuffer = 0
-    private var backdropFailed = false
-    private val copyBackdrop: Runnable = Runnable { requestBackdrop() }
     private val mainHandler = Handler(Looper.getMainLooper())
 
     /** The game's art over the stream until the game is up on the PC (see [StreamSplash]). */
@@ -756,82 +727,37 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
     }
 
     /**
-     * The side panel in a window of its own over the stream, so the system blurs the video behind its
-     * glass where the device allows it, as Rift's panel over Android games does.
+     * The side panel in a window of its own over the stream. Its glass blurs a live copy of the stream
+     * ([rememberSurfaceBackdrop]); Android's window blur is off on the tablet.
      */
-    /**
-     * Copies the stream's last frame, scaled down, for the panel's glass, a few dozen times a second
-     * while the panel is open. Each copy goes to the buffer the panel isn't drawing.
-     */
-    private fun requestBackdrop() {
-        if (!panelOpen || backdropFailed) return
-        val width = surfaceView.width / BACKDROP_SCALE
-        val height = surfaceView.height / BACKDROP_SCALE
-        if (width <= 0 || height <= 0) return
-        val buffer = backdropBuffers[backdropBuffer]?.takeIf { it.width == width && it.height == height }
-            ?: Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { backdropBuffers[backdropBuffer] = it }
-        PixelCopy.request(surfaceView, buffer, { result ->
-            if (!panelOpen) return@request
-            if (result == PixelCopy.SUCCESS) {
-                backdrop = buffer.asImageBitmap()
-                backdropBuffer = 1 - backdropBuffer
-                surfaceView.postDelayed(copyBackdrop, BACKDROP_FRAME_MS)
-            } else {
-                // Nothing to copy (no frame yet, or the decoder's buffers can't be read): plain dark glass.
-                Log.i(TAG, "panel glass: stream copy failed ($result), dark glass")
-                backdropFailed = true
-                backdrop = null
-            }
-        }, mainHandler)
-    }
-
     private inner class PanelWindow : ComponentDialog(this@StreamActivity, android.R.style.Theme_Material_NoActionBar) {
+        /** Whether Android's window blur is on under the panel (off on the tablet). */
+        private var windowBlur by mutableStateOf(false)
+
         val content = ComposeView(this@StreamActivity).apply {
             isFocusable = true
             isFocusableInTouchMode = true
-            setContent { Box {
-                // The glass: the stream behind the panel, blurred and darkened. The system's own window
-                // blur doesn't show over the stream on every device, so the panel blurs a copy itself.
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .blur(BlackGlass.Blur, BlurredEdgeTreatment.Rectangle)
-                        .drawBehind {
-                            val frame = backdrop ?: return@drawBehind
-                            // The copy is the whole screen; the panel's window sits at its right edge.
-                            val streamWidth = surfaceView.width.coerceAtLeast(1)
-                            val scale = frame.width / streamWidth.toFloat()
-                            val left = ((streamWidth - size.width) * scale).roundToInt().coerceAtLeast(0)
-                            drawImage(
-                                image = frame,
-                                srcOffset = IntOffset(left, 0),
-                                srcSize = IntSize((frame.width - left).coerceAtLeast(1), frame.height),
-                                dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
-                            )
-                        },
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(if (backdrop != null) BlackGlass.Tint else BlackGlass.Solid),
-                )
-                StreamMenu(
-                    isOpen = panelOpen,
-                    appName = intent.getStringExtra(EXTRA_APP_NAME).orEmpty(),
-                    pcName = intent.getStringExtra(EXTRA_PC_NAME).orEmpty(),
-                    onDismiss = ::closePanel,
-                    onEndStream = ::endStream,
-                    onPerfOverlayChange = ::showPerfOverlay,
-                    onPictureChange = ::pictureChanged,
-                    error = streamError,
-                    onRelaunch = ::relaunchStream,
-                    focusRow = panelRow,
-                    maxFps = maxFps,
-                    screenSize = screenSize,
-                    ownWindow = true,
-                    coverUrls = intent.getStringArrayExtra(EXTRA_COVER_URLS)?.toList().orEmpty(),
-                )
-            } }
+            setContent {
+                CompositionLocalProvider(LocalWindowBlur provides windowBlur) {
+                    StreamMenu(
+                        isOpen = panelOpen,
+                        appName = intent.getStringExtra(EXTRA_APP_NAME).orEmpty(),
+                        pcName = intent.getStringExtra(EXTRA_PC_NAME).orEmpty(),
+                        onDismiss = ::closePanel,
+                        onEndStream = ::endStream,
+                        onPerfOverlayChange = ::showPerfOverlay,
+                        onPictureChange = ::pictureChanged,
+                        error = streamError,
+                        onRelaunch = ::relaunchStream,
+                        focusRow = panelRow,
+                        maxFps = maxFps,
+                        screenSize = screenSize,
+                        ownWindow = true,
+                        coverUrls = intent.getStringArrayExtra(EXTRA_COVER_URLS)?.toList().orEmpty(),
+                        backdrop = rememberSurfaceBackdrop(surfaceView, panelOpen),
+                    )
+                }
+            }
         }
 
         init {
@@ -840,17 +766,7 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
             setOnCancelListener { closePanel() }
             onBackPressedDispatcher.addCallback(this@PanelWindow) { closePanel() }
             window?.apply {
-                val density = resources.displayMetrics.density
-                val systemBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && windowManager.isCrossWindowBlurEnabled
-                Log.i(TAG, "panel glass: own blur of the stream (system cross-window blur=$systemBlur)")
-                setFormat(PixelFormat.TRANSLUCENT)
-                setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-                setDimAmount(0f)
-                setWindowAnimations(R.style.RiftOverlayPanelAnimation)
-                addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-                val screenDp = resources.displayMetrics.widthPixels / density
-                setLayout((min(OverlayPanel.PANEL_WIDTH_DP.toFloat(), screenDp * 0.85f) * density).toInt(), ViewGroup.LayoutParams.MATCH_PARENT)
-                setGravity(Gravity.END or Gravity.TOP)
+                layOutAsDrawer(this@StreamActivity) { windowBlur = it }
                 // The panel's window holds the focus, and the focused window decides the system bars.
                 @Suppress("DEPRECATION")
                 decorView.systemUiVisibility = this@StreamActivity.window.decorView.systemUiVisibility

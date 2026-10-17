@@ -10,7 +10,6 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,7 +30,6 @@ import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,7 +43,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -70,7 +67,9 @@ import app.gamenative.ui.component.QuickMenuTabButton
 import app.gamenative.ui.component.QuickMenuToggleRow
 import app.gamenative.ui.util.adaptivePanelWidth
 import dev.rift.launcher.settings.rememberRiftPrefs
-import dev.rift.launcher.ui.blackGlass
+import dev.rift.launcher.ui.DrawerBackdrop
+import dev.rift.launcher.ui.RiftDrawer
+import dev.rift.launcher.ui.RiftDrawerPanel
 import dev.rift.launcher.ui.theme.RiftAccent
 import dev.rift.launcher.ui.theme.RiftGlassTheme
 
@@ -95,8 +94,9 @@ object StreamMenuRow {
  * B closes it. When the stream broke, the panel says why and offers to quit the game on the PC and
  * start it again.
  *
- * Drawn with the in-game quick menu's shell and rows (black glass, plates filled with the accent when
- * focused, sliders with steps). Over the video there is nothing to blur, so the glass is its solid black.
+ * Drawn in the frame of every Rift panel ([RiftDrawerPanel]) with the in-game quick menu's rows (plates
+ * filled with the accent when focused, sliders with steps). Its glass blurs [backdrop], a copy of what is
+ * behind the panel (the stream, or the cloud game's page).
  * Picture settings take a new connection: [onPictureChange] gets the row, and the stream reconnects with
  * them a moment after the last change.
  */
@@ -118,6 +118,7 @@ fun StreamMenu(
     ownWindow: Boolean = false,
     extraSettings: (@Composable (requester: (String) -> FocusRequester) -> Unit)? = null,
     coverUrls: List<String> = emptyList(),
+    backdrop: DrawerBackdrop? = null,
 ) = RiftGlassTheme {
     Box(modifier = Modifier.fillMaxSize()) {
         // In a window of its own the window is the glass, slides in and closes on a tap outside.
@@ -153,101 +154,80 @@ fun StreamMenu(
             }
             var tab by remember { mutableStateOf(StreamTab.of(focusRow).takeIf { it in tabs } ?: tabs.firstOrNull()) }
             val accent = RiftAccent.current.main
-            Surface(
+            // The frame and glass of every Rift panel; in a window of its own the window is the panel.
+            RiftDrawerPanel(
                 modifier = Modifier
-                    .then(if (ownWindow) Modifier.fillMaxSize() else Modifier.width(adaptivePanelWidth(440.dp)).fillMaxHeight().blackGlass())
+                    .then(if (ownWindow) Modifier.fillMaxSize() else Modifier.width(adaptivePanelWidth(RiftDrawer.Width)).fillMaxHeight())
                     .onFocusChanged {
                         focused = it.hasFocus
                         Log.i("RiftStream", "panel focus=${it.hasFocus}")
                     },
-                shape = RectangleShape,
-                color = Color.Transparent,
-            ) {
-                // The shell of Rift's quick access panel: the open tab on the left, the tab rail on the
-                // outer edge with "End stream" at its foot.
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(start = 20.dp, end = 10.dp, top = 16.dp, bottom = 12.dp),
-                ) {
-                    Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            // The game on top (Denis): its wide cover across the panel, its name, then the PC.
-                            // It scrolls with the rows, so a short screen still reaches every setting.
-                            StreamHeader(
-                                appName = appName,
-                                pcName = pcName,
-                                coverUrls = coverUrls,
-                                cloud = extraSettings != null,
-                            )
-                            if (error != null) {
-                                Text(
-                                    text = error,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.padding(horizontal = CONTENT_INSET, vertical = 8.dp),
+                backdrop = backdrop,
+                rowInset = PLATE_INSET,
+                // The tab rail on the outer edge with "End stream" at its foot.
+                rail = {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        // One tab needs no buttons; with more, only the focused thing is filled with
+                        // the accent and the open tab stays a quiet grey.
+                        if (tabs.size > 1) {
+                            tabs.forEach { option ->
+                                QuickMenuTabButton(
+                                    icon = option.icon,
+                                    contentDescriptionResId = option.title,
+                                    selected = tab == option,
+                                    accentColor = accent,
+                                    onSelected = { tab = option },
+                                    quietSelection = true,
                                 )
-                            }
-                            if (relaunch) {
-                                QuickMenuItemRow(
-                                    item = QuickMenuItem(0, Icons.Rounded.RestartAlt, R.string.rift_stream_relaunch),
-                                    onClick = onRelaunch!!,
-                                    focusRequester = requester(RELAUNCH),
-                                )
-                            }
-                            when (tab) {
-                                StreamTab.PICTURE -> PictureSettings(::requester, onPictureChange!!, maxFps, screenSize)
-                                StreamTab.STREAM -> StreamSettingsTab(::requester, onPerfOverlayChange!!)
-                                StreamTab.CLOUD -> extraSettings!!(::requester)
-                                null -> Unit
                             }
                         }
                     }
-                    Box(
-                        modifier = Modifier
-                            .padding(start = 12.dp, end = 8.dp)
-                            .width(1.dp)
-                            .fillMaxHeight()
-                            .background(Color.White.copy(alpha = 0.06f)),
+                    Spacer(modifier = Modifier.height(12.dp))
+                    QuickMenuRailActionButton(
+                        item = QuickMenuItem(1, Icons.Rounded.PowerSettingsNew, R.string.rift_stream_end),
+                        onClick = onEndStream,
+                        focusRequester = requester(StreamMenuRow.END),
                     )
-                    Column(
-                        modifier = Modifier
-                            .width(56.dp)
-                            .fillMaxHeight()
-                            .focusGroup(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            // One tab needs no buttons; with more, only the focused thing is filled with
-                            // the accent and the open tab stays a quiet grey.
-                            if (tabs.size > 1) {
-                                tabs.forEach { option ->
-                                    QuickMenuTabButton(
-                                        icon = option.icon,
-                                        contentDescriptionResId = option.title,
-                                        selected = tab == option,
-                                        accentColor = accent,
-                                        onSelected = { tab = option },
-                                        quietSelection = true,
-                                    )
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        QuickMenuRailActionButton(
-                            item = QuickMenuItem(1, Icons.Rounded.PowerSettingsNew, R.string.rift_stream_end),
-                            onClick = onEndStream,
-                            focusRequester = requester(StreamMenuRow.END),
+                },
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    // The game on top (Denis): its wide cover across the panel, its name, then the PC.
+                    // It scrolls with the rows, so a short screen still reaches every setting.
+                    StreamHeader(
+                        appName = appName,
+                        pcName = pcName,
+                        coverUrls = coverUrls,
+                        cloud = extraSettings != null,
+                    )
+                    if (error != null) {
+                        Text(
+                            text = error,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(horizontal = CONTENT_INSET, vertical = 8.dp),
                         )
+                    }
+                    if (relaunch) {
+                        QuickMenuItemRow(
+                            item = QuickMenuItem(0, Icons.Rounded.RestartAlt, R.string.rift_stream_relaunch),
+                            onClick = onRelaunch!!,
+                            focusRequester = requester(RELAUNCH),
+                        )
+                    }
+                    when (tab) {
+                        StreamTab.PICTURE -> PictureSettings(::requester, onPictureChange!!, maxFps, screenSize)
+                        StreamTab.STREAM -> StreamSettingsTab(::requester, onPerfOverlayChange!!)
+                        StreamTab.CLOUD -> extraSettings!!(::requester)
+                        null -> Unit
                     }
                 }
             }

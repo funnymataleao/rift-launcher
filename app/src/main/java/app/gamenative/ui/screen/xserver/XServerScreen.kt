@@ -3066,6 +3066,8 @@ fun XServerScreen(
             onRequestOpen = { ui.showQuickMenu = true },
             // Immersive tab (tab only visible when hosted by ImmersiveXrActivity)
             immersiveHooks = immersiveHooks,
+            // Rift: the panel's glass blurs a live copy of the game (Compose can't see its surface).
+            glassBackdrop = dev.rift.launcher.ui.rememberSurfaceBackdrop(ui.xServerView as? android.view.SurfaceView, ui.showQuickMenu),
             onAnimationComplete = { isMenuVisible ->
                 if (isMenuVisible) {
                     // An invite dialog the game asked for must not suspend it -- the game has to

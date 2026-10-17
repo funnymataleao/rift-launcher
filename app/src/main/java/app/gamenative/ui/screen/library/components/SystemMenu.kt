@@ -103,6 +103,9 @@ import dev.rift.launcher.settings.plateFill
 import dev.rift.launcher.settings.plateSubtext
 import dev.rift.launcher.settings.plateText
 import dev.rift.launcher.ui.BlackGlass
+import dev.rift.launcher.ui.DrawerBackdrop
+import dev.rift.launcher.ui.RiftDrawer
+import dev.rift.launcher.ui.RiftDrawerPanel
 import dev.rift.launcher.ui.theme.RiftAccent
 import dev.rift.launcher.ui.theme.RiftColors
 import kotlinx.coroutines.delay
@@ -311,6 +314,8 @@ fun SystemMenu(
     showCommunityItems: Boolean = true,
     // Rift signs in to GOG, Epic and Amazon in Settings > Accounts.
     showStoreAccounts: Boolean = true,
+    // Rift: what the panel's glass blurs (the home behind it).
+    glassBackdrop: DrawerBackdrop? = null,
 ) {
     val scope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
@@ -413,317 +418,308 @@ fun SystemMenu(
             ),
             modifier = Modifier.align(Alignment.CenterEnd),
         ) {
-            Surface(
+            // Rift: the frame and glass of every Rift panel, blurring the home behind it.
+            RiftDrawerPanel(
                 modifier = Modifier
-                    .width(adaptivePanelWidth(380.dp))
-                    .fillMaxHeight(),
-                shape = panelShape,
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 8.dp,
-                shadowElevation = panelShadowElevation,
+                    .width(adaptivePanelWidth(RiftDrawer.Width))
+                    .fillMaxHeight()
+                    .clip(panelShape),
+                backdrop = glassBackdrop,
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .statusBarsPadding()
-                        .navigationBarsPadding()
-                        .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 20.dp),
+                // Header with close button
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // Header with close button
+                    Text(
+                        text = stringResource(R.string.system_menu_title),
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    if (showCloseButton) {
+                        IconButton(onClick = onDismiss) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = stringResource(R.string.options_panel_close),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Profile section
+                val profileInteractionSource = remember { MutableInteractionSource() }
+                val isProfileFocused by profileInteractionSource.collectIsFocusedAsState()
+
+                Box {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onGloballyPositioned { profileWidth = with(density) { it.size.width.toDp() } }
+                            .plateFill(isProfileFocused)
+                            .focusRequester(profileFocusRequester)
+                            .selectable(
+                                selected = isProfileFocused,
+                                interactionSource = profileInteractionSource,
+                                indication = null,
+                                onClick = { if (!isOffline && SteamService.isLoggedIn) showStatusPicker = !showStatusPicker },
+                            )
+                            .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Text(
-                            text = stringResource(R.string.system_menu_title),
-                            style = MaterialTheme.typography.headlineSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        if (showCloseButton) {
-                            IconButton(onClick = onDismiss) {
+                        // Avatar
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (persona?.avatarHash?.isNotEmpty() == true) {
+                                SteamIconImage(
+                                    size = 48.dp,
+                                    image = { persona?.avatarHash?.getAvatarURL() },
+                                )
+                            } else {
                                 Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = stringResource(R.string.options_panel_close),
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
-                    }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Profile section
-                    val profileInteractionSource = remember { MutableInteractionSource() }
-                    val isProfileFocused by profileInteractionSource.collectIsFocusedAsState()
-
-                    Box {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .onGloballyPositioned { profileWidth = with(density) { it.size.width.toDp() } }
-                                .plateFill(isProfileFocused)
-                                .focusRequester(profileFocusRequester)
-                                .selectable(
-                                    selected = isProfileFocused,
-                                    interactionSource = profileInteractionSource,
-                                    indication = null,
-                                    onClick = { if (!isOffline && SteamService.isLoggedIn) showStatusPicker = !showStatusPicker },
-                                )
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            // Avatar
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                if (persona?.avatarHash?.isNotEmpty() == true) {
-                                    SteamIconImage(
-                                        size = 48.dp,
-                                        image = { persona?.avatarHash?.getAvatarURL() },
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Default.Person,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
-
-                            // Name and status
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = persona?.name ?: stringResource(R.string.default_user_name),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = plateText(isProfileFocused),
-                                    maxLines = 1,
-                                )
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .background(getStatusColor(selectedStatus), CircleShape),
-                                    )
-                                    Text(
-                                        text = when (selectedStatus) {
-                                            EPersonaState.Online -> stringResource(R.string.status_online)
-                                            EPersonaState.Away -> stringResource(R.string.status_away)
-                                            EPersonaState.Invisible -> stringResource(R.string.status_invisible)
-                                            else -> selectedStatus.name
-                                        },
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = plateSubtext(isProfileFocused),
-                                    )
-                                }
-                            }
-
-                            // Dropdown indicator (only when online)
-                            if (!isOffline && SteamService.isLoggedIn) {
-                                Icon(
-                                    imageVector = if (showStatusPicker) {
-                                        Icons.Default.KeyboardArrowUp
-                                    } else {
-                                        Icons.Default.KeyboardArrowDown
-                                    },
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp),
-                                    tint = plateSubtext(isProfileFocused),
-                                )
-                            }
-                        }
-
-                        // Status picker dropdown
-                        // As wide as the profile plate, near-opaque black glass, accent focus like the rows.
-                        StatusPickerMenu(
-                            expanded = showStatusPicker,
-                            onDismiss = { showStatusPicker = false },
-                            selected = selectedStatus,
-                            width = profileWidth.coerceAtLeast(280.dp),
-                            focusRequester = statusFocusRequester,
-                            onSelect = { state ->
-                                selectedStatus = state
-                                showStatusPicker = false
-                                scope.launch {
-                                    SteamService.setPersonaState(state)
-                                }
-                            },
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Menu items
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .verticalScroll(rememberScrollState())
-                            .focusGroup(),
-                        verticalArrangement = Arrangement.spacedBy(PlateGap),
-                    ) {
-                        SystemMenuItem(
-                            text = stringResource(R.string.settings_text),
-                            icon = Icons.Default.Settings,
-                            onClick = {
-                                onNavigateRoute(PluviaScreen.Settings.route)
-                                onDismiss()
-                            },
-                            focusRequester = firstItemFocusRequester,
-                        )
-
-                        SystemMenuItem(
-                            text = stringResource(R.string.support_title),
-                            icon = Icons.Default.SupportAgent,
-                            onClick = {
-                                onNavigateRoute(PluviaScreen.Support.route)
-                                onDismiss()
-                            },
-                            badge = SupportReplyWatcher.unread.value.isNotEmpty(),
-                        )
-
-                        SystemMenuItem(
-                            text = stringResource(R.string.app_downloads),
-                            icon = Icons.Default.Download,
-                            onClick = {
-                                onDownloadsClick()
-                                onDismiss()
-                            },
-                        )
-
-                        if (showCommunityItems) {
-                            SystemMenuItem(
-                                text = stringResource(R.string.help_and_support),
-                                icon = Icons.AutoMirrored.Filled.Help,
-                                onClick = {
-                                    uriHandler.openUri("https://discord.gg/2hKv4VfZfE")
-                                },
-                            )
-
-                            SystemMenuItem(
-                                text = stringResource(R.string.hall_of_fame),
-                                icon = Icons.AutoMirrored.Filled.StarHalf,
-                                onClick = { showSupporters = true },
-                            )
-                        }
-
-                        if (isOffline || !SteamService.isLoggedIn) {
-                            val goOnlineLabelRes = if (!SteamService.isLoggedIn) {
-                                R.string.steam_sign_in
-                            } else {
-                                R.string.steam_go_online
-                            }
-                            SystemMenuItem(
-                                text = stringResource(goOnlineLabelRes),
-                                icon = Icons.AutoMirrored.Filled.Login,
-                                onClick = {
-                                    onGoOnline()
-                                    onDismiss()
-                                },
-                            )
-                        } else {
-                            SystemMenuItem(
-                                text = stringResource(R.string.steam_go_offline),
-                                icon = Icons.AutoMirrored.Filled.AirplaneTicket,
-                                onClick = {
-                                    onNavigateRoute(PluviaScreen.Home.route + "?offline=true") // TODO: test this
-                                    onDismiss()
-                                },
-                            )
-
-                            SystemMenuItem(
-                                text = stringResource(R.string.steam_sign_out),
-                                icon = Icons.AutoMirrored.Filled.Logout,
-                                onClick = {
-                                    onLogout()
-                                    onDismiss()
-                                },
-                                isDestructive = true,
-                            )
-                        }
-
-                        if (showStoreAccounts) {
-                        // GOG
-                        SystemMenuItem(
-                            text = stringResource(
-                                if (gogLoggedIn) R.string.gog_settings_logout_title
-                                else R.string.gog_settings_login_title,
-                            ),
-                            icon = if (gogLoggedIn) {
-                                Icons.AutoMirrored.Filled.Logout
-                            } else {
-                                Icons.AutoMirrored.Filled.Login
-                            },
-                            onClick = {
-                                if (gogLoggedIn) onGogLogoutClick() else onGogLoginClick()
-                                onDismiss()
-                            },
-                            isDestructive = gogLoggedIn,
-                        )
-
-                        // Epic
-                        SystemMenuItem(
-                            text = stringResource(
-                                if (epicLoggedIn) R.string.epic_settings_logout_title
-                                else R.string.epic_settings_login_title,
-                            ),
-                            icon = if (epicLoggedIn) {
-                                Icons.AutoMirrored.Filled.Logout
-                            } else {
-                                Icons.AutoMirrored.Filled.Login
-                            },
-                            onClick = {
-                                if (epicLoggedIn) onEpicLogoutClick() else onEpicLoginClick()
-                                onDismiss()
-                            },
-                            isDestructive = epicLoggedIn,
-                        )
-
-                        // Amazon
-                        SystemMenuItem(
-                            text = stringResource(
-                                if (amazonLoggedIn) R.string.amazon_settings_logout_title
-                                else R.string.amazon_settings_login_title,
-                            ),
-                            icon = if (amazonLoggedIn) {
-                                Icons.AutoMirrored.Filled.Logout
-                            } else {
-                                Icons.AutoMirrored.Filled.Login
-                            },
-                            onClick = {
-                                if (amazonLoggedIn) onAmazonLogoutClick() else onAmazonLoginClick()
-                                onDismiss()
-                            },
-                            isDestructive = amazonLoggedIn,
-                        )
-                        }
-                    }
-
-                    // Gamepad hint at bottom (only on expanded screens)
-                    if (shouldShowGamepadUI()) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
+                        // Name and status
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = stringResource(R.string.press_b_to_close),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                text = persona?.name ?: stringResource(R.string.default_user_name),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = plateText(isProfileFocused),
+                                maxLines = 1,
+                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .background(getStatusColor(selectedStatus), CircleShape),
+                                )
+                                Text(
+                                    text = when (selectedStatus) {
+                                        EPersonaState.Online -> stringResource(R.string.status_online)
+                                        EPersonaState.Away -> stringResource(R.string.status_away)
+                                        EPersonaState.Invisible -> stringResource(R.string.status_invisible)
+                                        else -> selectedStatus.name
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = plateSubtext(isProfileFocused),
+                                )
+                            }
+                        }
+
+                        // Dropdown indicator (only when online)
+                        if (!isOffline && SteamService.isLoggedIn) {
+                            Icon(
+                                imageVector = if (showStatusPicker) {
+                                    Icons.Default.KeyboardArrowUp
+                                } else {
+                                    Icons.Default.KeyboardArrowDown
+                                },
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = plateSubtext(isProfileFocused),
                             )
                         }
+                    }
+
+                    // Status picker dropdown
+                    // As wide as the profile plate, near-opaque black glass, accent focus like the rows.
+                    StatusPickerMenu(
+                        expanded = showStatusPicker,
+                        onDismiss = { showStatusPicker = false },
+                        selected = selectedStatus,
+                        width = profileWidth.coerceAtLeast(280.dp),
+                        focusRequester = statusFocusRequester,
+                        onSelect = { state ->
+                            selectedStatus = state
+                            showStatusPicker = false
+                            scope.launch {
+                                SteamService.setPersonaState(state)
+                            }
+                        },
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Menu items
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .focusGroup(),
+                    verticalArrangement = Arrangement.spacedBy(PlateGap),
+                ) {
+                    SystemMenuItem(
+                        text = stringResource(R.string.settings_text),
+                        icon = Icons.Default.Settings,
+                        onClick = {
+                            onNavigateRoute(PluviaScreen.Settings.route)
+                            onDismiss()
+                        },
+                        focusRequester = firstItemFocusRequester,
+                    )
+
+                    SystemMenuItem(
+                        text = stringResource(R.string.support_title),
+                        icon = Icons.Default.SupportAgent,
+                        onClick = {
+                            onNavigateRoute(PluviaScreen.Support.route)
+                            onDismiss()
+                        },
+                        badge = SupportReplyWatcher.unread.value.isNotEmpty(),
+                    )
+
+                    SystemMenuItem(
+                        text = stringResource(R.string.app_downloads),
+                        icon = Icons.Default.Download,
+                        onClick = {
+                            onDownloadsClick()
+                            onDismiss()
+                        },
+                    )
+
+                    if (showCommunityItems) {
+                        SystemMenuItem(
+                            text = stringResource(R.string.help_and_support),
+                            icon = Icons.AutoMirrored.Filled.Help,
+                            onClick = {
+                                uriHandler.openUri("https://discord.gg/2hKv4VfZfE")
+                            },
+                        )
+
+                        SystemMenuItem(
+                            text = stringResource(R.string.hall_of_fame),
+                            icon = Icons.AutoMirrored.Filled.StarHalf,
+                            onClick = { showSupporters = true },
+                        )
+                    }
+
+                    if (isOffline || !SteamService.isLoggedIn) {
+                        val goOnlineLabelRes = if (!SteamService.isLoggedIn) {
+                            R.string.steam_sign_in
+                        } else {
+                            R.string.steam_go_online
+                        }
+                        SystemMenuItem(
+                            text = stringResource(goOnlineLabelRes),
+                            icon = Icons.AutoMirrored.Filled.Login,
+                            onClick = {
+                                onGoOnline()
+                                onDismiss()
+                            },
+                        )
+                    } else {
+                        SystemMenuItem(
+                            text = stringResource(R.string.steam_go_offline),
+                            icon = Icons.AutoMirrored.Filled.AirplaneTicket,
+                            onClick = {
+                                onNavigateRoute(PluviaScreen.Home.route + "?offline=true") // TODO: test this
+                                onDismiss()
+                            },
+                        )
+
+                        SystemMenuItem(
+                            text = stringResource(R.string.steam_sign_out),
+                            icon = Icons.AutoMirrored.Filled.Logout,
+                            onClick = {
+                                onLogout()
+                                onDismiss()
+                            },
+                            isDestructive = true,
+                        )
+                    }
+
+                    if (showStoreAccounts) {
+                    // GOG
+                    SystemMenuItem(
+                        text = stringResource(
+                            if (gogLoggedIn) R.string.gog_settings_logout_title
+                            else R.string.gog_settings_login_title,
+                        ),
+                        icon = if (gogLoggedIn) {
+                            Icons.AutoMirrored.Filled.Logout
+                        } else {
+                            Icons.AutoMirrored.Filled.Login
+                        },
+                        onClick = {
+                            if (gogLoggedIn) onGogLogoutClick() else onGogLoginClick()
+                            onDismiss()
+                        },
+                        isDestructive = gogLoggedIn,
+                    )
+
+                    // Epic
+                    SystemMenuItem(
+                        text = stringResource(
+                            if (epicLoggedIn) R.string.epic_settings_logout_title
+                            else R.string.epic_settings_login_title,
+                        ),
+                        icon = if (epicLoggedIn) {
+                            Icons.AutoMirrored.Filled.Logout
+                        } else {
+                            Icons.AutoMirrored.Filled.Login
+                        },
+                        onClick = {
+                            if (epicLoggedIn) onEpicLogoutClick() else onEpicLoginClick()
+                            onDismiss()
+                        },
+                        isDestructive = epicLoggedIn,
+                    )
+
+                    // Amazon
+                    SystemMenuItem(
+                        text = stringResource(
+                            if (amazonLoggedIn) R.string.amazon_settings_logout_title
+                            else R.string.amazon_settings_login_title,
+                        ),
+                        icon = if (amazonLoggedIn) {
+                            Icons.AutoMirrored.Filled.Logout
+                        } else {
+                            Icons.AutoMirrored.Filled.Login
+                        },
+                        onClick = {
+                            if (amazonLoggedIn) onAmazonLogoutClick() else onAmazonLoginClick()
+                            onDismiss()
+                        },
+                        isDestructive = amazonLoggedIn,
+                    )
+                    }
+                }
+
+                // Gamepad hint at bottom (only on expanded screens)
+                if (shouldShowGamepadUI()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.press_b_to_close),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        )
                     }
                 }
             }
