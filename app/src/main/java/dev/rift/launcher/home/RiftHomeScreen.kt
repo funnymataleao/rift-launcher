@@ -2856,6 +2856,9 @@ private fun EmptyState(message: String, onConnect: () -> Unit, modifier: Modifie
 
 private val FooterHeight = 58.dp
 
+/** The hints sit closer to the screen edges than the content (Denis): the left block further left, the right block further right. */
+private val HintBarSidePadding = 24.dp
+
 /** Whether the hint footer is on, read by the library grids to keep their bottom space in step. */
 private object HintBarState {
     var shown by androidx.compose.runtime.mutableStateOf(true)
@@ -2897,7 +2900,7 @@ private fun HintsBar(showFilters: Boolean, modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .height(FooterHeight)
             .drawBehind { drawLine(Color.White.copy(alpha = 0.12f), Offset.Zero, Offset(size.width, 0f), strokeWidth = 1.dp.toPx()) }
-            .padding(horizontal = ScreenPadding),
+            .padding(horizontal = HintBarSidePadding),
         horizontalArrangement = Arrangement.spacedBy(24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
