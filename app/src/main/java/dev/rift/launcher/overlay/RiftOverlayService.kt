@@ -2,8 +2,6 @@ package dev.rift.launcher.overlay
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
-import android.app.ActivityManager
-import android.content.Context
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
@@ -16,11 +14,14 @@ import dev.rift.launcher.home.RiftControls
 /**
  * Opens [OverlayPanel] over an Android game or emulator started from Rift ([ExternalGameSession]) when the
  * gamepad's Home button (or the quick access button set in Rift's settings) is pressed. Gamepad buttons are
- * only filtered while that game is on screen; everywhere else they go straight to the app.
+ * only filtered while a game or emulator is on screen; everywhere else they go straight to the app.
  */
 class RiftOverlayService : AccessibilityService() {
     private var panel: OverlayPanel? = null
     private var filtering = false
+
+    // The game or emulator in front: the one Rift started, or any emulator or game app, also one opened without Rift.
+    private var gameInFront: String? = null
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
@@ -28,7 +29,8 @@ class RiftOverlayService : AccessibilityService() {
         // Our own panel, the status bar and the keyboard come and go over the game.
         if (pkg == packageName && panel != null) return
         if (pkg == SYSTEM_UI || pkg == inputMethodPackage()) return
-        val inGame = pkg != packageName && pkg == ExternalGameSession.packageName(this)
+        val inGame = pkg != packageName && ExternalGameSession.isGameApp(this, pkg)
+        gameInFront = if (inGame) pkg else null
         setFiltering(inGame)
         if (!inGame) hidePanel()
     }
@@ -60,18 +62,20 @@ class RiftOverlayService : AccessibilityService() {
     }
 
     private fun showPanel() {
-        val game = ExternalGameSession.packageName(this) ?: return
+        val game = gameInFront ?: ExternalGameSession.packageName(this) ?: return
         panel = OverlayPanel(
             service = this,
             gamePackage = game,
             onBackToRift = {
                 hidePanel()
-                openRift()
+                ExternalGameSession.leftGame(this)
+                ExternalGameSession.openRift(this)
             },
             onCloseGame = {
                 hidePanel()
-                openRift()
-                closeInBackground(game)
+                ExternalGameSession.leftGame(this)
+                ExternalGameSession.openRift(this)
+                ExternalGameSession.closeInBackground(this, game)
             },
             onGameMenu = {
                 hidePanel()
@@ -81,25 +85,6 @@ class RiftOverlayService : AccessibilityService() {
             },
             onDismissed = { panel = null },
         ).also { it.show() }
-    }
-
-    private fun openRift() {
-        packageManager.getLaunchIntentForPackage(packageName)?.let {
-            runCatching { startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-        }
-    }
-
-    /**
-     * Ends the game's app once Rift is in front of it: Android only lets one app end another's process while that
-     * process is in the background, so this waits for Rift's screen and tries a second time in case the first
-     * came too early. The emulator's own menu is skipped, so the person lands in Rift and not in the emulator.
-     */
-    private fun closeInBackground(gamePackage: String) {
-        val activities = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        val handler = Handler(Looper.getMainLooper())
-        for (delay in CLOSE_GAME_DELAYS_MS) {
-            handler.postDelayed({ runCatching { activities.killBackgroundProcesses(gamePackage) } }, delay)
-        }
     }
 
     private fun hidePanel() {
@@ -125,6 +110,5 @@ class RiftOverlayService : AccessibilityService() {
     private companion object {
         const val SYSTEM_UI = "com.android.systemui"
         const val GAME_MENU_DELAY_MS = 250L
-        val CLOSE_GAME_DELAYS_MS = longArrayOf(700L, 2000L)
     }
 }

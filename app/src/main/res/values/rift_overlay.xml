@@ -5,4 +5,13 @@
         <item name="android:windowEnterAnimation">@anim/rift_panel_in</item>
         <item name="android:windowExitAnimation">@anim/rift_panel_out</item>
     </style>
+
+    <!-- The panel over a game as an activity (RiftPanelActivity): see-through, the game stays visible behind it. -->
+    <style name="Theme.Rift.Panel" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowAnimationStyle">@style/RiftOverlayPanelAnimation</item>
+    </style>
 </resources>

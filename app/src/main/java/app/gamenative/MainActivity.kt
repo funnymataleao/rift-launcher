@@ -235,6 +235,10 @@ class MainActivity : ComponentActivity() {
         ContainerUtils.setContainerDefaults(applicationContext)
 
         handleLaunchIntent(intent)
+        // Rift was started by Home while a game it opened is on screen (Rift had been closed): the panel, not the main screen.
+        if (savedInstanceState == null && intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) {
+            dev.rift.launcher.overlay.RiftGameHome.intercept(this)
+        }
 
         // Prevent device from sleeping while app is open
         AppUtils.keepScreenOn(this)
@@ -311,6 +315,8 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         // Home pressed while Rift is the home app: back to the main screen, nothing is recreated.
         if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) {
+            // A game Rift started is on screen: Home opens the panel over it, not the main screen.
+            if (dev.rift.launcher.overlay.RiftGameHome.intercept(this)) return
             lifecycleScope.launch { PluviaApp.events.emit(AndroidEvent.HomePressed) }
             return
         }
@@ -523,6 +529,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        dev.rift.launcher.overlay.ExternalGameSession.riftShown(this)
         PowerManager.resume()
         PluviaApp.isActivityInForeground = true
 

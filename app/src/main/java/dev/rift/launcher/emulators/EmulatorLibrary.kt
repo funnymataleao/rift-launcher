@@ -234,6 +234,7 @@ object EmulatorLibrary {
         for (intent in attempts) {
             try {
                 context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                ExternalGameSession.setResumeIntent(context, intent)
                 context.getSharedPreferences(USAGE_PREFS, Context.MODE_PRIVATE).edit { putLong(game.appId, System.currentTimeMillis()) }
                 return true
             } catch (e: ActivityNotFoundException) {
@@ -246,6 +247,7 @@ object EmulatorLibrary {
         val open = pm.getLaunchIntentForPackage(entry.emulatorPackage) ?: return false
         SnackbarManager.show(context.getString(R.string.rift_emulator_opened_only, EmulatorCatalog.labelFor(context, entry.emulatorPackage)))
         context.startActivity(open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        ExternalGameSession.setResumeIntent(context, open)
         return true
     }
 
