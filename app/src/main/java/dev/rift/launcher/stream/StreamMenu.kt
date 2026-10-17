@@ -1,5 +1,6 @@
 package dev.rift.launcher.stream
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -28,6 +29,8 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -58,7 +61,8 @@ import dev.rift.launcher.settings.rememberRiftPrefs
 /**
  * The in-stream panel on the right, opened with Select + Start: the running game and "End stream",
  * which quits the game on the PC so the host lets go of its virtual display, then quick stream
- * settings. B closes it.
+ * settings. B closes it. When the stream broke, the panel says why and offers to quit the game on
+ * the PC and start it again.
  * Drawn like Rift's other side panels (GameNative's system menu in the glass theme).
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -71,6 +75,8 @@ fun StreamMenu(
     onEndStream: () -> Unit,
     onPerfOverlayChange: ((Boolean) -> Unit)? = null,
     onRestart: (() -> Unit)? = null,
+    error: String? = null,
+    onRelaunch: (() -> Unit)? = null,
 ) = RiftGlassTheme {
     Box(modifier = Modifier.fillMaxSize()) {
         AnimatedVisibility(
@@ -92,6 +98,8 @@ fun StreamMenu(
             modifier = Modifier.align(Alignment.CenterEnd),
         ) {
             val endFocus = remember { FocusRequester() }
+            val secondFocus = remember { FocusRequester() }
+            var endFocused by remember { mutableStateOf(false) }
             Surface(
                 modifier = Modifier.width(adaptivePanelWidth(420.dp)).fillMaxHeight(),
                 shape = RectangleShape,
@@ -115,23 +123,57 @@ fun StreamMenu(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    if (error != null) {
+                        Text(
+                            text = error,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    // The first button holds the focus: "Quit and start again" after an error, else "End stream".
+                    if (error != null && onRelaunch != null) {
+                        SystemMenuItem(
+                            text = stringResource(R.string.rift_stream_relaunch),
+                            icon = Icons.Rounded.RestartAlt,
+                            onClick = onRelaunch,
+                            modifier = Modifier.fillMaxWidth().onFocusChanged {
+                                endFocused = it.isFocused
+                                Log.i("RiftStream", "panel Relaunch focused=${it.isFocused}")
+                            },
+                            focusRequester = endFocus,
+                        )
+                    }
                     SystemMenuItem(
                         text = stringResource(R.string.rift_stream_end),
                         icon = Icons.Rounded.PowerSettingsNew,
                         onClick = onEndStream,
-                        modifier = Modifier.fillMaxWidth(),
-                        focusRequester = endFocus,
+                        modifier = if (error != null && onRelaunch != null) {
+                            Modifier.fillMaxWidth()
+                        } else {
+                            Modifier.fillMaxWidth().onFocusChanged {
+                                endFocused = it.isFocused
+                                Log.i("RiftStream", "panel End stream focused=${it.isFocused}")
+                            }
+                        },
+                        focusRequester = if (error != null && onRelaunch != null) secondFocus else endFocus,
                     )
-                    // PC streams only: the cloud stream has its own settings in the page.
-                    if (onPerfOverlayChange != null && onRestart != null) {
+                    // PC streams only, and only while the stream runs: the cloud stream has its own settings.
+                    if (error == null && onPerfOverlayChange != null && onRestart != null) {
                         StreamQuickSettings(onPerfOverlayChange = onPerfOverlayChange, onRestart = onRestart)
                     }
                 }
             }
+            val view = LocalView.current
             LaunchedEffect(Unit) {
-                // One frame first, so the panel is laid out in the focused view before it takes the focus.
-                withFrameNanos { }
-                runCatching { endFocus.requestFocus() }
+                // The panel is composed a frame after it opens; until the button holds the focus, the
+                // view leaves touch mode and the button asks for it again, frame by frame.
+                repeat(FOCUS_ATTEMPTS) { attempt ->
+                    withFrameNanos { }
+                    if (endFocused) return@LaunchedEffect
+                    if (view.isInTouchMode) view.requestFocusFromTouch()
+                    runCatching { endFocus.requestFocus() }
+                    Log.i("RiftStream", "panel focus attempt $attempt touch mode=${view.isInTouchMode} view focus=${view.hasFocus()}")
+                }
             }
         }
     }
@@ -242,3 +284,5 @@ private fun StreamQuickSettings(onPerfOverlayChange: (Boolean) -> Unit, onRestar
         )
     }
 }
+
+private const val FOCUS_ATTEMPTS = 20
