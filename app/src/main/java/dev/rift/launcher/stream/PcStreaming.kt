@@ -89,7 +89,10 @@ object PcStreaming {
      */
     suspend fun loadApps(context: Context, pc: ComputerDetails, uniqueId: String): List<NvApp> = withContext(Dispatchers.IO) {
         val http = NvHTTP(pc.activeAddress, pc.httpsPort, uniqueId, pc.serverCert, PlatformBinding.getCryptoProvider(context))
-        http.appList.also { apps -> pc.uuid?.let { saveApps(context, it, apps) } }
+        http.appList.also { apps ->
+            Log.i("RiftStream", "apps of ${pc.name}: ${apps.joinToString { it.appName.orEmpty() }}")
+            pc.uuid?.let { saveApps(context, it, apps) }
+        }
     }
 
     /** The last app list each PC returned, keyed by host UUID (call off the main thread). */

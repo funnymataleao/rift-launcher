@@ -16,6 +16,7 @@ import app.gamenative.data.SteamApp
 import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.db.dao.SteamLicenseDao
 import app.gamenative.enums.AppType
+import dev.rift.launcher.home.RiftGameNames
 import dev.rift.launcher.home.TabSort
 import dev.rift.launcher.home.TabView
 import com.limelight.nvstream.http.ComputerDetails
@@ -28,18 +29,23 @@ import java.text.Normalizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** A game on a paired PC: the host app that starts it, shown with Rift's Steam library entry for its art. */
+/**
+ * A game on a paired PC: the host app that starts it, shown with Rift's Steam library entry for its art,
+ * or, for a game the Steam account does not own (Steam Tools, Playnite...), under its host name with
+ * covers found on SteamGridDB.
+ */
 class StreamGame(val item: LibraryItem, val pc: ComputerDetails, val app: NvApp)
 
 /** Any other app a PC's host offers (Desktop, Steam, Playnite, Game Pass...), listed in settings. */
 class StreamService(val pc: ComputerDetails, val app: NvApp)
 
 /**
- * The PC streaming tab's data: the paired PCs' host apps, split into games (host apps that are Steam
- * games, which Vibepollo adds when its Steam library sync is on) and everything else.
+ * The PC streaming tab's data: the paired PCs' host apps, split into games (what Vibepollo adds when its
+ * Steam library sync is on, Steam Tools games included) and the host's own entries (Desktop, launchers).
  *
  * Games are matched to the Steam library Rift already has from the GameNative Steam sign-in, by name,
- * so the tab shows the same covers, art and logos as the PC games tab.
+ * so the tab shows the same covers, art and logos as the PC games tab. Games the account does not own
+ * still show, under the host's name.
  */
 class PcStreamingTab internal constructor(internal val hosts: PcHosts) {
     /** Each PC's apps: the saved list first, then the live one once the PC is online. */
@@ -61,11 +67,17 @@ class PcStreamingTab internal constructor(internal val hosts: PcHosts) {
         // Asleep or unreachable PCs keep their games from the saved list; streaming wakes nothing.
         paired.forEach { pc ->
             apps[pc.uuid].orEmpty().forEach { app ->
-                val steam = steamByName[normalizedTitle(app.appName)]
-                if (steam != null) {
-                    if (games.none { it.item.appId == steamAppId(steam) }) games += StreamGame(steam.toLibraryItem(), pc, app)
-                } else {
+                val title = normalizedTitle(app.appName)
+                val steam = steamByName[title]
+                val item = when {
+                    steam != null -> steam.toLibraryItem()
+                    isHostEntry(app, title) -> null
+                    else -> hostItem(app, title)
+                }
+                if (item == null) {
                     services += StreamService(pc, app)
+                } else if (games.none { it.item.appId == item.appId }) {
+                    games += StreamGame(item, pc, app)
                 }
             }
         }
@@ -75,7 +87,7 @@ class PcStreamingTab internal constructor(internal val hosts: PcHosts) {
     /** The tab's covers, in the library's name order. */
     val games: List<StreamGame> get() = split.first
 
-    /** Host apps that are not games Rift knows: Desktop, launchers, input-only apps. */
+    /** The host's own entries, not games: Desktop, launchers, input-only apps. */
     val services: List<StreamService> get() = split.second
 
     val items: List<LibraryItem> get() = games.map { it.item }
@@ -128,6 +140,31 @@ class PcStreamingTab internal constructor(internal val hosts: PcHosts) {
         val uniqueId = hosts.uniqueId ?: return false
         PcStreaming.startStream(context, pc, app, uniqueId)
         return true
+    }
+
+    /** The host's name of the game shown by [item], before any rename in Rift. */
+    fun hostName(item: LibraryItem): String? = games.firstOrNull { it.item.appId == item.appId }?.app?.appName
+
+    companion object {
+        private const val HOST_PREFIX = "PCSTREAM_"
+
+        /** Host entries that start a launcher or the desktop rather than a game, by [normalizedTitle]. */
+        private val HOST_ENTRIES = setOf(
+            "desktop", "steam", "steambigpicture", "bigpicture", "playnite", "playnitefullscreen",
+            "xbox", "gamepass", "xboxgamepass", "epicgames", "epicgameslauncher", "eaapp", "origin",
+            "ubisoftconnect", "goggalaxy", "battlenet", "virtualdisplay", "remoteinput",
+        )
+
+        /** A game the Steam account does not own: its cover, art and page come from SteamGridDB and IGDB by name. */
+        fun isHostGame(appId: String): Boolean = appId.startsWith(HOST_PREFIX)
+
+        private fun isHostEntry(app: NvApp, title: String): Boolean =
+            title.isEmpty() || title in HOST_ENTRIES || NvApp.REMOTE_INPUT_UUID.equals(app.appUUID, ignoreCase = true)
+
+        private fun hostItem(app: NvApp, title: String): LibraryItem {
+            val appId = HOST_PREFIX + title
+            return LibraryItem(appId = appId, name = RiftGameNames.display(appId, app.appName.orEmpty()), isInstalled = true)
+        }
     }
 }
 
