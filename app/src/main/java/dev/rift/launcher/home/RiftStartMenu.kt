@@ -21,12 +21,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VisibilityOff
+import app.gamenative.ui.screen.library.components.getIconForOption
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -42,6 +48,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
@@ -63,6 +70,7 @@ class RiftStartMenuItem(
     val label: String,
     val chevron: Boolean = false,
     val destructive: Boolean = false,
+    val icon: ImageVector? = null,
     val onClick: () -> Unit,
 )
 
@@ -176,8 +184,11 @@ private fun StartMenuRow(item: RiftStartMenuItem, onClick: () -> Unit, focusRequ
             .selectable(selected = focused, interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 15.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+        if (item.icon != null) {
+            Icon(item.icon, contentDescription = null, tint = text, modifier = Modifier.size(24.dp))
+        }
         Text(
             text = item.label,
             color = text,
@@ -214,18 +225,18 @@ fun RiftGameStartMenu(
     ).mapNotNull { type -> options.firstOrNull { it.optionType == type } }
     val items = buildList {
         if (onPlay != null) {
-            add(RiftStartMenuItem(stringResource(R.string.rift_menu_play)) { onPlay(); onDismiss() })
+            add(RiftStartMenuItem(stringResource(R.string.rift_menu_play), icon = Icons.Default.PlayArrow) { onPlay(); onDismiss() })
         }
         main.forEach { option ->
-            add(RiftStartMenuItem(stringResource(option.optionType.title)) { option.onClick(); onDismiss() })
+            add(RiftStartMenuItem(stringResource(option.optionType.title), icon = getIconForOption(option.optionType)) { option.onClick(); onDismiss() })
         }
         if (onHide != null) {
-            add(RiftStartMenuItem(stringResource(R.string.rift_menu_hide)) { onHide(); onDismiss() })
+            add(RiftStartMenuItem(stringResource(R.string.rift_menu_hide), icon = Icons.Default.VisibilityOff) { onHide(); onDismiss() })
         }
         if (onProperties != null) {
-            add(RiftStartMenuItem(stringResource(R.string.rift_menu_properties)) { onProperties(); onDismiss() })
+            add(RiftStartMenuItem(stringResource(R.string.rift_menu_properties), icon = Icons.Default.Settings) { onProperties(); onDismiss() })
         }
-        add(RiftStartMenuItem(stringResource(R.string.rift_menu_cancel)) { onDismiss() })
+        add(RiftStartMenuItem(stringResource(R.string.rift_menu_cancel), icon = Icons.Default.Close) { onDismiss() })
     }
     RiftStartMenu(isOpen = isOpen, items = items, onDismiss = onDismiss, modifier = modifier)
 }

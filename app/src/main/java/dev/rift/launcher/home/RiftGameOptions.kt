@@ -38,3 +38,15 @@ class RiftStreamAction(
 )
 
 val LocalRiftStreamAction = staticCompositionLocalOf<RiftStreamAction?> { null }
+
+/** One-shot: the next game page opens on its properties page (Start menu's "Properties…" on Android and emulator games). */
+object RiftPropertiesRequest {
+    @Volatile
+    private var pending = false
+
+    fun request() {
+        pending = true
+    }
+
+    fun take(): Boolean = pending.also { pending = false }
+}
