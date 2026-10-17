@@ -155,6 +155,8 @@ private fun GamePageGroup() {
 @Composable
 private fun LookGroup() {
     val context = LocalContext.current
+    val riftPrefs = remember { RiftPrefs.of(context) }
+    var showHintBar by rememberSaveable { mutableStateOf(riftPrefs.showHintBar) }
 
     // Language
     val languageCodes = remember { LocaleHelper.getSupportedLanguageCodes() }
@@ -276,8 +278,6 @@ private fun LookGroup() {
 @Composable
 private fun LibraryGroup() {
     var showHidden by rememberSaveable { mutableStateOf(PrefManager.showHiddenGamesByDefault) }
-    val riftPrefs = RiftPrefs.of(LocalContext.current)
-    var showHintBar by rememberSaveable { mutableStateOf(riftPrefs.showHintBar) }
     var hideAi by rememberSaveable { mutableStateOf(PrefManager.hideAiFeatures) }
     var importAsSteam by rememberSaveable { mutableStateOf(PrefManager.importCustomGameAsSteamGame) }
     var libraryTabs by remember { mutableStateOf(PrefManager.libraryTabs) }
