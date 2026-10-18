@@ -396,6 +396,7 @@ private fun PageContent(
         RiftSettingsSection.Display -> DisplaySettings()
         RiftSettingsSection.Graphics -> GraphicsSettings()
         RiftSettingsSection.Launch -> LaunchSettings()
+        RiftSettingsSection.PcGames -> PcGamesSettings()
         RiftSettingsSection.AndroidGames -> AndroidGamesSettings()
         RiftSettingsSection.Emulators -> EmulatorsSettings()
         RiftSettingsSection.Streaming -> StreamingSettings(onOpenPcPairing)

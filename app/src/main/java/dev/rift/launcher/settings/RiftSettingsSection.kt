@@ -7,6 +7,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Cast
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.DesktopWindows
 import androidx.compose.material.icons.rounded.Gamepad
@@ -48,6 +49,7 @@ enum class RiftSettingsSection(
     @get:StringRes val summaryRes: Int,
     val icon: ImageVector,
 ) {
+    PcGames(RiftSettingsGroup.Sources, R.string.rift_settings_pc_games, R.string.rift_settings_pc_games_summary, Icons.Rounded.Folder),
     AndroidGames(RiftSettingsGroup.Sources, R.string.rift_settings_android_games, R.string.rift_settings_android_games_summary, Icons.Rounded.Android),
     Accounts(RiftSettingsGroup.Sources, R.string.rift_settings_accounts, R.string.rift_settings_accounts_summary, Icons.Rounded.ManageAccounts),
     Streaming(RiftSettingsGroup.Sources, R.string.rift_settings_streaming, R.string.rift_settings_streaming_summary, Icons.Rounded.Cast),

@@ -712,6 +712,25 @@ class LibraryViewModel @Inject constructor(
         }
     }
 
+    private var userRootsSignature: List<String>? = null
+
+    /**
+     * Looks again at the games folders the person added and refreshes the list when games appeared or
+     * went away. Cheap when nothing changed, so Rift calls it whenever it comes back to the front.
+     */
+    fun rescanCustomGames(force: Boolean = false) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (force) CustomGameScanner.rescanUserRoots()
+            val found = CustomGameScanner.userRootGameFolders()
+            val previous = userRootsSignature
+            userRootsSignature = found
+            // The first look only notes what the first load already listed; reloading then would move the focus.
+            if (!force && (previous == null || previous == found)) return@launch
+            CustomGameScanner.invalidateCache()
+            onFilterApps(paginationCurrentPage)
+        }
+    }
+
     fun addCustomGameFolder(path: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val normalizedPath = File(path).absolutePath

@@ -573,4 +573,25 @@
     <string name="rift_downloads_empty_body">Игры, которые вы устанавливаете из Steam, Epic, GOG или Amazon, появятся здесь вместе с прогрессом.</string>
     <string name="rift_downloads_cancel_all_message">Отменить все загрузки и удалить уже скачанные файлы?</string>
     <string name="rift_downloads_open">Загрузки</string>
+    <!-- Папки ПК-игр -->
+    <string name="rift_settings_pc_games">ПК-игры</string>
+    <string name="rift_settings_pc_games_summary">Папки, где Rift ищет Windows-игры</string>
+    <string name="rift_settings_pc_none">Папок пока нет. Добавьте папку с вашими играми, и Rift покажет на вкладке ПК каждую подпапку, где есть .exe.</string>
+    <string name="rift_settings_pc_note">Игра — это любая подпапка с .exe. Файлы остаются на месте. Rift проверяет эти папки при каждом запуске, а вручную это можно сделать ниже.</string>
+    <string name="rift_settings_pc_folders">Папки</string>
+    <string name="rift_settings_pc_add">Добавить папку</string>
+    <string name="rift_settings_pc_add_summary">Выберите папку, в которой лежат папки с играми</string>
+    <string name="rift_settings_pc_rescan">Сканировать заново</string>
+    <string name="rift_settings_pc_rescan_summary">Найти новые и убрать удалённые игры сейчас</string>
+    <string name="rift_settings_pc_remove">Убрать эту папку</string>
+    <string name="rift_settings_pc_remove_summary">Её игры пропадут из списка, файлы останутся</string>
+    <string name="rift_settings_pc_access">Разрешить доступ к файлам</string>
+    <string name="rift_settings_pc_access_summary">Rift пока не может прочитать папку. Откройте системную страницу и разрешите доступ ко всем файлам.</string>
+    <string name="rift_library_add_folder">Добавить папку с играми</string>
+    <plurals name="rift_settings_pc_games_count">
+        <item quantity="one">%d игра</item>
+        <item quantity="few">%d игры</item>
+        <item quantity="many">%d игр</item>
+        <item quantity="other">%d игры</item>
+    </plurals>
 </resources>

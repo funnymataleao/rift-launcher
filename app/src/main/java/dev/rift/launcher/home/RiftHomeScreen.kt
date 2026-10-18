@@ -99,6 +99,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import dev.rift.launcher.settings.RiftPillButton
+import dev.rift.launcher.settings.PcGameFolders
+import app.gamenative.utils.CustomGameScanner
+import app.gamenative.ui.components.rememberCustomGameFolderPicker
+import androidx.compose.material.icons.rounded.CreateNewFolder
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.draw.scale
@@ -370,6 +375,7 @@ fun RiftHomeScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 EmulatorLibrary.refresh(context)
+                viewModel.rescanCustomGames()
                 artKey = RiftPrefs.of(context).steamGridDbKey
                 showHintBar = RiftPrefs.of(context).showHintBar
             }
@@ -1614,6 +1620,13 @@ fun RiftHomeScreen(
                 tabGroups.orEmpty()
             }
             // In every library: Select opens the filters, Start the game's menu, Y the art of the game under the cursor.
+            val addGamesFolder = rememberCustomGameFolderPicker(
+                onPathSelected = { path ->
+                    PcGameFolders.add(path)
+                    if (!PcGameFolders.canRead(context, path)) CustomGameScanner.requestManageExternalStoragePermission(context)
+                    viewModel.rescanCustomGames(force = true)
+                },
+            )
             fun libraryKey(code: Int, items: List<LibraryItem>): Boolean {
                 val item = items.firstOrNull { it.appId == libraryFocusedId }
                 return when (code) {
@@ -1646,6 +1659,13 @@ fun RiftHomeScreen(
             Box(modifier = Modifier.fillMaxSize().blur(libraryBlur)) {
             // Big Picture's library: all the PC games in a grid, one tab per store with games.
             val libraryTabs = pcLibraryTabs(libraryState)
+            val addFolderAction: @Composable () -> Unit = {
+                RiftPillButton(
+                    text = stringResource(R.string.rift_library_add_folder),
+                    onClick = { addGamesFolder.launchPicker() },
+                    icon = Icons.Rounded.CreateNewFolder,
+                )
+            }
             RiftLibraryScreen(
                 isOpen = libraryOpen && section != RiftSection.CloudStreaming && section != RiftSection.PcStreaming && section != RiftSection.Emulators,
                 glass = heroLayer,
@@ -1662,6 +1682,7 @@ fun RiftHomeScreen(
                 onDismiss = ::closeLibrary,
                 keepFocusInside = { !libraryFiltersOpen && startMenuItems == null && openedAppId == null && optionsItem == null && (artItem == null && metaItem == null) },
                 onKeyDown = { code -> libraryKey(code, library) },
+                headerAction = addFolderAction.takeIf { section == RiftSection.PcGames },
             ) {
                 PcLibraryGrid(
                     items = library,

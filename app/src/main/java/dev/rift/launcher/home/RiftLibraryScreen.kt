@@ -50,6 +50,7 @@ internal fun RiftLibraryScreen(
     onDismiss: () -> Unit,
     keepFocusInside: () -> Boolean,
     onKeyDown: (Int) -> Boolean = { false },
+    headerAction: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     AnimatedVisibility(
@@ -107,6 +108,10 @@ internal fun RiftLibraryScreen(
                         onSelect = { onSelectTab(it.key) },
                     )
                     BumperButton(GamepadButton.RB.iconRes, "RB") { step(1) }
+                    if (headerAction != null) {
+                        androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+                        headerAction()
+                    }
                 }
                 Box(modifier = Modifier.weight(1f)) { content() }
             }

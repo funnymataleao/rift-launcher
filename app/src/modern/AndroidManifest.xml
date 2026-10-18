@@ -4,4 +4,7 @@
 
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
 
+    <!-- Rift reads the games folders people add (Settings > PC games) in place, outside the app's own storage. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+
 </manifest>

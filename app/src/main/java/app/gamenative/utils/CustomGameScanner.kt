@@ -641,7 +641,56 @@ object CustomGameScanner {
         for (root in scanRootPaths) {
             File(root).listFiles { f -> f.isDirectory }?.forEach { folders.add(it.absolutePath) }
         }
+        folders.addAll(userRootGameFolders())
         return folders
+    }
+
+    /**
+     * Game folders found in the games folders the person added (Rift's "PC game folders"): every
+     * immediate subfolder that holds a Windows executable. These stay where they are; unlike the
+     * app-managed roots, removing such a game never deletes its files.
+     */
+    fun userRootGameFolders(): List<String> {
+        val found = ArrayList<String>()
+        for (root in PrefManager.customGamePaths) {
+            File(root).listFiles { f -> f.isDirectory && !f.name.startsWith(".") }
+                ?.sortedBy { it.name.lowercase() }
+                ?.forEach { if (looksLikeGame(it)) found.add(it.absolutePath) }
+        }
+        return found
+    }
+
+    private data class ExeProbe(val modified: Long, val hasExe: Boolean)
+
+    private val exeProbes = java.util.concurrent.ConcurrentHashMap<String, ExeProbe>()
+
+    /** Forgets what earlier scans learned about the folders, so the next scan looks at them again. */
+    fun rescanUserRoots() = exeProbes.clear()
+
+    /** Whether [folder] holds an .exe (not an uninstaller) within a few levels; remembered until the folder changes. */
+    private fun looksLikeGame(folder: File): Boolean {
+        val modified = folder.lastModified()
+        exeProbes[folder.absolutePath]?.let { if (it.modified == modified) return it.hasExe }
+        var budget = 400
+        fun walk(dir: File, depth: Int): Boolean {
+            val children = dir.listFiles() ?: return false
+            for (child in children) {
+                if (child.isFile && child.name.endsWith(".exe", ignoreCase = true) &&
+                    !child.name.startsWith("unins", ignoreCase = true)
+                ) {
+                    return true
+                }
+            }
+            if (depth >= 3) return false
+            for (child in children) {
+                if (--budget < 0) return false
+                if (child.isDirectory && walk(child, depth + 1)) return true
+            }
+            return false
+        }
+        val has = walk(folder, 1)
+        exeProbes[folder.absolutePath] = ExeProbe(modified, has)
+        return has
     }
 
     private fun handleCustomGameDetection(folder: File, appId: String, idPart: Int) {

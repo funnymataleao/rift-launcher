@@ -578,4 +578,23 @@
     <string name="rift_downloads_empty_body">Games you install from Steam, Epic, GOG or Amazon show up here with their progress.</string>
     <string name="rift_downloads_cancel_all_message">Cancel every download and delete the files downloaded so far?</string>
     <string name="rift_downloads_open">Downloads</string>
+    <!-- PC game folders -->
+    <string name="rift_settings_pc_games">PC games</string>
+    <string name="rift_settings_pc_games_summary">Folders Rift looks for Windows games in</string>
+    <string name="rift_settings_pc_none">No folders yet. Add a folder that holds your game folders and Rift lists every one with an .exe in it on the PC tab.</string>
+    <string name="rift_settings_pc_note">Every subfolder with an .exe is a game. The files stay where they are. Rift looks at these folders each time it starts, and you can do it by hand below.</string>
+    <string name="rift_settings_pc_folders">Folders</string>
+    <string name="rift_settings_pc_add">Add folder</string>
+    <string name="rift_settings_pc_add_summary">Pick the folder that holds your game folders</string>
+    <string name="rift_settings_pc_rescan">Scan again</string>
+    <string name="rift_settings_pc_rescan_summary">Look for new and removed games now</string>
+    <string name="rift_settings_pc_remove">Remove this folder</string>
+    <string name="rift_settings_pc_remove_summary">Its games leave the list; the files stay</string>
+    <string name="rift_settings_pc_access">Allow access to files</string>
+    <string name="rift_settings_pc_access_summary">Rift cannot read a folder yet. Open the system page and allow access to all files.</string>
+    <string name="rift_library_add_folder">Add games folder</string>
+    <plurals name="rift_settings_pc_games_count">
+        <item quantity="one">%d game</item>
+        <item quantity="other">%d games</item>
+    </plurals>
 </resources>
