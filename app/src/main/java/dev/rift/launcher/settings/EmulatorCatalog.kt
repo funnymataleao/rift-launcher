@@ -1,6 +1,7 @@
 package dev.rift.launcher.settings
 
 import android.content.Context
+import android.util.Log
 import androidx.annotation.StringRes
 import app.gamenative.R
 
@@ -125,6 +126,7 @@ internal object EmulatorCatalog {
         "gb" to listOf(RetroCore("Gambatte", "gambatte"), RetroCore("mGBA", "mgba"), RetroCore("SameBoy", "sameboy")),
         "virtualboy" to listOf(RetroCore("Beetle VB", "mednafen_vb")),
         "mastersystem" to listOf(RetroCore("Genesis Plus GX", "genesis_plus_gx"), RetroCore("SMS Plus GX", "smsplus"), RetroCore("PicoDrive", "picodrive")),
+        "gamegear" to listOf(RetroCore("Genesis Plus GX", "genesis_plus_gx"), RetroCore("SMS Plus GX", "smsplus"), RetroCore("Gearsystem", "gearsystem")),
         "segacd" to listOf(RetroCore("Genesis Plus GX", "genesis_plus_gx"), RetroCore("PicoDrive", "picodrive")),
         "sega32x" to listOf(RetroCore("PicoDrive", "picodrive")),
         "saturn" to listOf(RetroCore("Beetle Saturn", "mednafen_saturn"), RetroCore("Yabause", "yabause")),
@@ -148,9 +150,14 @@ internal object EmulatorCatalog {
         "pokemini" to listOf(RetroCore("PokeMini", "pokemini")),
     )
 
+    private fun retroCoresOf(id: String): List<RetroCore> = retroCores[id].orEmpty()
+
     /** A system that only RetroArch plays, with the cores in [retroCores] under the system's id. */
-    private fun retroSystem(id: String, @StringRes nameRes: Int, extensions: Set<String>, noteRes: Int = 0) =
-        PlatformDef(id, nameRes, extensions, listOf(retroArch), retroCores.getValue(id), noteRes)
+    private fun retroSystem(id: String, @StringRes nameRes: Int, extensions: Set<String>, noteRes: Int = 0): PlatformDef {
+        val cores = retroCores[id]
+        if (cores == null) runCatching { Log.e("RiftEmulators", "No RetroArch cores listed for $id") }
+        return PlatformDef(id, nameRes, extensions, listOf(retroArch), cores.orEmpty(), noteRes)
+    }
 
     private val mupen = KnownEmulator(
         "M64Plus FZ",
@@ -240,7 +247,7 @@ internal object EmulatorCatalog {
                 ),
                 retroArch,
             ),
-            retroCores.getValue("ps1"),
+            retroCoresOf("ps1"),
         ),
         PlatformDef(
             "psp", R.string.rift_platform_psp, setOf("iso", "cso", "pbp", "chd", "elf"),
@@ -254,7 +261,7 @@ internal object EmulatorCatalog {
                 ),
                 retroArch,
             ),
-            retroCores.getValue("psp"),
+            retroCoresOf("psp"),
         ),
         PlatformDef(
             "vita", R.string.rift_platform_vita, setOf("psvita"),
@@ -299,7 +306,7 @@ internal object EmulatorCatalog {
                 KnownEmulator("DraStic", listOf("com.dsemu.drastic"), LaunchKind.VIEW, activity = "com.dsemu.drastic.DraSticActivity"),
                 retroArch,
             ),
-            retroCores.getValue("nds"),
+            retroCoresOf("nds"),
         ),
         PlatformDef(
             "gc_wii", R.string.rift_platform_gc_wii, setOf("iso", "gcm", "rvz", "wbfs", "ciso", "gcz", "wad", "dol"),
@@ -332,7 +339,7 @@ internal object EmulatorCatalog {
                 ),
                 retroArch,
             ),
-            retroCores.getValue("dreamcast"),
+            retroCoresOf("dreamcast"),
         ),
         PlatformDef(
             "gba", R.string.rift_platform_gba, setOf("gba", "agb", "zip"),
@@ -346,14 +353,14 @@ internal object EmulatorCatalog {
                 ),
                 retroArch,
             ),
-            retroCores.getValue("gba"),
+            retroCoresOf("gba"),
         ),
-        PlatformDef("snes", R.string.rift_platform_snes, setOf("sfc", "smc", "swc", "fig", "bs", "zip"), listOf(retroArch), retroCores.getValue("snes")),
-        PlatformDef("nes", R.string.rift_platform_nes, setOf("nes", "fds", "unf", "unif", "zip"), listOf(retroArch), retroCores.getValue("nes")),
-        PlatformDef("genesis", R.string.rift_platform_genesis, setOf("md", "gen", "smd", "bin", "zip"), listOf(retroArch), retroCores.getValue("genesis")),
+        PlatformDef("snes", R.string.rift_platform_snes, setOf("sfc", "smc", "swc", "fig", "bs", "zip"), listOf(retroArch), retroCoresOf("snes")),
+        PlatformDef("nes", R.string.rift_platform_nes, setOf("nes", "fds", "unf", "unif", "zip"), listOf(retroArch), retroCoresOf("nes")),
+        PlatformDef("genesis", R.string.rift_platform_genesis, setOf("md", "gen", "smd", "bin", "zip"), listOf(retroArch), retroCoresOf("genesis")),
         PlatformDef(
             "n64", R.string.rift_platform_n64, setOf("n64", "z64", "v64", "ndd", "zip", "7z"),
-            listOf(mupen, retroArch), retroCores.getValue("n64"),
+            listOf(mupen, retroArch), retroCoresOf("n64"),
         ),
         PlatformDef(
             "gb", R.string.rift_platform_gb, setOf("gb", "sgb", "zip"),
@@ -367,7 +374,7 @@ internal object EmulatorCatalog {
                 ),
                 retroArch,
             ),
-            retroCores.getValue("gb"),
+            retroCoresOf("gb"),
         ),
         PlatformDef(
             "gbc", R.string.rift_platform_gbc, setOf("gbc", "zip"),
@@ -381,7 +388,7 @@ internal object EmulatorCatalog {
                 ),
                 retroArch,
             ),
-            retroCores.getValue("gb"),
+            retroCoresOf("gb"),
         ),
         retroSystem("virtualboy", R.string.rift_platform_virtualboy, setOf("vb", "vboy", "zip")),
         PlatformDef(
@@ -421,7 +428,7 @@ internal object EmulatorCatalog {
                 ),
                 retroArch,
             ),
-            retroCores.getValue("saturn"),
+            retroCoresOf("saturn"),
         ),
         retroSystem("atari2600", R.string.rift_platform_atari2600, setOf("a26", "bin", "zip")),
         retroSystem("atari7800", R.string.rift_platform_atari7800, setOf("a78", "bin", "zip")),
