@@ -149,10 +149,10 @@ fun CoverCard(
                     cameraDistance = 14f * density
                 }
                 .shadow(
-                    elevation = if (focused) 20.dp else 0.dp,
+                    elevation = if (focused) 28.dp else 0.dp,
                     shape = RiftShapes.card,
-                    ambientColor = palette.first().copy(alpha = 0.22f),
-                    spotColor = palette.first().copy(alpha = 0.22f),
+                    ambientColor = palette.first().copy(alpha = 0.38f),
+                    spotColor = palette.first().copy(alpha = 0.52f),
                 )
                 .clip(RiftShapes.card)
                 .background(surface)

@@ -2500,6 +2500,18 @@ private fun PcGamesShelf(
     // One entrance clock for the shelf (app start, tab switch).
     val clock = rememberShelfClock(entry, entryStarted)
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    // Keep a small runway of covers warm. DPAD can move focus faster than a newly composed CoilImage
+    // can decode from disk/network; prefetching the next few into the same ImageLoader avoids grey flashes.
+    LaunchedEffect(shown, listState.firstVisibleItemIndex) {
+        val start = (listState.firstVisibleItemIndex + 1).coerceAtMost(shown.size)
+        val end = (start + 7).coerceAtMost(shown.size)
+        for (index in start until end) {
+            val urls = if (index == 0) wideCoverUrls(shown[index]) else portraitCoverUrls(shown[index])
+            val url = urls.firstOrNull { it.isNotBlank() } ?: continue
+            context.imageLoader.enqueue(ImageRequest.Builder(context).data(url).size(PRELOAD_COVER_PX).build())
+        }
+    }
     if (shown.isEmpty()) {
         Box(
             modifier = Modifier
