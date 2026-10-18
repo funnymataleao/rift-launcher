@@ -193,6 +193,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -1234,6 +1236,11 @@ fun RiftHomeScreen(
             systemMenuOpen = false
             return@rememberUpdatedState
         }
+        // Home over a game page opens/closes the right panel without dismissing the page or losing its focus.
+        if (openedAppId != null) {
+            systemMenuOpen = true
+            return@rememberUpdatedState
+        }
         if (searchOpen) closeSearch()
         if (viewModel.state.value.isOptionsPanelOpen) viewModel.onOptionsPanelToggle(false)
         systemMenuOpen = false
@@ -1292,13 +1299,20 @@ fun RiftHomeScreen(
     }
     LaunchedEffect(overlayOpen) {
         if (!overlayOpen) {
+            if (openedAppId != null) {
+                // Returning from either drawer must return to the game page, not the carousel behind it.
+                runCatching { pageFocus.requestFocus() }
+                return@LaunchedEffect
+            }
             if (viewChanged) startOver()
             focusSection(section)
             // The panel slides out while the row may still be re-sorting; ask once more so focus never stays nowhere.
             delay(PANEL_EXIT_REFOCUS_MS)
             if (!overlayOpen) {
-                if (viewChanged) startOver()
-                focusSection(section)
+                if (openedAppId != null) runCatching { pageFocus.requestFocus() } else {
+                    if (viewChanged) startOver()
+                    focusSection(section)
+                }
                 viewChanged = false
             }
         }
@@ -1928,41 +1942,55 @@ fun RiftHomeScreen(
                 listKey = filterGroupIndex,
             )
             RiftGlassTheme {
-                LibraryOptionsPanel(
-                    isOpen = panelOpen,
-                    onDismiss = { viewModel.onOptionsPanelToggle(false) },
-                    glassBackdrop = remember(backdrop) { DrawerBackdrop.Layer(backdrop) },
-                    selectedFilters = libraryState.appInfoSortType,
-                    onFilterChanged = viewModel::onFilterChanged,
-                    currentSortOption = libraryState.currentSortOption,
-                    onSortOptionChanged = viewModel::onSortOptionChanged,
-                    steamCollections = libraryState.steamCollections,
-                    selectedSteamCollectionIds = libraryState.selectedSteamCollectionIds,
-                    steamCollectionCounts = libraryState.steamCollectionCounts,
-                    skippedDynamicCollections = libraryState.skippedDynamicCollections,
-                    isSteamConnected = isSteamConnected,
-                    hasSteamCredentials = SteamUtils.hasStoredCredentials(),
-                    isOffline = isOffline,
-                    onSteamCollectionToggle = viewModel::onSteamCollectionToggle,
-                    onClearSteamCollections = viewModel::onClearSteamCollections,
-                    curatedLists = libraryState.curatedLists,
-                    selectedCuratedListIds = libraryState.selectedCuratedListIds,
-                    curatedListCounts = libraryState.curatedListCounts,
-                    onCuratedListToggle = viewModel::onCuratedListToggle,
-                    onClearCuratedLists = viewModel::onClearCuratedLists,
-                    tabGroups = tabGroups,
-                    focusAsk = panelFocusAsk,
-                    onFocusChanged = { panelHasFocus = it },
-                    extraGroup = when (section) {
-                        RiftSection.PcGames -> uninstalledGroup(uninstalledMode) {
-                            RiftUninstalledMode.set(context, RiftSection.PcGames, it)
-                        }
-                        else -> null
-                    },
-                    panelShape = RectangleShape,
-                    panelShadowElevation = 0.dp,
-                    showCloseButton = false,
-                )
+                val optionsPanelContent: @Composable () -> Unit = {
+                    RiftGlassTheme {
+            LibraryOptionsPanel(
+                isOpen = panelOpen,
+                onDismiss = { viewModel.onOptionsPanelToggle(false) },
+                glassBackdrop = remember(backdrop) { DrawerBackdrop.Layer(backdrop) },
+                selectedFilters = libraryState.appInfoSortType,
+                onFilterChanged = viewModel::onFilterChanged,
+                currentSortOption = libraryState.currentSortOption,
+                onSortOptionChanged = viewModel::onSortOptionChanged,
+                steamCollections = libraryState.steamCollections,
+                selectedSteamCollectionIds = libraryState.selectedSteamCollectionIds,
+                steamCollectionCounts = libraryState.steamCollectionCounts,
+                skippedDynamicCollections = libraryState.skippedDynamicCollections,
+                isSteamConnected = isSteamConnected,
+                hasSteamCredentials = SteamUtils.hasStoredCredentials(),
+                isOffline = isOffline,
+                onSteamCollectionToggle = viewModel::onSteamCollectionToggle,
+                onClearSteamCollections = viewModel::onClearSteamCollections,
+                curatedLists = libraryState.curatedLists,
+                selectedCuratedListIds = libraryState.selectedCuratedListIds,
+                curatedListCounts = libraryState.curatedListCounts,
+                onCuratedListToggle = viewModel::onCuratedListToggle,
+                onClearCuratedLists = viewModel::onClearCuratedLists,
+                tabGroups = tabGroups,
+                focusAsk = panelFocusAsk,
+                onFocusChanged = { panelHasFocus = it },
+                extraGroup = when (section) {
+                    RiftSection.PcGames -> uninstalledGroup(uninstalledMode) {
+                        RiftUninstalledMode.set(context, RiftSection.PcGames, it)
+                    }
+                    else -> null
+                },
+                panelShape = RectangleShape,
+                panelShadowElevation = 0.dp,
+                showCloseButton = false,
+            )
+                    }
+                }
+                if (openedAppId != null) {
+                    Popup(
+                        alignment = Alignment.TopStart,
+                        properties = PopupProperties(focusable = true, dismissOnBackPress = false),
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize()) { optionsPanelContent() }
+                    }
+                } else {
+                    optionsPanelContent()
+                }
                 optionsItem?.let { item ->
                     key(optionsToken) {
                         CompositionLocalProvider(LocalRiftOptionsOnly provides optionsOnly, LocalRiftArtPicker provides artOpener, dev.rift.launcher.meta.LocalRiftInfoActions provides infoActions) {
@@ -2002,31 +2030,6 @@ fun RiftHomeScreen(
                         onDismiss = { renameTarget = null },
                     )
                 }
-                RiftSystemMenu(
-                    isOpen = systemMenuOpen,
-                    onDismiss = { systemMenuOpen = false },
-                    // The panel's glass blurs the home behind it.
-                    glassBackdrop = remember(backdrop) { DrawerBackdrop.Layer(backdrop) },
-                    onNavigateRoute = { route ->
-                        systemMenuOpen = false
-                        if (route == PluviaScreen.Support.route) {
-                            // "AI Help" opens Rift's assistant (the user's own provider) instead of GameNative's support,
-                            // about the game under the cursor when it is installed.
-                            val games = library.filter { it.isInstalled }.map { ChatGame(it.appId, it.name) }
-                            AssistantChat.open(games, focusedItem?.let { ChatGame(it.appId, it.name) })
-                            onNavigateRoute(RIFT_ASSISTANT_ROUTE)
-                        } else {
-                            onNavigateRoute(route)
-                        }
-                    },
-                    onDownloadsClick = {
-                        systemMenuOpen = false
-                        onDownloadsClick()
-                    },
-                    onLogout = onLogout,
-                    onGoOnline = onGoOnline,
-                    isOffline = isOffline,
-                )
             }
         }
       }
@@ -2147,6 +2150,31 @@ fun RiftHomeScreen(
             }
         }
     }
+        RiftTheme {
+            RiftSystemMenu(
+                isOpen = systemMenuOpen,
+                onDismiss = { systemMenuOpen = false },
+                // Do not sample the hidden home layer while a game page is open.
+                glassBackdrop = if (openedAppId == null) remember(backdrop) { DrawerBackdrop.Layer(backdrop) } else null,
+                onNavigateRoute = { route ->
+                    systemMenuOpen = false
+                    if (route == PluviaScreen.Support.route) {
+                        val games = library.filter { it.isInstalled }.map { ChatGame(it.appId, it.name) }
+                        AssistantChat.open(games, focusedItem?.let { ChatGame(it.appId, it.name) })
+                        onNavigateRoute(RIFT_ASSISTANT_ROUTE)
+                    } else {
+                        onNavigateRoute(route)
+                    }
+                },
+                onDownloadsClick = {
+                    systemMenuOpen = false
+                    onDownloadsClick()
+                },
+                onLogout = onLogout,
+                onGoOnline = onGoOnline,
+                isOffline = isOffline,
+            )
+        }
         RiftTheme {
             dev.rift.launcher.meta.RiftMetaPicker(
                 item = metaItem,
