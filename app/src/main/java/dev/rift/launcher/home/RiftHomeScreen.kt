@@ -653,11 +653,11 @@ fun RiftHomeScreen(
             }
         }
         pendingFocusKey = when (target) {
-            RiftSection.PcGames -> if (libraryCardFocused && homeRow.isNotEmpty()) LIBRARY_CARD_KEY else if (pcSaved) focusedItem?.let(::focusKeyFor) else null
-            RiftSection.AndroidGames -> if (androidSaved) focusedAndroid?.let(::androidFocusKey) else null
-            RiftSection.PcStreaming -> if (streamCardFocused && streamHomeRow.isNotEmpty()) LIBRARY_CARD_KEY else if (streamSaved) focusedStream?.let(::focusKeyFor) else null
-            RiftSection.CloudStreaming -> if (cloudCardFocused && cloudHomeRow.isNotEmpty()) LIBRARY_CARD_KEY else if (cloudSaved) focusedCloud?.let(::focusKeyFor) else null
-            RiftSection.Emulators -> if (emulatorCardFocused && emulatorHomeRow.isNotEmpty()) LIBRARY_CARD_KEY else if (emulatorSaved) focusedEmulator?.let(::focusKeyFor) else null
+            RiftSection.PcGames -> if (libraryCardFocused && homeRow.isNotEmpty()) LIBRARY_CARD_KEY else if (focusedAppId == null) FIRST_COVER_KEY else if (pcSaved) focusedItem?.let(::focusKeyFor) else null
+            RiftSection.AndroidGames -> if (focusedPackage == null) FIRST_COVER_KEY else if (androidSaved) focusedAndroid?.let(::androidFocusKey) else null
+            RiftSection.PcStreaming -> if (streamCardFocused && streamHomeRow.isNotEmpty()) LIBRARY_CARD_KEY else if (focusedStreamId == null) FIRST_COVER_KEY else if (streamSaved) focusedStream?.let(::focusKeyFor) else null
+            RiftSection.CloudStreaming -> if (cloudCardFocused && cloudHomeRow.isNotEmpty()) LIBRARY_CARD_KEY else if (focusedCloudId == null) FIRST_COVER_KEY else if (cloudSaved) focusedCloud?.let(::focusKeyFor) else null
+            RiftSection.Emulators -> if (emulatorCardFocused && emulatorHomeRow.isNotEmpty()) LIBRARY_CARD_KEY else if (focusedEmulatorId == null) FIRST_COVER_KEY else if (emulatorSaved) focusedEmulator?.let(::focusKeyFor) else null
             null -> null
         }
     }
@@ -2400,7 +2400,7 @@ private fun PcGamesShelf(
                 aspectRatio = if (wide) WIDE_TILE_RATIO else 2f / 3f,
                 paletteKey = url,
                 loadPalette = { CoverColors.palette(context, url) },
-                requestFocus = pendingFocusKey == focusKeyFor(item),
+                requestFocus = pendingFocusKey == focusKeyFor(item) || (pendingFocusKey == FIRST_COVER_KEY && index == 0),
                 onFocusRequested = onFocusConsumed,
                 onFocused = {
                     onFocused(item)
@@ -2525,7 +2525,7 @@ private fun AndroidShelf(
                     val url = urls.firstOrNull { it.isNotEmpty() }
                     if (url != null) CoverColors.palette(context, url) else AndroidGames.icon(context, game.packageName)?.let(CoverColors::palette)
                 },
-                requestFocus = pendingFocusKey == androidFocusKey(game),
+                requestFocus = pendingFocusKey == androidFocusKey(game) || (pendingFocusKey == FIRST_COVER_KEY && index == 0),
                 onFocusRequested = onFocusConsumed,
                 onFocused = {
                     onFocused(game)
@@ -3381,6 +3381,9 @@ private object RiftTabsMemory {
 
 private const val SOURCES_GRACE_MS = 2500L
 private const val COLD_START_SETTLE_MS = 4000L
+
+/** "The first cover of the row", asked for without naming it: the row may still reorder, whoever is first when the request lands gets the focus. */
+private const val FIRST_COVER_KEY = "first-cover"
 
 /** Lives as long as the process: tells a fresh start of Rift from a return inside one run. */
 private object RiftFocusMemory {
