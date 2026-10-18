@@ -257,7 +257,7 @@ private const val PANEL_EXIT_REFOCUS_MS = 450L
 private const val HIDE_REFOCUS_MS = 500L
 /**
  * The one edge inset of the home (Denis): the distance from the screen edge to the first cover. The tabs and
- * the avatar sit this far from the top, the left and right blocks of the top bar and of the hints bar this far
+ * the clock sit this far from the top, the left and right blocks of the top bar and of the hints bar this far
  * from the sides, and the hints this far from the bottom.
  */
 private val ScreenPadding = 48.dp
@@ -784,9 +784,8 @@ fun RiftHomeScreen(
     // row with the results, B again closes the search. The field only takes focus while typing.
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var searchTyping by remember { mutableStateOf(false) }
-    // Up from the row reaches the search and the avatar only; the tabs are LB/RB's.
+    // Up from the row reaches the search only; the tabs are LB/RB's and the clock is not focusable.
     val searchFocus = remember { FocusRequester() }
-    val avatarFocus = remember { FocusRequester() }
     var topFocused by remember { mutableStateOf(false) }
     val keyboard = LocalSoftwareKeyboardController.current
     fun stopTyping() {
@@ -1299,12 +1298,10 @@ fun RiftHomeScreen(
                         return@onPreviewKeyEvent true
                     }
                     if (overlayOpen) return@onPreviewKeyEvent false
-                    // Up from the row goes to the search or the avatar (the tabs are LB/RB's); Down comes back.
+                    // Up from the row goes to the search (the tabs are LB/RB's); Down comes back. Tabs without a
+                    // search keep the focus on the row.
                     if (native.keyCode == KeyEvent.KEYCODE_DPAD_UP && section != null && !searchTyping) {
-                        if (!topFocused) {
-                            val target = if (section == RiftSection.PcGames || RiftSection.PcGames in sections) searchFocus else avatarFocus
-                            runCatching { target.requestFocus() }
-                        }
+                        if (!topFocused) runCatching { searchFocus.requestFocus() }
                         return@onPreviewKeyEvent true
                     }
                     if (native.keyCode == KeyEvent.KEYCODE_DPAD_DOWN && topFocused && !searchTyping) {
@@ -1419,7 +1416,6 @@ fun RiftHomeScreen(
                         onSelect = ::selectSection,
                         onStep = ::switchSection,
                         searchFocus = searchFocus,
-                        avatarFocus = avatarFocus,
                         modifier = Modifier.onFocusChanged { topFocused = it.hasFocus },
                         search = if (section == RiftSection.PcGames) {
                             SearchState(
@@ -2729,7 +2725,6 @@ private fun TopBar(
     onStep: (Int) -> Unit,
     search: SearchState?,
     searchFocus: FocusRequester,
-    avatarFocus: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     // One row, like Steam Big Picture: the bumpers and the section tabs on the left, the round search and the status
@@ -2737,6 +2732,8 @@ private fun TopBar(
     // wide field up to the first cover's left edge: one element, its magnifier stays at the right end.
     val density = LocalDensity.current
     val gap = with(density) { 10.dp.roundToPx() }
+    // The search and the status icons are one group, apart from the tabs; the focused search stays clear of Wi-Fi.
+    val groupGap = with(density) { 8.dp.roundToPx() }
     // Between RB and the search: clearly apart, the search belongs to the corner.
     val cornerGap = with(density) { 28.dp.roundToPx() }
     val pad = with(density) { ScreenPadding.roundToPx() }
@@ -2752,7 +2749,7 @@ private fun TopBar(
             Box { SectionTabs(glass = glass, sections = sections, selected = selected, onSelect = onSelect) }
             BumperButton(GamepadButton.RB.iconRes, "RB") { onStep(1) }
             Box { if (search != null) SearchPill(search, glass, searchFocus, progress) }
-            StatusIcons(avatarFocus)
+            StatusIcons()
         },
     ) { measurables, constraints ->
         val loose = constraints.copy(minWidth = 0, minHeight = 0)
@@ -2761,7 +2758,7 @@ private fun TopBar(
         val rb = measurables[2].measure(loose)
         val iconsX = constraints.maxWidth - pad - icons.width
         // The search's right end (where its magnifier stays), then the corner.
-        val searchRight = iconsX - gap
+        val searchRight = iconsX - groupGap
         val searchLeft = searchRight - searchSize
         // The tabs get what the bumpers, the search and the corner leave.
         val tabsMax = (searchLeft - cornerGap - rb.width - gap - (pad - bumperInset + lb.width + gap)).coerceAtLeast(0)
@@ -2773,7 +2770,7 @@ private fun TopBar(
         val searchBox = measurables[3].measure(Constraints.fixed(searchWidth, searchSize))
         val height = maxOf(icons.height, lb.height, tabs.height, searchBox.height)
         layout(constraints.maxWidth, height) {
-            // Everything hangs from the same top line, so the tabs, the search and the avatar share the inset.
+            // Everything hangs from the same top line, so the tabs, the search and the clock share the inset.
             var x = pad - bumperInset
             val fade: androidx.compose.ui.graphics.GraphicsLayerScope.() -> Unit = { alpha = 1f - progress.value.coerceIn(0f, 1f) }
             // Every piece is centred on the row's middle line, so the bumper icons sit level with the tab text.

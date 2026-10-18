@@ -6,21 +6,13 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.os.BatteryManager
+import android.text.format.DateFormat
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredSize
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.BatteryStd
-import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.SignalCellularAlt
 import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material.icons.rounded.WifiOff
@@ -34,43 +26,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.graphicsLayer
-import app.gamenative.service.SteamService
-import app.gamenative.ui.screen.library.components.StatusPickerMenu
-import app.gamenative.ui.screen.library.components.rememberPersonaStatus
-import app.gamenative.ui.screen.library.components.statusDotColor
-import dev.rift.launcher.ui.theme.RiftAccent
-import dev.rift.launcher.ui.theme.RiftMotion
-import kotlinx.coroutines.launch
 import app.gamenative.NetworkMonitor
-import app.gamenative.PrefManager
-import app.gamenative.utils.getAvatarURL
-import com.skydoves.landscapist.ImageOptions
-import com.skydoves.landscapist.coil.CoilImage
 import dev.rift.launcher.settings.RiftPrefs
 import dev.rift.launcher.ui.theme.RiftColors
+import java.util.Date
 
 /**
- * The right corner of the home's top bar, like Steam Big Picture: the profile avatar, then the battery
- * and the network when "Show battery" / "Show network" are on in Settings → Appearance.
+ * The right corner of the home's top bar, like Steam Big Picture: the network and the battery when "Show network" /
+ * "Show battery" are on in Settings → Appearance, then the clock. The profile and its status live in the right panel.
  */
 @Composable
-internal fun StatusIcons(avatarFocus: FocusRequester) {
+internal fun StatusIcons() {
     val context = LocalContext.current
     var showBattery by remember { mutableStateOf(RiftPrefs.of(context).showBattery) }
     var showNetwork by remember { mutableStateOf(RiftPrefs.of(context).showNetwork) }
@@ -87,89 +57,40 @@ internal fun StatusIcons(avatarFocus: FocusRequester) {
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (showNetwork) NetworkIcon()
         if (showBattery) BatteryStatus()
-        // The avatar sits a little apart from the status icons.
-        Spacer(modifier = Modifier.width(6.dp))
-        ProfileIcon(avatarFocus)
+        Clock()
     }
 }
 
 /**
- * The round avatar with the status dot (green Online, yellow Away, grey Invisible, like Steam). A on it opens
- * the same status dropdown as the System panel's profile plate. Two states: focused is filled with the accent
- * behind a slightly larger avatar, not focused is plain.
+ * Hours and minutes in the system's 12/24 hour format, never focusable. The minute tick of the system moves it, the
+ * time, time zone and 12/24 hour switches redraw it at once.
  */
 @Composable
-private fun ProfileIcon(focusRequester: FocusRequester) {
-    val avatarHash = PrefManager.steamUserAvatarHash
-    val status = rememberPersonaStatus()
-    val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
-    val scale by animateFloatAsState(if (focused) 1.12f else 1f, RiftMotion.focusSpring(), label = "avatarScale")
-    var pickerOpen by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    val pickerFocus = remember { FocusRequester() }
-    Box {
-        Box(
-            modifier = Modifier
-                .requiredSize(48.dp)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }
-                .clip(CircleShape)
-                .background(if (focused) RiftAccent.current.brush else SolidColor(Color.Transparent))
-                .focusRequester(focusRequester)
-                .clickable(interactionSource = interaction, indication = null) {
-                    if (SteamService.isLoggedIn) pickerOpen = true
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            // A round avatar of one fixed size, whatever room the bar leaves (never squeezed into a sliver).
-            Box(
-                modifier = Modifier
-                    .requiredSize(if (focused) 38.dp else 44.dp)
-                    .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.55f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (avatarHash.isNotEmpty()) {
-                    CoilImage(
-                        modifier = Modifier.fillMaxSize(),
-                        imageModel = { avatarHash.getAvatarURL() },
-                        imageOptions = ImageOptions(contentScale = ContentScale.Crop),
-                    )
-                } else {
-                    Icon(Icons.Rounded.Person, contentDescription = null, tint = RiftColors.OnSurface, modifier = Modifier.size(26.dp))
-                }
+private fun Clock() {
+    val context = LocalContext.current
+    fun now(): String = DateFormat.getTimeFormat(context).format(Date())
+    var time by remember { mutableStateOf(now()) }
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) {
+                time = now()
             }
         }
-        // The status dot is a sibling of the clipped avatar, so it sits whole over the avatar's edge.
-        if (SteamService.isLoggedIn) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(14.dp)
-                    .background(RiftColors.Background, CircleShape)
-                    .padding(2.dp)
-                    .background(statusDotColor(status), CircleShape),
-            )
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_TIME_TICK)
+            addAction(Intent.ACTION_TIME_CHANGED)
+            addAction(Intent.ACTION_TIMEZONE_CHANGED)
         }
-        StatusPickerMenu(
-            expanded = pickerOpen,
-            onDismiss = { pickerOpen = false },
-            selected = status,
-            width = 280.dp,
-            focusRequester = pickerFocus,
-            onSelect = { state ->
-                pickerOpen = false
-                scope.launch { SteamService.setPersonaState(state) }
-            },
-        )
+        context.registerReceiver(receiver, filter)
+        // A tick may have passed between the first read and the registration.
+        time = now()
+        onDispose { context.unregisterReceiver(receiver) }
     }
+    Text(time, color = RiftColors.OnSurface, fontSize = 18.sp, maxLines = 1, softWrap = false)
 }
 
 @Composable
