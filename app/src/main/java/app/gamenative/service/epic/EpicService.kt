@@ -192,6 +192,22 @@ class EpicService : Service() {
             return getInstance()?.activeDownloads?.keys?.firstOrNull()
         }
 
+        private const val RESUME_PREFS = "rift_epic_resume"
+
+        /** Rift: the DLCs picked when a download started, so Resume after a restart continues the same set. */
+        fun saveResumeDlcIds(context: Context, appId: Int, dlcIds: List<Int>) {
+            context.getSharedPreferences(RESUME_PREFS, Context.MODE_PRIVATE).edit()
+                .putString(appId.toString(), dlcIds.joinToString(",")).apply()
+        }
+
+        fun loadResumeDlcIds(context: Context, appId: Int): List<Int> =
+            context.getSharedPreferences(RESUME_PREFS, Context.MODE_PRIVATE)
+                .getString(appId.toString(), null)
+                ?.split(',')
+                ?.mapNotNull { it.trim().toIntOrNull() }
+                ?.filter { it != appId }
+                .orEmpty()
+
         fun getDownloadInfo(appId: Int): DownloadInfo? {
             return getInstance()?.activeDownloads?.get(appId)
         }

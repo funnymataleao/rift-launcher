@@ -304,21 +304,10 @@ class EpicDownloadManager @Inject constructor(
             // Incremental download: skip files already on disk with matching size and SHA-1.
             // On a resume this hashes every completed file, which can take minutes for a
             // large install — surface it in the UI and honor cancellation between files.
-            downloadInfo.updateStatusMessage(localizedContext.getString(R.string.download_verifying_files))
-            var verifyIndex = 0
-            val pendingFiles = files.filter { file ->
-                if (!downloadInfo.isActive()) {
-                    // The enclosing catch never runs on this return path, so clean up here
-                    MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
-                    return@withContext Result.failure(Exception("Download cancelled"))
-                }
-                // Whole-file SHA-1 per existing file, serial — show live (k/N) so a large
-                // resume never looks dead (same string as the native sweep).
-                verifyIndex += 1
-                downloadInfo.updateStatusMessage(
-                    localizedContext.getString(R.string.download_verifying_files_progress, verifyIndex, files.size),
-                )
-                !fileExistsWithCorrectHash(File(installDir, file.filename), file.fileSize, file.hash)
+            val pendingFiles = findPendingFiles(files, installDir, downloadInfo) ?: run {
+                // The enclosing catch never runs on this return path, so clean up here
+                MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                return@withContext Result.failure(Exception("Download cancelled"))
             }
             downloadInfo.updateStatusMessage(null)
             Timber.tag("Epic").i("Skipping ${files.size - pendingFiles.size} existing file(s), downloading ${pendingFiles.size}")
@@ -497,21 +486,10 @@ class EpicDownloadManager @Inject constructor(
             // Incremental download: skip files already on disk with matching size and SHA-1.
             // On a resume this hashes every completed file, which can take minutes for a
             // large install — surface it in the UI and honor cancellation between files.
-            downloadInfo.updateStatusMessage(localizedContext.getString(R.string.download_verifying_files))
-            var verifyIndex = 0
-            val pendingFiles = files.filter { file ->
-                if (!downloadInfo.isActive()) {
-                    // The enclosing catch never runs on this return path, so clean up here
-                    MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
-                    return@withContext Result.failure(Exception("Download cancelled"))
-                }
-                // Whole-file SHA-1 per existing file, serial — show live (k/N) so a large
-                // resume never looks dead (same string as the native sweep).
-                verifyIndex += 1
-                downloadInfo.updateStatusMessage(
-                    localizedContext.getString(R.string.download_verifying_files_progress, verifyIndex, files.size),
-                )
-                !fileExistsWithCorrectHash(File(installDir, file.filename), file.fileSize, file.hash)
+            val pendingFiles = findPendingFiles(files, installDir, downloadInfo) ?: run {
+                // The enclosing catch never runs on this return path, so clean up here
+                MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                return@withContext Result.failure(Exception("Download cancelled"))
             }
             downloadInfo.updateStatusMessage(null)
             Timber.tag("Epic").d("Skipping ${files.size - pendingFiles.size} existing file(s), downloading ${pendingFiles.size}")
@@ -987,6 +965,51 @@ class EpicDownloadManager @Inject constructor(
      * so it can be skipped on resume. An all-zero manifest hash is treated as
      * unverifiable and the file is re-downloaded.
      */
+    /**
+     * Rift: files of [files] that still need downloading. A resume after the process died hashes
+     * every file already on disk, which was serial and took minutes on a large game while the bar
+     * sat at 0%. Files are now hashed several at a time (storage is far faster than one SHA-1
+     * stream), with the live (k/N) count in the status line. Returns null when cancelled.
+     */
+    private suspend fun findPendingFiles(
+        files: List<app.gamenative.service.epic.manifest.FileManifest>,
+        installDir: File,
+        downloadInfo: DownloadInfo,
+    ): List<app.gamenative.service.epic.manifest.FileManifest>? = coroutineScope {
+        downloadInfo.updateStatusMessage(localizedContext.getString(R.string.download_verifying_files))
+        val startedAt = System.currentTimeMillis()
+        val checked = java.util.concurrent.atomic.AtomicInteger(0)
+        val lastStatusAt = java.util.concurrent.atomic.AtomicLong(0L)
+        val permits = kotlinx.coroutines.sync.Semaphore(VERIFY_PARALLELISM)
+        val needed = files.map { file ->
+            async(Dispatchers.IO) {
+                permits.acquire()
+                try {
+                    if (!downloadInfo.isActive()) return@async true
+                    val ok = fileExistsWithCorrectHash(File(installDir, file.filename), file.fileSize, file.hash)
+                    val k = checked.incrementAndGet()
+                    val now = System.currentTimeMillis()
+                    val last = lastStatusAt.get()
+                    if ((k == files.size || now - last >= 250L) && lastStatusAt.compareAndSet(last, now)) {
+                        downloadInfo.updateStatusMessage(
+                            localizedContext.getString(R.string.download_verifying_files_progress, k, files.size),
+                        )
+                    }
+                    !ok
+                } finally {
+                    permits.release()
+                }
+            }
+        }.awaitAll()
+        if (!downloadInfo.isActive()) return@coroutineScope null
+        val pending = files.filterIndexed { index, _ -> needed[index] }
+        Timber.tag("Epic").i(
+            "Verified ${files.size} file(s) in ${System.currentTimeMillis() - startedAt} ms: " +
+                "${files.size - pending.size} already complete, ${pending.size} to download",
+        )
+        pending
+    }
+
     private fun fileExistsWithCorrectHash(outputFile: File, expectedSize: Long, expectedHash: ByteArray): Boolean {
         if (!outputFile.exists()) return false
         if (outputFile.length() != expectedSize) {
@@ -1716,3 +1739,6 @@ class EpicDownloadManager @Inject constructor(
         return size
     }
 }
+
+/** Rift: files hashed at once when checking what a resumed download already has. */
+private const val VERIFY_PARALLELISM = 4

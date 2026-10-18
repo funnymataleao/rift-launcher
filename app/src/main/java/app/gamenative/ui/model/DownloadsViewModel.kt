@@ -653,7 +653,7 @@ class DownloadsViewModel @Inject constructor(
                 }
                 val container = ContainerUtils.getOrCreateContainer(appContext, "${GameSource.EPIC.name}_${item.appId}")
                 val language = ContainerUtils.toContainerData(container).language
-                val result = EpicService.downloadGame(localizedContext, id, emptyList(), installPath, language)
+                val result = EpicService.downloadGame(localizedContext, id, EpicService.loadResumeDlcIds(appContext, id), installPath, language)
                 result.exceptionOrNull()?.message?.let { recentFailureMessages[key] = it }
             }
 
@@ -703,7 +703,7 @@ class DownloadsViewModel @Inject constructor(
                 }
                 val container = ContainerUtils.getOrCreateContainer(appContext, "${GameSource.EPIC.name}_${item.appId}")
                 val language = ContainerUtils.toContainerData(container).language
-                GameDownloadService.enqueueDownload(GameSource.EPIC, item.appId, dlcGameIds = emptyList(), installPath = installPath, containerLanguage = language)
+                GameDownloadService.enqueueDownload(GameSource.EPIC, item.appId, dlcGameIds = EpicService.loadResumeDlcIds(appContext, id), installPath = installPath, containerLanguage = language)
             }
 
             GameSource.AMAZON -> {

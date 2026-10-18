@@ -380,12 +380,7 @@ class EpicAppScreen : BaseAppScreen() {
             Timber.tag(TAG).i("Epic game already installed, launching: $gameId")
             onClickPlay(false)
         } else if (hasPartial) {
-            // Partial resume should go through DLC manager so selection is explicit and restart-safe.
-            Timber.tag(TAG).i("Showing game manager for partial Epic resume: ${libraryItem.appId}")
-            showGameManagerDialog(
-                gameId,
-                app.gamenative.ui.component.dialog.state.GameManagerDialogState(visible = true),
-            )
+            resumePartialDownload(context, libraryItem)
         } else {
             // Show game manager dialog with DLC selection
             Timber.tag(TAG).i("Showing game manager dialog for: ${libraryItem.appId}")
@@ -402,8 +397,21 @@ class EpicAppScreen : BaseAppScreen() {
      * @param scope Lifecycle-aware CoroutineScope from the calling composable
      * @param selectedGameIds List of game IDs to download (base game + selected DLCs)
      */
+    /**
+     * Rift: Resume on a partial download continues it at once with the components picked when it
+     * started, like Steam, GOG and Amazon. It used to reopen the install screen, and after a restart
+     * the button flipped to a 0% bar while nothing ran.
+     */
+    private fun resumePartialDownload(context: Context, libraryItem: LibraryItem) {
+        val gameId = libraryItem.gameId
+        val selection = listOf(gameId) + EpicService.loadResumeDlcIds(context, gameId)
+        Timber.tag(TAG).i("Resuming partial Epic download: $gameId with items $selection")
+        performDownload(CoroutineScope(SupervisorJob() + Dispatchers.IO), context, libraryItem, selection) {}
+    }
+
     private fun performDownload(scope: CoroutineScope, context: Context, libraryItem: LibraryItem, selectedGameIds: List<Int>, onClickPlay: (Boolean) -> Unit) {
         Timber.tag(TAG).i("Starting Epic game download: ${libraryItem.gameId} with ${selectedGameIds.size} items (including DLCs)")
+        EpicService.saveResumeDlcIds(context, libraryItem.gameId, selectedGameIds.filter { it != libraryItem.gameId })
         scope.launch(Dispatchers.IO) {
             try {
                 // Get the game to access its title/appName
@@ -465,11 +473,7 @@ class EpicAppScreen : BaseAppScreen() {
                 EpicService.cleanupDownload(context, gameId)
             }
         } else if (hasPartial) {
-            Timber.tag(TAG).i("Showing game manager for partial Epic resume via pause/resume: $gameId")
-            showGameManagerDialog(
-                gameId,
-                app.gamenative.ui.component.dialog.state.GameManagerDialogState(visible = true),
-            )
+            resumePartialDownload(context, libraryItem)
         } else {
             // Fresh start: show DLC manager/install selection dialog.
             Timber.tag(TAG).i("Showing game manager dialog via pause/resume: $gameId")
