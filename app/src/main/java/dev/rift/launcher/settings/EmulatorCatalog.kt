@@ -39,6 +39,9 @@ internal enum class LaunchKind {
     /** EmuCoreC: the game goes in the gamePath extra of its PS3 activity. */
     EMUCOREC,
 
+    /** Kenji-NX (Switch): its own action and the game's URI in the bootPath extra. */
+    KENJINX,
+
     /** BachataS4 (PS4): starts an installed game by its CUSA code, taken from the file name. */
     BACHATAS4,
 }
@@ -80,12 +83,17 @@ internal data class PlatformDef(
     val cores: List<RetroCore> = emptyList(),
     /** A note shown on the emulator page, for limits the person should know before choosing. */
     @StringRes val noteRes: Int = 0,
+    /**
+     * Names (lower case) that mark a folder as one game when it holds one of them, for systems whose games are
+     * folders and not files (PS3 and PS4 dumps). A folder named like a game file ("Name.ps3") counts too.
+     */
+    val gameFolders: Set<String> = emptySet(),
 )
 
 /**
- * The systems offered in settings and the emulators that play them. This is a starting list; the full
- * database comes from ES-DE later. Emulators are looked up by package name and by name hints, and any
- * other app on the device can be picked for a system too (see EmulatorPicker).
+ * The systems offered in settings and the emulators that play them, following ES-DE's list of systems and
+ * Android emulators. Emulators are looked up by package name and by name hints, and any other app on the
+ * device can be picked for a system too (see EmulatorPicker), so one missing here still works.
  */
 internal object EmulatorCatalog {
     private val retroArch = KnownEmulator(
@@ -98,7 +106,7 @@ internal object EmulatorCatalog {
 
     private val eden = KnownEmulator(
         "Eden",
-        listOf("dev.eden.eden_emulator", "dev.legacy.eden_emulator", "dev.eden.eden_emulator.nightly"),
+        listOf("dev.eden.eden_emulator", "dev.legacy.eden_emulator", "dev.eden.eden_emulator.nightly", "com.miHoYo.Yuanshen"),
         LaunchKind.YUZU,
         hints = listOf("eden_emulator"),
         download = EmulatorDownload(url = "https://git.eden-emu.dev/eden-emu/eden/releases"),
@@ -113,6 +121,43 @@ internal object EmulatorCatalog {
         "snes" to listOf(RetroCore("Snes9x", "snes9x"), RetroCore("bsnes", "bsnes")),
         "nes" to listOf(RetroCore("FCEUmm", "fceumm"), RetroCore("Nestopia UE", "nestopia")),
         "genesis" to listOf(RetroCore("Genesis Plus GX", "genesis_plus_gx"), RetroCore("PicoDrive", "picodrive")),
+        "n64" to listOf(RetroCore("Mupen64Plus-Next", "mupen64plus_next_gles3"), RetroCore("ParaLLEl N64", "parallel_n64")),
+        "gb" to listOf(RetroCore("Gambatte", "gambatte"), RetroCore("mGBA", "mgba"), RetroCore("SameBoy", "sameboy")),
+        "virtualboy" to listOf(RetroCore("Beetle VB", "mednafen_vb")),
+        "mastersystem" to listOf(RetroCore("Genesis Plus GX", "genesis_plus_gx"), RetroCore("SMS Plus GX", "smsplus"), RetroCore("PicoDrive", "picodrive")),
+        "segacd" to listOf(RetroCore("Genesis Plus GX", "genesis_plus_gx"), RetroCore("PicoDrive", "picodrive")),
+        "sega32x" to listOf(RetroCore("PicoDrive", "picodrive")),
+        "saturn" to listOf(RetroCore("Beetle Saturn", "mednafen_saturn"), RetroCore("Yabause", "yabause")),
+        "atari2600" to listOf(RetroCore("Stella", "stella")),
+        "atari7800" to listOf(RetroCore("ProSystem", "prosystem")),
+        "lynx" to listOf(RetroCore("Handy", "handy")),
+        "jaguar" to listOf(RetroCore("Virtual Jaguar", "virtualjaguar")),
+        "pcengine" to listOf(RetroCore("Beetle PCE Fast", "mednafen_pce_fast"), RetroCore("Beetle PCE", "mednafen_pce"), RetroCore("Beetle SuperGrafx", "mednafen_supergrafx")),
+        "neogeo" to listOf(RetroCore("FinalBurn Neo", "fbneo")),
+        "ngp" to listOf(RetroCore("Beetle NeoPop", "mednafen_ngp")),
+        "wonderswan" to listOf(RetroCore("Beetle Cygne", "mednafen_wswan")),
+        "arcade" to listOf(RetroCore("FinalBurn Neo", "fbneo"), RetroCore("MAME 2003-Plus", "mame2003_plus"), RetroCore("MAME", "mame")),
+        "3do" to listOf(RetroCore("Opera", "opera")),
+        "msx" to listOf(RetroCore("blueMSX", "bluemsx")),
+        "c64" to listOf(RetroCore("VICE x64", "vice_x64")),
+        "amiga" to listOf(RetroCore("PUAE", "puae")),
+        "dos" to listOf(RetroCore("DOSBox Pure", "dosbox_pure")),
+        "scummvm" to listOf(RetroCore("ScummVM", "scummvm")),
+        "colecovision" to listOf(RetroCore("Gearcoleco", "gearcoleco"), RetroCore("blueMSX", "bluemsx")),
+        "intellivision" to listOf(RetroCore("FreeIntv", "freeintv")),
+        "pokemini" to listOf(RetroCore("PokeMini", "pokemini")),
+    )
+
+    /** A system that only RetroArch plays, with the cores in [retroCores] under the system's id. */
+    private fun retroSystem(id: String, @StringRes nameRes: Int, extensions: Set<String>, noteRes: Int = 0) =
+        PlatformDef(id, nameRes, extensions, listOf(retroArch), retroCores.getValue(id), noteRes)
+
+    private val mupen = KnownEmulator(
+        "M64Plus FZ",
+        listOf("org.mupen64plusae.v3.fzurita", "org.mupen64plusae.v3.fzurita.pro", "org.mupen64plusae.v3.fzurita.amazon"),
+        hints = listOf("mupen64plus"),
+        download = EmulatorDownload(playId = "org.mupen64plusae.v3.fzurita"),
+        activity = "paulscode.android.mupen64plusae.SplashActivity",
     )
 
     val platforms: List<PlatformDef> = listOf(
@@ -123,6 +168,9 @@ internal object EmulatorCatalog {
                 KnownEmulator("Citron", listOf("org.citron.citron_emu"), LaunchKind.YUZU, hints = listOf("citron")),
                 KnownEmulator("Sudachi", listOf("org.sudachi.sudachi_emu", "org.sudachi.sudachi_emu.ea"), LaunchKind.YUZU, hints = listOf("sudachi")),
                 KnownEmulator("Yuzu", listOf("org.yuzu.yuzu_emu"), LaunchKind.YUZU),
+                KnownEmulator("Suyu", listOf("dev.suyu.suyu_emu.relWithDebInfo"), LaunchKind.YUZU, hints = listOf("suyu")),
+                KnownEmulator("Kenji-NX", listOf("org.kenjinx.android"), LaunchKind.KENJINX, hints = listOf("kenjinx")),
+                KnownEmulator("Strato", listOf("org.stratoemu.strato"), LaunchKind.VIEW, hints = listOf("stratoemu")),
             ),
         ),
         PlatformDef(
@@ -144,7 +192,7 @@ internal object EmulatorCatalog {
             ),
         ),
         PlatformDef(
-            "ps3", R.string.rift_platform_ps3, setOf("iso"),
+            "ps3", R.string.rift_platform_ps3, setOf("iso", "ps3"),
             listOf(
                 KnownEmulator(
                     "aPS3e",
@@ -161,8 +209,11 @@ internal object EmulatorCatalog {
                     download = EmulatorDownload(url = "https://github.com/ARMSX2/ARMSX3/releases"),
                 ),
                 KnownEmulator("EmuCoreC", listOf("com.sbro.emucorec"), LaunchKind.EMUCOREC, hints = listOf("emucorec")),
+                KnownEmulator("RPCS3", listOf("net.rpcs3"), LaunchKind.VIEW, hints = listOf("rpcs3")),
+                KnownEmulator("PS3Native", listOf("com.ps3native.standard"), LaunchKind.VIEW, hints = listOf("ps3native")),
             ),
             noteRes = R.string.rift_platform_ps3_note,
+            gameFolders = setOf("ps3_disc.sfb", "ps3_game", "usrdir"),
         ),
         PlatformDef(
             "ps4", R.string.rift_platform_ps4, setOf("pkg", "ps4"),
@@ -176,6 +227,7 @@ internal object EmulatorCatalog {
                 ),
             ),
             noteRes = R.string.rift_platform_ps4_note,
+            gameFolders = setOf("eboot.bin", "sce_sys"),
         ),
         PlatformDef(
             "ps1", R.string.rift_platform_ps1, setOf("bin", "cue", "chd", "iso", "img", "pbp", "m3u", "mdf"),
@@ -271,14 +323,124 @@ internal object EmulatorCatalog {
                     download = EmulatorDownload(playId = "com.flycast.emulator"),
                     activity = "com.flycast.emulator.MainActivity",
                 ),
+                KnownEmulator(
+                    "Redream",
+                    listOf("io.recompiled.redream"),
+                    LaunchKind.VIEW,
+                    download = EmulatorDownload(playId = "io.recompiled.redream"),
+                    activity = "io.recompiled.redream.MainActivity",
+                ),
                 retroArch,
             ),
             retroCores.getValue("dreamcast"),
         ),
-        PlatformDef("gba", R.string.rift_platform_gba, setOf("gba", "agb", "zip"), listOf(retroArch), retroCores.getValue("gba")),
+        PlatformDef(
+            "gba", R.string.rift_platform_gba, setOf("gba", "agb", "zip"),
+            listOf(
+                KnownEmulator(
+                    "My Boy!",
+                    listOf("com.fastemulator.gba"),
+                    LaunchKind.VIEW,
+                    download = EmulatorDownload(playId = "com.fastemulator.gba"),
+                    activity = "com.fastemulator.gba.EmulatorActivity",
+                ),
+                retroArch,
+            ),
+            retroCores.getValue("gba"),
+        ),
         PlatformDef("snes", R.string.rift_platform_snes, setOf("sfc", "smc", "swc", "fig", "bs", "zip"), listOf(retroArch), retroCores.getValue("snes")),
         PlatformDef("nes", R.string.rift_platform_nes, setOf("nes", "fds", "unf", "unif", "zip"), listOf(retroArch), retroCores.getValue("nes")),
         PlatformDef("genesis", R.string.rift_platform_genesis, setOf("md", "gen", "smd", "bin", "zip"), listOf(retroArch), retroCores.getValue("genesis")),
+        PlatformDef(
+            "n64", R.string.rift_platform_n64, setOf("n64", "z64", "v64", "ndd", "zip", "7z"),
+            listOf(mupen, retroArch), retroCores.getValue("n64"),
+        ),
+        PlatformDef(
+            "gb", R.string.rift_platform_gb, setOf("gb", "sgb", "zip"),
+            listOf(
+                KnownEmulator(
+                    "My OldBoy!",
+                    listOf("com.fastemulator.gbc"),
+                    LaunchKind.VIEW,
+                    download = EmulatorDownload(playId = "com.fastemulator.gbc"),
+                    activity = "com.fastemulator.gbc.EmulatorActivity",
+                ),
+                retroArch,
+            ),
+            retroCores.getValue("gb"),
+        ),
+        PlatformDef(
+            "gbc", R.string.rift_platform_gbc, setOf("gbc", "zip"),
+            listOf(
+                KnownEmulator(
+                    "My OldBoy!",
+                    listOf("com.fastemulator.gbc"),
+                    LaunchKind.VIEW,
+                    download = EmulatorDownload(playId = "com.fastemulator.gbc"),
+                    activity = "com.fastemulator.gbc.EmulatorActivity",
+                ),
+                retroArch,
+            ),
+            retroCores.getValue("gb"),
+        ),
+        retroSystem("virtualboy", R.string.rift_platform_virtualboy, setOf("vb", "vboy", "zip")),
+        PlatformDef(
+            "wiiu", R.string.rift_platform_wiiu, setOf("wua", "wud", "wux", "rpx", "wup"),
+            listOf(
+                KnownEmulator(
+                    "Cemu",
+                    listOf("info.cemu.cemu"),
+                    LaunchKind.VIEW,
+                    hints = listOf("info.cemu"),
+                    download = EmulatorDownload(url = "https://github.com/SSimco/Cemu/releases"),
+                ),
+            ),
+        ),
+        PlatformDef(
+            "xbox360", R.string.rift_platform_xbox360, setOf("iso", "xex", "zar"),
+            listOf(
+                KnownEmulator("X360 Mobile", listOf("emu.x360.mobile"), LaunchKind.VIEW, hints = listOf("x360", "xenia", "ax360e")),
+            ),
+            noteRes = R.string.rift_platform_xbox360_note,
+            gameFolders = setOf("default.xex"),
+        ),
+        retroSystem("mastersystem", R.string.rift_platform_mastersystem, setOf("sms", "sg", "zip")),
+        retroSystem("gamegear", R.string.rift_platform_gamegear, setOf("gg", "zip")),
+        retroSystem("segacd", R.string.rift_platform_segacd, setOf("cue", "chd", "iso", "bin")),
+        retroSystem("sega32x", R.string.rift_platform_sega32x, setOf("32x", "zip", "bin")),
+        PlatformDef(
+            "saturn", R.string.rift_platform_saturn, setOf("chd", "cue", "iso", "mds", "ccd"),
+            listOf(
+                KnownEmulator(
+                    "Yaba Sanshiro 2",
+                    listOf("org.devmiyax.yabasanshioro2.pro", "org.devmiyax.yabasanshioro2"),
+                    LaunchKind.VIEW,
+                    hints = listOf("yabasanshiro"),
+                    download = EmulatorDownload(playId = "org.devmiyax.yabasanshioro2"),
+                    activity = "org.uoyabause.android.Yabause",
+                ),
+                retroArch,
+            ),
+            retroCores.getValue("saturn"),
+        ),
+        retroSystem("atari2600", R.string.rift_platform_atari2600, setOf("a26", "bin", "zip")),
+        retroSystem("atari7800", R.string.rift_platform_atari7800, setOf("a78", "bin", "zip")),
+        retroSystem("lynx", R.string.rift_platform_lynx, setOf("lnx", "zip")),
+        retroSystem("jaguar", R.string.rift_platform_jaguar, setOf("j64", "jag", "zip")),
+        retroSystem("pcengine", R.string.rift_platform_pcengine, setOf("pce", "sgx", "cue", "chd", "zip")),
+        retroSystem("neogeo", R.string.rift_platform_neogeo, setOf("zip", "7z")),
+        retroSystem("ngp", R.string.rift_platform_ngp, setOf("ngp", "ngc", "zip")),
+        retroSystem("wonderswan", R.string.rift_platform_wonderswan, setOf("ws", "wsc", "zip")),
+        retroSystem("arcade", R.string.rift_platform_arcade, setOf("zip", "7z", "chd")),
+        retroSystem("3do", R.string.rift_platform_3do, setOf("iso", "cue", "chd")),
+        retroSystem("msx", R.string.rift_platform_msx, setOf("rom", "mx1", "mx2", "dsk", "cas", "zip")),
+        retroSystem("c64", R.string.rift_platform_c64, setOf("d64", "t64", "prg", "crt", "tap", "x64", "zip")),
+        retroSystem("amiga", R.string.rift_platform_amiga, setOf("adf", "ipf", "lha", "hdf", "uae", "zip")),
+        retroSystem("dos", R.string.rift_platform_dos, setOf("zip", "dosz", "iso", "cue", "conf")),
+        retroSystem("scummvm", R.string.rift_platform_scummvm, setOf("scummvm", "svm")),
+        retroSystem("colecovision", R.string.rift_platform_colecovision, setOf("col", "rom", "bin", "zip")),
+        retroSystem("intellivision", R.string.rift_platform_intellivision, setOf("int", "bin", "rom", "zip")),
+        retroSystem("pokemini", R.string.rift_platform_pokemini, setOf("min", "zip")),
     )
 
     fun platform(id: String): PlatformDef? = platforms.firstOrNull { it.id == id }

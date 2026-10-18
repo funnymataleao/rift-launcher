@@ -13,6 +13,7 @@ import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -26,6 +27,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import app.gamenative.R
 import app.gamenative.ui.util.SnackbarManager
+import dev.rift.launcher.emulators.EmulatorLibrary
+import dev.rift.launcher.emulators.ScanStatus
 
 /**
  * Platforms, the way Beacon does it: pick a system, pick the emulator app that plays it, pick the folder
@@ -45,6 +48,7 @@ internal fun EmulatorsSettings() {
     var page by rememberSaveable { mutableStateOf<String?>(null) }
     var focusKey by rememberSaveable { mutableStateOf(KEY_ADD) }
     var onFolderPicked by remember { mutableStateOf<((String) -> Unit)?>(null) }
+    val scanStatus by EmulatorLibrary.scanStatus.collectAsState()
     val requesters = remember { mutableMapOf<String, FocusRequester>() }
     fun requester(key: String) = requesters.getOrPut(key) { FocusRequester() }
 
@@ -110,15 +114,20 @@ internal fun EmulatorsSettings() {
         val def = EmulatorCatalog.platform(parts.getOrNull(1).orEmpty())
         when {
             current == "add" -> {
+                val installed = rememberInstalledApps().map { it.packageName }
+                // Systems that an emulator already on the device plays come first, with that emulator named.
                 val free = EmulatorCatalog.platforms.filter { p -> platforms.none { it.platformId == p.id } }
+                    .map { p -> p to p.emulators.filter { EmulatorCatalog.installedPackage(it, installed) != null } }
+                    .sortedBy { it.second.isEmpty() }
                 val first = remember { FocusRequester() }
                 LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
                 SettingsGroup(title = stringResource(R.string.rift_settings_pick_platform)) {
-                    free.forEachIndexed { index, platform ->
+                    free.forEachIndexed { index, (platform, found) ->
                         LinkRow(
                             modifier = if (index == 0) Modifier.focusRequester(first) else Modifier,
                             title = stringResource(platform.nameRes),
-                            subtitle = platform.emulators.joinToString(", ") { it.label },
+                            subtitle = (found.ifEmpty { platform.emulators }).joinToString(", ") { it.label },
+                            value = if (found.isEmpty()) null else stringResource(R.string.rift_settings_platform_installed),
                             icon = Icons.Rounded.SportsEsports,
                             onClick = { page = "emu:${platform.id}" },
                         )
@@ -191,6 +200,8 @@ internal fun EmulatorsSettings() {
                             },
                         )
                     }
+                    scanStatusText(scanStatus[def.id])?.let { NoteText(it) }
+                    NoteText(stringResource(R.string.rift_settings_platform_looking_for, lookingFor(def)))
                     if (def.noteRes != 0) NoteText(stringResource(def.noteRes))
                 }
             }
@@ -210,6 +221,7 @@ internal fun EmulatorsSettings() {
                 subtitle = listOfNotNull(
                     EmulatorCatalog.labelFor(context, entry.emulatorPackage, def).takeIf { entry.emulatorPackage.isNotBlank() },
                     folderLabel(entry.folderUri),
+                    scanStatusText(scanStatus[entry.platformId]),
                 ).joinToString(" · "),
                 icon = Icons.Rounded.SportsEsports,
                 onClick = {
@@ -260,6 +272,19 @@ internal fun EmulatorsSettings() {
 }
 
 private const val KEY_ADD = "add"
+
+/** What the last look into a system's folder found; null while it has not been scanned yet. */
+@Composable
+private fun scanStatusText(status: ScanStatus?): String? = when {
+    status == null -> null
+    status.failed -> stringResource(R.string.rift_settings_platform_unreadable)
+    status.count == 0 -> stringResource(R.string.rift_settings_platform_no_games)
+    else -> stringResource(R.string.rift_settings_platform_games, status.count)
+}
+
+/** The file types and folders a system's games are looked for by, for the person to compare with their folder. */
+private fun lookingFor(def: PlatformDef): String =
+    (def.extensions.sorted().map { ".$it" } + def.gameFolders.sorted()).joinToString(", ")
 
 /** Opens the system folder picker and keeps access to the chosen folder. Returns the function that opens it. */
 @Composable

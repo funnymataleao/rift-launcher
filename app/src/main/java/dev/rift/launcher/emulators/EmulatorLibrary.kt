@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
 import android.provider.DocumentsContract
+import android.util.Log
 import androidx.core.content.edit
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
@@ -41,7 +42,12 @@ data class EmulatorGame(
     val name: String,
     val documentUri: String,
     val modified: Long,
+    /** The game is a folder (a PS3 or PS4 dump), not a file. */
+    val isFolder: Boolean = false,
 )
+
+/** What the last scan of a system's folder found: how many games, or that the folder could not be read. */
+data class ScanStatus(val count: Int, val failed: Boolean = false)
 
 /** An emulator game as a library entry, so the home's covers, art and library grid work as for any game. */
 fun EmulatorGame.toLibraryItem() = LibraryItem(
@@ -59,6 +65,8 @@ fun EmulatorGame.toLibraryItem() = LibraryItem(
 object EmulatorLibrary {
     const val APP_ID_PREFIX = "EMU_"
 
+    private const val TAG = "RiftEmulators"
+    private val NOT_GAMES = setOf("dlc", "dlcs", "update", "updates", "patch", "patches")
     private const val USAGE_PREFS = "rift_emulator_usage"
     private const val CACHE_FILE = "emulator_games.json"
     private const val MAX_DEPTH = 5
@@ -73,6 +81,11 @@ object EmulatorLibrary {
     private var settingsListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
 
     val games: StateFlow<List<EmulatorGame>> = gamesFlow.asStateFlow()
+
+    private val statusFlow = MutableStateFlow<Map<String, ScanStatus>>(emptyMap())
+
+    /** By system id: what the last scan of its folder found, so settings can say when a folder holds no games. */
+    val scanStatus: StateFlow<Map<String, ScanStatus>> = statusFlow.asStateFlow()
 
     fun isEmulatorGame(appId: String) = appId.startsWith(APP_ID_PREFIX)
 
@@ -97,12 +110,19 @@ object EmulatorLibrary {
                 val ids = platforms.map { it.platformId }.toSet()
                 readCache(app).filter { it.platformId in ids }.takeIf { it.isNotEmpty() }?.let { gamesFlow.value = it }
             }
+            val status = HashMap<String, ScanStatus>()
             val found = platforms.flatMap { entry ->
                 val def = EmulatorCatalog.platform(entry.platformId) ?: return@flatMap emptyList()
                 ensureActive()
-                runCatching { scan(app, entry, def) }.getOrDefault(emptyList())
+                val result = runCatching { scan(app, entry, def) }
+                result.exceptionOrNull()?.let { Log.w(TAG, "Scanning ${entry.platformId} in ${entry.folderUri} failed", it) }
+                val games = result.getOrDefault(emptyList())
+                Log.i(TAG, "Scanned ${entry.platformId} in ${entry.folderUri}: ${games.size} games" + if (result.isFailure) " (folder could not be read)" else "")
+                status[entry.platformId] = ScanStatus(games.size, failed = result.isFailure)
+                games
             }
             ensureActive()
+            statusFlow.value = status
             gamesFlow.value = found
             writeCache(app, found)
         }
@@ -118,45 +138,117 @@ object EmulatorLibrary {
         return out
     }
 
-    private fun walk(context: Context, tree: Uri, parentId: String, depth: Int, def: PlatformDef, out: MutableList<EmulatorGame>) {
+    /** One entry of a folder listing. */
+    private class Child(val id: String, val name: String, val modified: Long, val size: Long)
+
+    private fun listChildren(context: Context, tree: Uri, parentId: String): Pair<List<Child>, List<Child>> {
         val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, parentId)
         val columns = arrayOf(
             DocumentsContract.Document.COLUMN_DOCUMENT_ID,
             DocumentsContract.Document.COLUMN_DISPLAY_NAME,
             DocumentsContract.Document.COLUMN_MIME_TYPE,
             DocumentsContract.Document.COLUMN_LAST_MODIFIED,
+            DocumentsContract.Document.COLUMN_SIZE,
         )
-        val folders = ArrayList<String>()
-        val files = ArrayList<Triple<String, String, Long>>()
-        context.contentResolver.query(children, columns, null, null, null)?.use { cursor ->
-            while (cursor.moveToNext()) {
-                val id = cursor.getString(0) ?: continue
-                val name = cursor.getString(1) ?: continue
+        val folders = ArrayList<Child>()
+        val files = ArrayList<Child>()
+        val cursor = context.contentResolver.query(children, columns, null, null, null)
+            ?: throw IllegalStateException("The folder could not be listed: $parentId")
+        cursor.use {
+            while (it.moveToNext()) {
+                val id = it.getString(0) ?: continue
+                val name = it.getString(1) ?: continue
                 if (name.startsWith(".")) continue
-                if (cursor.getString(2) == DocumentsContract.Document.MIME_TYPE_DIR) {
-                    folders += id
-                } else {
-                    files += Triple(id, name, cursor.getLong(3))
-                }
+                val child = Child(id, name, it.getLong(3), it.getLong(4))
+                if (it.getString(2) == DocumentsContract.Document.MIME_TYPE_DIR) folders += child else files += child
             }
         }
+        return folders to files
+    }
+
+    private fun walk(
+        context: Context,
+        tree: Uri,
+        parentId: String,
+        depth: Int,
+        def: PlatformDef,
+        out: MutableList<EmulatorGame>,
+        self: Pair<String, Long>? = null,
+    ) {
+        val (folders, files) = listChildren(context, tree, parentId)
+        // Systems whose games are folders: a folder that holds one of the marker names is a game in itself.
+        if (self != null && def.gameFolders.isNotEmpty() &&
+            (files + folders).any { it.name.lowercase() in def.gameFolders }
+        ) {
+            val uri = DocumentsContract.buildDocumentUriUsingTree(tree, parentId).toString()
+            val title = gameTitle(context, tree, files, folders) ?: displayName(self.first)
+            out += EmulatorGame(appIdFor(def.id, uri), def.id, title, uri, self.second, isFolder = true)
+            return
+        }
         // A disc image split in a .cue and a .bin is one game: the .cue is listed, not the .bin beside it.
-        val cues = files.map { it.second.lowercase() }.filter { it.endsWith(".cue") }.map { it.removeSuffix(".cue") }.toSet()
-        for ((id, fileName, modified) in files) {
-            val dot = fileName.lastIndexOf('.')
-            if (dot <= 0) continue
-            val extension = fileName.substring(dot + 1).lowercase()
-            if (extension !in def.extensions) continue
-            if ((extension == "bin" || extension == "img") && fileName.substring(0, dot).lowercase() in cues) continue
-            val uri = DocumentsContract.buildDocumentUriUsingTree(tree, id).toString()
-            out += EmulatorGame(appIdFor(def.id, uri), def.id, displayName(fileName.substring(0, dot)), uri, modified)
+        val cues = files.map { it.name.lowercase() }.filter { it.endsWith(".cue") }.map { it.removeSuffix(".cue") }.toSet()
+        var listed = files.filter { file ->
+            val dot = file.name.lastIndexOf('.')
+            dot > 0 && file.name.substring(dot + 1).lowercase() in def.extensions &&
+                !((file.name.substring(dot + 1).lowercase() == "bin" || file.name.substring(dot + 1).lowercase() == "img") &&
+                    file.name.substring(0, dot).lowercase() in cues)
+        }
+        // PS4 packages: a folder with several is the game and its updates; the biggest is the game.
+        if (def.id == "ps4" && listed.size > 1) listed = listOf(listed.maxBy { it.size })
+        for (file in listed) {
+            val uri = DocumentsContract.buildDocumentUriUsingTree(tree, file.id).toString()
+            out += EmulatorGame(appIdFor(def.id, uri), def.id, displayName(file.name.substringBeforeLast('.')), uri, file.modified)
             if (out.size >= MAX_GAMES_PER_SYSTEM) return
         }
         if (depth >= MAX_DEPTH) return
         for (folder in folders) {
-            walk(context, tree, folder, depth + 1, def, out)
+            val lower = folder.name.lowercase()
+            // Add-ons and updates are not games of their own.
+            if (def.gameFolders.isNotEmpty() && lower in NOT_GAMES) continue
+            // A folder named like a game file ("Name.ps3") is the game, not a place to look in.
+            val dot = folder.name.lastIndexOf('.')
+            if (dot > 0 && folder.name.substring(dot + 1).lowercase() in def.extensions && def.gameFolders.isNotEmpty()) {
+                val uri = DocumentsContract.buildDocumentUriUsingTree(tree, folder.id).toString()
+                out += EmulatorGame(appIdFor(def.id, uri), def.id, displayName(folder.name.substring(0, dot)), uri, folder.modified, isFolder = true)
+            } else {
+                walk(context, tree, folder.id, depth + 1, def, out, folder.name to folder.modified)
+            }
             if (out.size >= MAX_GAMES_PER_SYSTEM) return
         }
+    }
+
+    /** The game's title from its PARAM.SFO (next to the game, or in PS3_GAME / sce_sys), or null when there is none. */
+    private fun gameTitle(context: Context, tree: Uri, files: List<Child>, folders: List<Child>): String? = runCatching {
+        var sfo = files.firstOrNull { it.name.equals("param.sfo", ignoreCase = true) }
+        if (sfo == null) {
+            val inner = folders.firstOrNull { it.name.equals("ps3_game", ignoreCase = true) || it.name.equals("sce_sys", ignoreCase = true) }
+            sfo = inner?.let { listChildren(context, tree, it.id).second.firstOrNull { f -> f.name.equals("param.sfo", ignoreCase = true) } }
+        }
+        sfo?.let { readSfoTitle(context, DocumentsContract.buildDocumentUriUsingTree(tree, it.id)) }
+    }.getOrNull()
+
+    /** The TITLE entry of a PARAM.SFO file (the format PlayStation systems keep a game's name in). */
+    private fun readSfoTitle(context: Context, uri: Uri): String? {
+        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
+        val buffer = java.nio.ByteBuffer.wrap(bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+        if (bytes.size < 20 || buffer.getInt(0) != 0x46535000) return null
+        val keys = buffer.getInt(8)
+        val data = buffer.getInt(12)
+        val count = buffer.getInt(16)
+        for (i in 0 until count) {
+            val entry = 20 + i * 16
+            if (entry + 16 > bytes.size) break
+            val keyStart = keys + buffer.getShort(entry).toInt() and 0xFFFF
+            var keyEnd = keyStart
+            while (keyEnd < bytes.size && bytes[keyEnd] != 0.toByte()) keyEnd++
+            if (String(bytes, keyStart, keyEnd - keyStart, Charsets.UTF_8) != "TITLE") continue
+            val start = data + buffer.getInt(entry + 12)
+            var end = start
+            val limit = minOf(bytes.size, start + buffer.getInt(entry + 4))
+            while (end < limit && bytes[end] != 0.toByte()) end++
+            return String(bytes, start, end - start, Charsets.UTF_8).replace('\n', ' ').trim().ifEmpty { null }
+        }
+        return null
     }
 
     /** The file name without the "(USA)", "[!]" and similar tags dumps carry. */
@@ -176,7 +268,7 @@ object EmulatorLibrary {
         val array = JSONArray(File(context.filesDir, CACHE_FILE).readText())
         List(array.length()) { i ->
             val o = array.getJSONObject(i)
-            EmulatorGame(o.getString("id"), o.getString("platform"), o.getString("name"), o.getString("uri"), o.optLong("modified"))
+            EmulatorGame(o.getString("id"), o.getString("platform"), o.getString("name"), o.getString("uri"), o.optLong("modified"), o.optBoolean("dir"))
         }
     }.getOrDefault(emptyList())
 
@@ -186,7 +278,7 @@ object EmulatorLibrary {
             games.forEach {
                 array.put(
                     JSONObject().put("id", it.appId).put("platform", it.platformId).put("name", it.name)
-                        .put("uri", it.documentUri).put("modified", it.modified),
+                        .put("uri", it.documentUri).put("modified", it.modified).put("dir", it.isFolder),
                 )
             }
             File(context.filesDir, CACHE_FILE).writeText(array.toString())
@@ -254,7 +346,16 @@ object EmulatorLibrary {
     /** The intents to try for [game], best first. */
     private fun intents(context: Context, game: EmulatorGame, entry: EmulatorPlatform, def: PlatformDef?): List<Intent> {
         val pkg = entry.emulatorPackage
-        val uri = Uri.parse(game.documentUri)
+        // An extracted Xbox 360 game is a folder; the emulator opens the game through its default.xex.
+        val uri = Uri.parse(game.documentUri).let { folder ->
+            if (game.isFolder && game.platformId == "xbox360") {
+                runCatching {
+                    DocumentsContract.buildDocumentUriUsingTree(Uri.parse(entry.folderUri), DocumentsContract.getDocumentId(folder) + "/default.xex")
+                }.getOrDefault(folder)
+            } else {
+                folder
+            }
+        }
         val known = EmulatorCatalog.known(def, pkg)
         fun base(action: String): Intent = Intent(action).apply {
             data = uri
@@ -342,12 +443,22 @@ object EmulatorLibrary {
                     )
                 }
             }
+            LaunchKind.KENJINX -> listOf(
+                Intent("org.kenjinx.android.LAUNCH_GAME").apply {
+                    clipData = ClipData.newRawUri("", uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or clearTask)
+                    component = ComponentName(pkg, "org.kenjinx.android.MainActivity")
+                    putExtra("bootPath", uri.toString())
+                },
+                base(Intent.ACTION_VIEW).setPackage(pkg),
+            )
             LaunchKind.APS3E -> listOf(
                 Intent("aenu.intent.action.APS3E").apply {
                     clipData = ClipData.newRawUri("", uri)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     component = ComponentName(pkg, "aenu.aps3e.EmulatorActivity")
-                    putExtra("iso_uri", uri.toString())
+                    // A disc image goes in as its URI, a game folder as its path.
+                    if (game.isFolder) putExtra("game_dir", rawPath(uri) ?: uri.toString()) else putExtra("iso_uri", uri.toString())
                 },
                 base(Intent.ACTION_VIEW).setPackage(pkg),
             )
@@ -356,7 +467,7 @@ object EmulatorLibrary {
                     clipData = ClipData.newRawUri("", uri)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or clearTask)
                     component = ComponentName(pkg, "com.armsx2.Main")
-                    putExtra("path", uri.toString())
+                    putExtra("path", if (game.isFolder) rawPath(uri) ?: uri.toString() else uri.toString())
                 },
                 base(Intent.ACTION_VIEW).setPackage(pkg),
             )
