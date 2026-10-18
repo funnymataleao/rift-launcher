@@ -1200,6 +1200,9 @@ fun RiftHomeScreen(
             val ev = androidEvent.event
             val isBackKey = ev.keyCode == KeyEvent.KEYCODE_BUTTON_B || ev.keyCode == KeyEvent.KEYCODE_BACK ||
                 ev.keyCode == KeyEvent.KEYCODE_ESCAPE
+            if (isBackKey || ev.keyCode == KeyEvent.KEYCODE_BUTTON_SELECT) {
+                Timber.tag("RiftPageKeys").i("incoming code=%d action=%d pageOpen=%s artPicker=%s pageFocused=%s", ev.keyCode, ev.action, latestPageOpen.value, latestArtPickerOpen.value, pageFocused)
+            }
             if (latestPageOpen.value && !latestArtPickerOpen.value && isBackKey) {
                 // Route B on key-down, not key-up: Android/gamepad overlays can swallow the release.
                 Timber.tag("RiftPageKeys").i("B/back code=%d action=%d menu=%s options=%s pageOpen=%s", ev.keyCode, ev.action, latestSystemMenuOpen.value, latestOptionsPanelOpen.value, latestPageOpen.value)
