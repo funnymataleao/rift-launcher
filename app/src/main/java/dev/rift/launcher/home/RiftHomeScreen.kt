@@ -2763,7 +2763,8 @@ private fun TopBar(
         // The tabs get what the bumpers, the search and the corner leave.
         val tabsMax = (searchLeft - cornerGap - rb.width - gap - (pad - bumperInset + lb.width + gap)).coerceAtLeast(0)
         val tabs = measurables[1].measure(loose.copy(maxWidth = tabsMax))
-        val p = progress.value
+        // The spring overshoots; a width below the icon's own would squeeze and shift it, so the width follows 0..1.
+        val p = progress.value.coerceIn(0f, 1f)
         val fullWidth = (searchRight - pad).coerceAtLeast(searchSize)
         val searchWidth = (searchSize + (fullWidth - searchSize) * p).toInt()
         val searchBox = measurables[3].measure(Constraints.fixed(searchWidth, searchSize))
@@ -2771,7 +2772,7 @@ private fun TopBar(
         layout(constraints.maxWidth, height) {
             // Everything hangs from the same top line, so the tabs, the search and the avatar share the inset.
             var x = pad - bumperInset
-            val fade: androidx.compose.ui.graphics.GraphicsLayerScope.() -> Unit = { alpha = 1f - progress.value }
+            val fade: androidx.compose.ui.graphics.GraphicsLayerScope.() -> Unit = { alpha = 1f - progress.value.coerceIn(0f, 1f) }
             // Every piece is centred on the row's middle line, so the bumper icons sit level with the tab text.
             fun mid(h: Int) = (height - h) / 2
             lb.placeRelativeWithLayer(x, mid(lb.height), 0f, fade); x += lb.width + gap
