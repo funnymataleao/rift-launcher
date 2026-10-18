@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rift notification icon: the split diamond of the launcher icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="50"
+    android:viewportHeight="50"
+    android:tint="#FFFFFF">
+    <group android:translateX="-29" android:translateY="-29">
+        <path android:pathData="M51.7,33.3 L48.8,44 L56.3,54 L47.3,64 L50.2,73.2 L31,54 Z" android:fillColor="#FFFFFFFF" />
+        <path android:pathData="M56.1,33.1 L77,54 L54.6,76.4 L51.7,64 L60.7,54 L53.2,44 Z" android:fillColor="#FFFFFFFF" />
+    </group>
+</vector>

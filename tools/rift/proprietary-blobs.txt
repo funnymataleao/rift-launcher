@@ -1,0 +1,9 @@
+# GameNative maintainers' proprietary binaries ("all rights reserved", see
+# THIRD_PARTY_NOTICES). They are stripped from this repository's history and
+# must never be committed here. fetch-proprietary-blobs.sh downloads them from
+# upstream for local test builds only.
+app/src/main/assets/redirect.tzst
+app/src/main/jniLibs/arm64-v8a/libkgslshim.so
+app/src/main/jniLibs/arm64-v8a/libsteambootstrap.so
+app/src/modern/assets/libredirect-bionic-wx-minimal.so
+app/src/modern/assets/libredirect-bionic-wx.so
