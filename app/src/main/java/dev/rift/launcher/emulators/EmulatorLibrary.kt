@@ -486,13 +486,14 @@ object EmulatorLibrary {
                 if (serial == null) {
                     emptyList()
                 } else {
-                    listOf(
+                    // The activity's class is named after the app id of the build, which differs between builds.
+                    listOf("com.bachatas4.android.DirectLaunchActivity", "$pkg.DirectLaunchActivity").distinct().map { activity ->
                         Intent(Intent.ACTION_MAIN).apply {
                             addFlags(clearTask)
-                            component = ComponentName(pkg, "com.bachatas4.android.DirectLaunchActivity")
+                            component = ComponentName(pkg, activity)
                             putExtra("game_id", serial)
-                        },
-                    )
+                        }
+                    }
                 }
             }
             LaunchKind.VIEW -> listOfNotNull(

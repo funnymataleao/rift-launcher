@@ -227,7 +227,7 @@ internal object EmulatorCatalog {
             listOf(
                 KnownEmulator(
                     "Bachata S4",
-                    listOf("com.bachatas4.android", "com.bachatas4.android.github"),
+                    listOf("com.bachatas4.android", "com.bachatas4.android.github", "com.bachatas4"),
                     LaunchKind.BACHATAS4,
                     hints = listOf("bachatas4"),
                     download = EmulatorDownload(url = "https://github.com/JICA98/Bachata-S4/releases"),
