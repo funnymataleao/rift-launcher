@@ -1171,15 +1171,52 @@ fun RiftHomeScreen(
     // The listener lives across recompositions: it calls the latest versions of these.
     val latestClosePage = rememberUpdatedState<() -> Unit> { closePage() }
     val latestRefocus = rememberUpdatedState<() -> Unit> { refocusCover() }
+    // Activity-level key events outlive recompositions. Read current page/panel state through updated holders,
+    // otherwise the callback keeps the initial openedAppId=null and never sees the active game page.
+    val latestPageOpen = rememberUpdatedState(openedAppId != null)
+    val latestArtPickerOpen = rememberUpdatedState(artItem != null || metaItem != null)
+    val latestSystemMenuOpen = rememberUpdatedState(systemMenuOpen)
+    val latestOptionsPanelOpen = rememberUpdatedState(viewModel.state.value.isOptionsPanelOpen)
     val latestLayerOpen = rememberUpdatedState<() -> Boolean> {
         systemMenuOpen || searchOpen || viewModel.state.value.isOptionsPanelOpen
+    }
+    val latestPageBackAction = rememberUpdatedState<() -> Unit> {
+        when {
+            systemMenuOpen -> systemMenuOpen = false
+            viewModel.state.value.isOptionsPanelOpen -> viewModel.onOptionsPanelToggle(false)
+            else -> closePage()
+        }
+    }
+    val latestPageSelectAction = rememberUpdatedState<() -> Unit> {
+        if (!systemMenuOpen) {
+            val willOpen = !viewModel.state.value.isOptionsPanelOpen
+            viewModel.onOptionsPanelToggle(willOpen)
+            if (willOpen) panelFocusAsk++
+            else homeScope.launch { withFrameNanos { }; if (openedAppId != null) runCatching { pageFocus.requestFocus() } }
+        }
     }
     DisposableEffect(composeView) {
         val listener: (AndroidEvent.KeyEvent) -> Boolean = { androidEvent ->
             val ev = androidEvent.event
             val isBackKey = ev.keyCode == KeyEvent.KEYCODE_BUTTON_B || ev.keyCode == KeyEvent.KEYCODE_BACK ||
                 ev.keyCode == KeyEvent.KEYCODE_ESCAPE
-            if (ev.keyCode == KeyEvent.KEYCODE_BACK) {
+            if (latestPageOpen.value && !latestArtPickerOpen.value && isBackKey) {
+                // B closes the topmost drawer first; when no drawer is open it exits the game page.
+                if (ev.action == KeyEvent.ACTION_DOWN && ev.repeatCount == 0) pageBackDown = true
+                if (ev.action == KeyEvent.ACTION_UP && pageBackDown) {
+                    pageBackDown = false
+                    latestPageBackAction.value()
+                }
+                true
+            } else if (latestPageOpen.value && !latestArtPickerOpen.value && ev.keyCode == KeyEvent.KEYCODE_BUTTON_SELECT) {
+                // Select toggles the left game-options/filter panel independent of Compose focus.
+                if (ev.action == KeyEvent.ACTION_DOWN && ev.repeatCount == 0) pageSelectDown = true
+                if (ev.action == KeyEvent.ACTION_UP && pageSelectDown) {
+                    pageSelectDown = false
+                    latestPageSelectAction.value()
+                }
+                true
+            } else if (ev.keyCode == KeyEvent.KEYCODE_BACK) {
                 // System Back (the edge swipe without predictive back, or a Back key): every layer
                 // closes through its BackHandler. GameNative's activity swallows BACK while Steam
                 // stays alive, so it is sent to the back dispatcher from here.
@@ -2051,40 +2088,6 @@ fun RiftHomeScreen(
                 .onFocusChanged { pageFocused = it.hasFocus }
                 .focusProperties { this.onExit = { if (openedAppId != null && !systemMenuOpen && !panelOpen) cancelFocusChange() } }
                 .focusGroup()
-                // Last resort: a B the page itself did not take still goes back to the home.
-                .onKeyEvent { event ->
-                    val code = event.nativeKeyEvent.keyCode
-                    val back = code == KeyEvent.KEYCODE_BUTTON_B || code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE
-                    if (back) {
-                        if (event.type == KeyEventType.KeyDown && openedAppId != null) {
-                            pageBackDown = true
-                            when {
-                                systemMenuOpen -> systemMenuOpen = false
-                                viewModel.state.value.isOptionsPanelOpen -> viewModel.onOptionsPanelToggle(false)
-                                else -> closePage()
-                            }
-                            true
-                        } else if (event.type == KeyEventType.KeyUp && pageBackDown) {
-                            pageBackDown = false
-                            true
-                        } else {
-                            false
-                        }
-                    } else if (code == KeyEvent.KEYCODE_BUTTON_SELECT) {
-                        if (event.type == KeyEventType.KeyDown && event.nativeKeyEvent.repeatCount == 0) {
-                            pageSelectDown = true
-                            true
-                        } else if (event.type == KeyEventType.KeyUp && pageSelectDown) {
-                            pageSelectDown = false
-                            if (!systemMenuOpen) viewModel.onOptionsPanelToggle(!viewModel.state.value.isOptionsPanelOpen)
-                            true
-                        } else {
-                            pageSelectDown
-                        }
-                    } else {
-                        false
-                    }
-                },
         ) {
             BackHandler(enabled = openedAppId != null) { closePage() }
             // From the PC streaming tab the page streams the game; the page stays open, so the stream
