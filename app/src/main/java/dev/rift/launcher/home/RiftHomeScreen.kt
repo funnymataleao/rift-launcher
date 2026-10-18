@@ -1201,20 +1201,14 @@ fun RiftHomeScreen(
             val isBackKey = ev.keyCode == KeyEvent.KEYCODE_BUTTON_B || ev.keyCode == KeyEvent.KEYCODE_BACK ||
                 ev.keyCode == KeyEvent.KEYCODE_ESCAPE
             if (latestPageOpen.value && !latestArtPickerOpen.value && isBackKey) {
-                // B closes the topmost drawer first; when no drawer is open it exits the game page.
-                if (ev.action == KeyEvent.ACTION_DOWN && ev.repeatCount == 0) pageBackDown = true
-                if (ev.action == KeyEvent.ACTION_UP && pageBackDown) {
-                    pageBackDown = false
-                    latestPageBackAction.value()
-                }
+                // Route B on key-down, not key-up: Android/gamepad overlays can swallow the release.
+                Timber.tag("RiftPageKeys").i("B/back code=%d action=%d menu=%s options=%s pageOpen=%s", ev.keyCode, ev.action, latestSystemMenuOpen.value, latestOptionsPanelOpen.value, latestPageOpen.value)
+                if (ev.action == KeyEvent.ACTION_DOWN && ev.repeatCount == 0) latestPageBackAction.value()
                 true
             } else if (latestPageOpen.value && !latestArtPickerOpen.value && ev.keyCode == KeyEvent.KEYCODE_BUTTON_SELECT) {
                 // Select toggles the left game-options/filter panel independent of Compose focus.
-                if (ev.action == KeyEvent.ACTION_DOWN && ev.repeatCount == 0) pageSelectDown = true
-                if (ev.action == KeyEvent.ACTION_UP && pageSelectDown) {
-                    pageSelectDown = false
-                    latestPageSelectAction.value()
-                }
+                Timber.tag("RiftPageKeys").i("Select action=%d options=%s pageOpen=%s", ev.action, latestOptionsPanelOpen.value, latestPageOpen.value)
+                if (ev.action == KeyEvent.ACTION_DOWN && ev.repeatCount == 0) latestPageSelectAction.value()
                 true
             } else if (ev.keyCode == KeyEvent.KEYCODE_BACK) {
                 // System Back (the edge swipe without predictive back, or a Back key): every layer
