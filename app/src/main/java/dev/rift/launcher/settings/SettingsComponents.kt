@@ -212,6 +212,43 @@ internal fun RowTexts(title: String, subtitle: String?, danger: Boolean, focused
     }
 }
 
+/** A small round action INSIDE a plate (delete, preview): it takes focus on its own, the plate stays the same size. */
+internal class RowAction(
+    val icon: ImageVector,
+    val description: String,
+    val onClick: () -> Unit,
+    val modifier: Modifier = Modifier,
+)
+
+@Composable
+private fun RowActions(actions: List<RowAction>, plateFocused: Boolean) {
+    if (actions.isEmpty()) return
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        actions.forEach { action ->
+            val interaction = remember { MutableInteractionSource() }
+            val focused by interaction.collectIsFocusedAsState()
+            val colors = iconColors(plateFocused)
+            Box(
+                modifier = action.modifier
+                    .size(RowIconSize)
+                    .clip(CircleShape)
+                    .then(
+                        if (focused) Modifier.background(RiftAccent.current.brush) else Modifier.background(colors.disc),
+                    )
+                    .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = action.onClick),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = action.icon,
+                    contentDescription = action.description,
+                    tint = if (focused) RiftAccent.current.onAccent else colors.symbol,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun RowChrome(
     title: String,
@@ -430,6 +467,8 @@ internal fun LinkRow(
     danger: Boolean = false,
     onLongClick: (() -> Unit)? = null,
     leading: (@Composable () -> Unit)? = null,
+    actions: List<RowAction> = emptyList(),
+    chevron: Boolean = true,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
@@ -473,12 +512,16 @@ internal fun LinkRow(
                 modifier = Modifier.widthIn(max = 260.dp),
             )
         }
-        Icon(
-            imageVector = Icons.Rounded.ChevronRight,
-            contentDescription = null,
-            tint = plateSubtext(focused),
-            modifier = Modifier.size(26.dp),
-        )
+        RowActions(actions, plateFocused = focused)
+        // An arrow only where the row opens another screen; an action (add, scan, delete) has none.
+        if (chevron) {
+            Icon(
+                imageVector = Icons.Rounded.ChevronRight,
+                contentDescription = null,
+                tint = plateSubtext(focused),
+                modifier = Modifier.size(26.dp),
+            )
+        }
     }
 }
 
@@ -489,6 +532,7 @@ internal fun InfoRow(
     value: String,
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
+    actions: List<RowAction> = emptyList(),
 ) {
     Row(
         modifier = modifier
@@ -502,7 +546,31 @@ internal fun InfoRow(
         if (icon != null) RowIcon(icon, focused = false)
         RowTexts(title, null, danger = false, focused = false, modifier = Modifier.weight(1f))
         Text(text = value, color = RiftColors.OnSurfaceVariant, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        RowActions(actions, plateFocused = false)
     }
+}
+
+/** The gap between a heading and the plates under it. */
+internal val HeadingGap = 12.dp
+
+/**
+ * The name of the page at the top of its column: the same style, size and left line as the group names
+ * (and as the captions in the section list), set [HeadingGap] above the first plates, not a whole group gap.
+ */
+@Composable
+internal fun PageHeading(text: String, modifier: Modifier = Modifier) {
+    val tuck = with(LocalDensity.current) { (GroupGap - HeadingGap).roundToPx() }
+    Text(
+        text = text,
+        color = RiftColors.OnSurface,
+        style = GroupTitleStyle,
+        modifier = modifier
+            .layout { measurable, constraints ->
+                val placeable = measurable.measure(constraints)
+                layout(placeable.width, (placeable.height - tuck).coerceAtLeast(0)) { placeable.place(0, 0) }
+            }
+            .padding(start = 6.dp),
+    )
 }
 
 /**
