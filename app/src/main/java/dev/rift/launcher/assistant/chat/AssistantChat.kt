@@ -124,12 +124,25 @@ object AssistantChat {
         val settings = AiSettings.of(app)
         val connection = settings.active ?: return notice(app.getString(R.string.rift_chat_not_configured))
         val provider = connection.type
-        val model = settings.model(connection) ?: return notice(app.getString(R.string.rift_chat_not_configured))
         if (settings.overMonthlyLimit()) return notice(app.getString(R.string.rift_optimize_limit))
         val client = try {
             settings.clientFor(connection)
         } catch (e: AiException) {
             return notice(errorText(app, provider, e))
+        }
+        var model = settings.model(connection) ?: return notice(app.getString(R.string.rift_chat_not_configured))
+        if (provider == dev.rift.launcher.assistant.ai.AiProvider.Ollama) {
+            try {
+                val available = client.listModels()
+                if (available.none { it.id == model }) {
+                    val replacement = available.firstOrNull()?.id
+                        ?: return notice(app.getString(R.string.rift_chat_not_configured))
+                    settings.setModel(connection, replacement)
+                    model = replacement
+                }
+            } catch (e: AiException) {
+                return notice(errorText(app, provider, e))
+            }
         }
 
         val device = profile ?: DeviceProfiler.collect(app).also { profile = it }

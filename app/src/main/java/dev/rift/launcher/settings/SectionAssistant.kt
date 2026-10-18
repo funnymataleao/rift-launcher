@@ -149,7 +149,13 @@ internal fun AssistantSettings() {
                         }
                         busy = null
                         checkResult = result.fold(
-                            onSuccess = { connectedText.format(it.size) },
+                            onSuccess = { models ->
+                                if (active.type == AiProvider.Ollama && models.isNotEmpty()) {
+                                    val current = settings.model(active)
+                                    if (models.none { it.id == current }) settings.setModel(active, models.first().id)
+                                }
+                                connectedText.format(models.size)
+                            },
                             onFailure = { it },
                         )
                     }
