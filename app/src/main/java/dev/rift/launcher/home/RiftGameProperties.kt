@@ -1,70 +1,40 @@
 package dev.rift.launcher.home
 
-import dev.rift.launcher.ui.theme.RiftAccent
-import android.view.KeyEvent
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
-import androidx.compose.foundation.focusGroup
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Build
+import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.FlashOn
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.gamenative.R
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.screen.library.components.OptionCategory
 import app.gamenative.ui.screen.library.components.getIconForOption
 import app.gamenative.ui.screen.library.components.groupOptions
-import dev.rift.launcher.ui.theme.RiftColors
-import kotlinx.coroutines.delay
+import dev.rift.launcher.settings.LinkRow
+import dev.rift.launcher.settings.RiftSidebarScreen
+import dev.rift.launcher.settings.SettingsGroup
+import dev.rift.launcher.settings.SidebarEntry
 
 /**
- * The game's properties page, Steam style: the groups of GameNative's options (container, game
- * management, cloud saves, help) in a list on the left, the options of the group under the cursor
- * on the right. It reuses the same options and their dialogs as the old side panel, which it
- * replaces; Start's menu and the settings icon on the game page both open it. B closes it.
+ * The game's properties page, built from the same parts as Rift's Settings (one frame, the list of groups on
+ * the left, a page of plates on the right, an opaque black screen): the groups of GameNative's options
+ * (container, game management, cloud saves, help) and their options. It reuses the same options and their
+ * dialogs as the old side panel; Start's menu and the settings icon on the game page both open it. B goes from
+ * the page to the list, and from the list out.
  */
 @Composable
 fun RiftGameProperties(
@@ -74,95 +44,61 @@ fun RiftGameProperties(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    BackHandler(enabled = isOpen) { onDismiss() }
     val groups = groupOptions(options).filterValues { it.isNotEmpty() }.toList()
     AnimatedVisibility(
-        visible = isOpen,
-        enter = fadeIn(tween(160)),
-        exit = fadeOut(tween(120)),
+        visible = isOpen && groups.isNotEmpty(),
+        enter = fadeIn(tween(140)),
+        exit = fadeOut(tween(100)),
         modifier = modifier,
     ) {
-        var selected by remember { mutableStateOf(groups.firstOrNull()?.first) }
-        val first = remember { FocusRequester() }
-        val view = LocalView.current
-        LaunchedEffect(Unit) {
-            if (view.isInTouchMode) view.requestFocusFromTouch()
-            runCatching { first.requestFocus() }
-            delay(120)
-            runCatching { first.requestFocus() }
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.94f))
-                .pointerInput(Unit) { detectTapGestures { } }
-                .onPreviewKeyEvent { event ->
-                    val code = event.nativeKeyEvent.keyCode
-                    if (code == KeyEvent.KEYCODE_BUTTON_B || code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE) {
-                        if (event.type == KeyEventType.KeyDown) onDismiss()
-                        true
-                    } else {
-                        false
-                    }
-                },
+        var selected by remember { mutableIntStateOf(0) }
+        val index = selected.coerceIn(0, groups.size - 1)
+        val entries = groups.map { (category, _) -> SidebarEntry(categoryLabel(category), categoryIcon(category)) }
+        RiftSidebarScreen(
+            title = title,
+            entries = entries,
+            selectedIndex = index,
+            onSelect = { selected = it },
+            onBack = onDismiss,
         ) {
-            Column(
-                modifier = Modifier
-                    .width(300.dp)
-                    .fillMaxHeight()
-                    .background(Color.Black)
-                    .padding(horizontal = 12.dp, vertical = 24.dp)
-                    .focusGroup(),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = title,
-                    color = RiftColors.OnSurface,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                )
-                Text(
-                    text = stringResource(R.string.rift_menu_properties_title),
-                    color = RiftColors.OnSurfaceVariant,
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                )
-                groups.forEachIndexed { index, (category, _) ->
-                    PropertiesRow(
-                        label = categoryLabel(category),
-                        onClick = { selected = category },
-                        onFocused = { selected = category },
-                        focusRequester = if (index == 0) first else null,
-                    )
-                }
-            }
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .verticalScroll(rememberScrollState())
-                    .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 64.dp)
-                    .focusGroup(),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                groups.firstOrNull { it.first == selected }?.second.orEmpty().forEach { option ->
-                    val destructive = option.optionType == AppOptionMenuType.Uninstall ||
-                        option.optionType == AppOptionMenuType.ResetToDefaults ||
-                        option.optionType == AppOptionMenuType.ResetDrm
-                    PropertiesRow(
-                        label = stringResource(option.optionType.title),
-                        icon = option.optionType,
-                        destructive = destructive,
-                        onClick = { option.onClick(); onDismiss() },
+            val (category, items) = groups[index]
+            SettingsGroup(title = categoryLabel(category)) {
+                items.forEach { option ->
+                    val type = option.optionType
+                    LinkRow(
+                        title = stringResource(type.title),
+                        icon = getIconForOption(type),
+                        danger = type in DESTRUCTIVE,
+                        // An arrow only where another screen or dialog opens; a plain action has none.
+                        chevron = type !in ACTIONS,
+                        onClick = {
+                            option.onClick()
+                            onDismiss()
+                        },
                     )
                 }
             }
         }
     }
 }
+
+private val DESTRUCTIVE = setOf(
+    AppOptionMenuType.Uninstall,
+    AppOptionMenuType.ResetToDefaults,
+    AppOptionMenuType.ResetDrm,
+)
+
+/** Options that do their thing at once, without a screen or dialog of their own. */
+private val ACTIONS = setOf(
+    AppOptionMenuType.AddToFavorites,
+    AppOptionMenuType.RemoveFromFavorites,
+    AppOptionMenuType.CopyLaunchLink,
+    AppOptionMenuType.CreateShortcut,
+    AppOptionMenuType.RefreshMeta,
+    AppOptionMenuType.RunContainer,
+    AppOptionMenuType.ForceCloudSync,
+    AppOptionMenuType.PlayWithDiagnostics,
+)
 
 @Composable
 private fun categoryLabel(category: OptionCategory): String = stringResource(
@@ -175,43 +111,10 @@ private fun categoryLabel(category: OptionCategory): String = stringResource(
     },
 )
 
-@Composable
-private fun PropertiesRow(
-    label: String,
-    onClick: () -> Unit,
-    icon: AppOptionMenuType? = null,
-    destructive: Boolean = false,
-    onFocused: () -> Unit = {},
-    focusRequester: FocusRequester? = null,
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
-    val color = when {
-        focused -> RiftColors.OnPrimary
-        destructive -> RiftColors.Error
-        else -> RiftColors.OnSurface
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .then(if (focused) Modifier.background(RiftAccent.current.brush) else Modifier)
-            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-            .onFocusChanged { if (it.isFocused) onFocused() }
-            .selectable(selected = focused, interactionSource = interaction, indication = null, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 15.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        if (icon != null) {
-            Icon(getIconForOption(icon), contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
-        }
-        Text(
-            text = label,
-            color = color,
-            fontSize = 17.sp,
-            fontWeight = if (focused) FontWeight.SemiBold else FontWeight.Normal,
-            maxLines = 1,
-        )
-    }
+private fun categoryIcon(category: OptionCategory): ImageVector = when (category) {
+    OptionCategory.QUICK_ACTIONS -> Icons.Rounded.FlashOn
+    OptionCategory.GAME_MANAGEMENT -> Icons.Rounded.Build
+    OptionCategory.CONTAINER -> Icons.Rounded.Inventory2
+    OptionCategory.CLOUD_SAVES -> Icons.Rounded.Cloud
+    OptionCategory.HELP_INFO -> Icons.Rounded.Info
 }
