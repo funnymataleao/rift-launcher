@@ -2,6 +2,10 @@ package dev.rift.launcher.settings
 
 import android.content.Context
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -19,11 +23,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -35,6 +43,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.core.animateFloatAsState
+import dev.rift.launcher.ui.theme.RiftMotion
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.sp
 import app.gamenative.R
 import dev.rift.launcher.assistant.ai.AiConnection
@@ -99,9 +110,13 @@ internal fun AssistantModelPicker(connection: AiConnection, onDismiss: () -> Uni
                 onDismiss = { if (state !is PickerState.Manual) onDismiss() },
                 headerContent = if (supportsFree) {
                     {
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            RiftPillButton(text = if (freeOnly) "Free ✓" else "Free", onClick = { freeOnly = !freeOnly }, primary = freeOnly)
-                            RiftPillButton(text = "All models", onClick = { freeOnly = false }, primary = !freeOnly)
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            ModelFilterChip(text = "Free", selected = freeOnly, onClick = { freeOnly = true })
+                            ModelFilterChip(text = "All models", selected = !freeOnly, onClick = { freeOnly = false })
                             Text(
                                 text = if (freeOnly) "${models.size} free models" else "${shown.models.size} models",
                                 color = RiftColors.OnSurfaceVariant,
@@ -121,6 +136,39 @@ internal fun AssistantModelPicker(connection: AiConnection, onDismiss: () -> Uni
                 if (it.isNotBlank()) settings.setModel(connection, it.trim())
                 onDismiss()
             },
+        )
+    }
+}
+
+/** A filter has exactly one selected state. Focus changes its outline/scale, never its selected fill. */
+@Composable
+private fun ModelFilterChip(text: String, selected: Boolean, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val scale by animateFloatAsState(if (focused) 1.04f else 1f, RiftMotion.focusSpring(), label = "modelFilterScale")
+    val shape = RoundedCornerShape(50)
+    val accent = RiftAccent.current
+    Box(
+        modifier = Modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clip(shape)
+            .then(
+                when {
+                    selected -> Modifier.background(accent.brush)
+                    focused -> Modifier.background(RiftColors.SurfaceContainerHigh).border(2.dp, accent.main, shape)
+                    else -> Modifier.background(RiftColors.SurfaceContainerHigh)
+                },
+            )
+            .clickable(interactionSource = interaction, indication = null, role = Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 17.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            color = if (selected) accent.onAccent else RiftColors.OnSurface,
+            fontSize = 14.5.sp,
+            fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.SemiBold,
+            maxLines = 1,
         )
     }
 }
