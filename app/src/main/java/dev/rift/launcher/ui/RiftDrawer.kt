@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
@@ -160,15 +161,20 @@ fun Modifier.drawerGlass(backdrop: DrawerBackdrop?): Modifier {
             val px = RiftDrawer.Blur.toPx()
             blurred.renderEffect = BlurEffect(px, px, TileMode.Clamp)
             blurred.record(IntSize(size.width.roundToInt().coerceAtLeast(1), size.height.roundToInt().coerceAtLeast(1))) {
-                when (backdrop) {
-                    is DrawerBackdrop.Layer -> translate(-inRoot.x, -inRoot.y) { drawLayer(backdrop.layer) }
-                    is DrawerBackdrop.Picture -> drawImage(
-                        image = backdrop.image,
-                        dstOffset = IntOffset((backdrop.bounds.left - inWindow.x).roundToInt(), (backdrop.bounds.top - inWindow.y).roundToInt()),
-                        dstSize = IntSize(backdrop.bounds.width.roundToInt(), backdrop.bounds.height.roundToInt()),
-                        filterQuality = FilterQuality.Low,
-                    )
-                    null -> Unit
+                // Draw the source shifted into panel-local coordinates. Clip the source to this layer;
+                // letting the blur sample a differently-sized root/surface was what produced the bright
+                // vertical blur seam at the drawer's left edge.
+                clipRect(0f, 0f, size.width, size.height) {
+                    when (backdrop) {
+                        is DrawerBackdrop.Layer -> translate(-inRoot.x, -inRoot.y) { drawLayer(backdrop.layer) }
+                        is DrawerBackdrop.Picture -> drawImage(
+                            image = backdrop.image,
+                            dstOffset = IntOffset((backdrop.bounds.left - inWindow.x).roundToInt(), (backdrop.bounds.top - inWindow.y).roundToInt()),
+                            dstSize = IntSize(backdrop.bounds.width.roundToInt(), backdrop.bounds.height.roundToInt()),
+                            filterQuality = FilterQuality.Low,
+                        )
+                        null -> Unit
+                    }
                 }
             }
             drawLayer(blurred)

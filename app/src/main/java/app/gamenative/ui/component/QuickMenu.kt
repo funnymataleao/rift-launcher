@@ -815,6 +815,7 @@ fun QuickMenu(
                             contentDescriptionResId = R.string.performance_hud,
                             selected = selectedTab == QuickMenuTab.HUD,
                             accentColor = PluviaTheme.colors.accentPurple,
+                            quietSelection = true,
                             onSelected = {
                                 selectedTab = QuickMenuTab.HUD
                                 PrefManager.quickMenuLastTab = selectedTab
@@ -827,6 +828,7 @@ fun QuickMenu(
                                 contentDescriptionResId = R.string.power_control,
                                 selected = selectedTab == QuickMenuTab.POWER,
                                 accentColor = PluviaTheme.colors.accentPurple,
+                                quietSelection = true,
                                 onSelected = {
                                     selectedTab = QuickMenuTab.POWER
                                     PrefManager.quickMenuLastTab = selectedTab
@@ -840,6 +842,7 @@ fun QuickMenu(
                                 contentDescriptionResId = R.string.steam_invite_tab_title,
                                 selected = selectedTab == QuickMenuTab.INVITE,
                                 accentColor = PluviaTheme.colors.accentPurple,
+                                quietSelection = true,
                                 onSelected = {
                                     selectedTab = QuickMenuTab.INVITE
                                     PrefManager.quickMenuLastTab = selectedTab
@@ -853,6 +856,7 @@ fun QuickMenu(
                                 contentDescriptionResId = R.string.screen_effects,
                                 selected = selectedTab == QuickMenuTab.EFFECTS,
                                 accentColor = PluviaTheme.colors.accentPurple,
+                                quietSelection = true,
                                 onSelected = {
                                     selectedTab = QuickMenuTab.EFFECTS
                                     PrefManager.quickMenuLastTab = selectedTab
@@ -865,6 +869,7 @@ fun QuickMenu(
                             contentDescriptionResId = R.string.quick_menu_tab_controller,
                             selected = selectedTab == QuickMenuTab.CONTROLLER,
                             accentColor = PluviaTheme.colors.accentPurple,
+                            quietSelection = true,
                             onSelected = {
                                 selectedTab = QuickMenuTab.CONTROLLER
                                 PrefManager.quickMenuLastTab = selectedTab
@@ -876,6 +881,7 @@ fun QuickMenu(
                             contentDescriptionResId = R.string.task_manager,
                             selected = selectedTab == QuickMenuTab.TOOLS,
                             accentColor = PluviaTheme.colors.accentPurple,
+                            quietSelection = true,
                             onSelected = { selectedTab = QuickMenuTab.TOOLS },
                             focusRequester = toolsTabFocusRequester,
                         )
@@ -1196,6 +1202,22 @@ fun QuickMenu(
     LaunchedEffect(isVisible, selectedTab) {
         onToolsVisibilityChanged(isVisible && selectedTab == QuickMenuTab.TOOLS)
     }
+    LaunchedEffect(isVisible) {
+        if (isVisible) {
+            delay(120)
+            val requester = when (selectedTab) {
+                QuickMenuTab.HUD -> hudTabFocusRequester
+                QuickMenuTab.POWER -> powerTabFocusRequester
+                QuickMenuTab.INVITE -> inviteTabFocusRequester
+                QuickMenuTab.EFFECTS -> effectsTabFocusRequester
+                QuickMenuTab.CONTROLLER -> controllerTabFocusRequester
+                QuickMenuTab.TOOLS -> toolsTabFocusRequester
+                else -> hudTabFocusRequester
+            }
+            runCatching { requester.requestFocus() }
+        }
+    }
+
 
     LaunchedEffect(isVisible, gyroMenu) {
         if (isVisible) gyroMenu?.reloadFromContainer()
@@ -2107,10 +2129,7 @@ internal fun QuickMenuTabButton(
                 indication = null,
                 onClick = onSelected,
             )
-            .then(
-                // Flat mode keeps master's second focus target; immersive drops it.
-                if (inputBypass.active) Modifier else Modifier.focusable(interactionSource = interactionSource),
-            ),
+            .focusable(interactionSource = interactionSource),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -2134,8 +2153,6 @@ internal fun QuickMenuRailActionButton(
     focusRequester: FocusRequester? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    // Flat mode keeps master's explicit focusable(); the immersive path drops it to
-    // avoid a second focus target on the same element (see LocalImmersiveInputBypass).
     val inputBypass = LocalImmersiveInputBypass.current
     val isFocused by interactionSource.collectIsFocusedAsState()
     LaunchedEffect(isFocused) {
@@ -2162,10 +2179,7 @@ internal fun QuickMenuRailActionButton(
                 indication = null,
                 onClick = onClick,
             )
-            .then(
-                // Flat mode keeps master's second focus target; immersive drops it.
-                if (inputBypass.active) Modifier else Modifier.focusable(interactionSource = interactionSource),
-            ),
+            .focusable(interactionSource = interactionSource),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
