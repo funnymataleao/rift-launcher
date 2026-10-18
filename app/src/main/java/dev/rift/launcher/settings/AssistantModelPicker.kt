@@ -2,6 +2,10 @@ package dev.rift.launcher.settings
 
 import android.content.Context
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -19,11 +23,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -35,6 +43,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.core.animateFloatAsState
+import dev.rift.launcher.ui.theme.RiftMotion
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.sp
 import app.gamenative.R
 import dev.rift.launcher.assistant.ai.AiConnection
@@ -66,6 +77,7 @@ internal fun AssistantModelPicker(connection: AiConnection, onDismiss: () -> Uni
     val settings = remember { AiSettings.of(context) }
     val current = remember { settings.model(connection) }
     var state by remember { mutableStateOf<PickerState>(PickerState.Loading) }
+    var freeOnly by remember(connection.id) { mutableStateOf(false) }
 
     LaunchedEffect(connection.id) {
         state = try {
@@ -81,22 +93,38 @@ internal fun AssistantModelPicker(connection: AiConnection, onDismiss: () -> Uni
     when (val shown = state) {
         PickerState.Loading -> LoadingDialog(onDismiss)
         is PickerState.Choose -> {
-            val models = shown.models
+            val supportsFree = connection.type == AiProvider.OpenRouter || connection.type == AiProvider.Nvidia
+            val models = if (freeOnly && supportsFree) shown.models.filter { isFreeModel(connection.type, it) } else shown.models
             RiftChoiceDialog(
                 title = stringResource(R.string.rift_assistant_model),
-                options = models.map { if (it.name != it.id) "${it.name} · ${it.id}" else it.id } +
-                    stringResource(R.string.rift_assistant_model_manual),
-                // A saved model the provider no longer lists is marked nowhere; the field below shows it.
+                options = models.map { model ->
+                    val baseLabel = if (model.name != model.id) "${model.name} · ${model.id}" else model.id
+                    if (supportsFree && isFreeModel(connection.type, model) && !baseLabel.contains("(Free)", ignoreCase = true))
+                        "$baseLabel (Free)" else baseLabel
+                } + stringResource(R.string.rift_assistant_model_manual),
                 selectedIndex = models.indexOfFirst { it.id == current },
-                onSelect = {
-                    if (it == models.size) {
-                        state = PickerState.Manual(null)
-                    } else {
-                        settings.setModel(connection, models[it].id)
-                    }
+                onSelect = { index ->
+                    if (index == models.size) state = PickerState.Manual(null)
+                    else if (index in models.indices) settings.setModel(connection, models[index].id)
                 },
-                // Choosing an option also dismisses; going on to the field must not close the picker.
                 onDismiss = { if (state !is PickerState.Manual) onDismiss() },
+                headerContent = if (supportsFree) {
+                    {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            ModelFilterChip(text = "Free", selected = freeOnly, onClick = { freeOnly = true })
+                            ModelFilterChip(text = "All models", selected = !freeOnly, onClick = { freeOnly = false })
+                            Text(
+                                text = if (freeOnly) "${models.size} free models" else "${shown.models.size} models",
+                                color = RiftColors.OnSurfaceVariant,
+                                fontSize = 14.sp,
+                            )
+                        }
+                    }
+                } else null,
             )
         }
         is PickerState.Manual -> ManualModelDialog(
@@ -108,6 +136,39 @@ internal fun AssistantModelPicker(connection: AiConnection, onDismiss: () -> Uni
                 if (it.isNotBlank()) settings.setModel(connection, it.trim())
                 onDismiss()
             },
+        )
+    }
+}
+
+/** A filter has exactly one selected state. Focus changes its outline/scale, never its selected fill. */
+@Composable
+private fun ModelFilterChip(text: String, selected: Boolean, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val scale by animateFloatAsState(if (focused) 1.04f else 1f, RiftMotion.focusSpring(), label = "modelFilterScale")
+    val shape = RoundedCornerShape(50)
+    val accent = RiftAccent.current
+    Box(
+        modifier = Modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clip(shape)
+            .then(
+                when {
+                    selected -> Modifier.background(accent.brush)
+                    focused -> Modifier.background(RiftColors.SurfaceContainerHigh).border(2.dp, accent.main, shape)
+                    else -> Modifier.background(RiftColors.SurfaceContainerHigh)
+                },
+            )
+            .clickable(interactionSource = interaction, indication = null, role = Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 17.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            color = if (selected) accent.onAccent else RiftColors.OnSurface,
+            fontSize = 14.5.sp,
+            fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.SemiBold,
+            maxLines = 1,
         )
     }
 }
@@ -194,3 +255,55 @@ private fun ManualModelDialog(
 }
 
 private val FIELD_FOCUSED = Color(0xFF333333)
+
+private fun isFreeModel(provider: AiProvider, model: AiModel): Boolean = when (provider) {
+    AiProvider.OpenRouter -> model.id.endsWith(":free", ignoreCase = true) || model.id == "openrouter/free"
+    AiProvider.Nvidia -> {
+        val id = model.id.substringAfterLast('/').lowercase()
+        id in NVIDIA_FREE_ENDPOINT_MODELS
+    }
+    else -> false
+}
+
+// NVIDIA's official Build catalog marks these models with the “Free Endpoint” badge.
+// Keep this allow-list explicit: NVIDIA's OpenAI-compatible /v1/models endpoint does not expose pricing metadata.
+private val NVIDIA_FREE_ENDPOINT_MODELS = setOf(
+    "nemotron-3.5-super-vl-120b-a12b",
+    "step-5-preview",
+    "kumo-tabular",
+    "body-pose",
+    "deepseek-v4.1-flash",
+    "kumo-relational",
+    "glm-5-3",
+    "glm-5-3-flash",
+    "nemotron-3.5-lightning-30b-a3b",
+    "muse-glimmer-30b",
+    "riva-translate-4b-instruct-v2",
+    "ising-calibration-1.5-31b",
+    "nemotron-3-embed-1b",
+    "laguna-xs-2.1",
+    "diffusiongemma-26b-a4b-it",
+    "nemotron-3-ultra-550b-a55b",
+    "nemotron-3.5-content-safety",
+    "cosmos3-nano",
+    "cosmos3-nano-reasoner",
+    "nemotron-3-nano-omni-30b-a3b-reasoning",
+    "synthetic-video-detector",
+    "active-speaker-detection",
+    "ising-calibration-1-35b-a3b",
+    "gemma-4-31b-it",
+    "nemotron-voicechat",
+    "nemotron-3-super-120b-a12b",
+    "cosmos-transfer2.5-2b",
+    "streampetr",
+    "llama-3.1-nemotron-safety-guard-8b-v3",
+    "gpt-oss-20b",
+    "llama-guard-4-12b",
+    "magpie-tts-zeroshot",
+    "sparsedrive",
+    "bevformer",
+    "studio-voice",
+    "llama-3.2-11b-vision-instruct",
+    "llama-3.2-90b-vision-instruct",
+    "paligemma",
+)

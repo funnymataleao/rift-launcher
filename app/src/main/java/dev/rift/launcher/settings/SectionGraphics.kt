@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.Functions
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Speed
@@ -17,6 +18,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import app.gamenative.R
+import app.gamenative.PrefManager
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.screen.settings.ContentsManagerDialog
 import app.gamenative.ui.screen.settings.DriverManagerDialog
@@ -70,6 +72,50 @@ internal fun GraphicsSettings() {
                     defaults.update { it.copy(dxwrapper = wrapper, dxwrapperConfig = withoutVersion(it.dxwrapperConfig)) }
                 }
             },
+        )
+    }
+
+    var globalFgEnabled by rememberSaveable { mutableStateOf(PrefManager.globalLsfgEnabled) }
+    var globalFgMultiplier by rememberSaveable { mutableStateOf(PrefManager.globalLsfgMultiplier) }
+    var globalFgFlow by rememberSaveable { mutableStateOf(PrefManager.globalLsfgFlowScale) }
+    var globalFgPerformance by rememberSaveable { mutableStateOf(PrefManager.globalLsfgPerformanceMode) }
+    var globalFgPresent by rememberSaveable { mutableStateOf(PrefManager.globalLsfgPresentMode) }
+    var globalFgBackend by rememberSaveable { mutableStateOf(PrefManager.globalLsfgBackend) }
+
+    SettingsGroup(title = "Global Frame Generation") {
+        SwitchRow(
+            title = "Frame Generation",
+            subtitle = "Default LSFG setting for PC games. Games can inherit, override, or disable it.",
+            icon = Icons.Rounded.AutoAwesome,
+            checked = globalFgEnabled,
+            onCheckedChange = { globalFgEnabled = it; PrefManager.globalLsfgEnabled = it },
+        )
+        StepSliderRow(
+            title = "Multiplier", options = listOf("2x", "3x", "4x"),
+            selectedIndex = (globalFgMultiplier - 2).coerceIn(0, 2),
+            onSelect = { globalFgMultiplier = it + 2; PrefManager.globalLsfgMultiplier = it + 2 },
+            enabled = globalFgEnabled,
+        )
+        StepSliderRow(
+            title = "Flow Scale", options = (25..100 step 5).map { String.format(java.util.Locale.US, "%.2f", it / 100f) },
+            selectedIndex = (((globalFgFlow - 0.25f) / 0.05f).toInt()).coerceIn(0, 15),
+            onSelect = { globalFgFlow = 0.25f + it * 0.05f; PrefManager.globalLsfgFlowScale = globalFgFlow },
+            enabled = globalFgEnabled,
+        )
+        SwitchRow(
+            title = "Performance Mode", subtitle = "Use the faster LSFG model to reduce GPU cost.",
+            checked = globalFgPerformance,
+            onCheckedChange = { globalFgPerformance = it; PrefManager.globalLsfgPerformanceMode = it },
+        )
+        ChoiceChipsRow(
+            title = "Present Mode", options = listOf("Mailbox", "FIFO"),
+            selectedIndex = if (globalFgPresent == "fifo") 1 else 0,
+            onSelect = { globalFgPresent = if (it == 1) "fifo" else "mailbox"; PrefManager.globalLsfgPresentMode = globalFgPresent },
+        )
+        ChoiceChipsRow(
+            title = "Backend", options = listOf("Native", "Legacy"),
+            selectedIndex = if (globalFgBackend == "legacy") 1 else 0,
+            onSelect = { globalFgBackend = if (it == 1) "legacy" else "native"; PrefManager.globalLsfgBackend = globalFgBackend },
         )
     }
 

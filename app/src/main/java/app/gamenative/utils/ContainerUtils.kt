@@ -388,6 +388,12 @@ object ContainerUtils {
             vibrationIntensity = (container.getExtra("vibrationIntensity", "100").toIntOrNull() ?: 100).coerceIn(0, 100),
             // LSFG Vulkan frame generation
             lsfgEnabled = container.getExtra(LsfgVkManager.EXTRA_ARMED, "false").toBoolean(),
+            lsfgMode = container.getExtra(LsfgVkManager.EXTRA_MODE, "global"),
+            lsfgMultiplier = container.getExtra(LsfgVkManager.EXTRA_MULTIPLIER, "2").toIntOrNull()?.coerceIn(2, 4) ?: 2,
+            lsfgFlowScale = container.getExtra(LsfgVkManager.EXTRA_FLOW_SCALE, "0.80").toFloatOrNull()?.coerceIn(0.25f, 1f) ?: 0.80f,
+            lsfgPerformanceMode = container.getExtra(LsfgVkManager.EXTRA_PERFORMANCE_MODE, "true").toBoolean(),
+            lsfgPresentMode = container.getExtra(LsfgVkManager.EXTRA_PRESENT_MODE, "mailbox"),
+            lsfgBackend = container.getExtra(LsfgVkManager.EXTRA_BACKEND, LsfgVkManager.BACKEND_NATIVE),
             windowsVrEnabled = container.getExtra("windowsVrEnabled", "false").toBoolean(),
             openCompositeEnabled = container.getExtra("windowsVrOpenCompositeEnabled", "false").toBoolean(),
         )
@@ -586,6 +592,12 @@ object ContainerUtils {
         container.putExtra("vibrationIntensity", containerData.vibrationIntensity.coerceIn(0, 100).toString())
         // LSFG Vulkan frame generation
         container.putExtra(LsfgVkManager.EXTRA_ARMED, containerData.lsfgEnabled.toString())
+        container.putExtra(LsfgVkManager.EXTRA_MODE, containerData.lsfgMode)
+        container.putExtra(LsfgVkManager.EXTRA_MULTIPLIER, containerData.lsfgMultiplier.coerceIn(2, 4).toString())
+        container.putExtra(LsfgVkManager.EXTRA_FLOW_SCALE, containerData.lsfgFlowScale.coerceIn(0.25f, 1f).toString())
+        container.putExtra(LsfgVkManager.EXTRA_PERFORMANCE_MODE, containerData.lsfgPerformanceMode.toString())
+        container.putExtra(LsfgVkManager.EXTRA_PRESENT_MODE, containerData.lsfgPresentMode)
+        container.putExtra(LsfgVkManager.EXTRA_BACKEND, containerData.lsfgBackend)
         container.putExtra("windowsVrEnabled", containerData.windowsVrEnabled.toString())
         container.putExtra("windowsVrOpenCompositeEnabled", containerData.openCompositeEnabled.toString())
         try {

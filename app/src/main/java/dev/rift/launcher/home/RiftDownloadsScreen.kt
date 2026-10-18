@@ -1,6 +1,7 @@
 package dev.rift.launcher.home
 
 import android.text.format.Formatter
+import android.view.KeyEvent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -42,6 +43,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -104,6 +108,9 @@ fun RiftDownloadsScreen(
     val activeCount = remember(all) { all.count { it.canPause } }
     val resumableCount = remember(all) { all.count { it.canResume } }
     var confirmCancelAll by remember { mutableStateOf(false) }
+    // Android BackHandler does not receive a gamepad B on every controller. Consume B on this top layer
+    // itself, otherwise the still-mounted home underneath hears it and plays/navigates behind Downloads.
+    var gamepadBackDown by remember { mutableStateOf(false) }
 
     val firstFocus = remember { FocusRequester() }
     LaunchedEffect(all.isNotEmpty()) {
@@ -118,7 +125,19 @@ fun RiftDownloadsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(RiftColors.Background)
-            .statusBarsPadding(),
+            .statusBarsPadding()
+            .onPreviewKeyEvent { event ->
+                val code = event.nativeKeyEvent.keyCode
+                if (code != KeyEvent.KEYCODE_BUTTON_B && code != KeyEvent.KEYCODE_BACK && code != KeyEvent.KEYCODE_ESCAPE) {
+                    return@onPreviewKeyEvent false
+                }
+                if (event.type == KeyEventType.KeyDown) gamepadBackDown = true
+                if (event.type == KeyEventType.KeyUp && gamepadBackDown) {
+                    gamepadBackDown = false
+                    onBack()
+                }
+                true
+            },
     ) {
         Column(
             modifier = Modifier.padding(start = ScreenPadding, end = ScreenPadding, top = 32.dp),

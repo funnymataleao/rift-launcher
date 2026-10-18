@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -261,6 +262,7 @@ private fun RowChrome(
     danger: Boolean,
     modifier: Modifier,
     interactive: Modifier,
+    selected: Boolean = false,
     leading: (@Composable () -> Unit)? = null,
     iconPainter: Painter? = null,
     actions: List<RowAction> = emptyList(),
@@ -283,7 +285,7 @@ private fun RowChrome(
             modifier = modifier
                 .fillMaxWidth()
                 .alpha(if (enabled) 1f else 0.45f)
-                .plateFill(focused)
+                .then(if (selected && !focused) Modifier.plateFill(focused = false, rest = RiftColors.Success.copy(alpha = 0.13f)) else Modifier.plateFill(focused))
                 .then(interactive)
                 .heightIn(min = RowMinHeight)
                 .padding(horizontal = 18.dp, vertical = 14.dp),
@@ -298,7 +300,7 @@ private fun RowChrome(
         modifier = modifier
             .fillMaxWidth()
             .alpha(if (enabled) 1f else 0.45f)
-            .plateFill(focused)
+            .then(if (selected && !focused) Modifier.plateFill(focused = false, rest = RiftColors.Success.copy(alpha = 0.13f)) else Modifier.plateFill(focused))
             .heightIn(min = RowMinHeight),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -480,6 +482,26 @@ internal fun RiftCheckMark(checked: Boolean, focused: Boolean) {
     }
 }
 
+/** Compact provider-selection checkbox; provider rows use it instead of a navigation chevron. */
+@Composable
+private fun ProviderSelectionMark(checked: Boolean) {
+    val shape = RoundedCornerShape(8.dp)
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .clip(shape)
+            .then(
+                if (checked) Modifier.background(RiftColors.Success)
+                else Modifier.background(Color.Transparent).border(2.dp, RiftColors.Outline, shape),
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (checked) {
+            Icon(Icons.Rounded.Check, contentDescription = "Active provider", tint = Color(0xFF07150B), modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
 /**
  * A row that opens something: a dialog, a manager or a web page. [value] shows the current choice on
  * the right. [onLongClick] is for destructive actions that must not fire on a single press.
@@ -500,6 +522,8 @@ internal fun LinkRow(
     leading: (@Composable () -> Unit)? = null,
     actions: List<RowAction> = emptyList(),
     chevron: Boolean = true,
+    selected: Boolean = false,
+    selectionMark: Boolean? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
@@ -514,6 +538,7 @@ internal fun LinkRow(
         enabled = enabled,
         danger = danger,
         modifier = modifier,
+        selected = selected,
         interactive = if (onLongClick != null) {
             Modifier.combinedClickable(
                 interactionSource = interaction,
@@ -545,7 +570,9 @@ internal fun LinkRow(
             )
         }
         // An arrow only where the row opens another screen; an action (add, scan, delete) has none.
-        if (chevron) {
+        if (selectionMark != null) {
+            ProviderSelectionMark(checked = selectionMark)
+        } else if (chevron) {
             Icon(
                 imageVector = Icons.Rounded.ChevronRight,
                 contentDescription = null,

@@ -122,6 +122,7 @@ internal fun RiftChoiceDialog(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     onDismiss: () -> Unit,
+    headerContent: (@Composable () -> Unit)? = null,
 ) {
     RiftDialog(title = title, onDismiss = onDismiss) {
         val initial = remember { FocusRequester() }
@@ -132,6 +133,7 @@ internal fun RiftChoiceDialog(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            headerContent?.invoke()
             options.forEachIndexed { index, label ->
                 ChoiceOptionRow(
                     label = label,

@@ -280,6 +280,37 @@ object PrefManager {
             setPref(VIBRATION_INTENSITY, value.coerceIn(0, 100))
         }
 
+    // Rift global frame-generation defaults. Per-game containers may inherit or override these.
+    private val GLOBAL_LSFG_ENABLED = booleanPreferencesKey("global_lsfg_enabled")
+    var globalLsfgEnabled: Boolean
+        get() = getPref(GLOBAL_LSFG_ENABLED, true)
+        set(value) { setPref(GLOBAL_LSFG_ENABLED, value) }
+
+    private val GLOBAL_LSFG_MULTIPLIER = intPreferencesKey("global_lsfg_multiplier")
+    var globalLsfgMultiplier: Int
+        get() = getPref(GLOBAL_LSFG_MULTIPLIER, 2).coerceIn(2, 4)
+        set(value) { setPref(GLOBAL_LSFG_MULTIPLIER, value.coerceIn(2, 4)) }
+
+    private val GLOBAL_LSFG_FLOW_SCALE = floatPreferencesKey("global_lsfg_flow_scale")
+    var globalLsfgFlowScale: Float
+        get() = getPref(GLOBAL_LSFG_FLOW_SCALE, 0.80f).coerceIn(0.25f, 1f)
+        set(value) { setPref(GLOBAL_LSFG_FLOW_SCALE, value.coerceIn(0.25f, 1f)) }
+
+    private val GLOBAL_LSFG_PERFORMANCE = booleanPreferencesKey("global_lsfg_performance")
+    var globalLsfgPerformanceMode: Boolean
+        get() = getPref(GLOBAL_LSFG_PERFORMANCE, true)
+        set(value) { setPref(GLOBAL_LSFG_PERFORMANCE, value) }
+
+    private val GLOBAL_LSFG_PRESENT = stringPreferencesKey("global_lsfg_present")
+    var globalLsfgPresentMode: String
+        get() = getPref(GLOBAL_LSFG_PRESENT, "mailbox").takeIf { it == "mailbox" || it == "fifo" } ?: "mailbox"
+        set(value) { setPref(GLOBAL_LSFG_PRESENT, if (value == "fifo") "fifo" else "mailbox") }
+
+    private val GLOBAL_LSFG_BACKEND = stringPreferencesKey("global_lsfg_backend")
+    var globalLsfgBackend: String
+        get() = getPref(GLOBAL_LSFG_BACKEND, "native").takeIf { it == "legacy" } ?: "native"
+        set(value) { setPref(GLOBAL_LSFG_BACKEND, if (value == "legacy") "legacy" else "native") }
+
     private val CONTAINER_VARIANT = stringPreferencesKey("container_variant")
     var containerVariant: String
         get() = getPref(CONTAINER_VARIANT, Container.DEFAULT_VARIANT)

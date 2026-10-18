@@ -124,12 +124,42 @@ object AssistantChat {
         val settings = AiSettings.of(app)
         val connection = settings.active ?: return notice(app.getString(R.string.rift_chat_not_configured))
         val provider = connection.type
-        val model = settings.model(connection) ?: return notice(app.getString(R.string.rift_chat_not_configured))
         if (settings.overMonthlyLimit()) return notice(app.getString(R.string.rift_optimize_limit))
-        val client = try {
+
+        var client = try {
             settings.clientFor(connection)
         } catch (e: AiException) {
             return notice(errorText(app, provider, e))
+        }
+        var model = settings.model(connection) ?: return notice(app.getString(R.string.rift_chat_not_configured))
+        if (provider == dev.rift.launcher.assistant.ai.AiProvider.Ollama) {
+            // There may be multiple Ollama hosts on the LAN. Refresh discovery and select the most capable host
+            // instead of trusting the first server found during initial setup.
+            val discovered = dev.rift.launcher.assistant.ai.OllamaDiscovery.find(app)
+            if (discovered != null && discovered != settings.baseUrl(connection)) {
+                Timber.i("RiftOllama: switching endpoint from=%s to=%s", settings.baseUrl(connection), discovered)
+                settings.setBaseUrl(connection, discovered)
+                client = settings.clientFor(connection)
+            }
+            Timber.i("RiftOllama: using endpoint=%s model=%s", settings.baseUrl(connection), model)
+            val available = try {
+                client.listModels()
+            } catch (e: AiException) {
+                Timber.w(e, "RiftOllama: model list failed endpoint=%s", settings.baseUrl(connection))
+                return notice(errorText(app, provider, e))
+            }
+            Timber.i("RiftOllama: models=%s", available.joinToString { it.id })
+            if (available.none { it.id == model }) {
+                val oldFamily = model.substringBefore(':')
+                val replacement = available.firstOrNull { candidate ->
+                    val newFamily = candidate.id.substringBefore(':')
+                    newFamily.startsWith(oldFamily, ignoreCase = true) || oldFamily.startsWith(newFamily, ignoreCase = true)
+                }?.id ?: available.firstOrNull()?.id
+                    ?: return notice(app.getString(R.string.rift_chat_not_configured))
+                Timber.i("RiftOllama: replacing stale model=%s with=%s", model, replacement)
+                settings.setModel(connection, replacement)
+                model = replacement
+            }
         }
 
         val device = profile ?: DeviceProfiler.collect(app).also { profile = it }
@@ -146,8 +176,10 @@ object AssistantChat {
         _state.update { it.copy(phase = ChatState.Phase.Thinking) }
 
         val reply = try {
+            Timber.i("RiftOllama: completing provider=%s endpoint=%s model=%s", provider.id, settings.baseUrl(connection), model)
             request(client, settings, model, messages)
         } catch (e: AiException) {
+            Timber.w(e, "RiftOllama: completion failed provider=%s endpoint=%s model=%s kind=%s code=%s detail=%s", provider.id, settings.baseUrl(connection), model, e.kind, e.httpCode, e.detail)
             return notice(errorText(app, provider, e))
         }
         val (prose, block) = ChatPrompt.splitProposal(reply.text)

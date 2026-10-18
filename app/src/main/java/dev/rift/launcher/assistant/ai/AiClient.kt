@@ -63,14 +63,19 @@ object AiClients {
     private val http: OkHttpClient by lazy {
         Net.http.newBuilder().readTimeout(180, TimeUnit.SECONDS).build()
     }
+    private val localHttp: OkHttpClient by lazy {
+        // Local models can take several minutes to load before producing the first token.
+        Net.http.newBuilder().readTimeout(15, TimeUnit.MINUTES).callTimeout(20, TimeUnit.MINUTES).build()
+    }
 
-    fun create(provider: AiProvider, baseUrl: String, apiKey: String, client: OkHttpClient = http): AiClient {
+    fun create(provider: AiProvider, baseUrl: String, apiKey: String, client: OkHttpClient? = null): AiClient {
         val base = baseUrl.ifBlank { provider.defaultBaseUrl }.trimEnd('/')
         if (base.isEmpty()) throw AiException(AiException.Kind.NOT_FOUND, detail = "no address")
         if (provider.needsKey && apiKey.isBlank()) throw AiException(AiException.Kind.NO_KEY)
+        val effectiveClient = client ?: if (provider == AiProvider.Ollama) localHttp else http
         return when (provider.protocol) {
-            AiProtocol.ANTHROPIC -> AnthropicClient(client, base, apiKey)
-            AiProtocol.OPENAI -> OpenAiCompatibleClient(client, base, apiKey, provider)
+            AiProtocol.ANTHROPIC -> AnthropicClient(effectiveClient, base, apiKey)
+            AiProtocol.OPENAI -> OpenAiCompatibleClient(effectiveClient, base, apiKey, provider)
         }
     }
 }

@@ -116,6 +116,12 @@ data class ContainerData(
     // LSFG Vulkan frame generation
     /** Whether LSFG frame generation is enabled for this container */
     val lsfgEnabled: Boolean = false,
+    val lsfgMode: String = "global",
+    val lsfgMultiplier: Int = 2,
+    val lsfgFlowScale: Float = 0.80f,
+    val lsfgPerformanceMode: Boolean = true,
+    val lsfgPresentMode: String = "mailbox",
+    val lsfgBackend: String = "native",
     val windowsVrEnabled: Boolean = false,
     val openCompositeEnabled: Boolean = false,
 ) {
@@ -197,6 +203,12 @@ data class ContainerData(
                     "sharpnessDenoise" to state.sharpnessDenoise,
                     "vibrationIntensity" to state.vibrationIntensity,
                     "lsfgEnabled" to state.lsfgEnabled,
+                    "lsfgMode" to state.lsfgMode,
+                    "lsfgMultiplier" to state.lsfgMultiplier,
+                    "lsfgFlowScale" to state.lsfgFlowScale,
+                    "lsfgPerformanceMode" to state.lsfgPerformanceMode,
+                    "lsfgPresentMode" to state.lsfgPresentMode,
+                    "lsfgBackend" to state.lsfgBackend,
                     "windowsVrEnabled" to state.windowsVrEnabled,
                     "openCompositeEnabled" to state.openCompositeEnabled,
                 )
@@ -277,6 +289,12 @@ data class ContainerData(
                     sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
                     vibrationIntensity = (savedMap["vibrationIntensity"] as? Int) ?: 100,
                     lsfgEnabled = (savedMap["lsfgEnabled"] as? Boolean) ?: false,
+                    lsfgMode = (savedMap["lsfgMode"] as? String) ?: "global",
+                    lsfgMultiplier = (savedMap["lsfgMultiplier"] as? Int) ?: 2,
+                    lsfgFlowScale = (savedMap["lsfgFlowScale"] as? Float) ?: 0.80f,
+                    lsfgPerformanceMode = (savedMap["lsfgPerformanceMode"] as? Boolean) ?: true,
+                    lsfgPresentMode = (savedMap["lsfgPresentMode"] as? String) ?: "mailbox",
+                    lsfgBackend = (savedMap["lsfgBackend"] as? String) ?: "native",
                     windowsVrEnabled = (savedMap["windowsVrEnabled"] as? Boolean) ?: false,
                     openCompositeEnabled = (savedMap["openCompositeEnabled"] as? Boolean) ?: false,
                 )

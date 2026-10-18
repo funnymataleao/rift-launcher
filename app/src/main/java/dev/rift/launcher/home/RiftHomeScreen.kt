@@ -162,6 +162,7 @@ import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.drawBehind
@@ -192,6 +193,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -510,6 +513,11 @@ fun RiftHomeScreen(
     // library, a grid with the tab's sources (the stores) as tabs.
     val homeRow = library.take(HOME_ROW_COUNT)
     var libraryOpen by rememberSaveable { mutableStateOf(false) }
+    var librarySearchOpen by rememberSaveable { mutableStateOf(false) }
+    var librarySearchTyping by remember { mutableStateOf(false) }
+    var librarySearchQuery by rememberSaveable { mutableStateOf("") }
+    val libraryKeyboard = LocalSoftwareKeyboardController.current
+    val libraryFocusManager = LocalFocusManager.current
     var libraryCardFocused by rememberSaveable { mutableStateOf(false) }
     var libraryFocusedId by rememberSaveable { mutableStateOf<String?>(null) }
     // Rift opened as a launcher in a new process (after an install, a kill, a restore of the saved state): nothing is
@@ -593,6 +601,15 @@ fun RiftHomeScreen(
     val focusedCloud = cloudHomeRow.firstOrNull { it.appId == focusedCloudId } ?: cloudHomeRow.firstOrNull()
     val emulatorHomeRow = emulatorItems.take(HOME_ROW_COUNT)
     val focusedEmulator = emulatorHomeRow.firstOrNull { it.appId == focusedEmulatorId } ?: emulatorHomeRow.firstOrNull()
+    // Warm every home shelf before its tab is opened. Otherwise the first composition of a tab races
+    // the image decoder and briefly exposes CoverCard's grey surface.
+    LaunchedEffect(homeRow, streamHomeRow, cloudHomeRow, emulatorHomeRow) {
+        coroutineScope {
+            listOf(homeRow, streamHomeRow, cloudHomeRow, emulatorHomeRow).map { row ->
+                async(Dispatchers.IO) { preloadShelfCovers(context, row) }
+            }.awaitAll()
+        }
+    }
     // Coming back (from Settings, a game page, AI Help...) the lists load again, and the cover that had focus may
     // not be in the first batch. Until it shows up the focus waits instead of landing on whatever is first (and
     // then being remembered as the place); if it never shows up (the game is gone) the first cover takes over.
@@ -733,6 +750,8 @@ fun RiftHomeScreen(
     val homeCovered = pageState.currentState && pageState.isIdle
     val pageFocus = remember { FocusRequester() }
     var pageFocused by remember { mutableStateOf(false) }
+    var pageBackDown by remember { mutableStateOf(false) }
+    var pageSelectDown by remember { mutableStateOf(false) }
     val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     // The page takes focus itself (its Play button); if that did not happen, focus goes into it.
     LaunchedEffect(opened != null) {
@@ -789,7 +808,49 @@ fun RiftHomeScreen(
         libraryOpen = true
         libraryTabSwitch++
     }
+    fun libraryMatches(query: String): List<LibraryItem> = when (section) {
+        RiftSection.PcStreaming -> streamLibraryItems
+        RiftSection.CloudStreaming -> cloudItems
+        RiftSection.Emulators -> emulatorLibraryItems
+        else -> library
+    }.filter { RiftSearch.matches(it.name, query) }
+
+    fun restoreLibraryGridFocus(query: String) {
+        val visible = libraryMatches(query)
+        val target = libraryFocusedId?.takeIf { id -> visible.any { it.appId == id } } ?: visible.firstOrNull()?.appId
+        libraryFocusedId = target
+        libraryPending = target
+    }
+
+    fun closeLibrarySearch() {
+        libraryKeyboard?.hide()
+        libraryFocusManager.clearFocus(force = true)
+        librarySearchTyping = false
+        librarySearchOpen = false
+        librarySearchQuery = ""
+        if (section == RiftSection.PcGames) viewModel.onSearchQuery("")
+        restoreLibraryGridFocus("")
+    }
+    fun openLibrarySearch() {
+        librarySearchOpen = true
+        librarySearchTyping = true
+    }
+    fun stopLibrarySearchTyping() {
+        libraryKeyboard?.hide()
+        libraryFocusManager.clearFocus(force = true)
+        if (librarySearchQuery.isBlank()) {
+            closeLibrarySearch()
+        } else {
+            librarySearchTyping = false
+            restoreLibraryGridFocus(librarySearchQuery)
+        }
+    }
+    fun onLibrarySearchQuery(value: String) {
+        librarySearchQuery = value
+        if (section == RiftSection.PcGames) viewModel.onSearchQuery(value)
+    }
     fun closeLibrary() {
+        closeLibrarySearch()
         libraryOpen = false
         if (viewModel.state.value.currentTab != LibraryTab.ALL) viewModel.onTabChanged(LibraryTab.ALL)
     }
@@ -1110,15 +1171,49 @@ fun RiftHomeScreen(
     // The listener lives across recompositions: it calls the latest versions of these.
     val latestClosePage = rememberUpdatedState<() -> Unit> { closePage() }
     val latestRefocus = rememberUpdatedState<() -> Unit> { refocusCover() }
+    // Activity-level key events outlive recompositions. Read current page/panel state through updated holders,
+    // otherwise the callback keeps the initial openedAppId=null and never sees the active game page.
+    val latestPageOpen = rememberUpdatedState(openedAppId != null)
+    val latestArtPickerOpen = rememberUpdatedState(artItem != null || metaItem != null)
+    val latestSystemMenuOpen = rememberUpdatedState(systemMenuOpen)
+    val latestOptionsPanelOpen = rememberUpdatedState(viewModel.state.value.isOptionsPanelOpen)
     val latestLayerOpen = rememberUpdatedState<() -> Boolean> {
         systemMenuOpen || searchOpen || viewModel.state.value.isOptionsPanelOpen
+    }
+    val latestPageBackAction = rememberUpdatedState<() -> Unit> {
+        when {
+            systemMenuOpen -> systemMenuOpen = false
+            viewModel.state.value.isOptionsPanelOpen -> viewModel.onOptionsPanelToggle(false)
+            else -> closePage()
+        }
+    }
+    val latestPageSelectAction = rememberUpdatedState<() -> Unit> {
+        if (!systemMenuOpen) {
+            val willOpen = !viewModel.state.value.isOptionsPanelOpen
+            viewModel.onOptionsPanelToggle(willOpen)
+            if (willOpen) panelFocusAsk++
+            else homeScope.launch { withFrameNanos { }; if (openedAppId != null) runCatching { pageFocus.requestFocus() } }
+        }
     }
     DisposableEffect(composeView) {
         val listener: (AndroidEvent.KeyEvent) -> Boolean = { androidEvent ->
             val ev = androidEvent.event
             val isBackKey = ev.keyCode == KeyEvent.KEYCODE_BUTTON_B || ev.keyCode == KeyEvent.KEYCODE_BACK ||
                 ev.keyCode == KeyEvent.KEYCODE_ESCAPE
-            if (ev.keyCode == KeyEvent.KEYCODE_BACK) {
+            if (isBackKey || ev.keyCode == KeyEvent.KEYCODE_BUTTON_SELECT) {
+                Timber.tag("RiftPageKeys").i("incoming code=%d action=%d pageOpen=%s artPicker=%s pageFocused=%s", ev.keyCode, ev.action, latestPageOpen.value, latestArtPickerOpen.value, pageFocused)
+            }
+            if (latestPageOpen.value && !latestArtPickerOpen.value && isBackKey) {
+                // Route B on key-down, not key-up: Android/gamepad overlays can swallow the release.
+                Timber.tag("RiftPageKeys").i("B/back code=%d action=%d menu=%s options=%s pageOpen=%s", ev.keyCode, ev.action, latestSystemMenuOpen.value, latestOptionsPanelOpen.value, latestPageOpen.value)
+                if (ev.action == KeyEvent.ACTION_DOWN && ev.repeatCount == 0) latestPageBackAction.value()
+                true
+            } else if (latestPageOpen.value && !latestArtPickerOpen.value && ev.keyCode == KeyEvent.KEYCODE_BUTTON_SELECT) {
+                // Select toggles the left game-options/filter panel independent of Compose focus.
+                Timber.tag("RiftPageKeys").i("Select action=%d options=%s pageOpen=%s", ev.action, latestOptionsPanelOpen.value, latestPageOpen.value)
+                if (ev.action == KeyEvent.ACTION_DOWN && ev.repeatCount == 0) latestPageSelectAction.value()
+                true
+            } else if (ev.keyCode == KeyEvent.KEYCODE_BACK) {
                 // System Back (the edge swipe without predictive back, or a Back key): every layer
                 // closes through its BackHandler. GameNative's activity swallows BACK while Steam
                 // stays alive, so it is sent to the back dispatcher from here.
@@ -1175,6 +1270,11 @@ fun RiftHomeScreen(
     val latestHomePressed = rememberUpdatedState<() -> Unit> {
         if (systemMenuOpen) {
             systemMenuOpen = false
+            return@rememberUpdatedState
+        }
+        // Home over a game page opens/closes the right panel without dismissing the page or losing its focus.
+        if (openedAppId != null) {
+            systemMenuOpen = true
             return@rememberUpdatedState
         }
         if (searchOpen) closeSearch()
@@ -1235,13 +1335,20 @@ fun RiftHomeScreen(
     }
     LaunchedEffect(overlayOpen) {
         if (!overlayOpen) {
+            if (openedAppId != null) {
+                // Returning from either drawer must return to the game page, not the carousel behind it.
+                runCatching { pageFocus.requestFocus() }
+                return@LaunchedEffect
+            }
             if (viewChanged) startOver()
             focusSection(section)
             // The panel slides out while the row may still be re-sorting; ask once more so focus never stays nowhere.
             delay(PANEL_EXIT_REFOCUS_MS)
             if (!overlayOpen) {
-                if (viewChanged) startOver()
-                focusSection(section)
+                if (openedAppId != null) runCatching { pageFocus.requestFocus() } else {
+                    if (viewChanged) startOver()
+                    focusSection(section)
+                }
                 viewChanged = false
             }
         }
@@ -1677,14 +1784,29 @@ fun RiftHomeScreen(
                         }
                         true
                     }
-                    KeyEvent.KEYCODE_BUTTON_Y -> {
-                        closeLibrary()
-                        openSearch()
-                        true
-                    }
+                    KeyEvent.KEYCODE_BUTTON_Y -> false
                     else -> false
                 }
             }
+            val libraryQuery = librarySearchQuery.trim()
+            val streamLibraryShown = remember(streamLibraryItems, libraryQuery) {
+                streamLibraryItems.filter { RiftSearch.matches(it.name, libraryQuery) }
+            }
+            val cloudLibraryShown = remember(cloudItems, libraryQuery) {
+                cloudItems.filter { RiftSearch.matches(it.name, libraryQuery) }
+            }
+            val emulatorLibraryShown = remember(emulatorLibraryItems, libraryQuery) {
+                emulatorLibraryItems.filter { RiftSearch.matches(it.name, libraryQuery) }
+            }
+            val librarySearch = SearchState(
+                open = librarySearchOpen,
+                typing = librarySearchTyping,
+                query = librarySearchQuery,
+                onOpen = ::openLibrarySearch,
+                onQuery = ::onLibrarySearchQuery,
+                onDone = ::stopLibrarySearchTyping,
+                onClose = ::closeLibrarySearch,
+            )
             Box(modifier = Modifier.fillMaxSize().blur(libraryBlur)) {
             // Big Picture's library: all the PC games in a grid, one tab per store with games.
             val libraryTabs = pcLibraryTabs(libraryState)
@@ -1710,6 +1832,7 @@ fun RiftHomeScreen(
                 },
                 onDismiss = ::closeLibrary,
                 keepFocusInside = { !libraryFiltersOpen && startMenuItems == null && openedAppId == null && optionsItem == null && (artItem == null && metaItem == null) },
+                search = librarySearch,
                 onKeyDown = { code -> libraryKey(code, library) },
                 headerAction = addFolderAction.takeIf { section == RiftSection.PcGames },
             ) {
@@ -1751,10 +1874,11 @@ fun RiftHomeScreen(
                 },
                 onDismiss = ::closeLibrary,
                 keepFocusInside = { !libraryFiltersOpen && startMenuItems == null && openedAppId == null && (artItem == null && metaItem == null) },
-                onKeyDown = { code -> libraryKey(code, streamLibraryItems) },
+                search = librarySearch,
+                onKeyDown = { code -> libraryKey(code, streamLibraryShown) },
             ) {
                 PcLibraryGrid(
-                    items = streamLibraryItems,
+                    items = streamLibraryShown,
                     dimUninstalled = streamUninstalledMode == UninstalledMode.DIM,
                     loading = false,
                     tabSwitch = libraryTabSwitch,
@@ -1779,10 +1903,11 @@ fun RiftHomeScreen(
                 onSelectTab = {},
                 onDismiss = ::closeLibrary,
                 keepFocusInside = { !libraryFiltersOpen && startMenuItems == null && openedAppId == null },
-                onKeyDown = { code -> libraryKey(code, cloudItems) },
+                search = librarySearch,
+                onKeyDown = { code -> libraryKey(code, cloudLibraryShown) },
             ) {
                 PcLibraryGrid(
-                    items = cloudItems,
+                    items = cloudLibraryShown,
                     loading = false,
                     tabSwitch = libraryTabSwitch,
                     libraryState = libraryState,
@@ -1809,10 +1934,11 @@ fun RiftHomeScreen(
                 },
                 onDismiss = ::closeLibrary,
                 keepFocusInside = { !libraryFiltersOpen && startMenuItems == null && openedAppId == null },
-                onKeyDown = { code -> libraryKey(code, emulatorItems) },
+                search = librarySearch,
+                onKeyDown = { code -> libraryKey(code, emulatorLibraryShown) },
             ) {
                 PcLibraryGrid(
-                    items = emulatorLibraryItems,
+                    items = emulatorLibraryShown,
                     loading = false,
                     tabSwitch = libraryTabSwitch,
                     libraryState = libraryState,
@@ -1852,41 +1978,55 @@ fun RiftHomeScreen(
                 listKey = filterGroupIndex,
             )
             RiftGlassTheme {
-                LibraryOptionsPanel(
-                    isOpen = panelOpen,
-                    onDismiss = { viewModel.onOptionsPanelToggle(false) },
-                    glassBackdrop = remember(backdrop) { DrawerBackdrop.Layer(backdrop) },
-                    selectedFilters = libraryState.appInfoSortType,
-                    onFilterChanged = viewModel::onFilterChanged,
-                    currentSortOption = libraryState.currentSortOption,
-                    onSortOptionChanged = viewModel::onSortOptionChanged,
-                    steamCollections = libraryState.steamCollections,
-                    selectedSteamCollectionIds = libraryState.selectedSteamCollectionIds,
-                    steamCollectionCounts = libraryState.steamCollectionCounts,
-                    skippedDynamicCollections = libraryState.skippedDynamicCollections,
-                    isSteamConnected = isSteamConnected,
-                    hasSteamCredentials = SteamUtils.hasStoredCredentials(),
-                    isOffline = isOffline,
-                    onSteamCollectionToggle = viewModel::onSteamCollectionToggle,
-                    onClearSteamCollections = viewModel::onClearSteamCollections,
-                    curatedLists = libraryState.curatedLists,
-                    selectedCuratedListIds = libraryState.selectedCuratedListIds,
-                    curatedListCounts = libraryState.curatedListCounts,
-                    onCuratedListToggle = viewModel::onCuratedListToggle,
-                    onClearCuratedLists = viewModel::onClearCuratedLists,
-                    tabGroups = tabGroups,
-                    focusAsk = panelFocusAsk,
-                    onFocusChanged = { panelHasFocus = it },
-                    extraGroup = when (section) {
-                        RiftSection.PcGames -> uninstalledGroup(uninstalledMode) {
-                            RiftUninstalledMode.set(context, RiftSection.PcGames, it)
-                        }
-                        else -> null
-                    },
-                    panelShape = RectangleShape,
-                    panelShadowElevation = 0.dp,
-                    showCloseButton = false,
-                )
+                val optionsPanelContent: @Composable () -> Unit = {
+                    RiftGlassTheme {
+            LibraryOptionsPanel(
+                isOpen = panelOpen,
+                onDismiss = { viewModel.onOptionsPanelToggle(false) },
+                glassBackdrop = remember(backdrop) { DrawerBackdrop.Layer(backdrop) },
+                selectedFilters = libraryState.appInfoSortType,
+                onFilterChanged = viewModel::onFilterChanged,
+                currentSortOption = libraryState.currentSortOption,
+                onSortOptionChanged = viewModel::onSortOptionChanged,
+                steamCollections = libraryState.steamCollections,
+                selectedSteamCollectionIds = libraryState.selectedSteamCollectionIds,
+                steamCollectionCounts = libraryState.steamCollectionCounts,
+                skippedDynamicCollections = libraryState.skippedDynamicCollections,
+                isSteamConnected = isSteamConnected,
+                hasSteamCredentials = SteamUtils.hasStoredCredentials(),
+                isOffline = isOffline,
+                onSteamCollectionToggle = viewModel::onSteamCollectionToggle,
+                onClearSteamCollections = viewModel::onClearSteamCollections,
+                curatedLists = libraryState.curatedLists,
+                selectedCuratedListIds = libraryState.selectedCuratedListIds,
+                curatedListCounts = libraryState.curatedListCounts,
+                onCuratedListToggle = viewModel::onCuratedListToggle,
+                onClearCuratedLists = viewModel::onClearCuratedLists,
+                tabGroups = tabGroups,
+                focusAsk = panelFocusAsk,
+                onFocusChanged = { panelHasFocus = it },
+                extraGroup = when (section) {
+                    RiftSection.PcGames -> uninstalledGroup(uninstalledMode) {
+                        RiftUninstalledMode.set(context, RiftSection.PcGames, it)
+                    }
+                    else -> null
+                },
+                panelShape = RectangleShape,
+                panelShadowElevation = 0.dp,
+                showCloseButton = false,
+            )
+                    }
+                }
+                if (openedAppId != null) {
+                    Popup(
+                        alignment = Alignment.TopStart,
+                        properties = PopupProperties(focusable = true, dismissOnBackPress = false),
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize()) { optionsPanelContent() }
+                    }
+                } else {
+                    optionsPanelContent()
+                }
                 optionsItem?.let { item ->
                     key(optionsToken) {
                         CompositionLocalProvider(LocalRiftOptionsOnly provides optionsOnly, LocalRiftArtPicker provides artOpener, dev.rift.launcher.meta.LocalRiftInfoActions provides infoActions) {
@@ -1926,31 +2066,6 @@ fun RiftHomeScreen(
                         onDismiss = { renameTarget = null },
                     )
                 }
-                RiftSystemMenu(
-                    isOpen = systemMenuOpen,
-                    onDismiss = { systemMenuOpen = false },
-                    // The panel's glass blurs the home behind it.
-                    glassBackdrop = remember(backdrop) { DrawerBackdrop.Layer(backdrop) },
-                    onNavigateRoute = { route ->
-                        systemMenuOpen = false
-                        if (route == PluviaScreen.Support.route) {
-                            // "AI Help" opens Rift's assistant (the user's own provider) instead of GameNative's support,
-                            // about the game under the cursor when it is installed.
-                            val games = library.filter { it.isInstalled }.map { ChatGame(it.appId, it.name) }
-                            AssistantChat.open(games, focusedItem?.let { ChatGame(it.appId, it.name) })
-                            onNavigateRoute(RIFT_ASSISTANT_ROUTE)
-                        } else {
-                            onNavigateRoute(route)
-                        }
-                    },
-                    onDownloadsClick = {
-                        systemMenuOpen = false
-                        onDownloadsClick()
-                    },
-                    onLogout = onLogout,
-                    onGoOnline = onGoOnline,
-                    isOffline = isOffline,
-                )
             }
         }
       }
@@ -1968,19 +2083,8 @@ fun RiftHomeScreen(
                 // Focus stays on the page while it is open; on the way out the home takes it back.
                 .focusRequester(pageFocus)
                 .onFocusChanged { pageFocused = it.hasFocus }
-                .focusProperties { this.onExit = { if (openedAppId != null) cancelFocusChange() } }
+                .focusProperties { this.onExit = { if (openedAppId != null && !systemMenuOpen && !panelOpen) cancelFocusChange() } }
                 .focusGroup()
-                // Last resort: a B the page itself did not take still goes back to the home.
-                .onKeyEvent { event ->
-                    val code = event.nativeKeyEvent.keyCode
-                    val back = code == KeyEvent.KEYCODE_BUTTON_B || code == KeyEvent.KEYCODE_ESCAPE
-                    if (back && event.type == KeyEventType.KeyDown && openedAppId != null) {
-                        closePage()
-                        true
-                    } else {
-                        false
-                    }
-                },
         ) {
             BackHandler(enabled = openedAppId != null) { closePage() }
             // From the PC streaming tab the page streams the game; the page stays open, so the stream
@@ -2071,6 +2175,31 @@ fun RiftHomeScreen(
             }
         }
     }
+        RiftTheme {
+            RiftSystemMenu(
+                isOpen = systemMenuOpen,
+                onDismiss = { systemMenuOpen = false },
+                // Do not sample the hidden home layer while a game page is open.
+                glassBackdrop = if (openedAppId == null) remember(backdrop) { DrawerBackdrop.Layer(backdrop) } else null,
+                onNavigateRoute = { route ->
+                    systemMenuOpen = false
+                    if (route == PluviaScreen.Support.route) {
+                        val games = library.filter { it.isInstalled }.map { ChatGame(it.appId, it.name) }
+                        AssistantChat.open(games, focusedItem?.let { ChatGame(it.appId, it.name) })
+                        onNavigateRoute(RIFT_ASSISTANT_ROUTE)
+                    } else {
+                        onNavigateRoute(route)
+                    }
+                },
+                onDownloadsClick = {
+                    systemMenuOpen = false
+                    onDownloadsClick()
+                },
+                onLogout = onLogout,
+                onGoOnline = onGoOnline,
+                isOffline = isOffline,
+            )
+        }
         RiftTheme {
             dev.rift.launcher.meta.RiftMetaPicker(
                 item = metaItem,
@@ -2399,13 +2528,14 @@ private fun HeroLogo(item: LibraryItem?, modifier: Modifier = Modifier) {
 }
 
 /** What the top bar needs for the library search. */
-private class SearchState(
+internal class SearchState(
     val open: Boolean,
     val typing: Boolean,
     val query: String,
     val onOpen: () -> Unit,
     val onQuery: (String) -> Unit,
     val onDone: () -> Unit,
+    val onClose: () -> Unit = {},
 )
 
 private fun androidFocusKey(game: AndroidGame): String = "android:${game.packageName}"
@@ -2432,6 +2562,18 @@ private fun PcGamesShelf(
     // One entrance clock for the shelf (app start, tab switch).
     val clock = rememberShelfClock(entry, entryStarted)
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    // Keep a small runway of covers warm. DPAD can move focus faster than a newly composed CoilImage
+    // can decode from disk/network; prefetching the next few into the same ImageLoader avoids grey flashes.
+    LaunchedEffect(shown, listState.firstVisibleItemIndex) {
+        val start = (listState.firstVisibleItemIndex + 1).coerceAtMost(shown.size)
+        val end = (start + 7).coerceAtMost(shown.size)
+        for (index in start until end) {
+            val urls = if (index == 0) wideCoverUrls(shown[index]) else portraitCoverUrls(shown[index])
+            val url = urls.firstOrNull { it.isNotBlank() } ?: continue
+            context.imageLoader.enqueue(ImageRequest.Builder(context).data(url).size(PRELOAD_COVER_PX).build())
+        }
+    }
     if (shown.isEmpty()) {
         Box(
             modifier = Modifier
@@ -2843,7 +2985,7 @@ private fun TopBar(
  * wide field ("Search" appears inside, the keyboard opens). Always a pill, never a square, whatever the state.
  */
 @Composable
-private fun SearchPill(search: SearchState, glass: GraphicsLayer, pillFocus: FocusRequester, progress: State<Float>) {
+internal fun SearchPill(search: SearchState, glass: GraphicsLayer, pillFocus: FocusRequester, progress: State<Float>) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val fieldFocus = remember { FocusRequester() }
@@ -3396,6 +3538,14 @@ private fun RiftRow(
     CompositionLocalProvider(LocalBringIntoViewSpec provides spec) {
         LazyRow(state = state, contentPadding = contentPadding, horizontalArrangement = horizontalArrangement, content = content)
     }
+}
+
+/** Pre-decodes the visible part of a shelf into the shared Coil memory cache before its tab opens. */
+private suspend fun preloadShelfCovers(context: android.content.Context, row: List<LibraryItem>) = coroutineScope {
+    row.take(10).mapIndexedNotNull { index, item ->
+        val url = (if (index == 0) wideCoverUrls(item) else portraitCoverUrls(item)).firstOrNull { it.isNotBlank() }
+        url?.let { async(Dispatchers.IO) { runCatching { context.imageLoader.execute(ImageRequest.Builder(context).data(it).size(PRELOAD_COVER_PX).build()) } } }
+    }.awaitAll()
 }
 
 /** Loads what the home shows first (backdrop, the first covers) into Coil's cache, in parallel. */
