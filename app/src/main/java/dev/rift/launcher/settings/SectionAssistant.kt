@@ -43,6 +43,7 @@ import dev.rift.launcher.assistant.ai.AiException
 import dev.rift.launcher.assistant.ai.AiProvider
 import dev.rift.launcher.assistant.ai.AiSecrets
 import dev.rift.launcher.assistant.ai.AiSettings
+import dev.rift.launcher.assistant.ai.OllamaDiscovery
 import dev.rift.launcher.ui.theme.RiftColors
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.launch
@@ -137,7 +138,15 @@ internal fun AssistantSettings() {
                 onClick = {
                     scope.launch {
                         busy = checking
-                        val result = runRequest(context, settings, active) { it.listModels() }
+                        var result = runRequest(context, settings, active) { it.listModels() }
+                        if (result is Outcome.Err && active.type == AiProvider.Ollama) {
+                            val found = OllamaDiscovery.find(context)
+                            if (found != null) {
+                                settings.setBaseUrl(active, found)
+                                result = runRequest(context, settings, active) { it.listModels() }
+                                saved()
+                            }
+                        }
                         busy = null
                         checkResult = result.fold(
                             onSuccess = { connectedText.format(it.size) },
@@ -235,7 +244,25 @@ internal fun AssistantSettings() {
                     settingUp = true
                     saved()
                     // Choosing closes this dialog; the next one opens right after.
-                    scope.launch { dialog = if (type.needsKey) AssistantDialog.Key else AssistantDialog.Address }
+                    scope.launch {
+                        if (type == AiProvider.Ollama) {
+                            busy = "Searching for Ollama…"
+                            val connection = settings.active
+                            val found = OllamaDiscovery.find(context)
+                            busy = null
+                            if (connection != null && found != null) {
+                                settings.setBaseUrl(connection, found)
+                                saved()
+                                dialog = AssistantDialog.Model
+                            } else {
+                                checkResult = "Ollama was not found on this device or local network"
+                                dialog = AssistantDialog.Address
+                            }
+                            settingUp = false
+                        } else {
+                            dialog = if (type.needsKey) AssistantDialog.Key else AssistantDialog.Address
+                        }
+                    }
                 },
                 onDismiss = { dialog = null },
             )
@@ -272,7 +299,7 @@ internal fun AssistantSettings() {
             TextInputDialog(
                 title = stringResource(R.string.rift_assistant_address),
                 initial = baseUrl,
-                placeholder = active.type.defaultBaseUrl.ifEmpty { "http://192.168.1.10:11434/v1" },
+                placeholder = if (active.type == AiProvider.Ollama) "http://192.168.1.10:11434/v1" else active.type.defaultBaseUrl.ifEmpty { "http://192.168.1.10:11434/v1" },
                 secret = false,
                 onDismiss = {
                     dialog = null

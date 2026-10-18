@@ -43,6 +43,7 @@ enum class AiProvider(
         "qwen", "Qwen (DashScope)", AiProtocol.OPENAI, "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
         "https://bailian.console.alibabacloud.com/?apiKey=1",
     ),
+    Ollama("ollama", "Ollama", AiProtocol.OPENAI, "http://127.0.0.1:11434/v1", null, needsKey = false),
     Custom("custom", "OpenAI-compatible", AiProtocol.OPENAI, "", null, needsKey = false),
     ;
 
