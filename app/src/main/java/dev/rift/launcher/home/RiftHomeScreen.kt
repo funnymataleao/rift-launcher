@@ -162,6 +162,7 @@ import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.drawBehind
@@ -510,6 +511,11 @@ fun RiftHomeScreen(
     // library, a grid with the tab's sources (the stores) as tabs.
     val homeRow = library.take(HOME_ROW_COUNT)
     var libraryOpen by rememberSaveable { mutableStateOf(false) }
+    var librarySearchOpen by rememberSaveable { mutableStateOf(false) }
+    var librarySearchTyping by remember { mutableStateOf(false) }
+    var librarySearchQuery by rememberSaveable { mutableStateOf("") }
+    val libraryKeyboard = LocalSoftwareKeyboardController.current
+    val libraryFocusManager = LocalFocusManager.current
     var libraryCardFocused by rememberSaveable { mutableStateOf(false) }
     var libraryFocusedId by rememberSaveable { mutableStateOf<String?>(null) }
     // Rift opened as a launcher in a new process (after an install, a kill, a restore of the saved state): nothing is
@@ -789,7 +795,49 @@ fun RiftHomeScreen(
         libraryOpen = true
         libraryTabSwitch++
     }
+    fun libraryMatches(query: String): List<LibraryItem> = when (section) {
+        RiftSection.PcStreaming -> streamLibraryItems
+        RiftSection.CloudStreaming -> cloudItems
+        RiftSection.Emulators -> emulatorLibraryItems
+        else -> library
+    }.filter { RiftSearch.matches(it.name, query) }
+
+    fun restoreLibraryGridFocus(query: String) {
+        val visible = libraryMatches(query)
+        val target = libraryFocusedId?.takeIf { id -> visible.any { it.appId == id } } ?: visible.firstOrNull()?.appId
+        libraryFocusedId = target
+        libraryPending = target
+    }
+
+    fun closeLibrarySearch() {
+        libraryKeyboard?.hide()
+        libraryFocusManager.clearFocus(force = true)
+        librarySearchTyping = false
+        librarySearchOpen = false
+        librarySearchQuery = ""
+        if (section == RiftSection.PcGames) viewModel.onSearchQuery("")
+        restoreLibraryGridFocus("")
+    }
+    fun openLibrarySearch() {
+        librarySearchOpen = true
+        librarySearchTyping = true
+    }
+    fun stopLibrarySearchTyping() {
+        libraryKeyboard?.hide()
+        libraryFocusManager.clearFocus(force = true)
+        if (librarySearchQuery.isBlank()) {
+            closeLibrarySearch()
+        } else {
+            librarySearchTyping = false
+            restoreLibraryGridFocus(librarySearchQuery)
+        }
+    }
+    fun onLibrarySearchQuery(value: String) {
+        librarySearchQuery = value
+        if (section == RiftSection.PcGames) viewModel.onSearchQuery(value)
+    }
     fun closeLibrary() {
+        closeLibrarySearch()
         libraryOpen = false
         if (viewModel.state.value.currentTab != LibraryTab.ALL) viewModel.onTabChanged(LibraryTab.ALL)
     }
@@ -1677,14 +1725,29 @@ fun RiftHomeScreen(
                         }
                         true
                     }
-                    KeyEvent.KEYCODE_BUTTON_Y -> {
-                        closeLibrary()
-                        openSearch()
-                        true
-                    }
+                    KeyEvent.KEYCODE_BUTTON_Y -> false
                     else -> false
                 }
             }
+            val libraryQuery = librarySearchQuery.trim()
+            val streamLibraryShown = remember(streamLibraryItems, libraryQuery) {
+                streamLibraryItems.filter { RiftSearch.matches(it.name, libraryQuery) }
+            }
+            val cloudLibraryShown = remember(cloudItems, libraryQuery) {
+                cloudItems.filter { RiftSearch.matches(it.name, libraryQuery) }
+            }
+            val emulatorLibraryShown = remember(emulatorLibraryItems, libraryQuery) {
+                emulatorLibraryItems.filter { RiftSearch.matches(it.name, libraryQuery) }
+            }
+            val librarySearch = SearchState(
+                open = librarySearchOpen,
+                typing = librarySearchTyping,
+                query = librarySearchQuery,
+                onOpen = ::openLibrarySearch,
+                onQuery = ::onLibrarySearchQuery,
+                onDone = ::stopLibrarySearchTyping,
+                onClose = ::closeLibrarySearch,
+            )
             Box(modifier = Modifier.fillMaxSize().blur(libraryBlur)) {
             // Big Picture's library: all the PC games in a grid, one tab per store with games.
             val libraryTabs = pcLibraryTabs(libraryState)
@@ -1710,6 +1773,7 @@ fun RiftHomeScreen(
                 },
                 onDismiss = ::closeLibrary,
                 keepFocusInside = { !libraryFiltersOpen && startMenuItems == null && openedAppId == null && optionsItem == null && (artItem == null && metaItem == null) },
+                search = librarySearch,
                 onKeyDown = { code -> libraryKey(code, library) },
                 headerAction = addFolderAction.takeIf { section == RiftSection.PcGames },
             ) {
@@ -1751,10 +1815,11 @@ fun RiftHomeScreen(
                 },
                 onDismiss = ::closeLibrary,
                 keepFocusInside = { !libraryFiltersOpen && startMenuItems == null && openedAppId == null && (artItem == null && metaItem == null) },
-                onKeyDown = { code -> libraryKey(code, streamLibraryItems) },
+                search = librarySearch,
+                onKeyDown = { code -> libraryKey(code, streamLibraryShown) },
             ) {
                 PcLibraryGrid(
-                    items = streamLibraryItems,
+                    items = streamLibraryShown,
                     dimUninstalled = streamUninstalledMode == UninstalledMode.DIM,
                     loading = false,
                     tabSwitch = libraryTabSwitch,
@@ -1779,10 +1844,11 @@ fun RiftHomeScreen(
                 onSelectTab = {},
                 onDismiss = ::closeLibrary,
                 keepFocusInside = { !libraryFiltersOpen && startMenuItems == null && openedAppId == null },
-                onKeyDown = { code -> libraryKey(code, cloudItems) },
+                search = librarySearch,
+                onKeyDown = { code -> libraryKey(code, cloudLibraryShown) },
             ) {
                 PcLibraryGrid(
-                    items = cloudItems,
+                    items = cloudLibraryShown,
                     loading = false,
                     tabSwitch = libraryTabSwitch,
                     libraryState = libraryState,
@@ -1809,10 +1875,11 @@ fun RiftHomeScreen(
                 },
                 onDismiss = ::closeLibrary,
                 keepFocusInside = { !libraryFiltersOpen && startMenuItems == null && openedAppId == null },
-                onKeyDown = { code -> libraryKey(code, emulatorItems) },
+                search = librarySearch,
+                onKeyDown = { code -> libraryKey(code, emulatorLibraryShown) },
             ) {
                 PcLibraryGrid(
-                    items = emulatorLibraryItems,
+                    items = emulatorLibraryShown,
                     loading = false,
                     tabSwitch = libraryTabSwitch,
                     libraryState = libraryState,
@@ -2399,13 +2466,14 @@ private fun HeroLogo(item: LibraryItem?, modifier: Modifier = Modifier) {
 }
 
 /** What the top bar needs for the library search. */
-private class SearchState(
+internal class SearchState(
     val open: Boolean,
     val typing: Boolean,
     val query: String,
     val onOpen: () -> Unit,
     val onQuery: (String) -> Unit,
     val onDone: () -> Unit,
+    val onClose: () -> Unit = {},
 )
 
 private fun androidFocusKey(game: AndroidGame): String = "android:${game.packageName}"
@@ -2843,7 +2911,7 @@ private fun TopBar(
  * wide field ("Search" appears inside, the keyboard opens). Always a pill, never a square, whatever the state.
  */
 @Composable
-private fun SearchPill(search: SearchState, glass: GraphicsLayer, pillFocus: FocusRequester, progress: State<Float>) {
+internal fun SearchPill(search: SearchState, glass: GraphicsLayer, pillFocus: FocusRequester, progress: State<Float>) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val fieldFocus = remember { FocusRequester() }
