@@ -159,11 +159,9 @@ fun LibraryOptionsPanel(
         openGroup = if (openGroup == key) null else key
     }
 
-    // The active group is open when the panel opens: the only group of a short list, else the top one.
-    val onlyGroup = tabGroups?.size == 1
     BackHandler(enabled = isOpen) {
         val open = openGroup
-        if (open != null && !onlyGroup) {
+        if (open != null) {
             openGroup = null
             runCatching { headerRequester(open).requestFocus() }
         } else {
@@ -250,8 +248,8 @@ fun LibraryOptionsPanel(
                                 label = group.label,
                                 value = group.value,
                                 icon = group.icon,
-                                expanded = onlyGroup || openGroup == key,
-                                onToggle = { if (!onlyGroup) toggleGroup(key) },
+                                expanded = openGroup == key,
+                                onToggle = { toggleGroup(key) },
                                 headerFocus = if (index == 0) firstItemFocusRequester else headerRequester(key),
                             ) {
                                 group.options.forEach { option ->
@@ -399,8 +397,10 @@ fun LibraryOptionsPanel(
         }
     }
 
+    // Every group is closed when the panel opens, each line shows its current choice (Denis 2026-10-18: the open
+    // sort list was too long).
     LaunchedEffect(isOpen) {
-        if (isOpen) openGroup = if (tabGroups != null) "tab0" else "sort"
+        if (isOpen) openGroup = null
     }
     // After a touch the window is in touch mode, where nothing takes gamepad focus: leave it, and retry while the
     // panel is still sliding in and the first header is not attached yet.
