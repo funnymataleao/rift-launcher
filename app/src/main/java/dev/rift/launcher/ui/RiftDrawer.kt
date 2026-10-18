@@ -85,6 +85,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
  * only while the system allows it. With nothing to blur the glass is nearly opaque black, never see-through.
  */
 object RiftDrawer {
+    /** The panels over a game or a stream. The home's two panels are as wide as their longest line (rememberHomePanelWidth). */
     val Width = 440.dp
 
     /** The one space between the panel's edge and its outermost plates, pictures and buttons, on all four sides. */

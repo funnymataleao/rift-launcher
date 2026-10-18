@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -78,6 +79,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.PluviaApp
@@ -98,6 +101,8 @@ import `in`.dragonbra.javasteam.enums.EPersonaState
 import dev.rift.launcher.settings.PlateGap
 import dev.rift.launcher.settings.PlateShape
 import dev.rift.launcher.settings.RowIcon
+import dev.rift.launcher.settings.RowIconSize
+import dev.rift.launcher.settings.RowTitleStyle
 import dev.rift.launcher.settings.RowTexts
 import dev.rift.launcher.settings.plateFill
 import dev.rift.launcher.settings.plateSubtext
@@ -111,6 +116,47 @@ import dev.rift.launcher.ui.theme.RiftColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
+
+/** The space inside a row of Rift's home panels before its icon and after its text. */
+internal val DrawerRowPadding = 14.dp
+
+/** The space between a row's icon and its text. */
+internal val DrawerRowGap = 16.dp
+
+internal val DrawerRowMinHeight = 72.dp
+
+/** The badge dot of a row (unread replies) and the space before it. */
+private val BadgeSize = 10.dp
+
+/**
+ * The width of Rift's two home panels, the System panel and the filters (Denis 2026-10-18): as narrow as the
+ * System panel's longest line allows, so the space after that line to the panel's edge is the space before
+ * the icons. Every line the panel can show is measured (signed in or not, online or not), so the width stays
+ * put, and in the font the rows are drawn with, so nothing is ever cut off.
+ */
+@Composable
+internal fun rememberHomePanelWidth(): Dp {
+    val badged = stringResource(R.string.support_title)
+    val titles = listOf(
+        R.string.settings_text,
+        R.string.app_downloads,
+        R.string.steam_sign_in,
+        R.string.rift_menu_go_online,
+        R.string.rift_menu_go_offline,
+        R.string.steam_sign_out,
+    ).map { stringResource(it) }
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val style = LocalTextStyle.current.merge(RowTitleStyle)
+    return remember(badged, titles, density, style) {
+        with(density) {
+            fun width(text: String) = measurer.measure(text, style, maxLines = 1, softWrap = false).size.width.toDp()
+            val longest = maxOf(titles.maxOf(::width), width(badged) + DrawerRowGap + BadgeSize)
+            val iconInset = RiftDrawer.Edge + DrawerRowPadding
+            iconInset + RowIconSize + DrawerRowGap + longest + iconInset
+        }
+    }
+}
 
 /**
  * A single menu item in the System Menu: a full-width plate like a Rift settings row, filled with the
@@ -140,17 +186,17 @@ internal fun SystemMenuItem(
                 indication = null,
                 onClick = onClick,
             )
-            .heightIn(min = 72.dp)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .heightIn(min = DrawerRowMinHeight)
+            .padding(horizontal = DrawerRowPadding, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(DrawerRowGap),
     ) {
         RowIcon(icon, isFocused, danger = isDestructive)
         RowTexts(text, null, danger = isDestructive, focused = isFocused, modifier = Modifier.weight(1f))
         if (badge) {
             Box(
                 modifier = Modifier
-                    .size(10.dp)
+                    .size(BadgeSize)
                     .background(plateText(isFocused), CircleShape),
             )
         }
@@ -415,7 +461,7 @@ fun SystemMenu(
             // Rift: the frame and glass of every Rift panel, blurring the home behind it.
             RiftDrawerPanel(
                 modifier = Modifier
-                    .width(adaptivePanelWidth(RiftDrawer.Width))
+                    .width(adaptivePanelWidth(rememberHomePanelWidth()))
                     .fillMaxHeight()
                     .clip(panelShape),
                 backdrop = glassBackdrop,
@@ -501,6 +547,7 @@ fun SystemMenu(
                                 fontWeight = FontWeight.SemiBold,
                                 color = plateText(isProfileFocused),
                                 maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -616,7 +663,7 @@ fun SystemMenu(
                         val goOnlineLabelRes = if (!SteamService.isLoggedIn) {
                             R.string.steam_sign_in
                         } else {
-                            R.string.steam_go_online
+                            R.string.rift_menu_go_online
                         }
                         SystemMenuItem(
                             text = stringResource(goOnlineLabelRes),
@@ -628,7 +675,7 @@ fun SystemMenu(
                         )
                     } else {
                         SystemMenuItem(
-                            text = stringResource(R.string.steam_go_offline),
+                            text = stringResource(R.string.rift_menu_go_offline),
                             icon = Icons.AutoMirrored.Filled.AirplaneTicket,
                             onClick = {
                                 onNavigateRoute(PluviaScreen.Home.route + "?offline=true") // TODO: test this
