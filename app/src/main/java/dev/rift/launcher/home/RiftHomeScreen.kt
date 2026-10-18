@@ -599,6 +599,15 @@ fun RiftHomeScreen(
     val focusedCloud = cloudHomeRow.firstOrNull { it.appId == focusedCloudId } ?: cloudHomeRow.firstOrNull()
     val emulatorHomeRow = emulatorItems.take(HOME_ROW_COUNT)
     val focusedEmulator = emulatorHomeRow.firstOrNull { it.appId == focusedEmulatorId } ?: emulatorHomeRow.firstOrNull()
+    // Warm every home shelf before its tab is opened. Otherwise the first composition of a tab races
+    // the image decoder and briefly exposes CoverCard's grey surface.
+    LaunchedEffect(homeRow, streamHomeRow, cloudHomeRow, emulatorHomeRow) {
+        coroutineScope {
+            listOf(homeRow, streamHomeRow, cloudHomeRow, emulatorHomeRow).map { row ->
+                async(Dispatchers.IO) { preloadShelfCovers(context, row) }
+            }.awaitAll()
+        }
+    }
     // Coming back (from Settings, a game page, AI Help...) the lists load again, and the cover that had focus may
     // not be in the first batch. Until it shows up the focus waits instead of landing on whatever is first (and
     // then being remembered as the place); if it never shows up (the game is gone) the first cover takes over.
@@ -3476,6 +3485,14 @@ private fun RiftRow(
     CompositionLocalProvider(LocalBringIntoViewSpec provides spec) {
         LazyRow(state = state, contentPadding = contentPadding, horizontalArrangement = horizontalArrangement, content = content)
     }
+}
+
+/** Pre-decodes the visible part of a shelf into the shared Coil memory cache before its tab opens. */
+private suspend fun preloadShelfCovers(context: android.content.Context, row: List<LibraryItem>) = coroutineScope {
+    row.take(10).mapIndexedNotNull { index, item ->
+        val url = (if (index == 0) wideCoverUrls(item) else portraitCoverUrls(item)).firstOrNull { it.isNotBlank() }
+        url?.let { async(Dispatchers.IO) { runCatching { context.imageLoader.execute(ImageRequest.Builder(context).data(it).size(PRELOAD_COVER_PX).build()) } } }
+    }.awaitAll()
 }
 
 /** Loads what the home shows first (backdrop, the first covers) into Coil's cache, in parallel. */

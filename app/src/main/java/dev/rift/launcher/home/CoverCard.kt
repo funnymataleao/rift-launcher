@@ -177,7 +177,23 @@ fun CoverCard(
                 surface = surface,
             )
         } else {
-            Spacer(modifier = Modifier.height(height * REFLECTION_SHARE))
+            Box(
+                modifier = Modifier
+                    .width(width * 0.82f)
+                    .height(height * REFLECTION_SHARE)
+                    .align(Alignment.CenterHorizontally)
+                    .drawBehind {
+                        if (focused) {
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    0f to palette.first().copy(alpha = 0.42f),
+                                    0.45f to palette.first().copy(alpha = 0.16f),
+                                    1f to Color.Transparent,
+                                ),
+                            )
+                        }
+                    },
+            )
         }
     }
 }
