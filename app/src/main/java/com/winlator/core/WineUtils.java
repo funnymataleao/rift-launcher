@@ -62,7 +62,9 @@ public abstract class WineUtils {
                 linkTarget.mkdirs();
                 FileUtils.chmod(linkTarget, 0771);
             }
-            FileUtils.symlink(path, dosdevicesPath+"/"+drive[0].toLowerCase(Locale.ENGLISH)+":");
+            // Rift: a game that must not start from a drive root gets its folder's parent as A: (CustomGameDriveRoot).
+            String linkPath = drive[0].equals("A") ? app.gamenative.utils.CustomGameDriveRoot.INSTANCE.driveTarget(path) : path;
+            FileUtils.symlink(linkPath, dosdevicesPath+"/"+drive[0].toLowerCase(Locale.ENGLISH)+":");
 
             // Check if this is the A: drive (game directory)
             if (drive[0].equals("A")) {

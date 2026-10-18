@@ -138,6 +138,7 @@ import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.widget.PerformanceHudView
 import app.gamenative.utils.AssetUtils
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.CustomGameDriveRoot
 import app.gamenative.utils.downloader.CoreDriverDownloader
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.DebugReportUtils
@@ -5039,8 +5040,11 @@ private fun getWineStartCommand(
 
         // Normalize path separators (ensure Windows-style backslashes)
         val normalizedPath = executablePath.replace('/', '\\')
-        envVars.put("WINEPATH", "A:\\")
-        "\"A:\\${normalizedPath}\""
+        // Rift: A:\ or, for a game that refuses to run from a drive root, A:\<folder>\ (CustomGameDriveRoot).
+        val gameRoot = CustomGameDriveRoot.windowsRoot(gameFolderPath!!)
+        envVars.put("WINEPATH", gameRoot)
+        Timber.tag("XServerScreen").i("Custom Game launch: $gameRoot$normalizedPath")
+        "\"$gameRoot${normalizedPath}\""
     } else if (container.executablePath.isEmpty()) {
         // For Steam games, we need appLaunchInfo
         Timber.tag("XServerScreen").w("appLaunchInfo is null for Steam game: $appId")

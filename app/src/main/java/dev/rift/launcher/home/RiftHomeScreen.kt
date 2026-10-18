@@ -199,10 +199,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
-import app.gamenative.ui.component.CommunityCompatibilityBadge
-import app.gamenative.ui.component.CompatibilityBadge
 import app.gamenative.ui.data.LibraryState
-import app.gamenative.ui.data.communityCompatibilityFor
 import app.gamenative.ui.enums.LibraryTab
 import app.gamenative.ui.model.LibraryViewModel
 import app.gamenative.ui.screen.library.components.GameSourceIcon
@@ -557,6 +554,13 @@ fun RiftHomeScreen(
             }
         }
         GameArtStore.autoFill(context, order, artKey)
+    }
+    // PC games added from a folder (Settings → PC games) have no store art either: found by their name the same way.
+    val customGames = remember(library) { library.filter { it.gameSource == GameSource.CUSTOM_GAME } }
+    // Keyed by id and name only: the list itself changes with every picture found, which would restart the search.
+    LaunchedEffect(customGames.map { it.appId to it.name }, artKey) {
+        if (artKey.isBlank() || customGames.isEmpty()) return@LaunchedEffect
+        GameArtStore.autoFill(context, customGames.map { it to listOf(ArtKind.Capsule, ArtKind.Wide, ArtKind.Hero, ArtKind.Logo) }, artKey)
     }
     // Streamed games the Steam account does not own (Steam Tools...) have no Steam art either: found the same way.
     val hostGames = streamTab?.items.orEmpty().filter { PcStreamingTab.isHostGame(it.appId) }
@@ -2279,6 +2283,18 @@ private val StoreBadgeSize = 26.dp
 @Composable
 private fun BoxScope.GameCoverArt(item: LibraryItem, urls: List<String>, dimmed: Boolean, wide: Boolean = false) {
     CoverImage(urls = urls, contentDescription = item.name, modifier = Modifier.fillMaxSize(), lateUrls = remember(item.appId, wide) { storeCoverLookup(item, portrait = !wide) })
+    // A game with no art at all yet (a folder added in Settings → PC games): its name, until SteamGridDB's cover comes.
+    if (urls.none { it.isNotBlank() } && item.gameSource == GameSource.CUSTOM_GAME) {
+        Text(
+            text = item.name,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            color = Color.White.copy(alpha = 0.85f),
+            textAlign = TextAlign.Center,
+            maxLines = 4,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.align(Alignment.Center).padding(horizontal = 12.dp),
+        )
+    }
     if (dimmed) Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = UNINSTALLED_DIM)))
 }
 
@@ -2297,25 +2313,12 @@ private const val SWITCH_ENTRY_MS = 700L
 private const val WIDE_TILE_RATIO = 460f / 215f
 
 /**
- * GameNative's own card badges, kept small and along the bottom edge (a cover's title is usually at its
- * top, and the badges covered it): compatibility verdict bottom left, store icon bottom right.
+ * The store icon in the card's bottom right corner. GameNative's compatibility verdict ("Untested"...)
+ * is not shown on Rift's cards (Denis): it stays on the game page.
  */
 @Composable
+@Suppress("UNUSED_PARAMETER")
 internal fun BoxScope.CoverBadges(item: LibraryItem, libraryState: LibraryState) {
-    val community = libraryState.communityCompatibilityFor(item)
-    val status = libraryState.compatibilityMap[item.name]
-    val badgeModifier = Modifier.align(Alignment.BottomStart).padding(8.dp)
-    when {
-        community != null -> CommunityCompatibilityBadge(
-            verdict = community.verdict,
-            verdictLoaded = community.verdictLoaded,
-            loadFailed = community.loadFailed,
-            checking = community.isChecking,
-            showLabel = true,
-            modifier = badgeModifier,
-        )
-        status != null -> CompatibilityBadge(status = status, showLabel = true, modifier = badgeModifier)
-    }
     // Only the store's icon, on a round dark disc (Denis): whether a game is installed shows
     // through the filters and the not-installed choice, not a dot here.
     Box(

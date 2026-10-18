@@ -1347,6 +1347,21 @@ abstract class BaseAppScreen {
         val pickedArt by dev.rift.launcher.art.GameArtStore.version.collectAsState()
         val pickedHero = remember(pickedArt, appId) { dev.rift.launcher.art.GameArtStore.get(context, appId, dev.rift.launcher.art.ArtKind.Hero) }
         val pickedIcon = remember(pickedArt, appId) { dev.rift.launcher.art.GameArtStore.get(context, appId, dev.rift.launcher.art.ArtKind.Icon) }
+        // Rift: a game added from a folder has no store art; its banner, logo and cover are found on SteamGridDB
+        // by name (as on the home screen), and the page shows its name until they come.
+        val isCustomGame = libraryItem.gameSource == GameSource.CUSTOM_GAME
+        LaunchedEffect(appId, displayInfoBase.name) {
+            if (!isCustomGame) return@LaunchedEffect
+            val key = dev.rift.launcher.settings.RiftPrefs.of(context).steamGridDbKey
+            val item = libraryItem.copy(name = dev.rift.launcher.home.RiftGameNames.display(appId, displayInfoBase.name))
+            val kinds = listOf(dev.rift.launcher.art.ArtKind.Capsule, dev.rift.launcher.art.ArtKind.Hero, dev.rift.launcher.art.ArtKind.Logo)
+            dev.rift.launcher.art.GameArtStore.autoFill(context, listOf(item to kinds), key)
+        }
+        fun customArt(kind: dev.rift.launcher.art.ArtKind): String =
+            if (isCustomGame) dev.rift.launcher.art.GameArtStore.shown(context, appId, kind) else ""
+        val foundHero = remember(pickedArt, appId) { customArt(dev.rift.launcher.art.ArtKind.Hero) }
+        val foundLogo = remember(pickedArt, appId) { customArt(dev.rift.launcher.art.ArtKind.Logo) }
+        val foundCover = remember(pickedArt, appId) { customArt(dev.rift.launcher.art.ArtKind.Capsule) }
         val storeMerged = storeDetails.mergedWith(localStoreDetails)
         val riftPinned = riftMeta != null && dev.rift.launcher.meta.RiftAutoMeta.isPinned(context, appId)
         val useRift = riftMeta != null && (riftPinned || storeMerged.description.isBlank())
@@ -1369,7 +1384,9 @@ abstract class BaseAppScreen {
             name = dev.rift.launcher.home.RiftGameNames.display(appId, displayInfoBase.name),
             developer = if (riftPinned && riftMeta != null) riftMeta.developer.ifBlank { displayInfoBase.developer } else displayInfoBase.developer,
             releaseDate = if (riftPinned && riftMeta != null && riftMeta.releaseDate > 0) riftMeta.releaseDate else displayInfoBase.releaseDate,
-            heroImageUrl = pickedHero.ifEmpty { displayInfoBase.heroImageUrl },
+            heroImageUrl = pickedHero.ifEmpty { foundHero }.ifEmpty { displayInfoBase.heroImageUrl },
+            logoUrl = foundLogo.ifEmpty { displayInfoBase.logoUrl },
+            capsuleUrl = foundCover.ifEmpty { displayInfoBase.capsuleUrl },
             iconUrl = pickedIcon.ifEmpty { displayInfoBase.iconUrl },
             hltbStats = hltbStats,
             storeDetails = shownStore,
