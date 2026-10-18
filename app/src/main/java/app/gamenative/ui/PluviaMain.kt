@@ -2439,6 +2439,10 @@ fun preLaunchApp(
             }
         }
 
+        if (gameSource == GameSource.CUSTOM_GAME && !bootToContainer) {
+            withContext(Dispatchers.IO) { app.gamenative.utils.CustomGameInstaller.markRunStart(container) }
+        }
+
         // download any manifest components (wine/proton, dxvk, etc.) the container's config
         // references but that aren't installed yet — all sources, including custom games
         try {

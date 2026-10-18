@@ -2350,7 +2350,12 @@ internal fun AppScreenContent(
                                 onProgressBarPositioned = { progressBarBounds = it },
                             )
                         } else {
+                            val needsInstall = remember(displayInfo.appId, isInstalled) {
+                                app.gamenative.utils.CustomGameInstaller.needsInstall(displayInfo.appId)
+                            }
                             val text = when {
+                                isInstalled && needsInstall ->
+                                    stringResource(R.string.rift_install_game)
                                 isInstalled -> stringResource(R.string.run_app)
                                 !hasInternet -> stringResource(R.string.library_need_internet)
                                 !hasWifiOrEthernet && PrefManager.downloadOnWifiOnly -> stringResource(R.string.library_wifi_only_enabled)

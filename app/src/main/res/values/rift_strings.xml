@@ -632,4 +632,5 @@
     <string name="rift_platform_pokemini">Pokémon mini</string>
     <string name="rift_platform_xbox360_note">Xbox 360 emulation on Android is experimental. Rift hands the game file to the emulator you pick; the emulator must be able to open it.</string>
     <string name="rift_settings_platform_installed">Installed</string>
+    <string name="rift_install_game">Install</string>
 </resources>

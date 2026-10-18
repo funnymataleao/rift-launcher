@@ -5226,6 +5226,11 @@ private fun exit(
         container.saveData()
     }
 
+    // A custom game that was an installer: find the game it installed and switch the entry to it.
+    CoroutineScope(Dispatchers.IO).launch {
+        runCatching { app.gamenative.utils.CustomGameInstaller.afterRun(container) }
+    }
+
     // only needed in exit() — OS reclaims on process death, so onDestroy fallback skips this
     try {
         winHandler?.stop()
