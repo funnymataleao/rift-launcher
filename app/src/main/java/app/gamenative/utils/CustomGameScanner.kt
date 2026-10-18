@@ -646,6 +646,51 @@ object CustomGameScanner {
     }
 
     /**
+     * Rift: game folders the person removed from the library that stay on disk (inside a games folder they added,
+     * which would otherwise list them again). Cached like [userRoots]: preferences are written in the background.
+     */
+    var removedFolders: Set<String>
+        get() = removedCache ?: PrefManager.customGameRemovedFolders.also { removedCache = it }
+        private set(value) {
+            removedCache = value
+            PrefManager.customGameRemovedFolders = value
+        }
+
+    @Volatile
+    private var removedCache: Set<String>? = null
+
+    /** App ids removed from the library since the home screen last looked (it moves the cursor to the next card). */
+    private val justRemoved = java.util.Collections.synchronizedSet(HashSet<String>())
+
+    /** Whether [appId] was just removed from the library; true only once. */
+    fun consumeRemoved(appId: String): Boolean = justRemoved.remove(appId)
+
+    /**
+     * Rift: takes the game in [folderPath] off the library without touching its files. A games folder that is this one
+     * game is dropped from the games folders; a game inside one is remembered as removed, so a scan does not bring it
+     * back (adding that games folder again does).
+     */
+    fun removeFromLibrary(appId: String, folderPath: String) {
+        val roots = userRoots
+        when {
+            folderPath in roots -> userRoots = roots - folderPath
+            roots.any { folderPath.startsWith("$it/") } -> removedFolders = removedFolders + folderPath
+        }
+        val manual = PrefManager.customGameManualFolders
+        if (folderPath in manual) PrefManager.customGameManualFolders = manual - folderPath
+        justRemoved.add(appId)
+        rescanUserRoots()
+        invalidateCache()
+    }
+
+    /** Rift: the games the person removed from [root] come back when they add that games folder again. */
+    fun restoreRemovedUnder(root: String) {
+        val removed = removedFolders
+        val kept = removed.filterNot { it == root || it.startsWith("$root/") }.toSet()
+        if (kept.size != removed.size) removedFolders = kept
+    }
+
+    /**
      * Game folders found in the games folders the person added (Rift's "PC game folders"): every
      * immediate subfolder that holds a Windows executable. These stay where they are; unlike the
      * app-managed roots, removing such a game never deletes its files.
@@ -666,6 +711,8 @@ object CustomGameScanner {
                 ?.sortedBy { it.name.lowercase() }
                 ?.forEach { if (looksLikeGame(it)) found.add(it.absolutePath) }
         }
+        val removed = removedFolders
+        if (removed.isNotEmpty()) found.removeAll { it in removed }
         return found
     }
 

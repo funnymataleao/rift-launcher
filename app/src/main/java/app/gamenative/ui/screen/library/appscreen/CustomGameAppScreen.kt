@@ -8,6 +8,7 @@ import app.gamenative.ui.component.dialog.LoadingDialog
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.res.stringResource
 import app.gamenative.PrefManager
@@ -488,13 +489,22 @@ class CustomGameAppScreen : BaseAppScreen() {
 
         // Delete confirmation dialog
         if (showDeleteDialog) {
+            // Rift: a game in a folder the person added stays on disk and only leaves the library; say which.
+            val keepsFiles = remember(libraryItem.appId) {
+                CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)?.let { !CustomGameScanner.isManagedFolder(it) } ?: true
+            }
             AlertDialog(
                 onDismissRequest = {
                     hideDeleteDialog(libraryItem.appId)
                 },
-                title = { Text(stringResource(R.string.custom_game_delete_title)) },
+                title = { Text(stringResource(if (keepsFiles) R.string.rift_custom_game_remove_title else R.string.custom_game_delete_title)) },
                 text = {
-                    Text(text = stringResource(R.string.custom_game_delete_message, libraryItem.name))
+                    Text(
+                        text = stringResource(
+                            if (keepsFiles) R.string.rift_custom_game_remove_message else R.string.rift_custom_game_delete_files_message,
+                            libraryItem.name,
+                        ),
+                    )
                 },
                 confirmButton = {
                     TextButton(
@@ -518,16 +528,15 @@ class CustomGameAppScreen : BaseAppScreen() {
                                             if (CustomGameScanner.isManagedFolder(folderPath)) {
                                                 File(folderPath).deleteRecursively()
                                             }
-                                            val manualFolders = PrefManager.customGameManualFolders.toMutableSet()
-                                            manualFolders.remove(folderPath)
-                                            PrefManager.customGameManualFolders = manualFolders
+                                            // Rift: also off the games folders' scan, or it comes straight back.
+                                            CustomGameScanner.removeFromLibrary(libraryItem.appId, folderPath)
                                         }
                                         CustomGameScanner.invalidateCache()
                                     }
 
                                     withContext(Dispatchers.Main) {
                                         // Navigate back and show notification
-                                        SnackbarManager.show("\"${libraryItem.name}\" has been deleted")
+                                        SnackbarManager.show(context.getString(R.string.rift_custom_game_removed, libraryItem.name))
 
                                         // Small delay to ensure file system updates are complete
                                         // before navigating back (list will auto-refresh when displayed)
@@ -548,14 +557,14 @@ class CustomGameAppScreen : BaseAppScreen() {
                             }
                         }
                     ) {
-                        Text("Delete", color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                        Text(stringResource(if (keepsFiles) R.string.rift_custom_game_remove_action else R.string.rift_custom_game_delete_action), color = androidx.compose.material3.MaterialTheme.colorScheme.error)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = {
                         hideDeleteDialog(libraryItem.appId)
                     }) {
-                        Text("Cancel")
+                        Text(stringResource(android.R.string.cancel))
                     }
                 }
             )

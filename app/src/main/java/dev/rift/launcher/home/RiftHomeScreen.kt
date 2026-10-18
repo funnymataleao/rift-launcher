@@ -744,6 +744,21 @@ fun RiftHomeScreen(
     fun closePage() {
         val item = opened ?: return
         openedAppId = null
+        // A folder game just removed from its page: the list is read again, and the cursor goes to the next card.
+        if (CustomGameScanner.consumeRemoved(item.appId)) {
+            viewModel.rescanCustomGames(force = true)
+            val ids = (if (libraryOpen) library else homeRow).map { it.appId }
+            val i = ids.indexOf(item.appId)
+            val next = if (i < 0) ids.firstOrNull() else ids.getOrNull(i + 1) ?: ids.getOrNull(i - 1)
+            if (libraryOpen) {
+                libraryFocusedId = next
+                libraryPending = next
+            } else {
+                next?.let { focusedAppId = it }
+                pendingFocusKey = next ?: FIRST_COVER_KEY
+            }
+            return
+        }
         if (libraryOpen) libraryPending = item.appId else pendingFocusKey = focusKeyFor(item)
     }
 

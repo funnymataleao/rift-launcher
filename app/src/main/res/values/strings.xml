@@ -3102,4 +3102,10 @@
     <string name="support_wait_stop">Stop</string>
     <string name="support_reply_ready_tap">Tap to read it.</string>
     <string name="support_notify_me">Notify me when the reply arrives</string>
+    <string name="rift_custom_game_remove_title">Remove from library</string>
+    <string name="rift_custom_game_remove_message">Remove %1$s from the library? The game files stay in their folder; only its Wine settings are deleted.</string>
+    <string name="rift_custom_game_remove_action">Remove</string>
+    <string name="rift_custom_game_delete_files_message">Delete %1$s? Its folder and all game files are deleted from the device.</string>
+    <string name="rift_custom_game_delete_action">Delete</string>
+    <string name="rift_custom_game_removed">%1$s removed from the library</string>
 </resources>
