@@ -961,11 +961,6 @@ class EpicDownloadManager @Inject constructor(
     }
 
     /**
-     * True when the file on disk matches the manifest's size and full-file SHA-1,
-     * so it can be skipped on resume. An all-zero manifest hash is treated as
-     * unverifiable and the file is re-downloaded.
-     */
-    /**
      * Rift: files of [files] that still need downloading. A resume after the process died hashes
      * every file already on disk, which was serial and took minutes on a large game while the bar
      * sat at 0%. Files are now hashed several at a time (storage is far faster than one SHA-1
@@ -1010,6 +1005,11 @@ class EpicDownloadManager @Inject constructor(
         pending
     }
 
+    /**
+     * True when the file on disk matches the manifest's size and full-file SHA-1,
+     * so it can be skipped on resume. An all-zero manifest hash is treated as
+     * unverifiable and the file is re-downloaded.
+     */
     private fun fileExistsWithCorrectHash(outputFile: File, expectedSize: Long, expectedHash: ByteArray): Boolean {
         if (!outputFile.exists()) return false
         if (outputFile.length() != expectedSize) {
