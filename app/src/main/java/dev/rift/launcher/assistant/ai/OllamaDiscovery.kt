@@ -5,6 +5,7 @@ import android.net.wifi.WifiManager
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.util.Collections
+import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -22,30 +23,51 @@ object OllamaDiscovery {
         .callTimeout(700, TimeUnit.MILLISECONDS)
         .build()
 
+    private data class Host(val ip: String, val modelCount: Int, val largestModelB: Double, val totalBytes: Long)
+
+    /** Scan the whole subnet and prefer the host with the most capable local models, not the first responder. */
     suspend fun find(context: Context): String? = withContext(Dispatchers.IO) {
         val local = localIpv4(context)
         val candidates = linkedSetOf("127.0.0.1")
         local?.let { ip ->
             val prefix = ip.substringBeforeLast('.')
-            // Likely hosts first, then the subnet. This normally returns before the full scan completes.
-            listOf(1, 2, 10, 20, 50, 100, 254).forEach { candidates += "$prefix.$it" }
+            listOf(1, 2, 10, 20, 50, 100, 140, 254).forEach { candidates += "$prefix.$it" }
             candidates += ip
             (1..254).forEach { candidates += "$prefix.$it" }
         }
-        coroutineScope {
-            candidates.chunked(32).forEach { batch ->
-                val found = batch.map { host -> async { if (isOllama(host)) host else null } }.awaitAll().firstOrNull { it != null }
-                if (found != null) return@coroutineScope "http://$found:11434/v1"
+        val hosts = coroutineScope {
+            candidates.toList().chunked(48).flatMap { batch ->
+                batch.map { host -> async { inspect(host) } }.awaitAll().filterNotNull()
             }
-            null
         }
+        val best = hosts.maxWithOrNull(
+            compareBy<Host> { it.largestModelB }
+                .thenBy { it.modelCount }
+                .thenBy { it.totalBytes },
+        )
+        best?.let { "http://${it.ip}:11434/v1" }
     }
 
-    private fun isOllama(host: String): Boolean = runCatching {
+    private fun inspect(host: String): Host? = runCatching {
         probe.newCall(Request.Builder().url("http://$host:11434/api/tags").get().build()).execute().use { response ->
-            response.isSuccessful && response.header("Content-Type").orEmpty().contains("application/json")
+            if (!response.isSuccessful || !response.header("Content-Type").orEmpty().contains("application/json")) return null
+            val root = JSONObject(response.body?.string().orEmpty())
+            val models = root.optJSONArray("models") ?: return null
+            if (models.length() == 0) return Host(host, 0, 0.0, 0L)
+            var maxB = 0.0
+            var totalBytes = 0L
+            for (i in 0 until models.length()) {
+                val model = models.optJSONObject(i) ?: continue
+                val bytes = model.optLong("size", 0L)
+                totalBytes += bytes
+                val details = model.optJSONObject("details")
+                val paramSize = details?.optString("parameter_size", "").orEmpty()
+                    .uppercase().replace("B", "").toDoubleOrNull() ?: 0.0
+                if (paramSize > maxB) maxB = paramSize
+            }
+            Host(host, models.length(), maxB, totalBytes)
         }
-    }.getOrDefault(false)
+    }.getOrNull()
 
     @Suppress("DEPRECATION")
     private fun localIpv4(context: Context): String? {
