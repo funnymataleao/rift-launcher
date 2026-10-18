@@ -690,8 +690,9 @@ class MainActivity : ComponentActivity() {
 
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        // Log.d("MainActivity$index", "dispatchKeyEvent(${event.keyCode}):\n$event")
-
+        if (event.keyCode == KeyEvent.KEYCODE_BUTTON_B || event.keyCode == KeyEvent.KEYCODE_BUTTON_SELECT || event.keyCode == KeyEvent.KEYCODE_BACK) {
+            android.util.Log.i("RiftActivityKeys", "dispatch code=${event.keyCode} action=${event.action} repeat=${event.repeatCount}")
+        }
         var eventDispatched = PluviaApp.events.emit(AndroidEvent.KeyEvent(event)) { keyEvent ->
             keyEvent.any { it }
         } == true
