@@ -2,12 +2,15 @@ package app.gamenative.ui.screen
 
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.gamenative.ui.model.HomeViewModel
@@ -41,40 +44,42 @@ fun HomeScreen(
     LaunchedEffect(Unit) {
         RiftDownloadsNav.requests.collect { showDownloads = true }
     }
-    if (showDownloads && showStorage) {
-        BackHandler { showStorage = false }
-        HomeDownloadsScreen(
-            onBack = { showStorage = false },
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Keep RiftHomeScreen mounted while Downloads/Storage is on top. Besides preserving the exact tab,
+        // row scroll and focused game, this keeps RiftMusicEffect alive: Downloads is part of the launcher,
+        // not a navigation destination that should tear the home down.
+        RiftHomeScreen(
             onClickPlay = onClickPlay,
             onTestGraphics = onTestGraphics,
             onPlayWithDiagnostics = onPlayWithDiagnostics,
             onAiDebugRun = onAiDebugRun,
+            onOpenStores = {
+                RiftSettingsSection.request(RiftSettingsSection.Accounts)
+                onNavigateRoute(PluviaScreen.Settings.route)
+            },
+            onNavigateRoute = onNavigateRoute,
+            onDownloadsClick = { showDownloads = true },
+            onLogout = onLogout,
+            onGoOnline = onGoOnline,
+            onExit = onClickExit,
+            isOffline = isOffline,
+            isSteamConnected = isSteamConnected,
         )
-        return
-    }
-    if (showDownloads) {
-        BackHandler { showDownloads = false }
-        RiftDownloadsScreen(onBack = { showDownloads = false }, onOpenStorage = { showStorage = true })
-        return
-    }
 
-    RiftHomeScreen(
-        onClickPlay = onClickPlay,
-        onTestGraphics = onTestGraphics,
-        onPlayWithDiagnostics = onPlayWithDiagnostics,
-        onAiDebugRun = onAiDebugRun,
-        onOpenStores = {
-            RiftSettingsSection.request(RiftSettingsSection.Accounts)
-            onNavigateRoute(PluviaScreen.Settings.route)
-        },
-        onNavigateRoute = onNavigateRoute,
-        onDownloadsClick = { showDownloads = true },
-        onLogout = onLogout,
-        onGoOnline = onGoOnline,
-        onExit = onClickExit,
-        isOffline = isOffline,
-        isSteamConnected = isSteamConnected,
-    )
+        if (showDownloads && showStorage) {
+            BackHandler { showStorage = false }
+            HomeDownloadsScreen(
+                onBack = { showStorage = false },
+                onClickPlay = onClickPlay,
+                onTestGraphics = onTestGraphics,
+                onPlayWithDiagnostics = onPlayWithDiagnostics,
+                onAiDebugRun = onAiDebugRun,
+            )
+        } else if (showDownloads) {
+            BackHandler { showDownloads = false }
+            RiftDownloadsScreen(onBack = { showDownloads = false }, onOpenStorage = { showStorage = true })
+        }
+    }
 }
 
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
