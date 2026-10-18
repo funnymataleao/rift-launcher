@@ -93,7 +93,7 @@ private fun AccountTab() {
     }
 
     SettingsGroup(title = stringResource(R.string.rift_cloud_how_title)) {
-        NoteText(stringResource(R.string.rift_cloud_how))
+        MessageRow(stringResource(R.string.rift_cloud_how))
     }
 
     if (confirmSignOut) {
@@ -125,7 +125,6 @@ private fun SettingsTab(groups: List<CloudGroup>) {
                 }
             }
         }
-        if (index == 0) NoteText(stringResource(R.string.rift_cloud_settings_note), underGroup = true)
     }
 }
 

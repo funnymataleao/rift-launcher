@@ -169,7 +169,6 @@ internal fun DownloadsSettings() {
                 icon = Icons.Rounded.LibraryMusic,
             )
         }
-        NoteText(stringResource(R.string.rift_settings_cache_note), underGroup = true)
     }
     if (clearDialog) {
         RiftConfirmDialog(

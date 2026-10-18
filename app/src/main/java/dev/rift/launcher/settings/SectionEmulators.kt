@@ -199,18 +199,20 @@ internal fun EmulatorsSettings() {
                                 page = null
                             },
                         )
+                        MessageRow(
+                            listOfNotNull(
+                                scanStatusText(scanStatus[def.id]),
+                                stringResource(R.string.rift_settings_platform_looking_for, lookingFor(def)),
+                                if (def.noteRes != 0) stringResource(def.noteRes) else null,
+                            ).joinToString("\n"),
+                        )
                     }
-                    scanStatusText(scanStatus[def.id])?.let { NoteText(it) }
-                    NoteText(stringResource(R.string.rift_settings_platform_looking_for, lookingFor(def)))
-                    if (def.noteRes != 0) NoteText(stringResource(def.noteRes))
                 }
             }
             else -> page = null
         }
         return
     }
-
-    NoteText(stringResource(R.string.rift_settings_platforms_note))
 
     SettingsGroup(title = stringResource(R.string.rift_settings_group_platforms)) {
         platforms.forEach { entry ->
@@ -267,7 +269,6 @@ internal fun EmulatorsSettings() {
                 prefs.esDeFolderUri = it
             },
         )
-        NoteText(stringResource(R.string.rift_settings_bios_note))
     }
 }
 

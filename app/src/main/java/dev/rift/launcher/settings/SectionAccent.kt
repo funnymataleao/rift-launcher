@@ -93,7 +93,6 @@ internal fun AccentSettings() {
             onClick = { wheelOpen = true },
         )
     }
-    NoteText(stringResource(R.string.rift_settings_accent_note), underGroup = true)
 
     if (wheelOpen) {
         ColorWheelDialog(

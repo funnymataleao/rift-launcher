@@ -61,8 +61,8 @@ fun RiftGameProperties(
             onSelect = { selected = it },
             onBack = onDismiss,
         ) {
-            val (category, items) = groups[index]
-            SettingsGroup(title = categoryLabel(category)) {
+            val items = groups[index].second
+            SettingsGroup {
                 items.forEach { option ->
                     val type = option.optionType
                     LinkRow(

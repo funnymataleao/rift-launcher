@@ -198,6 +198,5 @@ private fun SoundBody(holdFocus: () -> Unit) {
                 },
             )
         }
-        NoteText(stringResource(R.string.rift_settings_sound_note))
     }
 }

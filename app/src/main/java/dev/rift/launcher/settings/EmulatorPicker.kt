@@ -151,7 +151,6 @@ internal fun EmulatorPickerDialog(
     }
     val installedHeader = stringResource(R.string.rift_emulator_group_installed)
     val downloadHeader = stringResource(R.string.rift_emulator_group_download)
-    val downloadNote = stringResource(R.string.rift_emulator_download_hint)
     val allHeader = stringResource(R.string.rift_emulator_group_all)
     val playLabel = stringResource(R.string.rift_emulator_download_play)
     val siteLabel = stringResource(R.string.rift_emulator_download_site)
@@ -209,13 +208,9 @@ internal fun EmulatorPickerDialog(
                                 HEADER_ALL -> allHeader
                                 else -> allHeader
                             },
-                            color = RiftColors.OnSurfaceVariant,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
+                            color = RiftColors.OnSurface,
+                            style = GroupTitleStyle,
                         )
-                        if (row.title == HEADER_DOWNLOAD) {
-                            Text(downloadNote, color = RiftColors.OnSurfaceVariant, fontSize = 13.sp)
-                        }
                     }
                     is PickerRow.Installed -> PickerAppRow(
                         label = row.label,
@@ -263,9 +258,9 @@ internal fun EmulatorPickerPage(platform: PlatformDef, onPick: (packageName: Str
 
     SettingsGroup {
         PickerSearchField(query = query, onChange = { query = it })
-        if (platform.noteRes != 0) NoteText(stringResource(platform.noteRes))
+        if (platform.noteRes != 0) MessageRow(stringResource(platform.noteRes))
     }
-    if (rows.isEmpty()) NoteText(stringResource(R.string.rift_emulator_nothing_found))
+    if (rows.isEmpty()) SettingsGroup { MessageRow(stringResource(R.string.rift_emulator_nothing_found)) }
 
     // The flat list is cut at its headers: each header opens a group of plates.
     val sections = ArrayList<Pair<PickerRow.Header, MutableList<PickerRow>>>()
@@ -301,7 +296,7 @@ internal fun EmulatorPickerPage(platform: PlatformDef, onPick: (packageName: Str
                     is PickerRow.Header -> Unit
                 }
             }
-            if (header.title == HEADER_DOWNLOAD) NoteText(stringResource(R.string.rift_emulator_download_hint))
+            if (header.title == HEADER_DOWNLOAD) MessageRow(stringResource(R.string.rift_emulator_download_hint))
         }
     }
 }
