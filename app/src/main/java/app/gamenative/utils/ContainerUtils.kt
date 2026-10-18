@@ -1151,6 +1151,15 @@ object ContainerUtils {
         } else {
             Timber.w("Could not find gameFolderPath for game $appId, skipping drive mapping update")
         }
+        // Rift: Azimuth (the Forza Horizon 2 wrapper) renders only through Direct3D 12, which DXVK does not provide:
+        // without VKD3D it closes right after Start. Its game is switched to VKD3D once (a VKD3D version picked stays).
+        if (gameSource == GameSource.CUSTOM_GAME && CustomGameDriveRoot.needsSubfolder(gameFolderPath) &&
+            !container.dxWrapper.orEmpty().startsWith("vkd3d")
+        ) {
+            Timber.i("Azimuth game $appId: DX wrapper ${container.dxWrapper} -> vkd3d")
+            container.setDXWrapper("vkd3d")
+            container.saveData()
+        }
         return container
     }
 
