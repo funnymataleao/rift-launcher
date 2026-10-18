@@ -105,8 +105,6 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
         return
     }
 
-    NoteText(stringResource(R.string.rift_settings_stream_note))
-
     SettingsGroup(title = stringResource(R.string.rift_settings_group_stream_video)) {
         val resolutions = listOf("1280x720", "1920x1080", "2560x1440", "3840x2160", "device")
         StepSliderRow(
@@ -146,6 +144,7 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
             },
         )
     }
+    NoteText(stringResource(R.string.rift_settings_stream_note), underGroup = true)
 
     SettingsGroup(title = stringResource(R.string.rift_settings_group_stream_audio)) {
         val layouts = listOf("stereo", "5.1", "7.1")

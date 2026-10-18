@@ -59,19 +59,19 @@ internal fun AndroidGamesSettings() {
     val games = all.filter { it.isGame }
     val others = all.filterNot { it.isGame }
 
+    if (games.isNotEmpty()) {
+        SettingsGroup(title = stringResource(R.string.rift_settings_android_group_games)) {
+            games.forEach { app -> AppRow(app, app.packageName in selected) { toggle(app.packageName, it) } }
+        }
+    }
     NoteText(
         if (selected.isEmpty()) {
             stringResource(R.string.rift_settings_android_none)
         } else {
             stringResource(R.string.rift_settings_android_selected, selected.size)
         },
+        underGroup = games.isNotEmpty(),
     )
-
-    if (games.isNotEmpty()) {
-        SettingsGroup(title = stringResource(R.string.rift_settings_android_group_games)) {
-            games.forEach { app -> AppRow(app, app.packageName in selected) { toggle(app.packageName, it) } }
-        }
-    }
 
     if (others.isNotEmpty()) {
         SettingsGroup(title = stringResource(R.string.rift_settings_android_group_others)) {

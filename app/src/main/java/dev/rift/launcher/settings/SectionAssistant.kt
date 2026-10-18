@@ -83,8 +83,6 @@ internal fun AssistantSettings() {
     val checking = stringResource(R.string.rift_assistant_checking)
     val connectedText = stringResource(R.string.rift_assistant_connected)
 
-    NoteText(stringResource(R.string.rift_assistant_note))
-
     SettingsGroup(title = stringResource(R.string.rift_assistant_group_provider)) {
         LinkRow(
             title = stringResource(R.string.rift_assistant_provider),
@@ -151,6 +149,7 @@ internal fun AssistantSettings() {
             }
         }
     }
+    NoteText(stringResource(R.string.rift_assistant_note), underGroup = true)
 
     SettingsGroup(title = stringResource(R.string.rift_assistant_group_permissions)) {
         SwitchRow(

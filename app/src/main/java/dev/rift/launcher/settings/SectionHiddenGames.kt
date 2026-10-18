@@ -19,7 +19,6 @@ internal fun HiddenGamesSettings() {
         NoteText(stringResource(R.string.rift_settings_hidden_none))
         return
     }
-    NoteText(stringResource(R.string.rift_settings_hidden_note))
     SettingsGroup(title = stringResource(R.string.rift_settings_hidden)) {
         hidden.entries.sortedBy { it.value.lowercase() }.forEach { (appId, name) ->
             LinkRow(
@@ -30,4 +29,5 @@ internal fun HiddenGamesSettings() {
             )
         }
     }
+    NoteText(stringResource(R.string.rift_settings_hidden_note), underGroup = true)
 }

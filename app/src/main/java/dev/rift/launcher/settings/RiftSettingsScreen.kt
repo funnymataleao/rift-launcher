@@ -36,6 +36,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
+import androidx.compose.ui.platform.LocalConfiguration
+import java.text.Collator
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -109,9 +111,20 @@ fun RiftSettingsScreen(
     onSteamSignIn: (() -> Unit)? = null,
     onSteamSignOut: (() -> Unit)? = null,
 ) {
-    val sections = remember { RiftSettingsSection.entries }
-    var selectedIndex by rememberSaveable { mutableIntStateOf((RiftSettingsSection.takeRequested() ?: RiftSettingsSection.AndroidGames).ordinal) }
-    val selected = sections[selectedIndex]
+    // Blocks as they are, and inside each block the sections by the name shown, in the alphabet of the
+    // language in use, so the order follows a change of language.
+    val locale = LocalConfiguration.current.locales[0]
+    val titles = RiftSettingsSection.entries.map { stringResource(it.titleRes) }
+    val sections = remember(titles, locale) {
+        val collator = Collator.getInstance(locale)
+        RiftSettingsSection.entries.sortedWith(
+            compareBy<RiftSettingsSection> { it.group.ordinal }
+                .then { a, b -> collator.compare(titles[a.ordinal], titles[b.ordinal]) },
+        )
+    }
+    var selectedOrdinal by rememberSaveable { mutableIntStateOf((RiftSettingsSection.takeRequested() ?: RiftSettingsSection.AndroidGames).ordinal) }
+    val selected = RiftSettingsSection.entries[selectedOrdinal]
+    val selectedIndex = sections.indexOf(selected)
 
     val railItems = remember { List(sections.size) { FocusRequester() } }
     val contentEntry = remember { FocusRequester() }
@@ -148,50 +161,46 @@ fun RiftSettingsScreen(
         }
     }
 
-    RiftTheme {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(RiftColors.Background)
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .displayCutoutPadding()
-                .riftKeySounds(panelKeys = false, touch = true)
-                .onPreviewKeyEvent { event ->
-                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                    val step = when (event.key.nativeKeyCode) {
-                        KeyEvent.KEYCODE_BUTTON_L1 -> -1
-                        KeyEvent.KEYCODE_BUTTON_R1 -> 1
-                        else -> return@onPreviewKeyEvent false
-                    }
-                    selectedIndex = (selectedIndex + step).mod(sections.size)
-                    runCatching { railItems[selectedIndex].requestFocus() }
-                    true
+    SettingsFrame(
+        title = stringResource(R.string.rift_settings),
+        onBack = onBack,
+        modifier = Modifier
+            .riftKeySounds(panelKeys = false, touch = true)
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                val step = when (event.key.nativeKeyCode) {
+                    KeyEvent.KEYCODE_BUTTON_L1 -> -1
+                    KeyEvent.KEYCODE_BUTTON_R1 -> 1
+                    else -> return@onPreviewKeyEvent false
+                }
+                val next = (selectedIndex + step).mod(sections.size)
+                selectedOrdinal = sections[next].ordinal
+                runCatching { railItems[next].requestFocus() }
+                true
+            },
+    ) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            SectionRail(
+                sections = sections,
+                selectedIndex = selectedIndex,
+                railItems = railItems,
+                contentEntry = contentEntry,
+                onFocused = { selectedOrdinal = sections[it].ordinal },
+                onSelect = { index ->
+                    selectedOrdinal = sections[index].ordinal
+                    runCatching { contentEntry.requestFocus() }
                 },
-        ) {
-            Row(modifier = Modifier.fillMaxSize()) {
-                SectionRail(
-                    sections = sections,
-                    selectedIndex = selectedIndex,
-                    railItems = railItems,
-                    contentEntry = contentEntry,
-                    onFocused = { selectedIndex = it },
-                    onSelect = { index ->
-                        selectedIndex = index
-                        runCatching { contentEntry.requestFocus() }
-                    },
-                )
-                SectionPane(
-                    section = selected,
-                    contentEntry = contentEntry,
-                    returnTo = railItems[selectedIndex],
-                    onOpenPcPairing = onOpenPcPairing,
-                    onSteamSignIn = onSteamSignIn,
-                    onSteamSignOut = onSteamSignOut,
-                    onContentFocus = { contentHasFocus = it },
-                    modifier = Modifier.weight(1f),
-                )
-            }
+            )
+            SectionPane(
+                section = selected,
+                contentEntry = contentEntry,
+                returnTo = railItems[selectedIndex],
+                onOpenPcPairing = onOpenPcPairing,
+                onSteamSignIn = onSteamSignIn,
+                onSteamSignOut = onSteamSignOut,
+                onContentFocus = { contentHasFocus = it },
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 
@@ -234,7 +243,7 @@ private fun SectionRail(
     Column(
         modifier = Modifier
             .fillMaxHeight()
-            .padding(start = 32.dp, end = 12.dp)
+            .padding(start = SettingsEdge, end = 12.dp)
             .width(railWidth)
             .verticalScroll(rememberScrollState())
             .focusGroup()
@@ -350,7 +359,7 @@ private fun SectionPane(
     Column(
         modifier = modifier
             .fillMaxHeight()
-            .padding(start = 20.dp, end = 48.dp),
+            .padding(start = PaneStart, end = SettingsEdge),
     ) {
         key(section) {
             Box(

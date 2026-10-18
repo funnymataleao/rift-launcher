@@ -136,8 +136,6 @@ internal fun TabsSettings() {
         names = RiftTabPrefs.names(context)
     }
 
-    NoteText(stringResource(R.string.rift_settings_tabs_note))
-
     SettingsGroup(title = stringResource(R.string.rift_settings_tabs_group)) {
         Box(modifier = Modifier.fillMaxWidth().height(stackHeight)) {
             order.forEachIndexed { index, section ->
@@ -211,6 +209,7 @@ internal fun TabsSettings() {
             }
         }
     }
+    NoteText(stringResource(R.string.rift_settings_tabs_note), underGroup = true)
     NoteText(stringResource(R.string.rift_settings_tabs_hint), underGroup = true)
 
     renaming?.let { section ->
