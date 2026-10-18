@@ -82,28 +82,34 @@ internal fun AssistantModelPicker(connection: AiConnection, onDismiss: () -> Uni
     when (val shown = state) {
         PickerState.Loading -> LoadingDialog(onDismiss)
         is PickerState.Choose -> {
-            val supportsFree = connection.type == AiProvider.OpenRouter
+            val supportsFree = connection.type == AiProvider.OpenRouter || connection.type == AiProvider.Nvidia
             val models = if (freeOnly && supportsFree) shown.models.filter { isFreeModel(connection.type, it) } else shown.models
             RiftChoiceDialog(
                 title = stringResource(R.string.rift_assistant_model),
-                options = (if (supportsFree) listOf(if (freeOnly) "✓ Free" else "Free") else emptyList()) +
-                    models.map { if (it.name != it.id) "${it.name} · ${it.id}" else it.id } +
-                    stringResource(R.string.rift_assistant_model_manual),
-                // A saved model the provider no longer lists is marked nowhere; the field below shows it.
-                selectedIndex = models.indexOfFirst { it.id == current }.let { index ->
-                    if (index < 0) -1 else index + if (supportsFree) 1 else 0
+                options = models.map { model ->
+                    val baseLabel = if (model.name != model.id) "${model.name} · ${model.id}" else model.id
+                    if (supportsFree && isFreeModel(connection.type, model) && !baseLabel.contains("(Free)", ignoreCase = true))
+                        "$baseLabel (Free)" else baseLabel
+                } + stringResource(R.string.rift_assistant_model_manual),
+                selectedIndex = models.indexOfFirst { it.id == current },
+                onSelect = { index ->
+                    if (index == models.size) state = PickerState.Manual(null)
+                    else if (index in models.indices) settings.setModel(connection, models[index].id)
                 },
-                onSelect = { selected ->
-                    if (supportsFree && selected == 0) {
-                        freeOnly = !freeOnly
-                    } else {
-                        val index = selected - if (supportsFree) 1 else 0
-                        if (index == models.size) state = PickerState.Manual(null)
-                        else if (index in models.indices) settings.setModel(connection, models[index].id)
-                    }
-                },
-                // Choosing an option also dismisses; going on to the field must not close the picker.
                 onDismiss = { if (state !is PickerState.Manual) onDismiss() },
+                headerContent = if (supportsFree) {
+                    {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            RiftPillButton(text = if (freeOnly) "Free ✓" else "Free", onClick = { freeOnly = !freeOnly }, primary = freeOnly)
+                            RiftPillButton(text = "All models", onClick = { freeOnly = false }, primary = !freeOnly)
+                            Text(
+                                text = if (freeOnly) "${models.size} free models" else "${shown.models.size} models",
+                                color = RiftColors.OnSurfaceVariant,
+                                fontSize = 14.sp,
+                            )
+                        }
+                    }
+                } else null,
             )
         }
         is PickerState.Manual -> ManualModelDialog(
@@ -204,5 +210,37 @@ private val FIELD_FOCUSED = Color(0xFF333333)
 
 private fun isFreeModel(provider: AiProvider, model: AiModel): Boolean = when (provider) {
     AiProvider.OpenRouter -> model.id.endsWith(":free", ignoreCase = true) || model.id == "openrouter/free"
+    AiProvider.Nvidia -> {
+        val id = model.id.substringAfterLast('/').lowercase()
+        id in NVIDIA_FREE_ENDPOINT_MODELS
+    }
     else -> false
 }
+
+// NVIDIA's official Build catalog marks these models with the “Free Endpoint” badge.
+// Keep this allow-list explicit: NVIDIA's OpenAI-compatible /v1/models endpoint does not expose pricing metadata.
+private val NVIDIA_FREE_ENDPOINT_MODELS = setOf(
+    "nemotron-3.5-super-vl-120b-a12b",
+    "step-5-preview",
+    "kumo-tabular",
+    "body-pose",
+    "deepseek-v4.1-flash",
+    "kumo-relational",
+    "glm-5-3",
+    "glm-5-3-flash",
+    "nemotron-3.5-lightning-30b-a3b",
+    "muse-glimmer-30b",
+    "riva-translate-4b-instruct-v2",
+    "ising-calibration-1.5-31b",
+    "nemotron-3-embed-1b",
+    "laguna-xs-2.1",
+    "diffusiongemma-26b-a4b-it",
+    "nemotron-3-ultra-550b-a55b",
+    "nemotron-3-super-120b-a12b",
+    "nemotron-3.5-content-safety",
+    "cosmos3-nano",
+    "llama-3.2-11b-vision-instruct",
+    "llama-3.2-90b-vision-instruct",
+    "gpt-oss-20b",
+    "gemma-4-31b-it",
+)
