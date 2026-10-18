@@ -125,6 +125,15 @@ object AssistantChat {
         val connection = settings.active ?: return notice(app.getString(R.string.rift_chat_not_configured))
         val provider = connection.type
         if (settings.overMonthlyLimit()) return notice(app.getString(R.string.rift_optimize_limit))
+
+        // Ollama lives on a LAN machine whose address can change. Never trust a stale saved endpoint here:
+        // rediscover the live server before every chat request, then validate the exact model id it exposes.
+        if (provider == dev.rift.launcher.assistant.ai.AiProvider.Ollama) {
+            val liveBase = dev.rift.launcher.assistant.ai.OllamaDiscovery.find(app)
+                ?: return notice(errorText(app, provider, AiException(AiException.Kind.NETWORK, detail = "Ollama not found on LAN")))
+            if (settings.baseUrl(connection) != liveBase) settings.setBaseUrl(connection, liveBase)
+        }
+
         val client = try {
             settings.clientFor(connection)
         } catch (e: AiException) {
