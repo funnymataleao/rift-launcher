@@ -1624,6 +1624,21 @@ object PrefManager {
             setPref(CUSTOM_GAME_PATHS, Json.encodeToString(value))
         }
 
+    // Rift: game folders inside a games folder the person added that they removed from the library (files stay).
+    private val CUSTOM_GAME_REMOVED_FOLDERS = stringPreferencesKey("custom_game_removed_folders")
+    var customGameRemovedFolders: Set<String>
+        get() {
+            val value = getPref(CUSTOM_GAME_REMOVED_FOLDERS, "[]")
+            return try {
+                Json.decodeFromString<Set<String>>(value)
+            } catch (e: Exception) {
+                emptySet()
+            }
+        }
+        set(value) {
+            setPref(CUSTOM_GAME_REMOVED_FOLDERS, Json.encodeToString(value))
+        }
+
     private val CUSTOM_GAME_MANUAL_FOLDERS = stringPreferencesKey("custom_game_manual_folders")
     var customGameManualFolders: Set<String>
         get() {

@@ -23,6 +23,7 @@ object PcGameFolders {
         val clean = File(path).absolutePath.trimEnd('/')
         if (clean.isEmpty()) return
         CustomGameScanner.userRoots = CustomGameScanner.userRoots + clean
+        CustomGameScanner.restoreRemovedUnder(clean)
         CustomGameScanner.rescanUserRoots()
         CustomGameScanner.invalidateCache()
         Timber.tag(TAG).i("added $clean, folders now ${all()}")

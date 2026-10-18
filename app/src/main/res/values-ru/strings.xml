@@ -2947,4 +2947,10 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="support_files_listing_sending">Отправка списка %1$s</string>
     <string name="support_files_listing_sent">Список отправлен (элементов: %1$d)</string>
     <string name="support_files_listing_failed">Не удалось отправить список %1$s. %2$s</string>
+    <string name="rift_custom_game_remove_title">Убрать из библиотеки</string>
+    <string name="rift_custom_game_remove_message">Убрать %1$s из библиотеки? Файлы игры останутся в папке, удалятся только её настройки Wine.</string>
+    <string name="rift_custom_game_remove_action">Убрать</string>
+    <string name="rift_custom_game_delete_files_message">Удалить %1$s? Папка игры со всеми файлами будет удалена с устройства.</string>
+    <string name="rift_custom_game_delete_action">Удалить</string>
+    <string name="rift_custom_game_removed">«%1$s» больше нет в библиотеке</string>
 </resources>
