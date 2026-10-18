@@ -1,9 +1,6 @@
 package app.gamenative.ui.screen.library.components
 
-import dev.rift.launcher.ui.DrawerBackdrop
-import dev.rift.launcher.ui.drawerGlass
 import android.content.res.Configuration
-import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
@@ -11,27 +8,29 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,34 +38,26 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SortByAlpha
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Stars
 import androidx.compose.material.icons.rounded.Verified
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.foundation.border
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -76,29 +67,52 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.focus.onFocusChanged
-import kotlinx.coroutines.delay
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.SteamCollection
-import app.gamenative.ui.component.OptionListItem
-import app.gamenative.ui.component.OptionSectionHeader
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.SortOption
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.adaptivePanelWidth
+import dev.rift.launcher.settings.PlateGap
+import dev.rift.launcher.settings.RiftCheckMark
+import dev.rift.launcher.settings.RowIcon
+import dev.rift.launcher.settings.RowIconSize
+import dev.rift.launcher.settings.RowTexts
+import dev.rift.launcher.settings.plateFill
+import dev.rift.launcher.settings.plateSubtext
+import dev.rift.launcher.settings.plateText
+import dev.rift.launcher.ui.DrawerBackdrop
+import dev.rift.launcher.ui.RiftDrawer
+import dev.rift.launcher.ui.RiftDrawerPanel
+import dev.rift.launcher.ui.theme.RiftAccent
+import dev.rift.launcher.ui.theme.RiftColors
 import java.util.EnumSet
+import kotlinx.coroutines.delay
 
+/**
+ * The filters panel on the left of the home (Select), on every tab. It is built like Rift's settings and the
+ * System panel on the right (Denis 2026-10-18): the same frame and width ([rememberHomePanelWidth]), one
+ * group per line (icon, its name, the current choice under it), the group's choices unrolled right under it.
+ * Focus is the accent fill with dark text, nothing has an outline.
+ */
 @Composable
 fun LibraryOptionsPanel(
     isOpen: Boolean,
@@ -157,6 +171,9 @@ fun LibraryOptionsPanel(
         }
     }
 
+    // As wide as the System panel on the right.
+    val panelWidth = adaptivePanelWidth(rememberHomePanelWidth())
+
     Box(modifier = modifier.fillMaxSize().onFocusChanged { onFocusChanged(it.hasFocus) }) {
         AnimatedVisibility(
             visible = isOpen,
@@ -179,182 +196,155 @@ fun LibraryOptionsPanel(
             visible = isOpen,
             enter = slideInHorizontally(
                 initialOffsetX = { fullWidth -> -fullWidth },
-                animationSpec = dev.rift.launcher.ui.RiftDrawer.SlideIn
+                animationSpec = RiftDrawer.SlideIn
             ),
             exit = slideOutHorizontally(
                 targetOffsetX = { fullWidth -> -fullWidth },
-                animationSpec = dev.rift.launcher.ui.RiftDrawer.SlideOut
+                animationSpec = RiftDrawer.SlideOut
             )
         ) {
-            Surface(
+            RiftDrawerPanel(
                 modifier = Modifier
-                    .width(adaptivePanelWidth(300.dp))
+                    .width(panelWidth)
                     .fillMaxHeight()
-                    .clip(panelShape)
-                    .drawerGlass(glassBackdrop),
-                shape = panelShape,
-                color = Color.Transparent,
-                shadowElevation = panelShadowElevation,
+                    .shadow(panelShadowElevation, panelShape)
+                    .clip(panelShape),
+                backdrop = glassBackdrop,
             ) {
+                // The title as on the System panel.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.rift_filters_title),
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    if (showCloseButton) {
+                        IconButton(onClick = onDismiss) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = stringResource(R.string.options_panel_close),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .statusBarsPadding()
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .focusGroup(),
+                    verticalArrangement = Arrangement.spacedBy(PlateGap),
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 20.dp, end = 8.dp, top = 16.dp, bottom = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = stringResource(R.string.rift_filters_title),
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.SemiBold
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        if (showCloseButton) {
-                            IconButton(onClick = onDismiss) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = stringResource(R.string.options_panel_close),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    if (tabGroups != null) {
+                        tabGroups.forEachIndexed { index, group ->
+                            val key = "tab$index"
+                            FilterGroup(
+                                label = group.label,
+                                value = group.value,
+                                icon = group.icon,
+                                expanded = onlyGroup || openGroup == key,
+                                onToggle = { if (!onlyGroup) toggleGroup(key) },
+                                headerFocus = if (index == 0) firstItemFocusRequester else headerRequester(key),
+                            ) {
+                                group.options.forEach { option ->
+                                    FilterOption(
+                                        text = option.text,
+                                        selected = option.selected,
+                                        // Picking applies the filter and closes the panel; the home puts focus back on the row.
+                                        onClick = {
+                                            option.onPick()
+                                            openGroup = null
+                                            onDismiss()
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        FilterGroup(
+                            label = stringResource(R.string.rift_filter_sort),
+                            value = stringResource(currentSortOption.displayTextRes),
+                            icon = currentSortOption.icon(),
+                            expanded = openGroup == "sort",
+                            onToggle = { toggleGroup("sort") },
+                            headerFocus = headerRequester("sort"),
+                        ) {
+                            SortOption.entries.forEach { option ->
+                                FilterOption(
+                                    text = stringResource(option.displayTextRes),
+                                    selected = currentSortOption == option,
+                                    onClick = {
+                                        onSortOptionChanged(option)
+                                        openGroup = null
+                                        runCatching { headerRequester("sort").requestFocus() }
+                                    },
                                 )
                             }
                         }
-                    }
-
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(vertical = 12.dp)
-                    ) {
-                        if (tabGroups != null) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .focusGroup()
-                                    .padding(horizontal = 8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                tabGroups.forEachIndexed { index, group ->
-                                    val key = "tab$index"
-                                    FilterAccordion(
-                                        label = group.label,
-                                        valueText = group.value,
-                                        icon = group.icon,
-                                        expanded = onlyGroup || openGroup == key,
-                                        onToggle = { if (!onlyGroup) toggleGroup(key) },
-                                        headerFocus = if (index == 0) firstItemFocusRequester else headerRequester(key),
-                                    ) {
-                                        group.options.forEach { option ->
-                                            OptionListItem(
-                                                text = option.text,
-                                                selected = option.selected,
-                                                // Picking applies the filter and closes the panel; the home puts focus back on the row.
-                                                onClick = {
-                                                    option.onPick()
-                                                    openGroup = null
-                                                    onDismiss()
-                                                },
-                                                modifier = Modifier.fillMaxWidth(),
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        } else {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusGroup()
-                                .padding(horizontal = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        FilterGroup(
+                            label = stringResource(R.string.library_app_type),
+                            value = summarize(TYPE_FILTERS, selectedFilters),
+                            icon = Icons.Default.Category,
+                            expanded = openGroup == "type",
+                            onToggle = { toggleGroup("type") },
+                            headerFocus = headerRequester("type"),
                         ) {
-                            FilterAccordion(
-                                label = stringResource(R.string.options_sort_by),
-                                valueText = stringResource(currentSortOption.displayTextRes),
-                                icon = currentSortOption.icon(),
-                                expanded = openGroup == "sort",
-                                onToggle = { toggleGroup("sort") },
-                                headerFocus = headerRequester("sort"),
+                            TYPE_FILTERS.forEach { f ->
+                                FilterOption(
+                                    text = stringResource(f.displayTextRes),
+                                    selected = selectedFilters.contains(f),
+                                    multiple = true,
+                                    onClick = { onFilterChanged(f) },
+                                )
+                            }
+                        }
+                        FilterGroup(
+                            label = stringResource(R.string.library_app_status),
+                            value = summarize(STATUS_FILTERS, selectedFilters),
+                            icon = Icons.Default.FilterList,
+                            expanded = openGroup == "status",
+                            onToggle = { toggleGroup("status") },
+                            headerFocus = headerRequester("status"),
+                        ) {
+                            STATUS_FILTERS.forEach { f ->
+                                FilterOption(
+                                    text = stringResource(f.displayTextRes),
+                                    selected = selectedFilters.contains(f),
+                                    multiple = true,
+                                    onClick = { onFilterChanged(f) },
+                                )
+                            }
+                        }
+                        if (extraGroup != null) {
+                            FilterGroup(
+                                label = extraGroup.label,
+                                value = extraGroup.value,
+                                icon = extraGroup.icon,
+                                expanded = openGroup == "extra",
+                                onToggle = { toggleGroup("extra") },
+                                headerFocus = headerRequester("extra"),
                             ) {
-                                SortOption.entries.forEach { option ->
-                                    OptionListItem(
-                                        text = stringResource(option.displayTextRes),
-                                        selected = currentSortOption == option,
+                                extraGroup.options.forEach { option ->
+                                    FilterOption(
+                                        text = option.text,
+                                        selected = option.selected,
                                         onClick = {
-                                            onSortOptionChanged(option)
+                                            option.onPick()
                                             openGroup = null
-                                            runCatching { headerRequester("sort").requestFocus() }
+                                            onDismiss()
                                         },
-                                        icon = option.icon(),
-                                        modifier = Modifier.fillMaxWidth(),
                                     )
                                 }
                             }
-                            FilterAccordion(
-                                label = stringResource(R.string.library_app_type),
-                                valueText = summarize(TYPE_FILTERS, selectedFilters),
-                                icon = Icons.Default.Category,
-                                expanded = openGroup == "type",
-                                onToggle = { toggleGroup("type") },
-                                headerFocus = headerRequester("type"),
-                            ) {
-                                TYPE_FILTERS.forEach { f ->
-                                    OptionListItem(
-                                        text = stringResource(f.displayTextRes),
-                                        selected = selectedFilters.contains(f),
-                                        onClick = { onFilterChanged(f) },
-                                        icon = f.icon,
-                                        modifier = Modifier.fillMaxWidth(),
-                                    )
-                                }
-                            }
-                            FilterAccordion(
-                                label = stringResource(R.string.library_app_status),
-                                valueText = summarize(STATUS_FILTERS, selectedFilters),
-                                icon = Icons.Default.FilterList,
-                                expanded = openGroup == "status",
-                                onToggle = { toggleGroup("status") },
-                                headerFocus = headerRequester("status"),
-                            ) {
-                                STATUS_FILTERS.forEach { f ->
-                                    OptionListItem(
-                                        text = stringResource(f.displayTextRes),
-                                        selected = selectedFilters.contains(f),
-                                        onClick = { onFilterChanged(f) },
-                                        icon = f.icon,
-                                        modifier = Modifier.fillMaxWidth(),
-                                    )
-                                }
-                            }
-                            if (extraGroup != null) {
-                                FilterAccordion(
-                                    label = extraGroup.label,
-                                    valueText = extraGroup.value,
-                                    icon = extraGroup.icon,
-                                    expanded = openGroup == "extra",
-                                    onToggle = { toggleGroup("extra") },
-                                    headerFocus = headerRequester("extra"),
-                                ) {
-                                    extraGroup.options.forEach { option ->
-                                        OptionListItem(
-                                            text = option.text,
-                                            selected = option.selected,
-                                            onClick = {
-                                                option.onPick()
-                                                openGroup = null
-                                                onDismiss()
-                                            },
-                                            modifier = Modifier.fillMaxWidth(),
-                                        )
-                                    }
-                                }
-                            }
+                        }
 
                         // Steam collections — local view filter, shown only when Steam is connected.
                         if (isSteamConnected) {
@@ -403,10 +393,6 @@ fun LibraryOptionsPanel(
                                 onClear = onClearCuratedLists,
                             )
                         }
-                        }
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
                     }
                 }
             }
@@ -452,9 +438,9 @@ private fun CollectionFilterSection(
         1 -> chosen.first().name
         else -> chosen.first().name + " +" + (chosen.size - 1)
     }
-    FilterAccordion(
+    FilterGroup(
         label = stringResource(titleRes),
-        valueText = valueText,
+        value = valueText,
         icon = icon,
         expanded = expanded,
         onToggle = { onExpandedChange(!expanded) },
@@ -465,16 +451,19 @@ private fun CollectionFilterSection(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .heightIn(min = OptionMinHeight)
+                        .padding(horizontal = DrawerRowPadding, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(DrawerRowGap),
                 ) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = stringResource(loadingRes),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Box(modifier = Modifier.size(RowIconSize), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            color = RiftAccent.current.main,
+                            strokeWidth = 2.5.dp,
+                        )
+                    }
+                    RowTexts(stringResource(loadingRes), null, danger = false, focused = false, modifier = Modifier.weight(1f))
                 }
             }
             collections.isEmpty() -> {
@@ -483,21 +472,20 @@ private fun CollectionFilterSection(
             }
             else -> {
                 if (selectedIds.isNotEmpty()) {
-                    OptionListItem(
+                    FilterOption(
                         text = stringResource(clearRes),
                         selected = false,
                         onClick = onClear,
                         icon = Icons.Default.Close,
-                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 collections.sortedBy { it.name.lowercase() }.forEach { collection ->
-                    OptionListItem(
+                    FilterOption(
                         text = collection.name,
                         selected = collection.id in selectedIds,
+                        multiple = true,
                         onClick = { onToggle(collection.id) },
                         trailingText = counts[collection.id]?.toString(),
-                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 messageRes.forEach { message -> CollectionFilterMessage(message) }
@@ -506,13 +494,15 @@ private fun CollectionFilterSection(
     }
 }
 
+/** A note under a group's choices, on the same line as their names. */
 @Composable
 private fun CollectionFilterMessage(@StringRes messageRes: Int) {
     Text(
         text = stringResource(messageRes),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        color = RiftColors.OnSurfaceVariant,
+        fontSize = 15.sp,
+        lineHeight = 20.sp,
+        modifier = Modifier.padding(start = OptionTextStart, end = DrawerRowPadding, top = 4.dp, bottom = 4.dp),
     )
 }
 
@@ -551,71 +541,43 @@ private fun summarize(options: List<AppFilter>, selected: EnumSet<AppFilter>): S
     }
 }
 
+/** A choice row: shorter than a group's line. */
+private val OptionMinHeight = 56.dp
+
+/** Where a choice's name starts: under the group's name, the mark sits under the group's icon. */
+private val OptionTextStart = DrawerRowPadding + RowIconSize + DrawerRowGap
+
 /**
- * One filter group on one line (label + current value + chevron). A unrolls the options right
- * inside the panel; the caller keeps only one group open at a time.
+ * One filter group, a row like the System panel's: the group's icon, its name and the current choice under the
+ * name. A unrolls the choices right under it; the caller keeps only one group open at a time.
  */
 @Composable
-private fun FilterAccordion(
+private fun FilterGroup(
     label: String,
-    valueText: String,
+    value: String,
     icon: ImageVector,
     expanded: Boolean,
     onToggle: () -> Unit,
     headerFocus: FocusRequester,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(12.dp)
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(shape)
-                .background(
-                    MaterialTheme.colorScheme.onSurface.copy(
-                        alpha = if (isFocused) 0.14f else if (expanded) 0.09f else 0.06f
-                    )
-                )
-                .then(
-                    if (isFocused) {
-                        Modifier.border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f), shape)
-                    } else Modifier
-                )
+                .plateFill(isFocused, rest = Color.Transparent)
                 .focusRequester(headerFocus)
-                .clickable(interactionSource = interactionSource, indication = null, onClick = onToggle)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .clickable(interactionSource = interactionSource, indication = null, role = Role.Button, onClick = onToggle)
+                .heightIn(min = DrawerRowMinHeight)
+                .padding(horizontal = DrawerRowPadding, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(DrawerRowGap),
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(22.dp),
-            )
-            Spacer(modifier = Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = valueText,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Icon(
-                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            RowIcon(icon, isFocused)
+            RowTexts(label, value, danger = false, focused = isFocused, modifier = Modifier.weight(1f))
         }
 
         AnimatedVisibility(
@@ -628,10 +590,62 @@ private fun FilterAccordion(
                     .fillMaxWidth()
                     .focusGroup()
                     .padding(top = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                content()
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                content = content,
+            )
+        }
+    }
+}
+
+/**
+ * One choice of a group. Its mark stands in the icon column: a tick on the picked one of a single choice, a
+ * check box where several can be picked, or [icon] for an action (clear).
+ */
+@Composable
+private fun FilterOption(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    multiple: Boolean = false,
+    icon: ImageVector? = null,
+    trailingText: String? = null,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .plateFill(isFocused, rest = Color.Transparent)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = when {
+                    icon != null -> Role.Button
+                    multiple -> Role.Checkbox
+                    else -> Role.RadioButton
+                },
+                onClick = onClick,
+            )
+            .heightIn(min = OptionMinHeight)
+            .padding(horizontal = DrawerRowPadding, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(DrawerRowGap),
+    ) {
+        Box(modifier = Modifier.size(RowIconSize), contentAlignment = Alignment.Center) {
+            when {
+                icon != null -> Icon(imageVector = icon, contentDescription = null, tint = plateSubtext(isFocused), modifier = Modifier.size(24.dp))
+                multiple -> RiftCheckMark(selected, isFocused)
+                selected -> Icon(
+                    imageVector = Icons.Rounded.Check,
+                    contentDescription = null,
+                    tint = if (isFocused) plateText(true) else RiftAccent.current.main,
+                    modifier = Modifier.size(24.dp),
+                )
             }
+        }
+        RowTexts(text, null, danger = false, focused = isFocused, modifier = Modifier.weight(1f))
+        if (trailingText != null) {
+            Text(text = trailingText, color = plateSubtext(isFocused), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }

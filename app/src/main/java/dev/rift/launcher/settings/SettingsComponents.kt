@@ -82,7 +82,10 @@ import dev.rift.launcher.ui.theme.RiftSizes
 internal val PlateShape = RiftShapes.card
 internal val PlateGap = 8.dp
 internal val RowMinHeight = 84.dp
-private val RowIconSize = 44.dp
+internal val RowIconSize = 44.dp
+
+/** The title of a row; the side panels measure their longest line with it. */
+internal val RowTitleStyle = TextStyle(fontSize = 18.5.sp, fontWeight = FontWeight.SemiBold)
 
 /**
  * A plate's fill when it has no focus. Grey on Rift's pages; the side panels make it black (Denis: the
@@ -196,8 +199,7 @@ internal fun RowTexts(title: String, subtitle: String?, danger: Boolean, focused
         Text(
             text = title,
             color = if (danger && !focused) RiftColors.Error else plateText(focused),
-            fontSize = 18.5.sp,
-            fontWeight = FontWeight.SemiBold,
+            style = RowTitleStyle,
         )
         if (!subtitle.isNullOrBlank()) {
             Text(
@@ -450,7 +452,7 @@ internal fun RiftSwitch(checked: Boolean, focused: Boolean) {
 
 /** The box of a [CheckRow]: filled with the accent brush when ticked, a grey fill when not. */
 @Composable
-private fun RiftCheckMark(checked: Boolean, focused: Boolean) {
+internal fun RiftCheckMark(checked: Boolean, focused: Boolean) {
     val accent = RiftAccent.current
     val shape = RoundedCornerShape(6.dp)
     Box(

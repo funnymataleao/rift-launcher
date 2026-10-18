@@ -262,6 +262,9 @@
     <string name="rift_settings_pc_paired">Подключён</string>
     <string name="rift_filters_title">Фильтры</string>
     <string name="rift_filter_any">Любые</string>
+    <string name="rift_filter_sort">Сортировка</string>
+    <string name="rift_menu_go_online">Онлайн-режим Steam</string>
+    <string name="rift_menu_go_offline">Офлайн-режим Steam</string>
 
     <string name="rift_settings_sign_in">Войти</string>
     <string name="rift_settings_store_signed_in">Вы вошли</string>

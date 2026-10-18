@@ -263,6 +263,9 @@
     <string name="rift_settings_pc_paired">Paired</string>
     <string name="rift_filters_title">Filters</string>
     <string name="rift_filter_any">Any</string>
+    <string name="rift_filter_sort">Sort</string>
+    <string name="rift_menu_go_online">Go online (Steam)</string>
+    <string name="rift_menu_go_offline">Go offline (Steam)</string>
 
     <string name="rift_store_steam" translatable="false">Steam</string>
     <string name="rift_store_epic" translatable="false">Epic Games</string>

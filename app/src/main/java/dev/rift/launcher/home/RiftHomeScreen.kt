@@ -1617,7 +1617,7 @@ fun RiftHomeScreen(
             val libraryFilterGroups: List<TabFilterGroup> = if (section == RiftSection.PcGames) {
                 listOf(
                     TabFilterGroup(
-                        label = stringResource(R.string.options_sort_by),
+                        label = stringResource(R.string.rift_filter_sort),
                         value = stringResource(libraryState.currentSortOption.displayTextRes),
                         icon = Icons.Outlined.SwapVert,
                         options = SortOption.entries.map { option ->
@@ -3405,7 +3405,7 @@ private suspend fun preloadFirstImages(context: android.content.Context, library
 private fun tabFilterGroups(view: TabView, onChange: (TabView) -> Unit): List<TabFilterGroup> = buildList {
     add(
         TabFilterGroup(
-            label = stringResource(R.string.options_sort_by),
+            label = stringResource(R.string.rift_filter_sort),
             value = stringResource(view.sort.titleRes),
             icon = Icons.Outlined.SwapVert,
             options = TabSort.entries.map { sort ->

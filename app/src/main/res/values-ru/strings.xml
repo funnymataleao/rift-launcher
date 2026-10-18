@@ -2439,6 +2439,11 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="steam_collections_offline">Показаны последние синхронизированные коллекции. Подключитесь для обновления.</string>
     <string name="steam_collections_clear">Очистить</string>
     <string name="steam_collections_smart_unsupported">Показаны только обычные коллекции. Умные коллекции пока не поддерживаются.</string>
+    <string name="curated_lists_title">Подборки Steam</string>
+    <string name="curated_lists_loading">Загрузка подборок…</string>
+    <string name="curated_lists_offline">Показана сохранённая подборка. Подключитесь для обновления.</string>
+    <string name="curated_lists_clear">Очистить</string>
+    <string name="curated_lists_empty">Сейчас подборок нет.</string>
     <string name="local_mod_title">Импорт мода с устройства</string>
     <string name="local_mod_description">Импортируйте архив, папку или один либо несколько отдельных файлов. Локальный импорт использует те же профили, размещение, конфликты и управление FOMOD и плагинами, что и загрузки Nexus.</string>
     <string name="local_mod_supported">Архивы: ZIP, 7Z, RAR и размещаемые EXE. Отдельные файлы могут иметь любое расширение, включая INI, DLL, ESP, ESM, ESL, PAK, JSON, CFG и TOML.</string>
