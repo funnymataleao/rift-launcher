@@ -304,6 +304,10 @@ fun RiftHomeScreen(
         }
     }
 
+    // The search of the home: one query for every tab. PC games are searched by GameNative's library (every store
+    // and the own games); the other tabs' rows are filtered here, so LB/RB shows each tab's matches.
+    var searchOpen by rememberSaveable { mutableStateOf(false) }
+    val searchText = if (searchOpen) libraryState.searchQuery.trim() else ""
     // The pictures the user picked (art picker) replace the store's, everywhere the games show.
     val pickedArt by GameArtStore.version.collectAsStateWithLifecycle()
     val uninstalledMode by rememberUninstalledMode(RiftSection.PcGames)
@@ -348,7 +352,7 @@ fun RiftHomeScreen(
     // Home streaming starts with the games last streamed from Rift, then the ones newest on the PC.
     var streamView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.PcStreaming, TabSort.LAST_PLAYED)) }
     var androidView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.AndroidGames)) }
-    val streamItems by remember(streamTab, streamView, streamUninstalledMode, pickedArt, hiddenGames, gameNames) { derivedStateOf { GameArtStore.apply(context, streamTab?.arrange(context, streamView.copy(showAll = streamUninstalledMode != UninstalledMode.HIDE)).orEmpty().filterNot { it.appId in hiddenGames }) } }
+    val streamItems by remember(streamTab, streamView, streamUninstalledMode, pickedArt, hiddenGames, gameNames, searchText) { derivedStateOf { GameArtStore.apply(context, streamTab?.arrange(context, streamView.copy(showAll = streamUninstalledMode != UninstalledMode.HIDE)).orEmpty().filter { it.appId !in hiddenGames && RiftSearch.matches(it.name, searchText) }) } }
     val hasStreamGames = streamTab?.items?.any { it.appId !in hiddenGames } == true
     val cloudSignedIn by XcloudAccount.signedIn(context).collectAsStateWithLifecycle()
     // The cloud tab exists only while a cloud account is signed in and its catalog has games; the
@@ -356,7 +360,7 @@ fun RiftHomeScreen(
     val cloudTab = if (cloudSignedIn == true) rememberCloudStreamingTab() else null
     // The cloud tab starts on its own order (played from Rift, then Game Pass's most popular).
     var cloudView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.CloudStreaming, TabSort.LAST_PLAYED)) }
-    val cloudItems = remember(cloudTab, cloudView, hiddenGames, pickedArt, gameNames) { GameArtStore.apply(context, cloudTab?.arrange(cloudView).orEmpty().filterNot { it.appId in hiddenGames }) }
+    val cloudItems = remember(cloudTab, cloudView, hiddenGames, pickedArt, gameNames, searchText) { GameArtStore.apply(context, cloudTab?.arrange(cloudView).orEmpty().filter { it.appId !in hiddenGames && RiftSearch.matches(it.name, searchText) }) }
     val hasCloudGames = cloudTab?.items?.any { it.appId !in hiddenGames } == true
     // The Emulators tab exists only while the systems set up in settings have games; the systems, their
     // emulator apps and folders live in settings. The folders are scanned again each time Rift comes back
@@ -397,8 +401,8 @@ fun RiftHomeScreen(
         }
     }
     var emulatorView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.Emulators, TabSort.LAST_PLAYED)) }
-    val emulatorItems by remember(emulatorGames, emulatorView, pickedArt, hiddenGames, gameNames) {
-        derivedStateOf { GameArtStore.apply(context, EmulatorLibrary.arrange(context, emulatorGames, emulatorView).filterNot { it.appId in hiddenGames }) }
+    val emulatorItems by remember(emulatorGames, emulatorView, pickedArt, hiddenGames, gameNames, searchText) {
+        derivedStateOf { GameArtStore.apply(context, EmulatorLibrary.arrange(context, emulatorGames, emulatorView).filter { it.appId !in hiddenGames && RiftSearch.matches(it.name, searchText) }) }
     }
     val hasEmulatorGames = emulatorGames.any { it.appId !in hiddenGames }
     // The streaming, cloud and emulator lists load a moment after the home comes back (from settings, a game
@@ -527,13 +531,14 @@ fun RiftHomeScreen(
     var libraryPending by remember { mutableStateOf<String?>(null) }
     var libraryTabSwitch by remember { mutableIntStateOf(0) }
     val focusedItem = homeRow.firstOrNull { it.appId == focusedAppId } ?: homeRow.firstOrNull()
-    val androidShown = remember(androidGames, androidView) {
+    val androidShown = remember(androidGames, androidView, searchText, gameNames) {
         val opened = AndroidGames.lastOpened(context)
+        val matching = androidGames.filter { RiftSearch.matches(gameNames["ANDROID_" + it.packageName] ?: it.label, searchText) }
         when (androidView.sort) {
-            TabSort.NAME_ASC -> androidGames.sortedBy { it.label.lowercase() }
-            TabSort.NAME_DESC -> androidGames.sortedByDescending { it.label.lowercase() }
-            TabSort.DATE_ADDED -> androidGames.sortedWith(compareByDescending<AndroidGame> { it.installedAt }.thenBy { it.label.lowercase() })
-            TabSort.LAST_PLAYED -> androidGames.sortedWith(compareByDescending<AndroidGame> { opened[it.packageName] ?: 0L }.thenBy { it.label.lowercase() })
+            TabSort.NAME_ASC -> matching.sortedBy { it.label.lowercase() }
+            TabSort.NAME_DESC -> matching.sortedByDescending { it.label.lowercase() }
+            TabSort.DATE_ADDED -> matching.sortedWith(compareByDescending<AndroidGame> { it.installedAt }.thenBy { it.label.lowercase() })
+            TabSort.LAST_PLAYED -> matching.sortedWith(compareByDescending<AndroidGame> { opened[it.packageName] ?: 0L }.thenBy { it.label.lowercase() })
         }
     }
     // Emulator and Android games have no store art: as soon as a tab has games, Rift finds each one's cover,
@@ -691,10 +696,8 @@ fun RiftHomeScreen(
         focusSection(target)
     }
 
-    fun switchSection(step: Int) {
-        if (sections.size < 2 || section == null) return
-        val target = sections[(sections.indexOf(section) + step).mod(sections.size)]
-        // Switching with LB/RB always lands on the first card of the tab, not where it was left (Denis).
+    /** Forgets where [target]'s row was left: its focus goes to the first card. */
+    fun resetToFirst(target: RiftSection) {
         when (target) {
             RiftSection.PcGames -> { focusedAppId = null; libraryCardFocused = false; homeScope.launch { pcRowState.scrollToItem(0) } }
             RiftSection.PcStreaming -> { focusedStreamId = null; homeScope.launch { streamRowState.scrollToItem(0) } }
@@ -702,6 +705,13 @@ fun RiftHomeScreen(
             RiftSection.Emulators -> { focusedEmulatorId = null; emulatorCardFocused = false; homeScope.launch { emulatorRowState.scrollToItem(0) } }
             RiftSection.CloudStreaming -> { focusedCloudId = null; cloudCardFocused = false; homeScope.launch { cloudRowState.scrollToItem(0) } }
         }
+    }
+
+    fun switchSection(step: Int) {
+        if (sections.size < 2 || section == null) return
+        val target = sections[(sections.indexOf(section) + step).mod(sections.size)]
+        // Switching with LB/RB always lands on the first card of the tab, not where it was left (Denis).
+        resetToFirst(target)
         selectSection(target)
         // Wrapping round still slides the way the bumper points.
         switchDirection = if (step > 0) 1 else -1
@@ -779,42 +789,48 @@ fun RiftHomeScreen(
     // B on the home does nothing, like Big Picture (and a HOME launcher has nowhere to go back to).
     BackHandler { }
 
-    // Search: a quiet icon in the top bar; typing filters the row through GameNative's library search.
-    // With a gamepad: A on the icon starts typing, B (or Down) hides the keyboard and goes back to the
-    // row with the results, B again closes the search. The field only takes focus while typing.
-    var searchOpen by rememberSaveable { mutableStateOf(false) }
+    // Search: a quiet icon in the top bar; typing filters the rows of every tab (see searchText).
+    // With a gamepad: A on the icon (or Y anywhere) starts typing, B, Down, Enter or hiding the keyboard goes
+    // back to the row with the results on the first one, B again closes the search. Leaving with nothing typed
+    // closes it. The field only takes focus while typing.
     var searchTyping by remember { mutableStateOf(false) }
     // Up from the row reaches the search only; the tabs are LB/RB's and the clock is not focusable.
     val searchFocus = remember { FocusRequester() }
     var topFocused by remember { mutableStateOf(false) }
     val keyboard = LocalSoftwareKeyboardController.current
-    fun stopTyping() {
-        searchTyping = false
-        keyboard?.hide()
-        focusSection(section)
-    }
     fun closeSearch() {
         searchTyping = false
         keyboard?.hide()
         searchOpen = false
         viewModel.onIsSearching(false)
+        section?.let(::resetToFirst)
+        focusSection(section)
+    }
+    fun stopTyping() {
+        if (viewModel.state.value.searchQuery.isBlank()) {
+            closeSearch()
+            return
+        }
+        searchTyping = false
+        keyboard?.hide()
+        // The results stay; the focus goes to the first of them.
+        section?.let(::resetToFirst)
         focusSection(section)
     }
     fun openSearch() {
-        if (RiftSection.PcGames !in sections) return
-        if (section != RiftSection.PcGames) selectSection(RiftSection.PcGames)
+        if (section == null) return
         if (!searchOpen) viewModel.onIsSearching(true)
         searchOpen = true
         searchTyping = true
     }
-    // One back press closes the keyboard and the field together; the keyboard may eat the press itself, so its
-    // hiding while typing counts as the press too.
-    BackHandler(enabled = searchOpen) { closeSearch() }
+    // Back while typing leaves the field with the results; back again closes the search. The keyboard may eat
+    // the press itself, so its hiding while typing counts as the press too.
+    BackHandler(enabled = searchOpen) { if (searchTyping) stopTyping() else closeSearch() }
     val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     var imeSeen by remember { mutableStateOf(false) }
     LaunchedEffect(searchTyping, imeVisible) {
         if (!searchTyping) { imeSeen = false; return@LaunchedEffect }
-        if (imeVisible) imeSeen = true else if (imeSeen) closeSearch()
+        if (imeVisible) imeSeen = true else if (imeSeen) stopTyping()
     }
 
     // Select: GameNative's library filter panel. Start: its system menu. Both over a blurred screen.
@@ -1253,7 +1269,7 @@ fun RiftHomeScreen(
                         if (leave) {
                             // Handled on key up, after the whole press, so nothing else sees half of it.
                             if (event.type == KeyEventType.KeyUp) {
-                                if (native.keyCode == KeyEvent.KEYCODE_DPAD_DOWN) { if (searchTyping) stopTyping() } else closeSearch()
+                                if (searchTyping) stopTyping() else closeSearch()
                             }
                             return@onPreviewKeyEvent true
                         }
@@ -1272,8 +1288,8 @@ fun RiftHomeScreen(
                         }
                         return@onPreviewKeyEvent true
                     }
-                    // X: the search (the PC games', from any tab), the keyboard opens at once.
-                    if (native.keyCode == KeyEvent.KEYCODE_BUTTON_X && !searchOpen && !systemMenuOpen && !viewModel.state.value.isOptionsPanelOpen && RiftSection.PcGames in sections) {
+                    // X: the search (of the tab it is pressed on), the keyboard opens at once.
+                    if (native.keyCode == KeyEvent.KEYCODE_BUTTON_X && !searchOpen && !systemMenuOpen && !viewModel.state.value.isOptionsPanelOpen && section != null) {
                         if (event.type == KeyEventType.KeyUp) openSearch()
                         return@onPreviewKeyEvent true
                     }
@@ -1317,7 +1333,7 @@ fun RiftHomeScreen(
                             switchSection(1)
                             true
                         }
-                        // Y: the search, on every tab (it opens the PC games' search, whatever tab it is pressed on).
+                        // Y: the search, on every tab (one query for all of them).
                         // (This `when` only ever sees key downs; a key-up check here would never fire.)
                         KeyEvent.KEYCODE_BUTTON_Y -> {
                             if (native.repeatCount == 0) openSearch()
@@ -1416,8 +1432,9 @@ fun RiftHomeScreen(
                         onSelect = ::selectSection,
                         onStep = ::switchSection,
                         searchFocus = searchFocus,
+                        onDownloadsClick = onDownloadsClick,
                         modifier = Modifier.onFocusChanged { topFocused = it.hasFocus },
-                        search = if (section == RiftSection.PcGames) {
+                        search = if (section != null) {
                             SearchState(
                                 open = searchOpen,
                                 typing = searchTyping,
@@ -1425,16 +1442,6 @@ fun RiftHomeScreen(
                                 onOpen = ::openSearch,
                                 onQuery = viewModel::onSearchQuery,
                                 onDone = ::stopTyping,
-                            )
-                        } else if (RiftSection.PcGames in sections) {
-                            // On another tab the search belongs to the PC games: it takes you there and opens.
-                            SearchState(
-                                open = false,
-                                typing = false,
-                                query = "",
-                                onOpen = ::openSearch,
-                                onQuery = {},
-                                onDone = {},
                             )
                         } else {
                             null
@@ -1619,7 +1626,8 @@ fun RiftHomeScreen(
             } else {
                 tabGroups.orEmpty()
             }
-            // In every library: Select opens the filters, Start the game's menu, Y the art of the game under the cursor.
+            // In every library: Select opens the filters, Start the game's menu (the art is changed there), Y the
+            // search: the library closes and the home's search opens over the tab's row.
             val addGamesFolder = rememberCustomGameFolderPicker(
                 onPathSelected = { path ->
                     PcGameFolders.add(path)
@@ -1650,7 +1658,8 @@ fun RiftHomeScreen(
                         true
                     }
                     KeyEvent.KEYCODE_BUTTON_Y -> {
-                        item?.let(::openArt)
+                        closeLibrary()
+                        openSearch()
                         true
                     }
                     else -> false
@@ -2200,6 +2209,12 @@ private fun PcLibraryGrid(
     val gridState = rememberLazyGridState()
     val currentItems by rememberUpdatedState(items)
     val currentLoading by rememberUpdatedState(loading)
+    // More games are asked for while the focus is near the end, again after each page that came in: a page can
+    // add nothing to show (games hidden, not installed) and the focus then never moves to ask for the next.
+    var focusedIndex by remember(tabSwitch) { mutableIntStateOf(-1) }
+    LaunchedEffect(focusedIndex, items.size, loading, libraryState.currentPaginationPage) {
+        if (!loading && focusedIndex >= 0 && focusedIndex >= items.size - LIBRARY_LOAD_MORE_THRESHOLD) onNearEnd()
+    }
     // The entrance starts once per opening or tab switch, when the new list is in; later page loads
     // (more games as the grid scrolls) do not start it again.
     var entryReady by remember(tabSwitch) { mutableStateOf(false) }
@@ -2253,7 +2268,7 @@ private fun PcLibraryGrid(
                     onFocusRequested = onFocusConsumed,
                     onFocused = {
                         onFocused(item)
-                        if (index >= items.size - LIBRARY_LOAD_MORE_THRESHOLD) onNearEnd()
+                        focusedIndex = index
                     },
                     onClick = { onOpen(item) },
                     cover = {
@@ -2725,6 +2740,7 @@ private fun TopBar(
     onStep: (Int) -> Unit,
     search: SearchState?,
     searchFocus: FocusRequester,
+    onDownloadsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // One row, like Steam Big Picture: the bumpers and the section tabs on the left, the round search and the status
@@ -2732,8 +2748,9 @@ private fun TopBar(
     // wide field up to the first cover's left edge: one element, its magnifier stays at the right end.
     val density = LocalDensity.current
     val gap = with(density) { 10.dp.roundToPx() }
-    // The search and the status icons are one group, apart from the tabs; the focused search stays clear of Wi-Fi.
-    val groupGap = with(density) { 8.dp.roundToPx() }
+    // The search and the status icons are one group, apart from the tabs: the magnifier stands the group's one gap
+    // from the next picture (its round button has room around it).
+    val groupGap = with(density) { (StatusGap - (RiftSizes.button - 24.dp) / 2).roundToPx() }
     // Between RB and the search: clearly apart, the search belongs to the corner.
     val cornerGap = with(density) { 28.dp.roundToPx() }
     val pad = with(density) { ScreenPadding.roundToPx() }
@@ -2749,7 +2766,7 @@ private fun TopBar(
             Box { SectionTabs(glass = glass, sections = sections, selected = selected, onSelect = onSelect) }
             BumperButton(GamepadButton.RB.iconRes, "RB") { onStep(1) }
             Box { if (search != null) SearchPill(search, glass, searchFocus, progress) }
-            StatusIcons()
+            StatusIcons(onDownloadsClick)
         },
     ) { measurables, constraints ->
         val loose = constraints.copy(minWidth = 0, minHeight = 0)

@@ -566,6 +566,7 @@
     <string name="rift_install_item_sizes">Загрузка %1$s • на диске %2$s</string>
     <string name="rift_install_dlc">DLC</string>
     <string name="rift_downloads_title">Загрузки</string>
+    <string name="rift_downloads_active">Идут загрузки</string>
     <string name="rift_downloads_hint">A — пауза или продолжение. Удерживайте A, чтобы отменить загрузку и удалить файлы.</string>
     <string name="rift_downloads_group_active">В процессе</string>
     <string name="rift_downloads_group_finished">Завершённые</string>

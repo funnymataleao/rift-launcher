@@ -1378,7 +1378,7 @@ class LibraryViewModel @Inject constructor(
      * and then again using a normalized form with diacritics removed.
      */
     private fun matches(gameName: String, searchQuery:String): Boolean {
-        return gameName.contains(searchQuery, ignoreCase = true) || gameName.unaccent().contains(searchQuery, ignoreCase = true)
+        return dev.rift.launcher.home.RiftSearch.matches(gameName, searchQuery)
     }
 
     /**
