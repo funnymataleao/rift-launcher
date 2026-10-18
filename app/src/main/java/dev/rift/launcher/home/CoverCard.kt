@@ -108,9 +108,13 @@ fun CoverCard(
     val lift by animateDpAsState(if (focused) (-6).dp else 0.dp, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "cardLift")
 
     var loaded by remember(paletteKey) { mutableStateOf<List<Color>?>(null) }
-    // Loaded up front (cached per image), so the frame already has the right colours when focus lands.
-    LaunchedEffect(paletteKey) {
-        if (loaded == null) loaded = withContext(Dispatchers.IO) { runCatching { loadPalette() }.getOrNull() }
+    // Palette extraction is cosmetic and used only by the focused frame. Do not make every card that
+    // flashes through a fast touch fling start a second image request + bitmap decode + Palette job.
+    // Loading it on focus keeps scrolling cheap; CoverColors caches it for subsequent visits.
+    LaunchedEffect(focused, paletteKey) {
+        if (focused && loaded == null) {
+            loaded = withContext(Dispatchers.IO) { runCatching { loadPalette() }.getOrNull() }
+        }
     }
     val palette = loaded ?: FallbackPalette
 
