@@ -93,7 +93,7 @@ fun CoverCard(
     onClick: () -> Unit,
     cover: @Composable BoxScope.() -> Unit,
     badge: @Composable BoxScope.() -> Unit = {},
-    reflection: Boolean = true,
+    reflection: Boolean = false,
     surface: Color = RiftColors.SurfaceContainer,
 ) {
     val interaction = remember { MutableInteractionSource() }
