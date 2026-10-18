@@ -158,10 +158,7 @@ fun CoverCard(
                 .background(surface)
                 .coverSheen(focused, tiltX, tiltY)
                 .coverFrame(focused, palette, RiftShapes.card)
-                .drawWithContent {
-                    picture.record { this@drawWithContent.drawContent() }
-                    drawLayer(picture)
-                }
+                .then(if (reflection) Modifier.drawWithContent { picture.record { this@drawWithContent.drawContent() }; drawLayer(picture) } else Modifier)
                 .focusRequester(focusRequester)
                 .onFocusChanged { if (it.isFocused) onFocused() }
                 .clickable(interactionSource = interaction, indication = null, onClick = onClick),
@@ -169,8 +166,8 @@ fun CoverCard(
             cover()
             badge()
         }
+        Spacer(modifier = Modifier.height(10.dp))
         if (reflection) {
-            Spacer(modifier = Modifier.height(10.dp))
             CoverReflection(
                 picture = picture,
                 coverHeight = height,
@@ -179,6 +176,8 @@ fun CoverCard(
                 scale = scale,
                 surface = surface,
             )
+        } else {
+            Spacer(modifier = Modifier.height(height * REFLECTION_SHARE))
         }
     }
 }
