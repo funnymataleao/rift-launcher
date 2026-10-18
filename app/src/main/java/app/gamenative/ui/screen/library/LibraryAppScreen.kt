@@ -62,6 +62,8 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -164,6 +166,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
@@ -779,6 +782,9 @@ private fun FullscreenStoreMediaDialog(
     )
     val coroutineScope = rememberCoroutineScope()
     val dismiss = { onDismiss(pagerState.currentPage) }
+    // Rift: the viewer holds focus itself, so the D-pad and the left stick page through every trailer and screenshot.
+    val viewerFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { viewerFocus.requestFocus() } }
 
     Dialog(
         onDismissRequest = dismiss,
@@ -798,7 +804,29 @@ private fun FullscreenStoreMediaDialog(
                 modifier = Modifier
                     .fillMaxSize()
                     .displayCutoutPadding()
-                    .navigationBarsPadding(),
+                    .navigationBarsPadding()
+                    .focusRequester(viewerFocus)
+                    .focusable()
+                    .onPreviewKeyEvent { event ->
+                        val native = event.nativeKeyEvent
+                        val down = native.action == android.view.KeyEvent.ACTION_DOWN
+                        when (native.keyCode) {
+                            android.view.KeyEvent.KEYCODE_DPAD_LEFT, android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                                if (down) {
+                                    val step = if (native.keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) -1 else 1
+                                    val target = (pagerState.targetPage + step).coerceIn(media.indices)
+                                    if (target != pagerState.targetPage) coroutineScope.launch { pagerState.animateScrollToPage(target) }
+                                }
+                                true
+                            }
+                            // B closes on release, so nothing of the press reaches the page underneath.
+                            android.view.KeyEvent.KEYCODE_BUTTON_B -> {
+                                if (native.action == android.view.KeyEvent.ACTION_UP) dismiss()
+                                true
+                            }
+                            else -> false
+                        }
+                    },
             ) {
                 HorizontalPager(
                     state = pagerState,
@@ -1389,6 +1417,8 @@ private fun GamePageHltbCard(stats: HltbService.Stats, modifier: Modifier = Modi
 }
 
 /** Rift: trailers and screenshots as one row of 16:9 tiles; A opens the fullscreen viewer there. */
+private val MEDIA_TILE_HEIGHT = 236.dp
+
 @Composable
 private fun GamePageMediaRow(
     media: List<StoreMediaItem>,
@@ -1396,6 +1426,8 @@ private fun GamePageMediaRow(
     gameName: String,
     onOpen: (Int) -> Unit,
     sidePadding: Dp = 0.dp,
+    returnFocusTo: Int? = null,
+    onFocusReturned: () -> Unit = {},
 ) {
     // Rift: the row runs edge to edge (past the page's side padding) with that padding as content padding,
     // so a focused tile grows and casts its ring without being cut at the row's edge. Repeats are dropped.
@@ -1406,10 +1438,24 @@ private fun GamePageMediaRow(
             .distinctBy { it.value.url.substringBefore('?').lowercase(Locale.ROOT) }
     }
     val firstScreenshot = remember(tiles) { tiles.firstOrNull { !it.value.isVideo }?.value?.url }
+    // Rift: after the full-screen viewer closes, focus comes back to the tile of what was on screen.
+    val rowState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val tileFocus = remember(tiles) { tiles.associate { it.index to FocusRequester() } }
+    LaunchedEffect(returnFocusTo, tiles) {
+        val index = returnFocusTo ?: return@LaunchedEffect
+        val position = tiles.indexOfFirst { it.index == index }
+        if (position >= 0) {
+            if (rowState.layoutInfo.visibleItemsInfo.none { it.index == position }) rowState.scrollToItem(position)
+            androidx.compose.runtime.withFrameNanos { }
+            runCatching { tileFocus[index]?.requestFocus() }
+        }
+        onFocusReturned()
+    }
     // Sideways the row keeps the focused tile whole with room on both sides, not the page's vertical margins.
     val rowKeepInView = with(LocalDensity.current) { remember(sidePadding) { dev.rift.launcher.home.KeepInView((sidePadding + 16.dp).toPx()) } }
     androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides rowKeepInView) {
     LazyRow(
+        state = rowState,
         modifier = Modifier.layout { measurable, constraints ->
             val extra = (sidePadding * 2).roundToPx()
             val placeable = measurable.measure(
@@ -1423,26 +1469,31 @@ private fun GamePageMediaRow(
         contentPadding = PaddingValues(horizontal = sidePadding, vertical = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        itemsIndexed(tiles, key = { _, tile -> tile.value.url }) { position, tile ->
+        itemsIndexed(tiles, key = { _, tile -> tile.value.url }) { _, tile ->
             val index = tile.index
             val item = tile.value
             val interactionSource = remember { MutableInteractionSource() }
             val isFocused by interactionSource.collectIsFocusedAsState()
-            val scale by animateFloatAsState(
-                targetValue = if (isFocused) 1.06f else 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium,
-                ),
-                label = "mediaTileScale",
+            // Rift: the focused tile rises and brightens, the rest are dimmed; eased, without a bounce.
+            val lift by animateFloatAsState(
+                targetValue = if (isFocused) 1f else 0f,
+                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                label = "mediaTileLift",
             )
-            // Rift: as in the mockup, the first tile (the trailer) is wider than the rest, all 236 dp high.
+            val liftPx = with(LocalDensity.current) { 6.dp.toPx() }
+            // Rift: trailers and screenshots alike are 16:10 at one height, the picture cropped from the centre.
             Box(
                 modifier = Modifier
                     .padding(vertical = 8.dp)
-                    .height(236.dp)
-                    .width(if (position == 0) 420.dp else 300.dp)
-                    .scale(scale)
+                    .height(MEDIA_TILE_HEIGHT)
+                    .width(MEDIA_TILE_HEIGHT * 16f / 10f)
+                    .graphicsLayer {
+                        val scale = 1f + 0.05f * lift
+                        scaleX = scale
+                        scaleY = scale
+                        translationY = -liftPx * lift
+                    }
+                    .focusRequester(tileFocus.getValue(index))
                     .clip(RoundedCornerShape(22.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainer)
                     .selectable(
@@ -1473,7 +1524,7 @@ private fun GamePageMediaRow(
                     }
                 }
                 // Rift: no outline; the tile in focus is lifted and bright, the others are dimmed.
-                if (!isFocused) Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.38f)))
+                Box(Modifier.matchParentSize().graphicsLayer { alpha = 1f - lift }.background(Color.Black.copy(alpha = 0.38f)))
                 if (item.isVideo) {
                     Box(
                         modifier = Modifier
@@ -1754,6 +1805,9 @@ internal fun AppScreenContent(
     val videoFallback = displayInfo.heroImageUrl
         ?: displayInfo.storeDetails.screenshots.firstOrNull().orEmpty()
     var fullscreenHeroPage by rememberSaveable(displayInfo.appId) { mutableStateOf<Int?>(null) }
+    // Rift: the viewer opened from a Media tile hands focus back to the tile of the last page shown.
+    var mediaOpenedFromRow by remember(displayInfo.appId) { mutableStateOf(false) }
+    var mediaReturnFocus by remember(displayInfo.appId) { mutableStateOf<Int?>(null) }
     var previousHeroImageUrl by remember(displayInfo.appId) {
         mutableStateOf(displayInfo.heroImageUrl)
     }
@@ -2593,6 +2647,8 @@ internal fun AppScreenContent(
                     onDismiss = { lastPage ->
                         fullscreenHeroPage = null
                         val heroPage = heroMedia.indexOf(gallery.getOrNull(lastPage)).coerceAtLeast(0)
+                        if (mediaOpenedFromRow) mediaReturnFocus = heroPage
+                        mediaOpenedFromRow = false
                         heroMediaScope.launch { heroPagerState.scrollToPage(heroPage) }
                     },
                 )
@@ -2688,7 +2744,12 @@ internal fun AppScreenContent(
                                 sidePadding = sidePadding,
                                 heroImageUrl = displayInfo.heroImageUrl,
                                 gameName = displayInfo.name,
-                                onOpen = { fullscreenHeroPage = it },
+                                onOpen = {
+                                    mediaOpenedFromRow = true
+                                    fullscreenHeroPage = it
+                                },
+                                returnFocusTo = mediaReturnFocus,
+                                onFocusReturned = { mediaReturnFocus = null },
                             )
                         }
                     }
