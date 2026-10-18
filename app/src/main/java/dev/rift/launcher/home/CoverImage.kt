@@ -11,6 +11,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil.request.ImageRequest
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import dev.rift.launcher.art.GameArtStore
@@ -22,6 +24,7 @@ import timber.log.Timber
 
 private const val RETRY_DELAY_MS = 2_000L
 private const val MAX_ROUNDS = 3
+internal const val COVER_DECODE_PX = 640
 
 /**
  * A cover that does not stay empty: the first non-empty URL of [urls] is loaded, a failed load tries
@@ -52,10 +55,14 @@ fun CoverImage(
     }
     if (candidates.isEmpty() || attempt >= candidates.size * MAX_ROUNDS) return
     val url = candidates[attempt % candidates.size]
+    val context = LocalContext.current
+    // Keep every shelf/grid cover on the same bounded request size. Besides avoiding full-size decodes while
+    // flinging, this makes the startup/prefetch request and the visible card share Coil's memory-cache key.
+    val request = remember(url) { ImageRequest.Builder(context).data(url).size(COVER_DECODE_PX).build() }
     key(url, attempt) {
         CoilImage(
             modifier = modifier,
-            imageModel = { url },
+            imageModel = { request },
             imageOptions = ImageOptions(contentScale = ContentScale.Crop, contentDescription = contentDescription),
             loading = {},
             failure = {

@@ -2235,7 +2235,7 @@ private fun focusKeyFor(item: LibraryItem): String = item.appId
 /** The game page grows from slightly smaller than the screen and shrinks back to it. */
 private const val PAGE_START_SCALE = 0.94f
 private const val PAGE_FOCUS_CHECK_MS = 250L
-private const val PRELOAD_COVER_PX = 1000
+private const val PRELOAD_COVER_PX = COVER_DECODE_PX
 private const val PRELOAD_BACKDROP_PX = 2560
 
 /** Games in the home row before the "Open library" card, like Big Picture. */
@@ -3366,7 +3366,7 @@ private object HintBarState {
 }
 private const val STARTUP_SETTLE_MS = 2500L
 private const val FIRST_IMAGES_TIMEOUT_MS = 3500L
-private const val FIRST_IMAGES_COUNT = 7
+private const val FIRST_IMAGES_COUNT = HOME_ROW_COUNT
 private const val APPS_PRELOAD_DELAY_MS = 4000L
 
 /**
