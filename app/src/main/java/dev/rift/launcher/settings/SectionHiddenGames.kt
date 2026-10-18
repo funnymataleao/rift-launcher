@@ -16,7 +16,9 @@ internal fun HiddenGamesSettings() {
     val context = LocalContext.current
     val hidden by RiftHiddenGames.hidden(context).collectAsStateWithLifecycle()
     if (hidden.isEmpty()) {
-        NoteText(stringResource(R.string.rift_settings_hidden_none))
+        SettingsGroup(title = stringResource(R.string.rift_settings_hidden)) {
+            MessageRow(stringResource(R.string.rift_settings_hidden_none))
+        }
         return
     }
     SettingsGroup(title = stringResource(R.string.rift_settings_hidden)) {
@@ -29,5 +31,4 @@ internal fun HiddenGamesSettings() {
             )
         }
     }
-    NoteText(stringResource(R.string.rift_settings_hidden_note), underGroup = true)
 }

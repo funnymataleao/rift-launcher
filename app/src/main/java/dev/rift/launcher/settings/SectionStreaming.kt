@@ -145,7 +145,6 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
             },
         )
     }
-    NoteText(stringResource(R.string.rift_settings_stream_note), underGroup = true)
 
     SettingsGroup(title = stringResource(R.string.rift_settings_group_stream_audio)) {
         val layouts = listOf("stereo", "5.1", "7.1")
@@ -362,7 +361,6 @@ private fun GamesTab(pairedPcs: List<String>, onOpenPcPairing: (() -> Unit)?) {
     if (games.isNotEmpty()) {
         var picked by remember { mutableStateOf(emptySet<String>()) }
         SettingsGroup(title = stringResource(R.string.rift_stream_group_games)) {
-            NoteText(stringResource(R.string.rift_stream_games_note))
             games.forEach { game ->
                 val appId = game.item.appId
                 CheckRow(
@@ -391,7 +389,7 @@ private fun GamesTab(pairedPcs: List<String>, onOpenPcPairing: (() -> Unit)?) {
     // their apps have loaded, so the hint does not flash while they load.
     if (streamTab == null || (streamTab.apps.isNotEmpty() && streamTab.games.isEmpty())) {
         SettingsGroup(title = stringResource(R.string.rift_stream_setup_title)) {
-            NoteText(stringResource(R.string.rift_stream_no_games))
+            MessageRow(stringResource(R.string.rift_stream_no_games))
             LinkRow(
                 title = stringResource(R.string.rift_stream_get_vibepollo),
                 subtitle = stringResource(R.string.rift_stream_get_vibepollo_summary),

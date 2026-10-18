@@ -603,6 +603,26 @@ internal fun PageHeading(text: String, modifier: Modifier = Modifier) {
 }
 
 /**
+ * A hint or a status that belongs on a settings page, set inside a plate like every other row (Denis: no loose
+ * small text on the pages, above or between the headings). It takes no focus.
+ */
+@Composable
+internal fun MessageRow(text: String, modifier: Modifier = Modifier, title: String? = null) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .plateFill(focused = false)
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (title != null) {
+            Text(text = title, color = RiftColors.OnSurface, fontSize = 18.5.sp, fontWeight = FontWeight.SemiBold)
+        }
+        Text(text = text, color = RiftColors.OnSurfaceVariant, fontSize = 15.sp, lineHeight = 21.sp)
+    }
+}
+
+/**
  * A plain explanation. With [underGroup] it explains the group just above and sits close under its rows,
  * not a whole group gap away; otherwise it just follows what is above it.
  */

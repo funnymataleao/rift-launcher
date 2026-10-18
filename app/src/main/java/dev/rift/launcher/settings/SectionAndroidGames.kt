@@ -53,29 +53,25 @@ internal fun AndroidGamesSettings() {
 
     val all = apps
     if (all == null) {
-        PageHeading(stringResource(R.string.rift_settings_android_group_games))
-        NoteText(stringResource(R.string.rift_settings_android_loading))
+        SettingsGroup(title = stringResource(R.string.rift_settings_android_group_games)) {
+            MessageRow(stringResource(R.string.rift_settings_android_loading))
+        }
         return
     }
     val games = all.filter { it.isGame }
     val others = all.filterNot { it.isGame }
 
-    if (games.isNotEmpty()) {
-        SettingsGroup(title = stringResource(R.string.rift_settings_android_group_games)) {
-            games.forEach { app -> AppRow(app, app.packageName in selected) { toggle(app.packageName, it) } }
-        }
-    } else {
-        // The page always starts with its heading, never with a note above it.
-        PageHeading(stringResource(R.string.rift_settings_android_group_games))
+    SettingsGroup(title = stringResource(R.string.rift_settings_android_group_games)) {
+        games.forEach { app -> AppRow(app, app.packageName in selected) { toggle(app.packageName, it) } }
+        // What is added and where it shows, on a plate of the group, not as loose text.
+        MessageRow(
+            if (selected.isEmpty()) {
+                stringResource(R.string.rift_settings_android_none)
+            } else {
+                stringResource(R.string.rift_settings_android_selected, selected.size)
+            },
+        )
     }
-    NoteText(
-        if (selected.isEmpty()) {
-            stringResource(R.string.rift_settings_android_none)
-        } else {
-            stringResource(R.string.rift_settings_android_selected, selected.size)
-        },
-        underGroup = games.isNotEmpty(),
-    )
 
     if (others.isNotEmpty()) {
         SettingsGroup(title = stringResource(R.string.rift_settings_android_group_others)) {

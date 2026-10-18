@@ -78,7 +78,6 @@ internal fun ArtworkSettings() {
             )
         }
     }
-    NoteText(stringResource(R.string.rift_settings_art_note), underGroup = true)
 
     SettingsGroup(title = stringResource(R.string.rift_settings_meta_group)) {
         LinkRow(
@@ -115,7 +114,6 @@ internal fun ArtworkSettings() {
             )
         }
     }
-    NoteText(stringResource(R.string.rift_settings_meta_note), underGroup = true)
 
     editingIgdb?.let { field ->
         KeyDialog(

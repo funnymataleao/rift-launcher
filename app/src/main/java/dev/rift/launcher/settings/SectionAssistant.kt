@@ -166,7 +166,6 @@ internal fun AssistantSettings() {
             )
         }
     }
-    NoteText(stringResource(R.string.rift_assistant_note), underGroup = true)
 
     SettingsGroup(title = stringResource(R.string.rift_assistant_group_permissions)) {
         SwitchRow(

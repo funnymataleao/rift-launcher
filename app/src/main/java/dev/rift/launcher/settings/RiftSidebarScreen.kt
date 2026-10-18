@@ -140,6 +140,8 @@ internal fun RiftSidebarScreen(
                                 .padding(top = 16.dp, bottom = 56.dp, start = 4.dp, end = 4.dp),
                             verticalArrangement = Arrangement.spacedBy(GroupGap),
                         ) {
+                            // Every page starts with its section's name, in the style of the group names.
+                            PageHeading(entries[selectedIndex].title)
                             content()
                             PageEnd()
                         }

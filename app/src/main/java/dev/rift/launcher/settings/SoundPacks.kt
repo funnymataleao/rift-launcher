@@ -183,7 +183,7 @@ internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit, hold: () -> 
                 onPreview = { hear(pack.id, null, pack) },
             )
         }
-        if (failed) NoteText(stringResource(R.string.rift_settings_packs_error))
+        if (failed) MessageRow(stringResource(R.string.rift_settings_packs_error))
         if (hasMore || failed) {
             LinkRow(
                 modifier = Modifier.onFocusChanged { if (it.hasFocus && !failed) loadMore() },
@@ -198,8 +198,6 @@ internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit, hold: () -> 
                 onClick = { if (failed) failed = false; loadMore() },
             )
         }
-        NoteText(stringResource(R.string.rift_settings_packs_preview_hint))
-        NoteText(stringResource(R.string.rift_settings_packs_note))
     }
 
     removing?.let { pack ->
