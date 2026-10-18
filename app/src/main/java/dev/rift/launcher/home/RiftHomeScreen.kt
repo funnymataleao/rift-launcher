@@ -750,6 +750,8 @@ fun RiftHomeScreen(
     val homeCovered = pageState.currentState && pageState.isIdle
     val pageFocus = remember { FocusRequester() }
     var pageFocused by remember { mutableStateOf(false) }
+    var pageBackDown by remember { mutableStateOf(false) }
+    var pageSelectDown by remember { mutableStateOf(false) }
     val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     // The page takes focus itself (its Play button); if that did not happen, focus goes into it.
     LaunchedEffect(opened != null) {
@@ -2047,15 +2049,38 @@ fun RiftHomeScreen(
                 // Focus stays on the page while it is open; on the way out the home takes it back.
                 .focusRequester(pageFocus)
                 .onFocusChanged { pageFocused = it.hasFocus }
-                .focusProperties { this.onExit = { if (openedAppId != null) cancelFocusChange() } }
+                .focusProperties { this.onExit = { if (openedAppId != null && !systemMenuOpen && !panelOpen) cancelFocusChange() } }
                 .focusGroup()
                 // Last resort: a B the page itself did not take still goes back to the home.
                 .onKeyEvent { event ->
                     val code = event.nativeKeyEvent.keyCode
-                    val back = code == KeyEvent.KEYCODE_BUTTON_B || code == KeyEvent.KEYCODE_ESCAPE
-                    if (back && event.type == KeyEventType.KeyDown && openedAppId != null) {
-                        closePage()
-                        true
+                    val back = code == KeyEvent.KEYCODE_BUTTON_B || code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE
+                    if (back) {
+                        if (event.type == KeyEventType.KeyDown && openedAppId != null) {
+                            pageBackDown = true
+                            when {
+                                systemMenuOpen -> systemMenuOpen = false
+                                viewModel.state.value.isOptionsPanelOpen -> viewModel.onOptionsPanelToggle(false)
+                                else -> closePage()
+                            }
+                            true
+                        } else if (event.type == KeyEventType.KeyUp && pageBackDown) {
+                            pageBackDown = false
+                            true
+                        } else {
+                            false
+                        }
+                    } else if (code == KeyEvent.KEYCODE_BUTTON_SELECT) {
+                        if (event.type == KeyEventType.KeyDown && event.nativeKeyEvent.repeatCount == 0) {
+                            pageSelectDown = true
+                            true
+                        } else if (event.type == KeyEventType.KeyUp && pageSelectDown) {
+                            pageSelectDown = false
+                            if (!systemMenuOpen) viewModel.onOptionsPanelToggle(!viewModel.state.value.isOptionsPanelOpen)
+                            true
+                        } else {
+                            pageSelectDown
+                        }
                     } else {
                         false
                     }
