@@ -7,7 +7,6 @@ import dev.rift.launcher.assistant.DeviceProfiler
 import dev.rift.launcher.assistant.GameContext
 import dev.rift.launcher.assistant.GameContextCollector
 import dev.rift.launcher.assistant.ai.AiClient
-import dev.rift.launcher.assistant.ai.AiClients
 import dev.rift.launcher.assistant.ai.AiException
 import dev.rift.launcher.assistant.ai.AiMessage
 import dev.rift.launcher.assistant.ai.AiReply
@@ -123,11 +122,12 @@ object AssistantChat {
 
     private suspend fun answer(app: Context): ChatEntry {
         val settings = AiSettings.of(app)
-        val provider = settings.provider ?: return notice(app.getString(R.string.rift_chat_not_configured))
-        val model = settings.model(provider) ?: return notice(app.getString(R.string.rift_chat_not_configured))
+        val connection = settings.active ?: return notice(app.getString(R.string.rift_chat_not_configured))
+        val provider = connection.type
+        val model = settings.model(connection) ?: return notice(app.getString(R.string.rift_chat_not_configured))
         if (settings.overMonthlyLimit()) return notice(app.getString(R.string.rift_optimize_limit))
         val client = try {
-            AiClients.create(provider, settings.baseUrl(provider), settings.apiKey(provider))
+            settings.clientFor(connection)
         } catch (e: AiException) {
             return notice(errorText(app, provider, e))
         }

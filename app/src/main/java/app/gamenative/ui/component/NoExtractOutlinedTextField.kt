@@ -1,7 +1,6 @@
 package app.gamenative.ui.component
 
 import android.view.inputmethod.EditorInfo
-import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.text.KeyboardActions
@@ -67,14 +66,12 @@ fun NoExtractOutlinedTextField(
 ) {
     val focusManager = LocalFocusManager.current
 
-    // Rift: a plate without an outline, grey at rest and filled with the accent while it has focus.
+    // Rift: a plate without an outline. A text field is never filled with the accent (Denis: the colour goes on
+    // buttons, not in fields): dark grey at rest, a lighter grey while it has focus, the accent only as the cursor.
     val focused by interactionSource.collectIsFocusedAsState()
-    val accent = RiftAccent.current
     val fieldShape = shape ?: if (singleLine) RiftShapes.full else RiftShapes.card
     val fieldColors = colors ?: riftTextFieldColors(focused)
-    val fieldModifier = modifier
-        .clip(fieldShape)
-        .then(if (focused) Modifier.background(accent.brush) else Modifier)
+    val fieldModifier = modifier.clip(fieldShape)
 
     val resolvedOptions = if (keyboardOptions.imeAction == ImeAction.Default && singleLine) {
         keyboardOptions.copy(imeAction = ImeAction.Done)
@@ -149,13 +146,12 @@ fun NoExtractOutlinedTextField(
     }
 }
 
-/** Colours of a Rift text plate: grey at rest, dark on the accent fill (drawn behind it) while focused. */
+/** Colours of a Rift text plate: dark grey at rest, a lighter grey while focused; light text, accent cursor. */
 @Composable
 private fun riftTextFieldColors(focused: Boolean): TextFieldColors {
-    val accent = RiftAccent.current
-    val text = if (focused) accent.onAccent else RiftColors.OnSurface
-    val hint = if (focused) accent.onAccent.copy(alpha = 0.6f) else RiftColors.OnSurfaceVariant
-    val container = if (focused) Color.Transparent else RiftColors.SurfaceContainerHigh
+    val text = RiftColors.OnSurface
+    val hint = RiftColors.OnSurfaceVariant
+    val container = if (focused) FocusedFieldFill else RiftColors.SurfaceContainerHigh
     return OutlinedTextFieldDefaults.colors(
         focusedTextColor = text,
         unfocusedTextColor = text,
@@ -163,7 +159,7 @@ private fun riftTextFieldColors(focused: Boolean): TextFieldColors {
         focusedContainerColor = container,
         unfocusedContainerColor = container,
         disabledContainerColor = container,
-        cursorColor = text,
+        cursorColor = RiftAccent.current.main,
         focusedBorderColor = Color.Transparent,
         unfocusedBorderColor = Color.Transparent,
         disabledBorderColor = Color.Transparent,
@@ -178,3 +174,6 @@ private fun riftTextFieldColors(focused: Boolean): TextFieldColors {
         unfocusedTrailingIconColor = hint,
     )
 }
+
+/** A text field's fill while it has focus: a lighter grey, never the accent. */
+private val FocusedFieldFill = Color(0xFF333333)

@@ -1,6 +1,8 @@
 package dev.rift.launcher.assistant.chat
 
 import android.Manifest
+import android.app.Activity
+import android.speech.RecognizerIntent
 import android.content.pm.PackageManager
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
@@ -8,6 +10,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -22,6 +25,7 @@ import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
@@ -41,6 +45,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.AddComment
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Stop
@@ -62,6 +67,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -76,6 +82,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -83,14 +90,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import java.util.Locale
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.screen.support.MarkdownText
 import app.gamenative.ui.screen.support.rememberMarkdown
-import dev.rift.launcher.assistant.ai.AiProvider
 import dev.rift.launcher.assistant.ai.AiSettings
 import dev.rift.launcher.assistant.optimize.ProposalCard
+import dev.rift.launcher.settings.AssistantModelPicker
 import dev.rift.launcher.settings.AssistantSettings
+import dev.rift.launcher.settings.connectionName
 import dev.rift.launcher.settings.NoteText
 import dev.rift.launcher.settings.RiftChip
 import dev.rift.launcher.settings.RiftChoiceDialog
@@ -99,6 +108,7 @@ import dev.rift.launcher.settings.RiftRoundButton
 import dev.rift.launcher.settings.plateFill
 import dev.rift.launcher.settings.plateSubtext
 import dev.rift.launcher.settings.plateText
+import dev.rift.launcher.ui.theme.RiftAccent
 import dev.rift.launcher.ui.theme.RiftColors
 import dev.rift.launcher.ui.theme.RiftShapes
 import dev.rift.launcher.ui.theme.RiftTheme
@@ -127,13 +137,16 @@ fun RiftAssistantScreen(onBack: () -> Unit) {
         onDispose { stop() }
     }
     val ready = remember(revision) { settings.isReady }
-    val provider = remember(revision) { settings.provider }
-    val model = remember(revision) { provider?.let(settings::model) }
+    val connections = remember(revision) { settings.connections }
+    val active = remember(revision) { settings.active }
+    val model = remember(revision) { active?.let(settings::model) }
     var showSetup by rememberSaveable { mutableStateOf(!settings.isReady) }
 
     val chat by AssistantChat.state.collectAsState()
     var draft by rememberSaveable { mutableStateOf("") }
     var pickingGame by remember { mutableStateOf(false) }
+    var switching by remember { mutableStateOf(false) }
+    var pickingModel by remember { mutableStateOf(false) }
     var voiceNote by remember { mutableStateOf<String?>(null) }
     val voice = rememberVoiceInput()
 
@@ -147,6 +160,12 @@ fun RiftAssistantScreen(onBack: () -> Unit) {
         draft = ""
     }
 
+    // Where the recognizer service can't be used directly: the system's own voice input window.
+    val systemVoice = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val text = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.trim().orEmpty()
+        if (result.resultCode == Activity.RESULT_OK && text.isNotEmpty()) send(text)
+    }
+
     fun talk() {
         if (voice.listening || chat.sending) return
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -157,13 +176,26 @@ fun RiftAssistantScreen(onBack: () -> Unit) {
         voice.start(
             onText = { send(it) },
             onProblem = {
-                voiceNote = context.getString(
-                    when (it) {
-                        VoiceInput.Problem.Unavailable -> R.string.rift_chat_voice_unavailable
-                        VoiceInput.Problem.NotHeard -> R.string.rift_chat_voice_not_heard
-                        VoiceInput.Problem.Failed -> R.string.rift_chat_voice_failed
-                    },
-                )
+                if (it == VoiceInput.Problem.UseSystemDialog) {
+                    voiceNote = null
+                    runCatching { systemVoice.launch(voice.systemDialogIntent()) }
+                        .onFailure { voiceNote = context.getString(R.string.rift_chat_voice_failed) }
+                    return@start
+                }
+                voiceNote = when (it) {
+                    VoiceInput.Problem.Language ->
+                        context.getString(R.string.rift_chat_voice_language, Locale.getDefault().displayLanguage)
+                    else -> context.getString(
+                        when (it) {
+                            VoiceInput.Problem.Unavailable -> R.string.rift_chat_voice_unavailable
+                            VoiceInput.Problem.NotHeard -> R.string.rift_chat_voice_not_heard
+                            VoiceInput.Problem.NoPermission -> R.string.rift_chat_voice_no_permission
+                            VoiceInput.Problem.Network -> R.string.rift_chat_voice_network
+                            VoiceInput.Problem.Busy -> R.string.rift_chat_voice_busy
+                            else -> R.string.rift_chat_voice_failed
+                        },
+                    )
+                }
             },
         )
     }
@@ -198,7 +230,12 @@ fun RiftAssistantScreen(onBack: () -> Unit) {
         ) {
             Column(modifier = Modifier.widthIn(max = ContentMaxWidth).fillMaxHeight()) {
                 Header(
-                    subtitle = if (ready && provider != null) "${providerName(provider)} · $model" else stringResource(R.string.rift_assistant_not_set),
+                    subtitle = if (ready && active != null) "${connectionName(active)} · $model" else stringResource(R.string.rift_assistant_not_set),
+                    onSubtitle = if (inChat && active != null) {
+                        { if (connections.size > 1) switching = true else pickingModel = true }
+                    } else {
+                        null
+                    },
                     inChat = inChat,
                     game = chat.game,
                     onBack = onBack,
@@ -236,12 +273,33 @@ fun RiftAssistantScreen(onBack: () -> Unit) {
                 onDismiss = { pickingGame = false },
             )
         }
+
+        if (switching && active != null) {
+            RiftChoiceDialog(
+                title = stringResource(R.string.rift_chat_switch),
+                options = connections.map { c -> listOfNotNull(connectionName(c), settings.model(c)).joinToString(" · ") } +
+                    stringResource(R.string.rift_chat_change_model, connectionName(active)),
+                selectedIndex = connections.indexOfFirst { it.id == active.id },
+                onSelect = {
+                    if (it == connections.size) {
+                        pickingModel = true
+                    } else {
+                        settings.activate(connections[it])
+                    }
+                },
+                onDismiss = { switching = false },
+            )
+        }
+        if (pickingModel && active != null) {
+            AssistantModelPicker(connection = active, onDismiss = { pickingModel = false })
+        }
     }
 }
 
 @Composable
 private fun Header(
     subtitle: String,
+    onSubtitle: (() -> Unit)?,
     inChat: Boolean,
     game: ChatGame?,
     onBack: () -> Unit,
@@ -266,13 +324,17 @@ private fun Header(
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
             )
-            Text(
-                text = subtitle,
-                color = RiftColors.OnSurfaceVariant,
-                fontSize = 14.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            if (onSubtitle != null) {
+                ModelLine(text = subtitle, onClick = onSubtitle)
+            } else {
+                Text(
+                    text = subtitle,
+                    color = RiftColors.OnSurfaceVariant,
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         if (inChat) {
             RiftChip(
@@ -284,6 +346,42 @@ private fun Header(
             RiftRoundButton(icon = Icons.Rounded.Key, description = stringResource(R.string.rift_chat_setup), onClick = onSetup)
             RiftRoundButton(icon = Icons.Rounded.AddComment, description = stringResource(R.string.rift_chat_new), onClick = onNewChat)
         }
+    }
+}
+
+/**
+ * The provider and model under the title, as a button: it opens the switch between providers and the model list.
+ * Filled with the accent and dark text while focused, like every Rift plate; plain grey text otherwise.
+ */
+@Composable
+private fun ModelLine(text: String, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    Row(
+        modifier = Modifier
+            // The text stays in line with the title; the plate reaches past it.
+            .offset(x = (-10).dp)
+            .plateFill(focused, RiftShapes.full, rest = Color.Transparent)
+            .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
+            .padding(start = 10.dp, end = 6.dp, top = 2.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            text = text,
+            color = plateSubtext(focused),
+            fontSize = 14.sp,
+            fontWeight = if (focused) FontWeight.SemiBold else FontWeight.Normal,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        Icon(
+            imageVector = Icons.Rounded.ExpandMore,
+            contentDescription = null,
+            tint = plateSubtext(focused),
+            modifier = Modifier.size(18.dp),
+        )
     }
 }
 
@@ -435,22 +533,24 @@ private fun Composer(
             // The page opens on this field; the keyboard comes up on A or a tap, not on focus.
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send, showKeyboardOnFocus = false),
             keyboardActions = KeyboardActions(onSend = { onSend() }),
-            // Two states only, as every Rift plate: grey, or filled with the accent and dark text while focused.
+            // A text field is never filled with the accent (that is for buttons): dark grey, a lighter grey while it
+            // has focus, light text and the accent cursor. No outline.
             interactionSource = fieldInteraction,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Color.Transparent,
                 unfocusedBorderColor = Color.Transparent,
-                cursorColor = plateText(true),
-                focusedTextColor = plateText(true),
-                unfocusedTextColor = plateText(false),
-                focusedPlaceholderColor = plateSubtext(true),
-                unfocusedPlaceholderColor = plateSubtext(false),
+                cursorColor = RiftAccent.current.main,
+                focusedTextColor = RiftColors.OnSurface,
+                unfocusedTextColor = RiftColors.OnSurface,
+                focusedPlaceholderColor = RiftColors.OnSurfaceVariant,
+                unfocusedPlaceholderColor = RiftColors.OnSurfaceVariant,
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
             ),
             modifier = Modifier
                 .weight(1f)
-                .plateFill(fieldFocused, RiftShapes.sheet, RiftColors.SurfaceContainer)
+                .clip(RiftShapes.sheet)
+                .background(if (fieldFocused) FieldFocusedFill else RiftColors.SurfaceContainerHigh)
                 .focusRequester(field)
                 .onPreviewKeyEvent { event ->
                     // With the keyboard closed the gamepad moves on; A opens the keyboard (as in GameNative's chat).
@@ -536,6 +636,5 @@ private fun Small(text: String) {
     Text(text = text, color = RiftColors.OnSurfaceVariant, fontSize = 13.5.sp, lineHeight = 19.sp)
 }
 
-@Composable
-private fun providerName(provider: AiProvider): String =
-    if (provider == AiProvider.Custom) stringResource(R.string.rift_assistant_provider_custom) else provider.label
+/** The message field's fill while it has focus: a lighter grey, never the accent. */
+private val FieldFocusedFill = Color(0xFF333333)
