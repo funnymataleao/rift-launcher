@@ -126,31 +126,34 @@ object AssistantChat {
         val provider = connection.type
         if (settings.overMonthlyLimit()) return notice(app.getString(R.string.rift_optimize_limit))
 
-        // Ollama lives on a LAN machine whose address can change. Never trust a stale saved endpoint here:
-        // rediscover the live server before every chat request, then validate the exact model id it exposes.
-        if (provider == dev.rift.launcher.assistant.ai.AiProvider.Ollama) {
-            val liveBase = dev.rift.launcher.assistant.ai.OllamaDiscovery.find(app)
-                ?: return notice(errorText(app, provider, AiException(AiException.Kind.NETWORK, detail = "Ollama not found on LAN")))
-            if (settings.baseUrl(connection) != liveBase) settings.setBaseUrl(connection, liveBase)
-        }
-
-        val client = try {
+        var client = try {
             settings.clientFor(connection)
         } catch (e: AiException) {
             return notice(errorText(app, provider, e))
         }
         var model = settings.model(connection) ?: return notice(app.getString(R.string.rift_chat_not_configured))
         if (provider == dev.rift.launcher.assistant.ai.AiProvider.Ollama) {
-            try {
-                val available = client.listModels()
-                if (available.none { it.id == model }) {
-                    val replacement = available.firstOrNull()?.id
-                        ?: return notice(app.getString(R.string.rift_chat_not_configured))
-                    settings.setModel(connection, replacement)
-                    model = replacement
+            Timber.i("RiftOllama: using saved endpoint=%s model=%s", settings.baseUrl(connection), model)
+            var available = try {
+                client.listModels()
+            } catch (first: AiException) {
+                Timber.w(first, "RiftOllama: saved endpoint failed=%s; trying discovery", settings.baseUrl(connection))
+                val liveBase = dev.rift.launcher.assistant.ai.OllamaDiscovery.find(app)
+                    ?: return notice(errorText(app, provider, first))
+                settings.setBaseUrl(connection, liveBase)
+                client = settings.clientFor(connection)
+                try { client.listModels() } catch (second: AiException) {
+                    Timber.w(second, "RiftOllama: discovered endpoint failed=%s", liveBase)
+                    return notice(errorText(app, provider, second))
                 }
-            } catch (e: AiException) {
-                return notice(errorText(app, provider, e))
+            }
+            Timber.i("RiftOllama: models=%s", available.joinToString { it.id })
+            if (available.none { it.id == model }) {
+                val replacement = available.firstOrNull()?.id
+                    ?: return notice(app.getString(R.string.rift_chat_not_configured))
+                Timber.i("RiftOllama: replacing stale model=%s with=%s", model, replacement)
+                settings.setModel(connection, replacement)
+                model = replacement
             }
         }
 
@@ -168,8 +171,10 @@ object AssistantChat {
         _state.update { it.copy(phase = ChatState.Phase.Thinking) }
 
         val reply = try {
+            Timber.i("RiftOllama: completing provider=%s endpoint=%s model=%s", provider.id, settings.baseUrl(connection), model)
             request(client, settings, model, messages)
         } catch (e: AiException) {
+            Timber.w(e, "RiftOllama: completion failed provider=%s endpoint=%s model=%s kind=%s code=%s detail=%s", provider.id, settings.baseUrl(connection), model, e.kind, e.httpCode, e.detail)
             return notice(errorText(app, provider, e))
         }
         val (prose, block) = ChatPrompt.splitProposal(reply.text)
