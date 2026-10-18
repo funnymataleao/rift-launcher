@@ -90,11 +90,13 @@ internal fun AssistantSettings() {
     SettingsGroup(title = stringResource(R.string.rift_assistant_group_providers)) {
         val activeText = stringResource(R.string.rift_assistant_active)
         connections.forEach { connection ->
+            val isActive = connection.id == active?.id
             LinkRow(
                 title = connectionName(connection),
                 subtitle = connectionSummary(connection, settings.model(connection)),
-                value = if (connection.id == active?.id) activeText else null,
                 icon = Icons.Rounded.Cloud,
+                selected = isActive,
+                selectionMark = isActive,
                 onClick = {
                     settings.activate(connection)
                     saved()
