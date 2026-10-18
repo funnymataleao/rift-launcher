@@ -32,7 +32,6 @@ import app.gamenative.ui.component.focusRing
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -101,6 +100,7 @@ import app.gamenative.ui.theme.PluviaTheme
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import dev.rift.launcher.home.GameBackdrop
+import dev.rift.launcher.ui.RiftProgressBar
 import java.io.File
 import kotlin.math.sin
 import kotlin.random.Random
@@ -214,16 +214,6 @@ fun BootingSplash(
             label = "logoScale",
         )
 
-        val shimmerPosition by infiniteTransition.animateFloat(
-            initialValue = -0.3f,
-            targetValue = 1.3f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(1500, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart,
-            ),
-            label = "shimmer",
-        )
-
         val particlePhase by infiniteTransition.animateFloat(
             initialValue = 0f,
             targetValue = 360f,
@@ -325,7 +315,6 @@ fun BootingSplash(
                     },
                     statusText = text,
                     progress = progress,
-                    shimmerPosition = shimmerPosition,
                     scrimColor = scrimColor,
                 )
             } else Column(
@@ -378,7 +367,6 @@ fun BootingSplash(
 
                 ProgressBar(
                     progress = progress,
-                    shimmerPosition = shimmerPosition,
                     modifier = Modifier
                         .fillMaxWidth(0.7f)
                         .height(4.dp),
@@ -585,7 +573,6 @@ private fun BootAdContent(
     backdrop: String,
     statusText: String,
     progress: Float,
-    shimmerPosition: Float,
     scrimColor: Color,
 ) {
     val context = LocalContext.current
@@ -738,7 +725,6 @@ private fun BootAdContent(
 
             ProgressBar(
                 progress = progress,
-                shimmerPosition = shimmerPosition,
                 modifier = Modifier
                     .fillMaxWidth(0.7f)
                     .height(4.dp),
@@ -956,14 +942,11 @@ private fun BootQuizCard(
         Spacer(modifier = Modifier.height(12.dp))
 
         if (!resolved) {
-            LinearProgressIndicator(
-                progress = { remainingMs.toFloat() / totalMs },
-                color = if (remainingMs < totalMs / 4) Color(0xFFFF7043) else Color(0xFF80D8FF),
-                trackColor = Color.White.copy(alpha = 0.15f),
+            RiftProgressBar(
+                progress = remainingMs.toFloat() / totalMs,
                 modifier = Modifier
                     .fillMaxWidth(0.6f)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp)),
+                    .height(4.dp),
             )
             Spacer(modifier = Modifier.height(12.dp))
             FlowRow(
@@ -1081,57 +1064,11 @@ private data class ParticleData(
 @Composable
 private fun ProgressBar(
     progress: Float,
-    shimmerPosition: Float,
     modifier: Modifier = Modifier,
 ) {
-    val isIndeterminate = progress < 0f
-    val actualProgress = if (isIndeterminate) 1f else progress.coerceIn(0f, 1f)
-
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(2.dp))
-            .background(PluviaTheme.colors.borderDefault.copy(alpha = 0.3f)),
-    ) {
-        // Progress fill with gradient
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .fillMaxWidth(actualProgress)
-                .clip(RoundedCornerShape(2.dp))
-                .background(
-                    Brush.horizontalGradient(
-                        colors = BrandGradient,
-                    ),
-                ),
-        )
-
-        // Shimmer overlay
-        if (isIndeterminate || progress > 0f) {
-            Canvas(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(2.dp)),
-            ) {
-                val shimmerWidth = size.width * 0.3f
-                val shimmerStart = (shimmerPosition * size.width) - shimmerWidth
-                val shimmerEnd = shimmerStart + shimmerWidth
-
-                drawRect(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color.White.copy(alpha = 0.4f),
-                            Color.Transparent,
-                        ),
-                        startX = shimmerStart,
-                        endX = shimmerEnd,
-                    ),
-                )
-            }
-        }
-    }
+    // Rift: the accent the user picked on a dark track, instead of the old lemon-to-white bar with a white shimmer.
+    RiftProgressBar(progress = progress, modifier = modifier)
 }
-
 
 @Preview(name = "BootingSplash - Indeterminate")
 @Composable

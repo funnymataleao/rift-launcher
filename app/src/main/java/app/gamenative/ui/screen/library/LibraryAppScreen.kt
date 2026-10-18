@@ -216,6 +216,7 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import dev.rift.launcher.ui.RiftProgressBar
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
 
@@ -2855,9 +2856,11 @@ fun GameMigrationDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth(),
-                    progress = { progress },
+                RiftProgressBar(
+                    progress = progress,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp),
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
