@@ -33,6 +33,7 @@ import dev.rift.launcher.cloud.XcloudActivity
 @Composable
 internal fun CloudSettings() {
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    PageHeading(stringResource(R.string.rift_settings_cloud))
     SectionTabs(
         tabs = listOf(
             stringResource(R.string.rift_cloud_tab_account),
@@ -115,8 +116,7 @@ private fun AccountTab() {
 private fun SettingsTab(groups: List<CloudGroup>) {
     val context = LocalContext.current
     var values by remember { mutableStateOf(CloudPlaySettings.values(context)) }
-    NoteText(stringResource(R.string.rift_cloud_settings_note))
-    groups.forEach { group ->
+    groups.forEachIndexed { index, group ->
         SettingsGroup(title = stringResource(group.title)) {
             group.settings.forEach { setting ->
                 CloudSettingRow(setting, values[setting.key]) { value ->
@@ -125,6 +125,7 @@ private fun SettingsTab(groups: List<CloudGroup>) {
                 }
             }
         }
+        if (index == 0) NoteText(stringResource(R.string.rift_cloud_settings_note), underGroup = true)
     }
 }
 

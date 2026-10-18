@@ -67,8 +67,6 @@ internal fun DeviceSettings() {
         community = DeviceProfiler.matchCommunityDevices(collected)
     }
 
-    NoteText(stringResource(R.string.rift_device_note))
-
     val current = profile
     if (current == null) {
         SettingsGroup {
@@ -98,6 +96,7 @@ internal fun DeviceSettings() {
         ProfileRow(stringResource(R.string.rift_device_opengl), gpu.glVersion.ifBlank { unknown })
         ProfileRow(stringResource(R.string.rift_device_gpu_class), stringResource(gpuClassLabel(gpu.communityClass)))
     }
+    NoteText(stringResource(R.string.rift_device_note), underGroup = true)
 
     SettingsGroup(title = stringResource(R.string.rift_device_group_memory)) {
         val memory = current.memory

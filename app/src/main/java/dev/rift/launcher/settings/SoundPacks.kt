@@ -1,10 +1,7 @@
 package dev.rift.launcher.settings
 
 import android.content.Context
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -28,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import dev.rift.launcher.sound.RiftMusic
 import dev.rift.launcher.sound.riftSilentPress
@@ -133,6 +129,7 @@ internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit, hold: () -> 
             title = stringResource(if (music) R.string.rift_settings_packs_none_music else R.string.rift_settings_packs_builtin),
             icon = Icons.Rounded.RestartAlt,
             value = if (selected.isBlank()) stringResource(R.string.rift_settings_packs_selected) else null,
+            chevron = false,
             onClick = { select("") },
         )
         installed.forEach { pack ->
@@ -197,6 +194,7 @@ internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit, hold: () -> 
                         else -> R.string.rift_settings_packs_more
                     },
                 ),
+                chevron = false,
                 onClick = { if (failed) failed = false; loadMore() },
             )
         }
@@ -224,7 +222,7 @@ internal fun PackCatalogPage(music: Boolean, onChanged: () -> Unit, hold: () -> 
     }
 }
 
-/** A pack row with its play button on the right: D-pad right reaches the button, A on the row chooses or downloads. */
+/** A pack row with its play (and delete) buttons inside the plate on the right. */
 @Composable
 private fun PackRow(
     modifier: Modifier = Modifier,
@@ -239,34 +237,30 @@ private fun PackRow(
     onLongClick: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
 ) {
-    Row(
+    // Preview and delete sit inside the plate: D-pad right reaches them, A on the plate chooses or downloads.
+    LinkRow(
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        LinkRow(
-            modifier = Modifier.weight(1f),
-            title = title,
-            subtitle = subtitle,
-            icon = icon,
-            value = value,
-            onClick = onClick,
-            onLongClick = onLongClick,
-        )
-        RiftRoundButton(
-            icon = if (playing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
-            description = stringResource(if (playing) R.string.rift_settings_packs_preview_stop else R.string.rift_settings_packs_preview),
-            modifier = Modifier.riftSilentPress(),
-            onClick = { if (!busy) onPreview() },
-        )
-        if (onDelete != null) {
-            RiftRoundButton(
-                icon = Icons.Rounded.Delete,
-                description = stringResource(R.string.rift_settings_packs_remove),
-                onClick = onDelete,
+        title = title,
+        subtitle = subtitle,
+        icon = icon,
+        value = value,
+        onClick = onClick,
+        onLongClick = onLongClick,
+        chevron = false,
+        actions = buildList {
+            add(
+                RowAction(
+                    icon = if (playing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
+                    description = stringResource(if (playing) R.string.rift_settings_packs_preview_stop else R.string.rift_settings_packs_preview),
+                    modifier = Modifier.riftSilentPress(),
+                    onClick = { if (!busy) onPreview() },
+                ),
             )
-        }
-    }
+            if (onDelete != null) {
+                add(RowAction(icon = Icons.Rounded.Delete, description = stringResource(R.string.rift_settings_packs_remove), onClick = onDelete))
+            }
+        },
+    )
 }
 
 private fun selectedId(context: Context, music: Boolean) =

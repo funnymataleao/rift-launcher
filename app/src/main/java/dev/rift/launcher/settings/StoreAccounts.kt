@@ -171,23 +171,26 @@ internal fun StoreAccountsSettings(onSteamSignIn: (() -> Unit)?, onSteamSignOut:
         }
     }
 
-    Store.entries.forEach { store ->
-        val status = statuses.getValue(store)
-        val signIn: (() -> Unit)? = when (store) {
-            Store.Steam -> onSteamSignIn
-            Store.Epic -> epicLogin.launch
-            Store.Gog -> gogLogin.launch
-            Store.Amazon -> amazonLogin.launch
-            Store.Ea, Store.Rockstar -> null
+    // One group for all stores, so the plates are PlateGap apart like everywhere, not a group gap each.
+    SettingsGroup(title = stringResource(R.string.rift_settings_accounts)) {
+        Store.entries.forEach { store ->
+            val status = statuses.getValue(store)
+            val signIn: (() -> Unit)? = when (store) {
+                Store.Steam -> onSteamSignIn
+                Store.Epic -> epicLogin.launch
+                Store.Gog -> gogLogin.launch
+                Store.Amazon -> amazonLogin.launch
+                Store.Ea, Store.Rockstar -> null
+            }
+            StoreCard(
+                store = store,
+                status = status,
+                canSignIn = signIn != null,
+                onClick = {
+                    if (status.signedIn) confirmSignOut = store.name else signIn?.invoke()
+                },
+            )
         }
-        StoreCard(
-            store = store,
-            status = status,
-            canSignIn = signIn != null,
-            onClick = {
-                if (status.signedIn) confirmSignOut = store.name else signIn?.invoke()
-            },
-        )
     }
 
     confirmSignOut?.let { name ->
@@ -230,7 +233,7 @@ private fun StoreCard(store: Store, status: StoreStatus, canSignIn: Boolean, onC
         Store.Gog -> painterResource(R.drawable.ic_gog)
         else -> null
     }
-    SettingsGroup {
+    run {
         LinkRow(
             title = storeTitle(store),
             subtitle = when {
@@ -246,6 +249,8 @@ private fun StoreCard(store: Store, status: StoreStatus, canSignIn: Boolean, onC
                 else -> null
             },
             enabled = status.signedIn || canSignIn,
+            // Signing in opens the store's page; signing out only asks here, so it has no arrow.
+            chevron = !status.signedIn && canSignIn,
             onClick = onClick,
         )
     }

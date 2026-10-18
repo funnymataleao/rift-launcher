@@ -53,25 +53,29 @@ internal fun AndroidGamesSettings() {
 
     val all = apps
     if (all == null) {
+        PageHeading(stringResource(R.string.rift_settings_android_group_games))
         NoteText(stringResource(R.string.rift_settings_android_loading))
         return
     }
     val games = all.filter { it.isGame }
     val others = all.filterNot { it.isGame }
 
+    if (games.isNotEmpty()) {
+        SettingsGroup(title = stringResource(R.string.rift_settings_android_group_games)) {
+            games.forEach { app -> AppRow(app, app.packageName in selected) { toggle(app.packageName, it) } }
+        }
+    } else {
+        // The page always starts with its heading, never with a note above it.
+        PageHeading(stringResource(R.string.rift_settings_android_group_games))
+    }
     NoteText(
         if (selected.isEmpty()) {
             stringResource(R.string.rift_settings_android_none)
         } else {
             stringResource(R.string.rift_settings_android_selected, selected.size)
         },
+        underGroup = games.isNotEmpty(),
     )
-
-    if (games.isNotEmpty()) {
-        SettingsGroup(title = stringResource(R.string.rift_settings_android_group_games)) {
-            games.forEach { app -> AppRow(app, app.packageName in selected) { toggle(app.packageName, it) } }
-        }
-    }
 
     if (others.isNotEmpty()) {
         SettingsGroup(title = stringResource(R.string.rift_settings_android_group_others)) {
@@ -82,6 +86,7 @@ internal fun AndroidGamesSettings() {
                 subtitle = stringResource(R.string.rift_settings_android_others_summary),
                 icon = if (showOthers) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                 value = others.size.toString(),
+                chevron = false,
                 onClick = { showOthers = !showOthers },
             )
             if (showOthers) {

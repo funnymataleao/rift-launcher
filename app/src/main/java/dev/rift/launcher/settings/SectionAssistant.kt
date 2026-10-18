@@ -83,8 +83,6 @@ internal fun AssistantSettings() {
     val checking = stringResource(R.string.rift_assistant_checking)
     val connectedText = stringResource(R.string.rift_assistant_connected)
 
-    NoteText(stringResource(R.string.rift_assistant_note))
-
     SettingsGroup(title = stringResource(R.string.rift_assistant_group_provider)) {
         LinkRow(
             title = stringResource(R.string.rift_assistant_provider),
@@ -130,6 +128,7 @@ internal fun AssistantSettings() {
                 title = stringResource(R.string.rift_assistant_check),
                 subtitle = checkResult,
                 icon = Icons.Rounded.NetworkCheck,
+                chevron = false,
                 onClick = {
                     scope.launch {
                         busy = checking
@@ -151,6 +150,7 @@ internal fun AssistantSettings() {
             }
         }
     }
+    NoteText(stringResource(R.string.rift_assistant_note), underGroup = true)
 
     SettingsGroup(title = stringResource(R.string.rift_assistant_group_permissions)) {
         SwitchRow(
@@ -193,6 +193,7 @@ internal fun AssistantSettings() {
         LinkRow(
             title = stringResource(R.string.rift_assistant_usage_reset),
             icon = Icons.Rounded.DeleteOutline,
+            chevron = false,
             onClick = {
                 settings.resetUsage()
                 saved()
@@ -374,15 +375,15 @@ private fun TextInputDialog(
             RiftPillButton(text = stringResource(R.string.rift_assistant_save), onClick = { onSave(text) }, primary = true)
         },
     ) {
-        RiftInputPlate { focused ->
+        RiftInputPlate {
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                if (text.isEmpty()) Text(placeholder, color = plateSubtext(focused), fontSize = 17.sp)
+                if (text.isEmpty()) Text(placeholder, color = FieldHint, fontSize = 17.sp)
                 BasicTextField(
                     value = text,
                     onValueChange = { text = it },
                     singleLine = true,
-                    textStyle = TextStyle(color = plateText(focused), fontSize = 17.sp),
-                    cursorBrush = SolidColor(plateText(focused)),
+                    textStyle = TextStyle(color = FieldText, fontSize = 17.sp),
+                    cursorBrush = fieldCursor(),
                     visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = if (secret) KeyboardType.Password else KeyboardType.Uri,

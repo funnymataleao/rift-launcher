@@ -95,6 +95,7 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
     }
     // Two tabs: the stream settings, in Artemis' order, and the PCs with their games.
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    PageHeading(stringResource(R.string.rift_settings_streaming))
     SectionTabs(
         tabs = listOf(stringResource(R.string.rift_settings_stream_tab_settings), stringResource(R.string.rift_settings_stream_tab_games)),
         selectedIndex = tab,
@@ -104,8 +105,6 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
         pairedPcs?.let { pcs -> GamesTab(pcs, onOpenPcPairing) }
         return
     }
-
-    NoteText(stringResource(R.string.rift_settings_stream_note))
 
     SettingsGroup(title = stringResource(R.string.rift_settings_group_stream_video)) {
         val resolutions = listOf("1280x720", "1920x1080", "2560x1440", "3840x2160", "device")
@@ -146,6 +145,7 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
             },
         )
     }
+    NoteText(stringResource(R.string.rift_settings_stream_note), underGroup = true)
 
     SettingsGroup(title = stringResource(R.string.rift_settings_group_stream_audio)) {
         val layouts = listOf("stereo", "5.1", "7.1")

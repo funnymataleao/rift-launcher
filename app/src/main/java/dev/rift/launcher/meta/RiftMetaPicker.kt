@@ -64,6 +64,8 @@ import app.gamenative.events.AndroidEvent
 import dev.rift.launcher.settings.NoteText
 import dev.rift.launcher.settings.RiftDialog
 import dev.rift.launcher.settings.RiftInputPlate
+import dev.rift.launcher.settings.FieldText
+import dev.rift.launcher.settings.fieldCursor
 import dev.rift.launcher.settings.RiftPillButton
 import dev.rift.launcher.sound.RiftSound
 import dev.rift.launcher.sound.RiftSounds
@@ -383,13 +385,13 @@ private fun QueryDialog(initial: String, onSave: (String) -> Unit, onDismiss: ()
             RiftPillButton(text = stringResource(R.string.rift_meta_search_go), onClick = { onSave(text) }, primary = true)
         },
     ) {
-        RiftInputPlate { focused ->
+        RiftInputPlate {
             BasicTextField(
                 value = text,
                 onValueChange = { text = it.take(MAX_QUERY_LENGTH) },
                 singleLine = true,
-                textStyle = TextStyle(color = plateText(focused), fontSize = 17.sp),
-                cursorBrush = SolidColor(plateText(focused)),
+                textStyle = TextStyle(color = FieldText, fontSize = 17.sp),
+                cursorBrush = fieldCursor(),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { onSave(text) }),
                 modifier = Modifier.weight(1f).focusRequester(field),

@@ -52,7 +52,7 @@ internal fun ArtworkSettings() {
     var igdbSecret by remember { mutableStateOf(prefs.igdbClientSecret) }
     var editingIgdb by remember { mutableStateOf<IgdbField?>(null) }
 
-    SettingsGroup {
+    SettingsGroup(title = stringResource(R.string.rift_settings_artwork)) {
         LinkRow(
             title = stringResource(R.string.rift_settings_art_key),
             subtitle = stringResource(R.string.rift_settings_art_key_summary),
@@ -175,13 +175,13 @@ private fun KeyDialog(title: String, hint: String, initial: String, onSave: (Str
             RiftPillButton(text = stringResource(R.string.rift_settings_tab_save), onClick = { onSave(text) }, primary = true)
         },
     ) {
-        RiftInputPlate { focused ->
+        RiftInputPlate {
             BasicTextField(
                 value = text,
                 onValueChange = { text = it.filterNot(Char::isWhitespace).take(MAX_KEY_LENGTH) },
                 singleLine = true,
-                textStyle = TextStyle(color = plateText(focused), fontSize = 17.sp),
-                cursorBrush = SolidColor(plateText(focused)),
+                textStyle = TextStyle(color = FieldText, fontSize = 17.sp),
+                cursorBrush = fieldCursor(),
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { onSave(text) }),

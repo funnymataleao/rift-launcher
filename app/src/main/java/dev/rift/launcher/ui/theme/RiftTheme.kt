@@ -76,11 +76,11 @@ object RiftSizes {
 }
 
 object RiftMotion {
-    /** Cover lift and scale on focus, Play button shape change. */
-    fun <T> focusSpring() = spring<T>(dampingRatio = 0.6f, stiffness = 400f)
+    /** Cover lift and scale on focus, Play button shape change: quick and without a bounce. */
+    fun <T> focusSpring() = spring<T>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 900f)
 
     /** Side panels and larger surfaces. */
-    fun <T> panelSpring() = spring<T>(dampingRatio = 0.8f, stiffness = 300f)
+    fun <T> panelSpring() = spring<T>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 300f)
 
     fun <T> noBounce() = spring<T>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
 

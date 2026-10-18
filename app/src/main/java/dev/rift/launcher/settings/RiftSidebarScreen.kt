@@ -60,15 +60,6 @@ import dev.rift.launcher.ui.theme.RiftTheme
 /** One section in the sidebar of [RiftSidebarScreen]. */
 internal class SidebarEntry(val title: String, val icon: ImageVector)
 
-/** Press feedback is the focus fill alone: no ripples and no state layers on anything inside. */
-private object NoIndication : IndicationNodeFactory {
-    override fun create(interactionSource: InteractionSource): DelegatableNode = object : Modifier.Node() {}
-
-    override fun equals(other: Any?): Boolean = other === this
-
-    override fun hashCode(): Int = -1
-}
-
 /**
  * A full screen of sections as Rift's own Settings: the list on the left (the chosen one dotted, L1 and R1
  * switch), the page of the section on the right, and only a back arrow at the top. Back (or B) goes from the
@@ -95,95 +86,62 @@ internal fun RiftSidebarScreen(
         }
     }
 
-    RiftTheme {
-        CompositionLocalProvider(
-            LocalIndication provides NoIndication,
-            LocalContentColor provides RiftColors.OnSurface,
-        ) {
-            Box(
+    SettingsFrame(
+        title = title,
+        onBack = onBack,
+        modifier = Modifier.onPreviewKeyEvent { event ->
+            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+            val step = when (event.key.nativeKeyCode) {
+                KeyEvent.KEYCODE_BUTTON_L1 -> -1
+                KeyEvent.KEYCODE_BUTTON_R1 -> 1
+                else -> return@onPreviewKeyEvent false
+            }
+            val next = (selectedIndex + step).mod(entries.size)
+            onSelect(next)
+            runCatching { railItems[next].requestFocus() }
+            true
+        },
+    ) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            Rail(
+                entries = entries,
+                selectedIndex = selectedIndex,
+                railItems = railItems,
+                contentEntry = contentEntry,
+                onFocused = onSelect,
+                onSelect = { index ->
+                    onSelect(index)
+                    runCatching { contentEntry.requestFocus() }
+                },
+            )
+            Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(RiftColors.Background)
-                    .statusBarsPadding()
-                    .navigationBarsPadding()
-                    .displayCutoutPadding()
-                    .onPreviewKeyEvent { event ->
-                        if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                        val step = when (event.key.nativeKeyCode) {
-                            KeyEvent.KEYCODE_BUTTON_L1 -> -1
-                            KeyEvent.KEYCODE_BUTTON_R1 -> 1
-                            else -> return@onPreviewKeyEvent false
-                        }
-                        val next = (selectedIndex + step).mod(entries.size)
-                        onSelect(next)
-                        runCatching { railItems[next].requestFocus() }
-                        true
-                    },
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(start = PaneStart, end = SettingsEdge),
             ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Row(
+                key(selectedIndex) {
+                    Box(
                         modifier = Modifier
+                            .weight(1f)
                             .fillMaxWidth()
-                            .padding(start = 32.dp, end = 48.dp, top = 12.dp, bottom = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            .focusRequester(contentEntry)
+                            .onFocusChanged { contentHasFocus = it.hasFocus }
+                            .focusGroup()
+                            // After the group, so it reaches the rows inside: Left always goes back to the
+                            // selected section in the list, like B.
+                            .focusProperties { left = railItems[selectedIndex] },
                     ) {
-                        RiftRoundButton(
-                            icon = Icons.AutoMirrored.Rounded.ArrowBack,
-                            description = title,
-                            onClick = onBack,
-                        )
-                        Text(
-                            text = title,
-                            color = RiftColors.OnSurface,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            maxLines = 1,
-                        )
-                    }
-                    Row(modifier = Modifier.fillMaxSize()) {
-                        Rail(
-                            entries = entries,
-                            selectedIndex = selectedIndex,
-                            railItems = railItems,
-                            contentEntry = contentEntry,
-                            onFocused = onSelect,
-                            onSelect = { index ->
-                                onSelect(index)
-                                runCatching { contentEntry.requestFocus() }
-                            },
-                        )
                         Column(
                             modifier = Modifier
-                                .weight(1f)
+                                .widthIn(max = ContentMaxWidth)
                                 .fillMaxHeight()
-                                .padding(start = 20.dp, end = 48.dp),
+                                .verticalScroll(rememberScrollState())
+                                .padding(top = 16.dp, bottom = 56.dp, start = 4.dp, end = 4.dp),
+                            verticalArrangement = Arrangement.spacedBy(GroupGap),
                         ) {
-                            key(selectedIndex) {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxWidth()
-                                        .focusRequester(contentEntry)
-                                        .onFocusChanged { contentHasFocus = it.hasFocus }
-                                        .focusGroup()
-                                        // After the group, so it reaches the rows inside: Left always goes back to the
-                                        // selected section in the list, like B.
-                                        .focusProperties { left = railItems[selectedIndex] },
-                                ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .widthIn(max = ContentMaxWidth)
-                                            .fillMaxHeight()
-                                            .verticalScroll(rememberScrollState())
-                                            .padding(top = 16.dp, bottom = 56.dp, start = 4.dp, end = 4.dp),
-                                        verticalArrangement = Arrangement.spacedBy(GroupGap),
-                                    ) {
-                                        content()
-                                        PageEnd()
-                                    }
-                                }
-                            }
+                            content()
+                            PageEnd()
                         }
                     }
                 }
@@ -207,7 +165,7 @@ private fun Rail(
     // As wide as the longest title, like the list in Settings.
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val rowStyle = LocalTextStyle.current.merge(TextStyle(fontSize = 18.5.sp, fontWeight = FontWeight.ExtraBold))
+    val rowStyle = LocalTextStyle.current.merge(TextStyle(fontSize = 18.5.sp, fontWeight = RailSelectedWeight))
     val railWidth = with(density) {
         val rows = entries.maxOf { measurer.measure(it.title, rowStyle, maxLines = 1, softWrap = false).size.width.toDp() }
         RailInset + (RailItemHeight - RailInset * 2) + RailGap + rows + RailGap + RailDot + RailEndInset
@@ -215,7 +173,7 @@ private fun Rail(
     Column(
         modifier = Modifier
             .fillMaxHeight()
-            .padding(start = 32.dp, end = 12.dp)
+            .padding(start = SettingsEdge, end = 12.dp)
             .width(railWidth)
             .verticalScroll(rememberScrollState())
             .focusGroup()

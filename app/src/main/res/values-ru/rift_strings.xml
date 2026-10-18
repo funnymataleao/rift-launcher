@@ -637,4 +637,11 @@
         <item quantity="many">Найдено %d игр</item>
         <item quantity="other">Найдено %d игры</item>
     </plurals>
+    <plurals name="rift_settings_pc_found_where">
+        <item quantity="one">Найдена %d игра. Она на главной, во вкладке ПК.</item>
+        <item quantity="few">Найдено %d игры. Они на главной, во вкладке ПК.</item>
+        <item quantity="many">Найдено %d игр. Они на главной, во вкладке ПК.</item>
+        <item quantity="other">Найдено %d игры. Они на главной, во вкладке ПК.</item>
+    </plurals>
+    <string name="rift_settings_pc_found_none">Игр не найдено. Игра — это папка, где лежит .exe.</string>
 </resources>
