@@ -6,8 +6,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Card
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,6 +16,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import app.gamenative.ui.theme.PluviaTheme
+import dev.rift.launcher.ui.RiftProgressBar
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -46,12 +47,14 @@ fun LoadingDialog(
                         Spacer(modifier = Modifier.height(16.dp))
                         if (progress >= 0) {
                             Text(min(100, (progress * 100.0).roundToInt()).toString() + "%")
-                            LinearProgressIndicator(
-                                progress = { progress },
-                            )
-                        } else {
-                            LinearProgressIndicator()
                         }
+                        // Rift: the accent bar of the launch screen; below 0 it runs as a segment.
+                        RiftProgressBar(
+                            progress = progress,
+                            modifier = Modifier
+                                .width(240.dp)
+                                .height(4.dp),
+                        )
                     }
                 }
             }
