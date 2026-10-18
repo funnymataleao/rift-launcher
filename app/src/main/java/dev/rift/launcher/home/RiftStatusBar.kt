@@ -59,6 +59,16 @@ import java.util.Date
 /** The one gap between the pictures of the corner group (search, downloads, Wi-Fi, battery, clock). */
 internal val StatusGap = 22.dp
 
+/** The focus circle of every focusable picture of the corner group (search, downloads): one size for all. */
+internal val StatusFocusSize = 44.dp
+
+/** Draws the corner group's focus circle, [StatusFocusSize] wide and filled with the accent, behind the picture. */
+@Composable
+internal fun Modifier.statusFocus(focused: Boolean): Modifier {
+    val brush = RiftAccent.current.brush
+    return drawBehind { if (focused) drawCircle(brush, radius = StatusFocusSize.toPx() / 2) }
+}
+
 /** The status texts (battery, clock): one size and weight. */
 private val StatusTextSize = 16.sp
 
@@ -115,7 +125,7 @@ private fun DownloadsIcon(onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(24.dp)
-            .drawBehind { if (focused) drawCircle(accent.brush, radius = 22.dp.toPx()) }
+            .statusFocus(focused)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

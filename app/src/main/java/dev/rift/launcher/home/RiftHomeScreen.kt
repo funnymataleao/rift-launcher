@@ -2864,14 +2864,16 @@ private fun SearchPill(search: SearchState, glass: GraphicsLayer, pillFocus: Foc
         imm?.showSoftInput(view, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
     }
     val shape = RiftShapes.full
+    val opened = progress.value > 0.01f
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .scale(if (focused) 1.04f else 1f)
+            .scale(if (focused && opened) 1.04f else 1f)
             .clip(shape)
             // Closed and unfocused it is a bare icon like battery and Wi-Fi; the glass exists only while the field is open.
-            .then(if (progress.value > 0.01f) Modifier.blackGlass(shape, backdrop = glass) else Modifier)
-            .background(if (focused) RiftAccent.current.brush else solid(Color.Transparent))
+            .then(if (opened) Modifier.blackGlass(shape, backdrop = glass) else Modifier)
+            // Open, the whole field takes the focus fill; closed, the magnifier gets the corner group's focus circle.
+            .background(if (focused && opened) RiftAccent.current.brush else solid(Color.Transparent))
             .focusRequester(pillFocus)
             .clickable(interactionSource = interaction, indication = null, onClick = search.onOpen),
     ) {
@@ -2905,7 +2907,7 @@ private fun SearchPill(search: SearchState, glass: GraphicsLayer, pillFocus: Foc
                         .focusRequester(fieldFocus),
                 )
             }
-            Box(modifier = Modifier.size(RiftSizes.button), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.size(RiftSizes.button).statusFocus(focused && !opened), contentAlignment = Alignment.Center) {
                 Icon(
                     Icons.Outlined.Search,
                     contentDescription = stringResource(R.string.rift_search),
