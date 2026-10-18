@@ -96,6 +96,7 @@ internal fun PcGamesSettings() {
                 RiftRoundButton(
                     icon = Icons.Rounded.Delete,
                     description = stringResource(R.string.rift_settings_pc_remove),
+                    size = RowMinHeight,
                     onClick = {
                         PcGameFolders.remove(path)
                         folders = PcGameFolders.all()

@@ -724,12 +724,13 @@ internal fun RiftRoundButton(
     description: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    size: Dp = RiftSizes.button,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     Box(
         modifier = modifier
-            .size(RiftSizes.button)
+            .size(size)
             .focusChrome(
                 focused = focused,
                 shape = CircleShape,
