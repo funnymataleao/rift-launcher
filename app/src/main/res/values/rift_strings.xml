@@ -584,8 +584,8 @@
     <string name="rift_settings_pc_none">No folders yet. Add a folder that holds your game folders and Rift lists every one with an .exe in it on the PC tab.</string>
     <string name="rift_settings_pc_note">Every subfolder with an .exe is a game. The files stay where they are. Rift looks at these folders each time it starts, and you can do it by hand below.</string>
     <string name="rift_settings_pc_folders">Folders</string>
-    <string name="rift_settings_pc_add">Add folder</string>
-    <string name="rift_settings_pc_add_summary">Pick the folder that holds your game folders</string>
+    <string name="rift_settings_pc_add">Add games folder</string>
+    <string name="rift_settings_pc_add_summary">A game is a subfolder with an .exe</string>
     <string name="rift_settings_pc_rescan">Scan again</string>
     <string name="rift_settings_pc_rescan_summary">Look for new and removed games now</string>
     <string name="rift_settings_pc_remove">Remove this folder</string>
@@ -633,4 +633,9 @@
     <string name="rift_platform_xbox360_note">Xbox 360 emulation on Android is experimental. Rift hands the game file to the emulator you pick; the emulator must be able to open it.</string>
     <string name="rift_settings_platform_installed">Installed</string>
     <string name="rift_install_game">Install</string>
+    <string name="rift_settings_pc_scanning">Scanning…</string>
+    <plurals name="rift_settings_pc_found">
+        <item quantity="one">Found %d game</item>
+        <item quantity="other">Found %d games</item>
+    </plurals>
 </resources>

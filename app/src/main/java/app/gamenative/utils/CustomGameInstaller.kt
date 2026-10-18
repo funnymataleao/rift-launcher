@@ -103,7 +103,7 @@ object CustomGameInstaller {
         var best: File? = null
         fun walk(d: File, depth: Int) {
             for (f in d.listFiles().orEmpty()) {
-                if (f.isDirectory && depth < 4 && !java.nio.file.Files.isSymbolicLink(f.toPath())) {
+                if (f.isDirectory && depth < 4 && f.name.lowercase() !in CustomGameScanner.serviceFolders && !java.nio.file.Files.isSymbolicLink(f.toPath())) {
                     walk(f, depth + 1)
                 } else if (f.isFile && f.name.endsWith(".exe", ignoreCase = true) && f.lastModified() >= since) {
                     val name = f.name.lowercase()

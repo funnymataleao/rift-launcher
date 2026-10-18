@@ -652,13 +652,42 @@ object CustomGameScanner {
      */
     fun userRootGameFolders(): List<String> {
         val found = ArrayList<String>()
-        for (root in PrefManager.customGamePaths) {
-            File(root).listFiles { f -> f.isDirectory && !f.name.startsWith(".") }
+        for (root in userRoots) {
+            val dir = File(root)
+            if (!dir.isDirectory) continue
+            // A folder with a game .exe right in it is one game, not a folder of games.
+            val holdsGame = dir.listFiles { f -> f.isFile && f.name.endsWith(".exe", ignoreCase = true) && !f.name.startsWith("unins", ignoreCase = true) }
+                ?.isNotEmpty() == true
+            if (holdsGame) {
+                found.add(dir.absolutePath)
+                continue
+            }
+            dir.listFiles { f -> f.isDirectory && !f.name.startsWith(".") }
                 ?.sortedBy { it.name.lowercase() }
                 ?.forEach { if (looksLikeGame(it)) found.add(it.absolutePath) }
         }
         return found
     }
+
+    /** Folders inside a game that hold the system's own files (a Windows tree in a Game Pass dump, redistributables). */
+    val serviceFolders = setOf(
+        "windows", "system32", "syswow64", "embeddedxvd", "mount", "\$recycle.bin", "redist", "_commonredist",
+        "directx", "vcredist", "dotnet",
+    )
+
+    @Volatile
+    private var rootsCache: Set<String>? = null
+
+    /**
+     * The games folders the person added. Preferences are written in the background, so the value just set
+     * is kept here and read back from here; reading the preference right after a write gives the old list.
+     */
+    var userRoots: Set<String>
+        get() = rootsCache ?: PrefManager.customGamePaths.also { rootsCache = it }
+        set(value) {
+            rootsCache = value
+            PrefManager.customGamePaths = value
+        }
 
     private data class ExeProbe(val modified: Long, val hasExe: Boolean)
 
@@ -684,7 +713,7 @@ object CustomGameScanner {
             if (depth >= 3) return false
             for (child in children) {
                 if (--budget < 0) return false
-                if (child.isDirectory && walk(child, depth + 1)) return true
+                if (child.isDirectory && child.name.lowercase() !in serviceFolders && walk(child, depth + 1)) return true
             }
             return false
         }
