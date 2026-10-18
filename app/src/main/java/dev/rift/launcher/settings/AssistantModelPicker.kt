@@ -66,6 +66,7 @@ internal fun AssistantModelPicker(connection: AiConnection, onDismiss: () -> Uni
     val settings = remember { AiSettings.of(context) }
     val current = remember { settings.model(connection) }
     var state by remember { mutableStateOf<PickerState>(PickerState.Loading) }
+    var freeOnly by remember(connection.id) { mutableStateOf(false) }
 
     LaunchedEffect(connection.id) {
         state = try {
@@ -81,18 +82,24 @@ internal fun AssistantModelPicker(connection: AiConnection, onDismiss: () -> Uni
     when (val shown = state) {
         PickerState.Loading -> LoadingDialog(onDismiss)
         is PickerState.Choose -> {
-            val models = shown.models
+            val supportsFree = connection.type == AiProvider.OpenRouter
+            val models = if (freeOnly && supportsFree) shown.models.filter { isFreeModel(connection.type, it) } else shown.models
             RiftChoiceDialog(
                 title = stringResource(R.string.rift_assistant_model),
-                options = models.map { if (it.name != it.id) "${it.name} · ${it.id}" else it.id } +
+                options = (if (supportsFree) listOf(if (freeOnly) "✓ Free" else "Free") else emptyList()) +
+                    models.map { if (it.name != it.id) "${it.name} · ${it.id}" else it.id } +
                     stringResource(R.string.rift_assistant_model_manual),
                 // A saved model the provider no longer lists is marked nowhere; the field below shows it.
-                selectedIndex = models.indexOfFirst { it.id == current },
-                onSelect = {
-                    if (it == models.size) {
-                        state = PickerState.Manual(null)
+                selectedIndex = models.indexOfFirst { it.id == current }.let { index ->
+                    if (index < 0) -1 else index + if (supportsFree) 1 else 0
+                },
+                onSelect = { selected ->
+                    if (supportsFree && selected == 0) {
+                        freeOnly = !freeOnly
                     } else {
-                        settings.setModel(connection, models[it].id)
+                        val index = selected - if (supportsFree) 1 else 0
+                        if (index == models.size) state = PickerState.Manual(null)
+                        else if (index in models.indices) settings.setModel(connection, models[index].id)
                     }
                 },
                 // Choosing an option also dismisses; going on to the field must not close the picker.
@@ -194,3 +201,8 @@ private fun ManualModelDialog(
 }
 
 private val FIELD_FOCUSED = Color(0xFF333333)
+
+private fun isFreeModel(provider: AiProvider, model: AiModel): Boolean = when (provider) {
+    AiProvider.OpenRouter -> model.id.endsWith(":free", ignoreCase = true) || model.id == "openrouter/free"
+    else -> false
+}

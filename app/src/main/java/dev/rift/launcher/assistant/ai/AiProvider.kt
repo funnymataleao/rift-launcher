@@ -38,6 +38,10 @@ enum class AiProvider(
         "openrouter", "OpenRouter", AiProtocol.OPENAI, "https://openrouter.ai/api/v1", "https://openrouter.ai/keys",
         "https://openrouter.ai/settings/credits",
     ),
+    Nvidia(
+        "nvidia", "NVIDIA NIM", AiProtocol.OPENAI, "https://integrate.api.nvidia.com/v1",
+        "https://build.nvidia.com/settings/api-keys",
+    ),
     DeepSeek("deepseek", "DeepSeek", AiProtocol.OPENAI, "https://api.deepseek.com", "https://platform.deepseek.com/api_keys"),
     Qwen(
         "qwen", "Qwen (DashScope)", AiProtocol.OPENAI, "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
