@@ -6,7 +6,6 @@ import app.gamenative.ui.screen.support.SupportSuggestionApplier
 import app.gamenative.utils.ContainerUtils
 import dev.rift.launcher.assistant.DeviceProfiler
 import dev.rift.launcher.assistant.GameContextCollector
-import dev.rift.launcher.assistant.ai.AiClients
 import dev.rift.launcher.assistant.ai.AiException
 import dev.rift.launcher.assistant.ai.AiMessage
 import dev.rift.launcher.assistant.ai.AiRequest
@@ -55,11 +54,11 @@ object Optimizer {
 
     suspend fun propose(context: Context, appId: String, goal: OptimizeGoal, userText: String? = null): OptimizeResult {
         val settings = AiSettings.of(context)
-        val provider = settings.provider ?: return OptimizeResult.NotConfigured
-        val model = settings.model(provider) ?: return OptimizeResult.NotConfigured
+        val connection = settings.active ?: return OptimizeResult.NotConfigured
+        val model = settings.model(connection) ?: return OptimizeResult.NotConfigured
         if (settings.overMonthlyLimit()) return OptimizeResult.MonthlyLimitReached
         val client = try {
-            AiClients.create(provider, settings.baseUrl(provider), settings.apiKey(provider))
+            settings.clientFor(connection)
         } catch (e: AiException) {
             return if (e.kind == AiException.Kind.NO_KEY) OptimizeResult.NotConfigured else OptimizeResult.ProviderError(e)
         }

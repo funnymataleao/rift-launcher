@@ -1,10 +1,13 @@
 package dev.rift.launcher.assistant.chat
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.res.Resources
 import android.os.Build
 import android.os.Bundle
 import android.speech.RecognitionListener
+import android.speech.RecognitionService
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import androidx.compose.runtime.Composable
@@ -20,11 +23,16 @@ import timber.log.Timber
 /**
  * Speech to text with Android's own recognizer, on the device where it can (the sound never goes to the AI provider).
  * Hold to talk: [start] when the button goes down, [stop] when it comes up, and the text arrives in [onText].
- * If the on-device recognizer has no model for the language, the regular one is used from then on.
+ *
+ * Three ways, tried in this order and remembered once one fails: the on-device recognizer, the regular one, and the
+ * system's own voice input window ([Problem.UseSystemDialog], which the screen opens with [systemDialogIntent]).
+ * Android reports an on-device recognizer whenever the firmware names one, even when its app is not installed (the
+ * RedMagic tablet names one that isn't there, and every start failed with error 10), so it is used only when its
+ * service can actually be found.
  */
 class VoiceInput internal constructor(private val context: Context) {
 
-    enum class Problem { Unavailable, NotHeard, Failed }
+    enum class Problem { Unavailable, NotHeard, Failed, NoPermission, Network, Busy, Language, UseSystemDialog }
 
     var listening by mutableStateOf(false)
         private set
@@ -34,20 +42,21 @@ class VoiceInput internal constructor(private val context: Context) {
         private set
 
     private var recognizer: SpeechRecognizer? = null
-    private var onDevice = true
+    private var onDevice = onDeviceServiceInstalled(context)
+    private var systemDialog = false
     private var holding = false
     private var onText: (String) -> Unit = {}
     private var onProblem: (Problem) -> Unit = {}
 
-    val available: Boolean
-        get() = SpeechRecognizer.isRecognitionAvailable(context) ||
-            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && SpeechRecognizer.isOnDeviceRecognitionAvailable(context))
-
     fun start(onText: (String) -> Unit, onProblem: (Problem) -> Unit) {
         this.onText = onText
         this.onProblem = onProblem
-        holding = true
         partial = ""
+        if (systemDialog) {
+            onProblem(if (hasSystemDialog()) Problem.UseSystemDialog else Problem.Failed)
+            return
+        }
+        holding = true
         listen()
     }
 
@@ -64,11 +73,21 @@ class VoiceInput internal constructor(private val context: Context) {
         listening = false
     }
 
+    /** The system's voice input window, for when no recognizer service can be used directly. */
+    fun systemDialogIntent(): Intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+        putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
+    }
+
+    private fun hasSystemDialog(): Boolean = systemDialogIntent().resolveActivity(context.packageManager) != null
+
     private fun listen() {
         recognizer?.destroy()
+        recognizer = null
         val created = create() ?: run {
             listening = false
-            onProblem(Problem.Unavailable)
+            holding = false
+            onProblem(fallbackToSystemDialog() ?: Problem.Unavailable)
             return
         }
         recognizer = created
@@ -85,16 +104,25 @@ class VoiceInput internal constructor(private val context: Context) {
         runCatching { created.startListening(intent) }.onFailure {
             Timber.w(it, "VoiceInput: start failed")
             listening = false
+            holding = false
             onProblem(Problem.Failed)
         }
     }
 
     private fun create(): SpeechRecognizer? {
-        if (onDevice && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) {
-            return SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+        if (onDevice && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            runCatching { return SpeechRecognizer.createOnDeviceSpeechRecognizer(context) }
+                .onFailure { Timber.w(it, "VoiceInput: on-device recognizer can't be created") }
         }
         onDevice = false
         return if (SpeechRecognizer.isRecognitionAvailable(context)) SpeechRecognizer.createSpeechRecognizer(context) else null
+    }
+
+    /** From now on the system's voice input window, if there is one. */
+    private fun fallbackToSystemDialog(): Problem? {
+        if (!hasSystemDialog()) return null
+        systemDialog = true
+        return Problem.UseSystemDialog
     }
 
     private val listener = object : RecognitionListener {
@@ -112,23 +140,33 @@ class VoiceInput internal constructor(private val context: Context) {
 
         override fun onError(error: Int) {
             listening = false
-            if (onDevice && error in LANGUAGE_ERRORS) {
-                // No on-device model for this language: the regular recognizer from now on.
+            val heard = partial
+            if (heard.isBlank() && onDevice && (error in LANGUAGE_ERRORS || error in SERVICE_ERRORS)) {
+                // No on-device model for this language, or its service can't be reached: the regular recognizer
+                // from now on.
+                Timber.w("VoiceInput: on-device recognizer error $error, using the regular one")
                 onDevice = false
                 if (holding) listen()
                 return
             }
             holding = false
-            val heard = partial
             partial = ""
-            when {
-                heard.isNotBlank() -> onText(heard)
-                error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> onProblem(Problem.NotHeard)
-                else -> {
-                    Timber.w("VoiceInput: recognizer error $error")
-                    onProblem(Problem.Failed)
-                }
+            if (heard.isNotBlank()) {
+                onText(heard)
+                return
             }
+            Timber.w("VoiceInput: recognizer error $error")
+            onProblem(
+                when (error) {
+                    SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> Problem.NotHeard
+                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> Problem.NoPermission
+                    SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> Problem.Network
+                    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> Problem.Busy
+                    in LANGUAGE_ERRORS -> Problem.Language
+                    in SERVICE_ERRORS -> fallbackToSystemDialog() ?: Problem.Failed
+                    else -> Problem.Failed
+                },
+            )
         }
 
         override fun onReadyForSpeech(params: Bundle?) = Unit
@@ -145,6 +183,30 @@ class VoiceInput internal constructor(private val context: Context) {
     private companion object {
         /** ERROR_LANGUAGE_NOT_SUPPORTED and ERROR_LANGUAGE_UNAVAILABLE (API 31). */
         val LANGUAGE_ERRORS = setOf(12, 13)
+
+        /**
+         * The service could not be bound or dropped the connection: ERROR_SERVER, ERROR_CLIENT,
+         * ERROR_TOO_MANY_REQUESTS (also what Android answers when the service's app is missing) and
+         * ERROR_SERVER_DISCONNECTED.
+         */
+        val SERVICE_ERRORS = setOf(4, 5, 10, 11)
+
+        /**
+         * Whether the on-device recognizer the firmware names is really installed;
+         * [SpeechRecognizer.isOnDeviceRecognitionAvailable] only checks that a name is configured.
+         */
+        fun onDeviceServiceInstalled(context: Context): Boolean {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false
+            return runCatching {
+                val system = Resources.getSystem()
+                val id = system.getIdentifier("config_defaultOnDeviceSpeechRecognitionService", "string", "android")
+                val component = ComponentName.unflattenFromString(if (id == 0) "" else system.getString(id))
+                    ?: return@runCatching false
+                context.packageManager
+                    .queryIntentServices(Intent(RecognitionService.SERVICE_INTERFACE).setPackage(component.packageName), 0)
+                    .any { it.serviceInfo?.name == component.className }
+            }.getOrDefault(false)
+        }
     }
 }
 

@@ -107,7 +107,7 @@ private fun OptimizeDialog(target: RiftOptimizeRequest.Target, onDismiss: () -> 
                 OptimizeResult.MonthlyLimitReached -> Body(stringResource(R.string.rift_optimize_limit))
                 OptimizeResult.NoContainer -> Body(stringResource(R.string.rift_optimize_no_container))
                 is OptimizeResult.ProviderError -> {
-                    val provider = remember { AiSettings.of(context).provider }
+                    val provider = remember { AiSettings.of(context).active?.type }
                     Body(provider?.let { errorText(context, it, current.error) } ?: current.error.kind.name)
                 }
                 is OptimizeResult.InvalidAnswer -> {

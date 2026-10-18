@@ -14,55 +14,134 @@ import javax.crypto.spec.GCMParameterSpec
 import timber.log.Timber
 
 /**
- * The assistant's settings and the user's API keys, in their own SharedPreferences file ("rift_assistant").
+ * One provider the user brought a key for. There can be any number, several of the same kind too (two Anthropic
+ * accounts, an Ollama on the PC); one is active. [id] names its stored values, [type] is the service it talks to.
+ */
+data class AiConnection(val id: String, val type: AiProvider, val name: String)
+
+/**
+ * The assistant's settings, its providers and the user's API keys, in their own SharedPreferences file ("rift_assistant").
  * The app does not allow backup, so none of it leaves the device. Keys are encrypted with an AES-GCM key that
  * lives in the Android Keystore and never leaves it; only their last four characters are ever shown.
  */
 class AiSettings private constructor(private val prefs: SharedPreferences) {
 
-    var provider: AiProvider?
-        get() = AiProvider.byId(prefs.getString(PROVIDER, null))
-        set(value) = prefs.edit().putString(PROVIDER, value?.id).apply()
-
-    fun hasKey(provider: AiProvider): Boolean = prefs.contains(keyName(provider))
-
-    /** The saved key, or "" when there is none or it can no longer be decrypted (for example after a Keystore reset). */
-    fun apiKey(provider: AiProvider): String {
-        val stored = prefs.getString(keyName(provider), null) ?: return ""
-        return try {
-            KeyCipher.decrypt(stored)
-        } catch (e: Exception) {
-            Timber.w("AiSettings: saved key for ${provider.id} can't be decrypted")
-            ""
-        }
+    init {
+        migrate()
     }
 
-    fun setApiKey(provider: AiProvider, key: String) {
-        val trimmed = key.trim()
-        if (trimmed.isEmpty()) {
-            prefs.edit().remove(keyName(provider)).apply()
-        } else {
-            prefs.edit().putString(keyName(provider), KeyCipher.encrypt(trimmed)).apply()
+    /** Every provider the user added, in the order they were added. */
+    val connections: List<AiConnection>
+        get() = prefs.getString(CONNECTIONS, null).orEmpty().split(',').filter { it.isNotEmpty() }.mapNotNull { id ->
+            val type = AiProvider.byId(prefs.getString("type_$id", null)) ?: return@mapNotNull null
+            AiConnection(id, type, prefs.getString("name_$id", null) ?: type.label)
         }
+
+    /** The provider requests go to: the one chosen, or the first when none is. */
+    val active: AiConnection?
+        get() {
+            val all = connections
+            val id = prefs.getString(ACTIVE, null)
+            return all.firstOrNull { it.id == id } ?: all.firstOrNull()
+        }
+
+    fun activate(connection: AiConnection) = prefs.edit().putString(ACTIVE, connection.id).apply()
+
+    /** Adds a provider of [type] named [name] and makes it the active one. */
+    fun add(type: AiProvider, name: String): AiConnection {
+        val ids = connections.map { it.id }
+        var id = type.id
+        var n = 2
+        while (id in ids || prefs.contains("type_$id") || prefs.contains(keyName(id))) id = "${type.id}_${n++}"
+        val connection = AiConnection(id, type, name)
+        prefs.edit()
+            .putString("type_$id", type.id)
+            .putString("name_$id", name)
+            .putString(CONNECTIONS, (ids + id).joinToString(","))
+            .putString(ACTIVE, id)
+            .apply()
+        return connection
     }
 
-    /** The address requests go to: the provider's own, or one the user set (their proxy, Ollama, LM Studio). */
-    fun baseUrl(provider: AiProvider): String = prefs.getString("base_url_${provider.id}", null) ?: provider.defaultBaseUrl
+    fun rename(connection: AiConnection, name: String) {
+        if (name.isNotBlank()) prefs.edit().putString("name_${connection.id}", name.trim()).apply()
+    }
 
-    fun setBaseUrl(provider: AiProvider, url: String) {
-        val trimmed = url.trim().trimEnd('/')
+    /** Forgets a provider with its key, address and model. The first one left becomes active if it was. */
+    fun remove(connection: AiConnection) {
+        val left = connections.filterNot { it.id == connection.id }
+        val id = connection.id
         val editor = prefs.edit()
-        if (trimmed.isEmpty() || trimmed == provider.defaultBaseUrl) {
-            editor.remove("base_url_${provider.id}")
-        } else {
-            editor.putString("base_url_${provider.id}", trimmed)
+            .remove("type_$id").remove("name_$id").remove(keyName(id)).remove("base_url_$id").remove("model_$id")
+            .putString(CONNECTIONS, left.joinToString(",") { it.id })
+        if (prefs.getString(ACTIVE, null) == id) {
+            left.firstOrNull()?.let { editor.putString(ACTIVE, it.id) } ?: editor.remove(ACTIVE)
         }
         editor.apply()
     }
 
-    fun model(provider: AiProvider): String? = prefs.getString("model_${provider.id}", null) ?: provider.recommendedModel
+    fun hasKey(connection: AiConnection): Boolean = prefs.contains(keyName(connection.id))
 
-    fun setModel(provider: AiProvider, model: String) = prefs.edit().putString("model_${provider.id}", model).apply()
+    /** The saved key, or "" when there is none or it can no longer be decrypted (for example after a Keystore reset). */
+    fun apiKey(connection: AiConnection): String {
+        val stored = prefs.getString(keyName(connection.id), null) ?: return ""
+        return try {
+            KeyCipher.decrypt(stored)
+        } catch (e: Exception) {
+            Timber.w("AiSettings: saved key for ${connection.id} can't be decrypted")
+            ""
+        }
+    }
+
+    fun setApiKey(connection: AiConnection, key: String) {
+        val trimmed = key.trim()
+        if (trimmed.isEmpty()) {
+            prefs.edit().remove(keyName(connection.id)).apply()
+        } else {
+            prefs.edit().putString(keyName(connection.id), KeyCipher.encrypt(trimmed)).apply()
+        }
+    }
+
+    /** The address requests go to: the provider's own, or one the user set (their proxy, Ollama, LM Studio). */
+    fun baseUrl(connection: AiConnection): String =
+        prefs.getString("base_url_${connection.id}", null) ?: connection.type.defaultBaseUrl
+
+    fun setBaseUrl(connection: AiConnection, url: String) {
+        val trimmed = url.trim().trimEnd('/')
+        val editor = prefs.edit()
+        if (trimmed.isEmpty() || trimmed == connection.type.defaultBaseUrl) {
+            editor.remove("base_url_${connection.id}")
+        } else {
+            editor.putString("base_url_${connection.id}", trimmed)
+        }
+        editor.apply()
+    }
+
+    fun model(connection: AiConnection): String? = prefs.getString("model_${connection.id}", null) ?: connection.type.recommendedModel
+
+    fun setModel(connection: AiConnection, model: String) = prefs.edit().putString("model_${connection.id}", model).apply()
+
+    /** A client for [connection] as it is saved now; throws [AiException] (NO_KEY, NOT_FOUND) when it can't be made. */
+    fun clientFor(connection: AiConnection): AiClient = AiClients.create(connection.type, baseUrl(connection), apiKey(connection))
+
+    /**
+     * Before several providers, there was one chosen provider and values per provider kind ("api_key_anthropic").
+     * Each kind that has anything saved becomes a provider of its own whose id is that kind, so its key and the
+     * rest stay where they are.
+     */
+    private fun migrate() {
+        if (prefs.contains(CONNECTIONS)) return
+        val chosen = prefs.getString(OLD_PROVIDER, null)
+        val ids = AiProvider.entries.filter { type ->
+            type.id == chosen || prefs.contains(keyName(type.id)) || prefs.contains("base_url_${type.id}") ||
+                prefs.contains("model_${type.id}")
+        }.map { it.id }
+        val editor = prefs.edit()
+        ids.forEach { editor.putString("type_$it", it) }
+        editor.putString(CONNECTIONS, ids.joinToString(","))
+        if (chosen != null && chosen in ids) editor.putString(ACTIVE, chosen)
+        editor.remove(OLD_PROVIDER).apply()
+    }
 
     /** Longest answer one request may return, in tokens. */
     var maxOutputTokens: Int
@@ -104,17 +183,11 @@ class AiSettings private constructor(private val prefs: SharedPreferences) {
     fun overMonthlyLimit(month: YearMonth = YearMonth.now()): Boolean =
         monthlyTokenLimit > 0 && usage(month).totalTokens >= monthlyTokenLimit
 
-    /** A client for the chosen provider, or null until a provider (and its key, where needed) is set. */
-    fun client(): AiClient? {
-        val chosen = provider ?: return null
-        return runCatching { AiClients.create(chosen, baseUrl(chosen), apiKey(chosen)) }.getOrNull()
-    }
-
-    /** A provider and a model are chosen, and the key is there where the provider needs one. */
+    /** A provider is active, its model is chosen, and the key is there where the provider needs one. */
     val isReady: Boolean
         get() {
-            val chosen = provider ?: return false
-            return model(chosen) != null && (!chosen.needsKey || hasKey(chosen))
+            val chosen = active ?: return false
+            return model(chosen) != null && (!chosen.type.needsKey || hasKey(chosen))
         }
 
     /** Calls [listener] after any assistant setting is saved; call the returned function to stop. */
@@ -125,12 +198,15 @@ class AiSettings private constructor(private val prefs: SharedPreferences) {
         return { prefs.unregisterOnSharedPreferenceChangeListener(callback) }
     }
 
-    private fun keyName(provider: AiProvider) = "api_key_${provider.id}"
+    private fun keyName(id: String) = "api_key_$id"
 
     companion object {
         const val DEFAULT_MAX_OUTPUT = 4000
         private const val FILE = "rift_assistant"
-        private const val PROVIDER = "provider"
+        /** Before several providers: the id of the one chosen kind. */
+        private const val OLD_PROVIDER = "provider"
+        private const val CONNECTIONS = "connections"
+        private const val ACTIVE = "active_connection"
         private const val MAX_OUTPUT = "max_output_tokens"
         private const val MONTHLY_LIMIT = "monthly_token_limit"
         private const val ALLOW_ENV = "allow_env_and_args"
