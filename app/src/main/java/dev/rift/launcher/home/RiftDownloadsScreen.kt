@@ -113,10 +113,12 @@ fun RiftDownloadsScreen(
     var gamepadBackDown by remember { mutableStateOf(false) }
 
     val firstFocus = remember { FocusRequester() }
+    // Rift: with nothing downloading the screen still has the gamepad's focus: on the Back button.
+    val backFocus = remember { FocusRequester() }
     LaunchedEffect(all.isNotEmpty()) {
-        if (all.isEmpty()) return@LaunchedEffect
+        val target = if (all.isEmpty()) backFocus else firstFocus
         repeat(6) {
-            if (runCatching { firstFocus.requestFocus() }.isSuccess) return@LaunchedEffect
+            if (runCatching { target.requestFocus() }.isSuccess) return@LaunchedEffect
             delay(60)
         }
     }
@@ -148,6 +150,7 @@ fun RiftDownloadsScreen(
                     icon = Icons.AutoMirrored.Rounded.ArrowBack,
                     description = stringResource(R.string.back),
                     onClick = onBack,
+                    modifier = Modifier.focusRequester(backFocus),
                 )
                 Column {
                     Text(

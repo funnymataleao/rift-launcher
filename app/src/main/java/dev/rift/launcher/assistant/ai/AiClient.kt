@@ -23,7 +23,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 data class AiModel(val id: String, val name: String = id)
 
-data class AiMessage(val role: Role, val text: String) {
+data class AiMessage(val role: Role, val text: String, val images: List<String> = emptyList()) {
     enum class Role(val wire: String) { USER("user"), ASSISTANT("assistant") }
 }
 
@@ -141,7 +141,32 @@ private class AnthropicClient(
             put(
                 "messages",
                 buildJsonArray {
-                    request.messages.forEach { m -> add(buildJsonObject { put("role", m.role.wire); put("content", m.text) }) }
+                    request.messages.forEach { m ->
+                        add(
+                            buildJsonObject {
+                                put("role", m.role.wire)
+                                if (m.images.isEmpty()) {
+                                    put("content", m.text)
+                                } else {
+                                    // Rift: pictures first, then the text, as Anthropic recommends.
+                                    put(
+                                        "content",
+                                        buildJsonArray {
+                                            m.images.forEach { data ->
+                                                add(
+                                                    buildJsonObject {
+                                                        put("type", "image")
+                                                        put("source", buildJsonObject { put("type", "base64"); put("media_type", "image/jpeg"); put("data", data) })
+                                                    },
+                                                )
+                                            }
+                                            add(buildJsonObject { put("type", "text"); put("text", m.text) })
+                                        },
+                                    )
+                                }
+                            },
+                        )
+                    }
                 },
             )
         }
@@ -195,7 +220,32 @@ private class OpenAiCompatibleClient(
                 "messages",
                 buildJsonArray {
                     if (request.system.isNotEmpty()) add(buildJsonObject { put("role", "system"); put("content", request.system) })
-                    request.messages.forEach { m -> add(buildJsonObject { put("role", m.role.wire); put("content", m.text) }) }
+                    request.messages.forEach { m ->
+                        add(
+                            buildJsonObject {
+                                put("role", m.role.wire)
+                                if (m.images.isEmpty()) {
+                                    put("content", m.text)
+                                } else {
+                                    // Rift: OpenAI-style parts (Ollama and the other compatible servers read them too).
+                                    put(
+                                        "content",
+                                        buildJsonArray {
+                                            add(buildJsonObject { put("type", "text"); put("text", m.text) })
+                                            m.images.forEach { data ->
+                                                add(
+                                                    buildJsonObject {
+                                                        put("type", "image_url")
+                                                        put("image_url", buildJsonObject { put("url", "data:image/jpeg;base64,$data") })
+                                                    },
+                                                )
+                                            }
+                                        },
+                                    )
+                                }
+                            },
+                        )
+                    }
                 },
             )
         }

@@ -482,23 +482,16 @@ internal fun RiftCheckMark(checked: Boolean, focused: Boolean) {
     }
 }
 
-/** Compact provider-selection checkbox; provider rows use it instead of a navigation chevron. */
+/** A radio mark (one of several is chosen); provider rows use it instead of a navigation chevron. */
 @Composable
 private fun ProviderSelectionMark(checked: Boolean) {
-    val shape = RoundedCornerShape(8.dp)
     Box(
         modifier = Modifier
-            .size(28.dp)
-            .clip(shape)
-            .then(
-                if (checked) Modifier.background(RiftColors.Success)
-                else Modifier.background(Color.Transparent).border(2.dp, RiftColors.Outline, shape),
-            ),
+            .size(26.dp)
+            .border(2.dp, if (checked) RiftColors.Success else RiftColors.Outline, androidx.compose.foundation.shape.CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        if (checked) {
-            Icon(Icons.Rounded.Check, contentDescription = "Active provider", tint = Color(0xFF07150B), modifier = Modifier.size(20.dp))
-        }
+        if (checked) Box(Modifier.size(12.dp).clip(androidx.compose.foundation.shape.CircleShape).background(RiftColors.Success))
     }
 }
 
@@ -524,6 +517,7 @@ internal fun LinkRow(
     chevron: Boolean = true,
     selected: Boolean = false,
     selectionMark: Boolean? = null,
+    valueColor: Color? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
@@ -561,7 +555,7 @@ internal fun LinkRow(
         if (!value.isNullOrBlank()) {
             Text(
                 text = value,
-                color = plateSubtext(focused),
+                color = valueColor?.takeIf { !focused } ?: plateSubtext(focused),
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,

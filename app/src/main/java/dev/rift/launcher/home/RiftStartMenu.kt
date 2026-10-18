@@ -229,6 +229,10 @@ fun RiftGameStartMenu(
         AppOptionMenuType.ChooseMeta,
     ).mapNotNull { type -> options.firstOrNull { it.optionType == type } }
     val items = buildList {
+        // Rift: the game's full settings first: Select, then A opens them.
+        if (onProperties != null) {
+            add(RiftStartMenuItem(stringResource(R.string.rift_menu_properties), icon = Icons.Default.Settings) { onProperties(); onDismiss() })
+        }
         if (onPlay != null) {
             add(RiftStartMenuItem(stringResource(R.string.rift_menu_play), icon = Icons.Default.PlayArrow) { onPlay(); onDismiss() })
         }
@@ -237,9 +241,6 @@ fun RiftGameStartMenu(
         }
         if (onHide != null) {
             add(RiftStartMenuItem(stringResource(R.string.rift_menu_hide), icon = Icons.Default.VisibilityOff) { onHide(); onDismiss() })
-        }
-        if (onProperties != null) {
-            add(RiftStartMenuItem(stringResource(R.string.rift_menu_properties), icon = Icons.Default.Settings) { onProperties(); onDismiss() })
         }
         add(RiftStartMenuItem(stringResource(R.string.rift_menu_cancel), icon = Icons.Default.Close) { onDismiss() })
     }

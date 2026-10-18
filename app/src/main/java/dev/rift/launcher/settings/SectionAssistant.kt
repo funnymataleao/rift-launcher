@@ -94,8 +94,10 @@ internal fun AssistantSettings() {
             LinkRow(
                 title = connectionName(connection),
                 subtitle = connectionSummary(connection, settings.model(connection)),
+                // Rift: a radio mark on every provider (one is chosen), "Active" in green on the chosen one; the card keeps its plate.
+                value = if (isActive) activeText else null,
+                valueColor = if (isActive) RiftColors.Success else null,
                 icon = Icons.Rounded.Cloud,
-                selected = isActive,
                 selectionMark = isActive,
                 onClick = {
                     settings.activate(connection)

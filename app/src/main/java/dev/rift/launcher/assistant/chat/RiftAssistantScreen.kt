@@ -41,6 +41,10 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AddPhotoAlternate
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.foundation.layout.width
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.AddComment
@@ -143,7 +147,15 @@ fun RiftAssistantScreen(onBack: () -> Unit) {
     var showSetup by rememberSaveable { mutableStateOf(!settings.isReady) }
 
     val chat by AssistantChat.state.collectAsState()
+    val history by AssistantChat.history.collectAsState()
+    LaunchedEffect(Unit) { AssistantChat.loadHistory(context) }
     var draft by rememberSaveable { mutableStateOf("") }
+    // Screenshots to send with the next message (JPEG, base64).
+    var attached by remember { mutableStateOf(emptyList<String>()) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) scope.launch { ChatImages.encode(context, uri)?.let { attached = attached + it } }
+    }
     var pickingGame by remember { mutableStateOf(false) }
     var switching by remember { mutableStateOf(false) }
     var pickingModel by remember { mutableStateOf(false) }
@@ -155,9 +167,10 @@ fun RiftAssistantScreen(onBack: () -> Unit) {
     }
 
     fun send(text: String) {
-        if (text.isBlank() || chat.sending) return
-        AssistantChat.send(context, text)
+        if ((text.isBlank() && attached.isEmpty()) || chat.sending) return
+        AssistantChat.send(context, text, attached)
         draft = ""
+        attached = emptyList()
     }
 
     // Where the recognizer service can't be used directly: the system's own voice input window.
@@ -226,8 +239,20 @@ fun RiftAssistantScreen(onBack: () -> Unit) {
                     }
                     true
                 },
-            contentAlignment = Alignment.TopCenter,
         ) {
+          Row(modifier = Modifier.fillMaxSize()) {
+            if (inChat) {
+                HistoryRail(
+                    history = history,
+                    currentId = chat.chatId,
+                    onNewChat = {
+                        voice.stop()
+                        AssistantChat.newChat(context)
+                    },
+                    onOpen = { AssistantChat.openSaved(context, it) },
+                )
+            }
+          Box(modifier = Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.TopCenter) {
             Column(modifier = Modifier.widthIn(max = ContentMaxWidth).fillMaxHeight()) {
                 Header(
                     subtitle = if (ready && active != null) "${connectionName(active)} · $model" else stringResource(R.string.rift_assistant_not_set),
@@ -243,7 +268,7 @@ fun RiftAssistantScreen(onBack: () -> Unit) {
                     onSetup = { showSetup = true },
                     onNewChat = {
                         voice.stop()
-                        AssistantChat.clear()
+                        AssistantChat.newChat(context)
                     },
                 )
                 if (inChat) {
@@ -255,12 +280,17 @@ fun RiftAssistantScreen(onBack: () -> Unit) {
                         onDraft = { draft = it },
                         onSend = ::send,
                         onMic = { if (voice.listening) voice.stop() else talk() },
+                        attached = attached,
+                        onAttach = { pickImage.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                        onRemoveAttached = { index -> attached = attached.filterIndexed { i, _ -> i != index } },
                         modifier = Modifier.weight(1f),
                     )
                 } else {
                     SetupPane(ready = ready, onDone = { showSetup = false }, modifier = Modifier.weight(1f))
                 }
             }
+          }
+          }
         }
 
         if (pickingGame) {
@@ -416,6 +446,9 @@ private fun ChatPane(
     onDraft: (String) -> Unit,
     onSend: (String) -> Unit,
     onMic: () -> Unit,
+    attached: List<String>,
+    onAttach: () -> Unit,
+    onRemoveAttached: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -484,6 +517,16 @@ private fun ChatPane(
                 modifier = Modifier.padding(horizontal = 40.dp, vertical = 2.dp),
             )
         }
+        if (attached.isNotEmpty()) {
+            Row(
+                modifier = Modifier.padding(horizontal = 32.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                attached.forEachIndexed { index, data ->
+                    AttachedThumb(data, onRemove = { onRemoveAttached(index) })
+                }
+            }
+        }
         Composer(
             text = draft,
             listening = listening,
@@ -492,6 +535,7 @@ private fun ChatPane(
             onText = onDraft,
             onSend = { onSend(draft) },
             onMic = onMic,
+            onAttach = onAttach,
         )
     }
 }
@@ -506,6 +550,7 @@ private fun Composer(
     onText: (String) -> Unit,
     onSend: () -> Unit,
     onMic: () -> Unit,
+    onAttach: () -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
@@ -568,14 +613,20 @@ private fun Composer(
                 },
         )
         RiftRoundButton(
+            icon = Icons.Rounded.AddPhotoAlternate,
+            description = stringResource(R.string.rift_chat_attach),
+            onClick = onAttach,
+        )
+        RiftRoundButton(
             icon = if (listening) Icons.Rounded.Stop else Icons.Rounded.Mic,
             description = stringResource(R.string.rift_chat_voice),
             onClick = onMic,
         )
+        // Rift: while the answer is being written the button stops it.
         RiftRoundButton(
-            icon = Icons.AutoMirrored.Rounded.Send,
-            description = stringResource(R.string.rift_chat_send),
-            onClick = { if (!sending) onSend() },
+            icon = if (sending) Icons.Rounded.Stop else Icons.AutoMirrored.Rounded.Send,
+            description = stringResource(if (sending) R.string.rift_chat_stop else R.string.rift_chat_send),
+            onClick = { if (sending) AssistantChat.stop() else onSend() },
         )
     }
 }
@@ -614,11 +665,18 @@ private fun ChatBubble(entry: ChatEntry) {
                 .focusable(interactionSource = interaction)
                 .padding(horizontal = 18.dp, vertical = 14.dp),
         ) {
+          Column {
+            if (entry.images.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+                    entry.images.forEach { AttachedThumb(it, onRemove = null) }
+                }
+            }
             when {
                 entry.notice -> Text(text = entry.text, color = if (focused) plateText(true) else RiftColors.Warning, fontSize = 16.sp, lineHeight = 22.sp)
                 mine -> Text(text = entry.text, color = plateText(focused), fontSize = 17.sp, lineHeight = 23.sp)
                 else -> MarkdownText(document = rememberMarkdown(entry.text), color = plateText(focused))
             }
+          }
         }
         if (entry.truncated) Small(stringResource(R.string.rift_chat_truncated))
         if (entry.problems.isNotEmpty()) {
@@ -638,3 +696,98 @@ private fun Small(text: String) {
 
 /** The message field's fill while it has focus: a lighter grey, never the accent. */
 private val FieldFocusedFill = Color(0xFF333333)
+
+/** A screenshot attached to a message: a small picture, with a cross while it is still in the composer. */
+@Composable
+private fun AttachedThumb(data: String, onRemove: (() -> Unit)?) {
+    val bitmap = remember(data) { ChatImages.decode(data) }
+    Box(modifier = Modifier.size(width = 112.dp, height = 72.dp).clip(RiftShapes.card).background(RiftColors.SurfaceContainerHigh)) {
+        bitmap?.let {
+            androidx.compose.foundation.Image(
+                bitmap = it,
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        if (onRemove != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .size(24.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .clickable(onClick = onRemove),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Rounded.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+            }
+        }
+    }
+}
+
+/** The chats on the left: "New chat" on top, then the earlier ones, newest first. */
+@Composable
+private fun HistoryRail(
+    history: List<SavedChat>,
+    currentId: Long,
+    onNewChat: () -> Unit,
+    onOpen: (SavedChat) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .width(280.dp)
+            .fillMaxHeight()
+            .background(RiftColors.SurfaceContainer)
+            .focusGroup()
+            .padding(horizontal = 14.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        dev.rift.launcher.settings.RiftPillButton(
+            text = stringResource(R.string.rift_chat_new),
+            onClick = onNewChat,
+            icon = Icons.Rounded.AddComment,
+            primary = true,
+        )
+        Text(
+            text = stringResource(R.string.rift_chat_history),
+            color = RiftColors.OnSurfaceVariant,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(start = 8.dp, top = 12.dp, bottom = 4.dp),
+        )
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            items(history, key = { it.id }) { saved ->
+                val interaction = remember { MutableInteractionSource() }
+                val focused by interaction.collectIsFocusedAsState()
+                val current = saved.id == currentId
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .plateFill(focused, RiftShapes.card, if (current) RiftColors.SurfaceContainerHigh else Color.Transparent)
+                        .clickable(interactionSource = interaction, indication = null) { onOpen(saved) }
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                ) {
+                    Text(
+                        text = saved.title,
+                        color = plateText(focused),
+                        fontSize = 15.sp,
+                        fontWeight = if (current) FontWeight.Bold else FontWeight.Normal,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                    saved.game?.let {
+                        Text(
+                            text = it.name,
+                            color = if (focused) plateText(true) else RiftColors.OnSurfaceVariant,
+                            fontSize = 12.5.sp,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

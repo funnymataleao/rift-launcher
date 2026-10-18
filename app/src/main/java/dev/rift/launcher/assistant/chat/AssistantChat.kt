@@ -48,13 +48,20 @@ data class ChatEntry(
     val truncated: Boolean = false,
     val notice: Boolean = false,
     val model: String? = null,
+    /** Screenshots the player attached (JPEG, base64). */
+    val images: List<String> = emptyList(),
 )
+
+/** A conversation kept in the history (the text only; proposals are applied from the page while it is open). */
+data class SavedChat(val id: Long, val title: String, val game: ChatGame?, val entries: List<ChatEntry>)
 
 data class ChatState(
     val entries: List<ChatEntry> = emptyList(),
     val game: ChatGame? = null,
     val games: List<ChatGame> = emptyList(),
     val phase: Phase? = null,
+    /** The conversation's id in the history. */
+    val chatId: Long = System.currentTimeMillis(),
 ) {
     enum class Phase { Collecting, Thinking }
 
@@ -77,6 +84,11 @@ object AssistantChat {
     private var gameContext: Pair<String, GameContext?>? = null
     private var nextId = 1L
 
+    private val _history = MutableStateFlow<List<SavedChat>>(emptyList())
+    /** Earlier conversations, newest first. */
+    val history: StateFlow<List<SavedChat>> = _history
+    private var historyLoaded = false
+
     /**
      * Called when the page opens: [games] are the installed PC games to choose from, [focused] the one under the
      * cursor on the home screen. A conversation already going keeps its game.
@@ -97,14 +109,72 @@ object AssistantChat {
         job?.cancel()
         job = null
         gameContext = null
-        _state.update { it.copy(entries = emptyList(), phase = null) }
+        _state.update { it.copy(entries = emptyList(), phase = null, chatId = System.currentTimeMillis()) }
     }
 
-    fun send(context: Context, text: String) {
+    /** Stops the answer being written; what was asked stays, the answer does not come. */
+    fun stop() {
+        job?.cancel()
+        job = null
+        _state.update { it.copy(phase = null) }
+    }
+
+    /** Reads the history once per process. */
+    fun loadHistory(context: Context) {
+        if (historyLoaded) return
+        historyLoaded = true
+        _history.value = ChatHistoryStore.load(context.applicationContext)
+    }
+
+    /** A new, empty conversation; the one going on stays in the history. */
+    fun newChat(context: Context) {
+        save(context)
+        clear()
+    }
+
+    /** Opens a conversation from the history. */
+    fun openSaved(context: Context, chat: SavedChat) {
+        save(context)
+        job?.cancel()
+        job = null
+        gameContext = null
+        nextId = (chat.entries.maxOfOrNull { it.id } ?: 0L) + 1
+        _state.update { it.copy(entries = chat.entries, game = chat.game, phase = null, chatId = chat.id) }
+    }
+
+    fun deleteSaved(context: Context, chat: SavedChat) {
+        _history.update { list -> list.filterNot { it.id == chat.id } }
+        ChatHistoryStore.save(context.applicationContext, _history.value)
+        if (_state.value.chatId == chat.id) clear()
+    }
+
+    /**
+     * From a game's page: a new conversation about [game] (the one going on goes to the history), and [prompt] sent
+     * at once when there is one (the PC games' "optimize this game").
+     */
+    fun startFor(context: Context, game: ChatGame, prompt: String?) {
+        newChat(context)
+        _state.update { current ->
+            current.copy(games = (listOf(game) + current.games).distinctBy { it.appId }, game = game)
+        }
+        if (prompt != null) send(context, prompt)
+    }
+
+    private fun save(context: Context) {
+        val current = _state.value
+        val kept = current.entries.filterNot { it.notice }
+        if (kept.isEmpty()) return
+        val title = kept.firstOrNull { it.fromUser }?.text?.lineSequence()?.firstOrNull()?.take(60).orEmpty()
+        val chat = SavedChat(current.chatId, title.ifBlank { "…" }, current.game, kept)
+        _history.update { list -> (listOf(chat) + list.filterNot { it.id == chat.id }).take(ChatHistoryStore.MAX) }
+        ChatHistoryStore.save(context.applicationContext, _history.value)
+    }
+
+    fun send(context: Context, text: String, images: List<String> = emptyList()) {
         val message = text.trim()
-        if (message.isEmpty() || _state.value.sending) return
+        if ((message.isEmpty() && images.isEmpty()) || _state.value.sending) return
         val app = context.applicationContext
-        append(ChatEntry(nextId++, fromUser = true, text = message))
+        append(ChatEntry(nextId++, fromUser = true, text = message, images = images))
         _state.update { it.copy(phase = ChatState.Phase.Collecting) }
         job = scope.launch {
             val answer = try {
@@ -117,6 +187,7 @@ object AssistantChat {
             }
             append(answer)
             _state.update { it.copy(phase = null) }
+            save(app)
         }
     }
 
@@ -170,7 +241,7 @@ object AssistantChat {
         }
         val allowEnv = settings.allowEnvAndArgs
         val turns = _state.value.entries.filterNot { it.notice }.map {
-            AiMessage(if (it.fromUser) AiMessage.Role.USER else AiMessage.Role.ASSISTANT, it.wire)
+            AiMessage(if (it.fromUser) AiMessage.Role.USER else AiMessage.Role.ASSISTANT, it.wire, it.images)
         }
         val messages = ChatPrompt.window(turns, ChatPrompt.context(device, game?.name, gameData, allowEnv))
         _state.update { it.copy(phase = ChatState.Phase.Thinking) }

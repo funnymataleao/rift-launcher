@@ -112,9 +112,7 @@ internal fun RiftGamePage(
     val favorites by app.gamenative.data.FavoritesManager.favorites.collectAsStateWithLifecycle()
     val isFavorite = game.appId in favorites
     val options = remember(native, platformId, onChangeArt, onRefreshMeta, onPickMeta, isFavorite, game.appId, game.name) {
-        if (!native) {
-            emptyList()
-        } else {
+        run {
             buildList {
                 add(AppMenuOption(AppOptionMenuType.ChangeArt, onChangeArt))
                 add(
@@ -130,7 +128,7 @@ internal fun RiftGamePage(
         }
     }
     val action = remember(onPlay, native) {
-        RiftStreamAction(onStream = onPlay, labelRes = R.string.rift_play, icon = Icons.Default.PlayArrow, showLocalDetails = false, showOptions = native)
+        RiftStreamAction(onStream = onPlay, labelRes = R.string.rift_play, icon = Icons.Default.PlayArrow, showLocalDetails = false, showOptions = true)
     }
     Surface(color = MaterialTheme.colorScheme.surface) {
         CompositionLocalProvider(LocalRiftStreamAction provides action) {

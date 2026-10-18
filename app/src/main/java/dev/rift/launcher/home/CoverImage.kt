@@ -24,6 +24,13 @@ private const val RETRY_DELAY_MS = 2_000L
 private const val MAX_ROUNDS = 3
 
 /**
+ * The address that loaded for each cover, for as long as the app runs. A screen built again (the home after
+ * Settings or the assistant) starts on it at once, instead of trying the dead first addresses again: that left
+ * a card empty for a moment, then the cover popped in.
+ */
+private val loadedCoverUrl = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+/**
  * A cover that does not stay empty: the first non-empty URL of [urls] is loaded, a failed load tries
  * the next one, and once all have failed the whole list is tried again a little later (the network is
  * often not up yet right after start). A change of URLs (the library learns a game's art after start)
@@ -41,7 +48,8 @@ fun CoverImage(
     var late by remember(base) { mutableStateOf(emptyList<String>()) }
     val candidates = remember(base, late) { (base + late).distinct() }
     if (candidates.isEmpty() && lateUrls == null) return
-    var attempt by remember(base) { mutableIntStateOf(0) }
+    val coverKey = remember(base) { base.joinToString("|") }
+    var attempt by remember(base) { mutableIntStateOf(base.indexOf(loadedCoverUrl[coverKey]).coerceAtLeast(0)) }
     val firstRoundFailed = attempt >= base.size
     if (lateUrls != null && firstRoundFailed) {
         LaunchedEffect(base) {
@@ -58,6 +66,9 @@ fun CoverImage(
             imageModel = { url },
             imageOptions = ImageOptions(contentScale = ContentScale.Crop, contentDescription = contentDescription),
             loading = {},
+            onImageStateChanged = { state ->
+                if (state is com.skydoves.landscapist.coil.CoilImageState.Success) loadedCoverUrl[coverKey] = url
+            },
             failure = {
                 LaunchedEffect(Unit) {
                     // The next URL right away; a new round only after a pause.

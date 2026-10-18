@@ -102,9 +102,10 @@ fun GameOptionsPanel(
     onPlay: (() -> Unit)? = null,
     onProperties: (() -> Unit)? = null,
     onHide: (() -> Unit)? = null,
+    compact: Boolean = false,
 ) {
     // Rift: Start on the home (and the settings icon of an Android or emulator game's page) shows a small menu in the middle, not this side panel.
-    if (dev.rift.launcher.home.LocalRiftOptionsOnly.current != null || dev.rift.launcher.home.LocalRiftStreamAction.current?.showOptions == true) {
+    if (compact || dev.rift.launcher.home.LocalRiftOptionsOnly.current != null || dev.rift.launcher.home.LocalRiftStreamAction.current?.showOptions == true) {
         dev.rift.launcher.home.RiftGameStartMenu(isOpen, onDismiss, options, onPlay, onProperties, onHide)
         return
     }

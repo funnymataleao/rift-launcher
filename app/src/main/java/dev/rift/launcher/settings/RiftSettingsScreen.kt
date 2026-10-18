@@ -120,18 +120,24 @@ fun RiftSettingsScreen(
     val titles = RiftSettingsSection.entries.map { stringResource(it.titleRes) }
     val sections = remember(titles, locale) {
         val collator = Collator.getInstance(locale)
+        // Rift: the AI assistant is Rift's main feature: on top of the list, above the groups.
         RiftSettingsSection.entries.sortedWith(
-            compareBy<RiftSettingsSection> { it.group.ordinal }
+            compareBy<RiftSettingsSection> { it != RiftSettingsSection.Assistant }
+                .thenBy { it.group.ordinal }
                 .then { a, b -> collator.compare(titles[a.ordinal], titles[b.ordinal]) },
         )
     }
-    var selectedOrdinal by rememberSaveable { mutableIntStateOf((RiftSettingsSection.takeRequested() ?: RiftSettingsSection.AndroidGames).ordinal) }
+    // Rift: opened from the menu, Settings starts on the first section of the list (in the language in use).
+    var selectedOrdinal by rememberSaveable { mutableIntStateOf((RiftSettingsSection.takeRequested() ?: sections.first()).ordinal) }
     val selected = RiftSettingsSection.entries[selectedOrdinal]
     val selectedIndex = sections.indexOf(selected)
 
     val railItems = remember { List(sections.size) { FocusRequester() } }
     val contentEntry = remember { FocusRequester() }
     var contentHasFocus by remember { mutableStateOf(false) }
+    // Whether the focus is in the list or the page (not on the Back button), and whether a key was pressed yet.
+    var listOrPageFocused by remember { mutableStateOf(false) }
+    var keyPressed by remember { mutableStateOf(false) }
 
     // Going to another app (a browser for a key, say) leaves a mark with this section: if the system drops
     // Rift meanwhile, it comes back here. Coming back to this screen alive, or leaving it by Back, clears it.
@@ -171,6 +177,7 @@ fun RiftSettingsScreen(
             .riftKeySounds(panelKeys = false, touch = true)
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                keyPressed = true
                 val step = when (event.key.nativeKeyCode) {
                     KeyEvent.KEYCODE_BUTTON_L1 -> -1
                     KeyEvent.KEYCODE_BUTTON_R1 -> 1
@@ -182,7 +189,7 @@ fun RiftSettingsScreen(
                 true
             },
     ) {
-        Row(modifier = Modifier.fillMaxSize()) {
+        Row(modifier = Modifier.fillMaxSize().onFocusChanged { listOrPageFocused = it.hasFocus }) {
             SectionRail(
                 sections = sections,
                 selectedIndex = selectedIndex,
@@ -212,7 +219,15 @@ fun RiftSettingsScreen(
         // After a restart the focus goes into the page, where the person was.
         val target = if (SettingsReturn.focusContentOnOpen) contentEntry else railItems[selectedIndex]
         SettingsReturn.focusContentOnOpen = false
-        runCatching { target.requestFocus() }.onFailure { runCatching { railItems[selectedIndex].requestFocus() } }
+        // Rift: kept there for the first moment, until a key is pressed: while the menu that opened Settings closes,
+        // the home under it asks for its cover back, and the window then hands the focus to the first control here
+        // (the Back button by the title).
+        repeat(30) {
+            androidx.compose.runtime.withFrameNanos { }
+            if (keyPressed) return@LaunchedEffect
+            if (!listOrPageFocused) runCatching { target.requestFocus() }.onFailure { runCatching { railItems[selectedIndex].requestFocus() } }
+            kotlinx.coroutines.delay(50)
+        }
     }
 }
 
@@ -254,7 +269,8 @@ private fun SectionRail(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         sections.forEachIndexed { index, section ->
-            if (index == 0 || sections[index - 1].group != section.group) {
+            val pinned = section == RiftSettingsSection.Assistant
+            if (!pinned && (index == 0 || sections[index - 1].group != section.group || sections[index - 1] == RiftSettingsSection.Assistant)) {
                 // The same size and weight as the group names on the pages (Storage, Network, Cache).
                 Text(
                     text = stringResource(section.group.titleRes),

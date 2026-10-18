@@ -87,13 +87,13 @@ object ChatPrompt {
         recent.forEach { turn ->
             val last = joined.lastOrNull()
             if (last != null && last.role == turn.role) {
-                joined[joined.lastIndex] = AiMessage(turn.role, last.text + "\n\n" + turn.text)
+                joined[joined.lastIndex] = AiMessage(turn.role, last.text + "\n\n" + turn.text, last.images + turn.images)
             } else {
                 joined += turn
             }
         }
         if (joined.isEmpty()) return joined
-        joined[0] = AiMessage(AiMessage.Role.USER, context + "\n\n" + joined[0].text)
+        joined[0] = AiMessage(AiMessage.Role.USER, context + "\n\n" + joined[0].text, joined[0].images)
         return joined
     }
 

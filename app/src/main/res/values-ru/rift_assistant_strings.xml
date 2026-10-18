@@ -163,4 +163,8 @@
     <string name="rift_chat_voice_network">Распознаванию речи нужен интернет. Проверьте подключение и попробуйте ещё раз.</string>
     <string name="rift_chat_voice_busy">Распознавание речи занято. Попробуйте через пару секунд.</string>
     <string name="rift_chat_voice_language">Распознавание речи на этом устройстве не знает язык «%1$s». Добавьте его в «Распознавании и синтезе речи от Google».</string>
+    <string name="rift_chat_stop">Стоп</string>
+    <string name="rift_chat_attach">Добавить скриншот</string>
+    <string name="rift_chat_history">Чаты</string>
+    <string name="rift_assistant_optimize_prompt">Оптимизируй %1$s под это устройство: подбери лучшие настройки и объясни, что меняешь.</string>
 </resources>

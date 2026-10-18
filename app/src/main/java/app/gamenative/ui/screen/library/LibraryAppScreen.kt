@@ -106,6 +106,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -155,6 +156,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -1078,12 +1080,16 @@ private fun Modifier.keepWholeOnFocus(): Modifier {
         .onFocusChanged { if (it.hasFocus) scope.launch { requester.bringIntoView() } }
 }
 
-/** Rift: one section of the page: a small caps title, then its content. Records where it starts in the scroll. */
+/**
+ * Rift: one section of the page: a small caps title, then its content. Records where it starts in the scroll;
+ * [focusRequester] puts the focus into the section's content (LB/RB and the tabs move it there with the scroll).
+ */
 @Composable
 private fun GamePageSectionBlock(
     section: GamePageSection,
     offsets: MutableMap<GamePageSection, Int>,
     scrollState: ScrollState,
+    focusRequester: FocusRequester,
     content: @Composable () -> Unit,
 ) {
     Column(
@@ -1098,7 +1104,7 @@ private fun GamePageSectionBlock(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 14.dp),
         )
-        content()
+        Box(Modifier.fillMaxWidth().focusRequester(focusRequester).focusGroup()) { content() }
     }
 }
 
@@ -1419,6 +1425,7 @@ private fun GamePageHltbCard(stats: HltbService.Stats, modifier: Modifier = Modi
 /** Rift: trailers and screenshots as one row of 16:9 tiles; A opens the fullscreen viewer there. */
 private val MEDIA_TILE_HEIGHT = 236.dp
 
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 private fun GamePageMediaRow(
     media: List<StoreMediaItem>,
@@ -1465,7 +1472,20 @@ private fun GamePageMediaRow(
                 ),
             )
             layout(placeable.width - extra, placeable.height) { placeable.place(-sidePadding.roundToPx(), 0) }
-        },
+        }
+            // Rift: the d-pad up or down into the row lands on its first tile on screen, not on whichever
+            // tile happens to be nearest the focus above or below.
+            .focusProperties {
+                enter = { direction ->
+                    if (direction == FocusDirection.Up || direction == FocusDirection.Down) {
+                        val position = rowState.firstVisibleItemIndex + if (rowState.firstVisibleItemScrollOffset > 0) 1 else 0
+                        tiles.getOrNull(position)?.let { tileFocus[it.index] } ?: FocusRequester.Default
+                    } else {
+                        FocusRequester.Default
+                    }
+                }
+            }
+            .focusGroup(),
         contentPadding = PaddingValues(horizontal = sidePadding, vertical = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -1487,21 +1507,23 @@ private fun GamePageMediaRow(
                     .padding(vertical = 8.dp)
                     .height(MEDIA_TILE_HEIGHT)
                     .width(MEDIA_TILE_HEIGHT * 16f / 10f)
+                    .focusRequester(tileFocus.getValue(index))
+                    .selectable(
+                        selected = isFocused,
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = { onOpen(index) },
+                    )
+                    // Rift: the lift is drawn inside the focus target, so its bounds stay where the tile is laid out.
+                    // Lifted bounds put the next tile "below" the focused one and the d-pad down went sideways in a loop.
                     .graphicsLayer {
                         val scale = 1f + 0.05f * lift
                         scaleX = scale
                         scaleY = scale
                         translationY = -liftPx * lift
                     }
-                    .focusRequester(tileFocus.getValue(index))
                     .clip(RoundedCornerShape(22.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainer)
-                    .selectable(
-                        selected = isFocused,
-                        interactionSource = interactionSource,
-                        indication = null,
-                        onClick = { onOpen(index) },
-                    ),
+                    .background(MaterialTheme.colorScheme.surfaceContainer),
                 contentAlignment = Alignment.Center,
             ) {
                 // A trailer shows its own preview; without one, a frame from the video, then a screenshot.
@@ -2015,19 +2037,27 @@ internal fun AppScreenContent(
             }
         }
     }
+    // Rift: going to a section (LB/RB, a tab) moves the focus into it too, so the d-pad goes on from there
+    // instead of from wherever the focus was left (which jumped the page back up on the next press).
+    val sectionFocus = remember { GamePageSection.entries.associateWith { FocusRequester() } }
     val goToSection: (GamePageSection) -> Unit = { section ->
         heroMediaScope.launch {
+            runCatching { sectionFocus.getValue(section).requestFocus() }
+            // One frame later, so this scroll replaces the bring-into-view the focus change starts.
+            androidx.compose.runtime.withFrameNanos { }
             scrollState.animateScrollTo(((sectionOffsets[section] ?: 0) - stickyHeaderPx).coerceAtLeast(0))
         }
     }
 
+    val backDispatcher = androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     // Handle gamepad button presses
     val handleKeyEvent: (KeyEvent) -> Boolean = { event ->
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
                 // SELECT button - open options menu
                 KeyEvent.KEYCODE_BUTTON_SELECT -> {
-                    if (riftStream == null) propertiesOpen = true else if (riftStream.showOptions) optionsMenuVisible = true
+                    // Rift: Select opens the game's menu (the gear's); its first line opens the full settings.
+                    if (riftStream == null || riftStream.showOptions) optionsMenuVisible = true
                     true
                 }
 
@@ -2047,6 +2077,8 @@ internal fun AppScreenContent(
                         val index = if (atTop) -1 else pageSections.indexOf(currentSection)
                         val next = index + if (event.keyCode == KeyEvent.KEYCODE_BUTTON_L1) -1 else 1
                         if (next < 0) {
+                            // Back up to the first screen: the focus goes to its Play button as well.
+                            runCatching { playButtonFocusRequester.requestFocus() }
                             heroMediaScope.launch { scrollState.animateScrollTo(0) }
                         } else {
                             pageSections.getOrNull(next)?.let(goToSection)
@@ -2059,7 +2091,10 @@ internal fun AppScreenContent(
 
                 // B button - back
                 KeyEvent.KEYCODE_BUTTON_B -> {
-                    if (optionsMenuVisible) {
+                    if (propertiesOpen) {
+                        // Rift: B in the game's properties is theirs (content → sidebar → close), never the page's.
+                        backDispatcher?.onBackPressed()
+                    } else if (optionsMenuVisible) {
                         optionsMenuVisible = false
                     } else {
                         onBack()
@@ -2438,7 +2473,7 @@ internal fun AppScreenContent(
                             ActionIconButton(
                                 icon = Icons.Default.Settings,
                                 contentDescription = stringResource(R.string.options),
-                                onClick = { if (riftStream == null) propertiesOpen = true else optionsMenuVisible = true },
+                                onClick = { optionsMenuVisible = true },
                             )
                         }
 
@@ -2453,6 +2488,19 @@ internal fun AppScreenContent(
                                 app.gamenative.ui.screen.library.components.toggleFavorite(context, displayInfo.appId, displayInfo.name)
                             },
                         )
+
+                        // Rift: the AI assistant, right on the page: a chat about this game opens; for GameNative's own
+                        // PC games it starts optimizing it at once.
+                        if (!app.gamenative.PrefManager.hideAiFeatures) {
+                            ActionIconButton(
+                                icon = Icons.Default.AutoAwesome,
+                                contentDescription = stringResource(R.string.rift_settings_assistant),
+                                onClick = {
+                                    dev.rift.launcher.assistant.optimize.RiftOptimizeRequest.current.value =
+                                        dev.rift.launcher.assistant.optimize.RiftOptimizeRequest.Target(displayInfo.appId, displayInfo.name, optimize = riftStream == null)
+                                },
+                            )
+                        }
 
                         // Rift: mute the background trailer (and bring the launcher music back); the choice is kept.
                         if (heroBackground?.isVideo == true && trailerAllowed) {
@@ -2703,11 +2751,12 @@ internal fun AppScreenContent(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
+                // Rift: touch only, like the sticky header's: the d-pad never lands on them, LB/RB switch sections.
                 GamePageSectionTabs(
                     sections = pageSections,
                     current = currentSection,
                     onSelect = goToSection,
-                    focusable = true,
+                    focusable = false,
                 )
                 Spacer(modifier = Modifier.height(28.dp))
 
@@ -2732,12 +2781,12 @@ internal fun AppScreenContent(
                     stringResource(R.string.last_played) to displayInfo.lastPlayedText,
                 ).mapNotNull { (label, value) -> value?.takeIf { it.isNotBlank() && it != unknown }?.let { label to it } }
                 if (GamePageSection.Overview in pageSections) {
-                    GamePageSectionBlock(GamePageSection.Overview, sectionOffsets, scrollState) {
+                    GamePageSectionBlock(GamePageSection.Overview, sectionOffsets, scrollState, sectionFocus.getValue(GamePageSection.Overview)) {
                         GamePageOverview(displayInfo, wide = configuration.screenWidthDp >= 840, facts = gameFacts)
                     }
                 }
                 if (GamePageSection.Media in pageSections) {
-                    GamePageSectionBlock(GamePageSection.Media, sectionOffsets, scrollState) {
+                    GamePageSectionBlock(GamePageSection.Media, sectionOffsets, scrollState, sectionFocus.getValue(GamePageSection.Media)) {
                         Box(Modifier.keepWholeOnFocus()) {
                             GamePageMediaRow(
                                 media = heroMedia,
@@ -2755,14 +2804,14 @@ internal fun AppScreenContent(
                     }
                 }
                 if (!achievements.isNullOrEmpty()) {
-                    GamePageSectionBlock(GamePageSection.Achievements, sectionOffsets, scrollState) {
+                    GamePageSectionBlock(GamePageSection.Achievements, sectionOffsets, scrollState, sectionFocus.getValue(GamePageSection.Achievements)) {
                         Box(Modifier.keepWholeOnFocus()) {
                             GamePageAchievements(achievements = achievements, wide = configuration.screenWidthDp >= 840)
                         }
                     }
                 }
                 if (GamePageSection.Compatibility in pageSections) {
-                    GamePageSectionBlock(GamePageSection.Compatibility, sectionOffsets, scrollState) {
+                    GamePageSectionBlock(GamePageSection.Compatibility, sectionOffsets, scrollState, sectionFocus.getValue(GamePageSection.Compatibility)) {
                 // Rift: Wine compatibility is about GameNative's own (PC Games) games; streaming, cloud, Android and emulator pages have none.
                 if (riftStream == null) {
                 Box(Modifier.keepWholeOnFocus()) {
@@ -2834,7 +2883,9 @@ internal fun AppScreenContent(
             options = optionsMenu.toList(),
             modifier = Modifier.align(Alignment.CenterEnd),
             onPlay = if (isInstalled && riftStream == null) onStartAction else null,
-            onProperties = { propertiesOpen = true },
+            // Only GameNative's own games have a full settings page; the others' menu is all they have.
+            onProperties = if (riftStream == null) ({ propertiesOpen = true }) else null,
+            compact = true,
             onHide = if (riftOptionsOnly != null || riftStream?.showOptions == true) {
                 {
                     val hide = riftOptionsOnly?.onHide

@@ -61,7 +61,8 @@ import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.sin
 
-private val SwatchSize = 56.dp
+// Rift: small enough that every colour (and every gradient) fits one row on the tablet.
+private val SwatchSize = 48.dp
 private const val MIN_BRIGHTNESS = 0.4f
 
 /**
@@ -118,7 +119,7 @@ private fun SwatchPlate(title: String, swatches: @Composable () -> Unit) {
     ) {
         Text(text = title, color = RiftColors.OnSurface, fontSize = 18.5.sp, fontWeight = FontWeight.SemiBold)
         FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) { swatches() }
     }
@@ -143,7 +144,7 @@ private fun Swatch(choice: RiftAccent.Choice, selected: Boolean, onClick: () -> 
         contentAlignment = Alignment.Center,
     ) {
         if (selected) {
-            Icon(Icons.Rounded.Check, contentDescription = null, tint = choice.onAccent, modifier = Modifier.size(26.dp))
+            Icon(Icons.Rounded.Check, contentDescription = null, tint = choice.onAccent, modifier = Modifier.size(22.dp))
         }
     }
 }

@@ -164,4 +164,8 @@
     <string name="rift_chat_voice_network">Speech recognition needs the internet. Check the connection and try again.</string>
     <string name="rift_chat_voice_busy">Speech recognition is busy. Try again in a moment.</string>
     <string name="rift_chat_voice_language">Speech recognition doesn\'t know %1$s on this device. Add the language in Speech Recognition &amp; Synthesis by Google.</string>
+    <string name="rift_chat_stop">Stop</string>
+    <string name="rift_chat_attach">Add screenshot</string>
+    <string name="rift_chat_history">Chats</string>
+    <string name="rift_assistant_optimize_prompt">Optimize %1$s for this device: pick the best settings and explain what you change.</string>
 </resources>

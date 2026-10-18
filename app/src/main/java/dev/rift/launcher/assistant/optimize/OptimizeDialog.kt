@@ -45,7 +45,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
  */
 object RiftOptimizeRequest {
 
-    data class Target(val appId: String, val gameName: String)
+    /** [optimize]: the chat starts by asking for the game's best settings (PC games with a container). */
+    data class Target(val appId: String, val gameName: String, val optimize: Boolean = true)
 
     val current = MutableStateFlow<Target?>(null)
 
@@ -56,10 +57,24 @@ object RiftOptimizeRequest {
     }
 }
 
+/**
+ * Rift: "Optimize" (the menu's line and the AI button on a game's page) opens the assistant's page, a chat about the
+ * game, instead of a dialog: the proposal comes in the chat with its card, and the player can talk it through.
+ */
 @Composable
-fun RiftOptimizeHost() {
+fun RiftOptimizeHost(onOpenAssistant: () -> Unit) {
+    val context = LocalContext.current
     val target by RiftOptimizeRequest.current.collectAsState()
-    target?.let { OptimizeDialog(it, onDismiss = { RiftOptimizeRequest.current.value = null }) }
+    LaunchedEffect(target) {
+        val game = target ?: return@LaunchedEffect
+        RiftOptimizeRequest.current.value = null
+        dev.rift.launcher.assistant.chat.AssistantChat.startFor(
+            context,
+            dev.rift.launcher.assistant.chat.ChatGame(game.appId, game.gameName),
+            if (game.optimize) context.getString(R.string.rift_assistant_optimize_prompt, game.gameName) else null,
+        )
+        onOpenAssistant()
+    }
 }
 
 /**
