@@ -584,9 +584,26 @@ class DownloadsViewModel @Inject constructor(
         val key = item.uniqueId
         pausedDownloads.add(key)
         recentFailureMessages.remove(key)
+        // Optimistic UI: Pause All must become Resume All immediately, without waiting for the
+        // store cancellation callback / periodic snapshot to catch up. Keep the partial data so
+        // the same item is resumable from the exact progress already on disk.
+        _state.update { current ->
+            val currentItem = current.downloads[key] ?: return@update current
+            current.copy(downloads = LinkedHashMap(current.downloads).apply {
+                put(key, currentItem.copy(
+                    status = DownloadItemStatus.PAUSED,
+                    isActive = false,
+                    isPartial = true,
+                    etaMs = null,
+                    statusMessage = localizedContext.getString(R.string.downloads_status_paused),
+                    updatedAtMs = System.currentTimeMillis(),
+                ))
+            })
+        }
 
         viewModelScope.launch(Dispatchers.IO) {
             pauseOnStore(item)
+            scheduleRefreshDownloads()
         }
     }
 
@@ -620,6 +637,19 @@ class DownloadsViewModel @Inject constructor(
         pendingCancelledDownloads.remove(key)
         recentFailureMessages.remove(key)
         finishedDownloads.remove(key)
+        // Disable Resume immediately while this item is being re-enqueued. The next store snapshot
+        // replaces this optimistic state with the real active DownloadInfo.
+        _state.update { current ->
+            val currentItem = current.downloads[key] ?: return@update current
+            current.copy(downloads = LinkedHashMap(current.downloads).apply {
+                put(key, currentItem.copy(
+                    status = DownloadItemStatus.DOWNLOADING,
+                    isActive = true,
+                    statusMessage = null,
+                    updatedAtMs = System.currentTimeMillis(),
+                ))
+            })
+        }
 
         viewModelScope.launch(Dispatchers.IO) {
             resumeOnStore(item)
@@ -721,6 +751,25 @@ class DownloadsViewModel @Inject constructor(
     fun onResumeAll() {
         val resumable = state.value.downloads.values.filter { it.canResume }
         if (resumable.isEmpty()) return
+        resumable.forEach {
+            pausedDownloads.remove(it.uniqueId)
+            pendingCancelledDownloads.remove(it.uniqueId)
+            recentFailureMessages.remove(it.uniqueId)
+            finishedDownloads.remove(it.uniqueId)
+        }
+        val resumableKeys = resumable.mapTo(hashSetOf()) { it.uniqueId }
+        _state.update { current ->
+            current.copy(downloads = LinkedHashMap(current.downloads).apply {
+                for ((key, item) in entries.toList()) {
+                    if (key in resumableKeys) put(key, item.copy(
+                        status = DownloadItemStatus.DOWNLOADING,
+                        isActive = true,
+                        statusMessage = null,
+                        updatedAtMs = System.currentTimeMillis(),
+                    ))
+                }
+            })
+        }
 
         viewModelScope.launch(Dispatchers.IO) {
             // Queue every resumable download first (placeholders only — nothing is
