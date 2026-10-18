@@ -1,8 +1,5 @@
 package dev.rift.launcher.settings
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CreateNewFolder
 import androidx.compose.material.icons.rounded.Delete
@@ -17,12 +14,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
@@ -35,9 +30,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * The folders Windows games are read from. Each folder is a plate with its game count and a round delete
- * button beside it (the files are never touched); below them "Add folder" and "Scan again". Rift looks at
- * the folders again each time it starts.
+ * The folders Windows games are read from. Each folder is a plate with its game count and the delete button
+ * inside it (the files are never touched); A on a folder looks at it again. Below them "Add games folder" and
+ * "Scan again", which says on its own plate how many games were found and where they are. The cursor stays on
+ * what was pressed. Rift looks at the folders again each time it starts.
  */
 @Composable
 internal fun PcGamesSettings() {
@@ -62,16 +58,34 @@ internal fun PcGamesSettings() {
         if (removed > 0) runCatching { addFocus.requestFocus() }
     }
 
+    // Scans every folder again and tells the total on the "Scan again" plate. The plates stay enabled while it
+    // runs (a disabled plate drops the cursor into the rail); a press during a scan does nothing.
+    fun scan() {
+        if (scanning) return
+        scanning = true
+        scope.launch {
+            val now = withContext(Dispatchers.IO) {
+                PcGameFolders.rescan()
+                PcGameFolders.all().associateWith { PcGameFolders.gameCount(it) }
+            }
+            counts = now
+            lastFound = now.values.sum()
+            scanning = false
+        }
+    }
+
     val picker = rememberCustomGameFolderPicker(
         onPathSelected = { path ->
             PcGameFolders.add(path)
             folders = PcGameFolders.all()
             if (!PcGameFolders.canRead(context, path)) CustomGameScanner.requestManageExternalStoragePermission(context)
+            scan()
+            runCatching { addFocus.requestFocus() }
         },
     )
     val missingAccess = folders.any { !PcGameFolders.canRead(context, it) }
 
-    SettingsGroup {
+    SettingsGroup(title = stringResource(R.string.rift_settings_pc_games)) {
         if (missingAccess) {
             LinkRow(
                 title = stringResource(R.string.rift_settings_pc_access),
@@ -81,59 +95,48 @@ internal fun PcGamesSettings() {
             )
         }
         folders.forEach { path ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                InfoRow(
-                    title = path.trimEnd('/').substringAfterLast('/').ifEmpty { path },
-                    value = counts[path]?.let { pluralStringResource(R.plurals.rift_settings_pc_games_count, it, it) }
-                        ?: stringResource(R.string.rift_settings_pc_scanning),
-                    icon = Icons.Rounded.Folder,
-                    modifier = Modifier.weight(1f),
-                )
-                RiftRoundButton(
-                    icon = Icons.Rounded.Delete,
-                    description = stringResource(R.string.rift_settings_pc_remove),
-                    size = RowMinHeight,
-                    onClick = {
-                        PcGameFolders.remove(path)
-                        folders = PcGameFolders.all()
-                        removed++
-                    },
-                )
-            }
+            LinkRow(
+                title = path.trimEnd('/').substringAfterLast('/').ifEmpty { path },
+                subtitle = path,
+                value = counts[path]?.let { pluralStringResource(R.plurals.rift_settings_pc_games_count, it, it) }
+                    ?: stringResource(R.string.rift_settings_pc_scanning),
+                icon = Icons.Rounded.Folder,
+                chevron = false,
+                onClick = { scan() },
+                actions = listOf(
+                    RowAction(
+                        icon = Icons.Rounded.Delete,
+                        description = stringResource(R.string.rift_settings_pc_remove),
+                        onClick = {
+                            PcGameFolders.remove(path)
+                            folders = PcGameFolders.all()
+                            lastFound = null
+                            removed++
+                        },
+                    ),
+                ),
+            )
         }
         LinkRow(
             title = stringResource(R.string.rift_settings_pc_add),
             subtitle = if (folders.isEmpty()) stringResource(R.string.rift_settings_pc_add_summary) else null,
             icon = Icons.Rounded.CreateNewFolder,
+            chevron = false,
             onClick = { picker.launchPicker() },
             modifier = Modifier.focusRequester(addFocus),
         )
         if (folders.isNotEmpty()) {
             LinkRow(
                 title = stringResource(R.string.rift_settings_pc_rescan),
+                subtitle = when (val found = lastFound) {
+                    null -> stringResource(R.string.rift_settings_pc_rescan_summary)
+                    0 -> stringResource(R.string.rift_settings_pc_found_none)
+                    else -> pluralStringResource(R.plurals.rift_settings_pc_found_where, found, found)
+                },
                 icon = Icons.Rounded.Refresh,
-                value = when {
-                    scanning -> stringResource(R.string.rift_settings_pc_scanning)
-                    else -> lastFound?.let { pluralStringResource(R.plurals.rift_settings_pc_found, it, it) }
-                },
-                enabled = !scanning,
-                onClick = {
-                    scanning = true
-                    scope.launch {
-                        val found = withContext(Dispatchers.IO) {
-                            PcGameFolders.rescan()
-                            val now = PcGameFolders.all().associateWith { PcGameFolders.gameCount(it) }
-                            now to now.values.sum()
-                        }
-                        counts = found.first
-                        lastFound = found.second
-                        scanning = false
-                    }
-                },
+                value = if (scanning) stringResource(R.string.rift_settings_pc_scanning) else null,
+                chevron = false,
+                onClick = { scan() },
             )
         }
     }

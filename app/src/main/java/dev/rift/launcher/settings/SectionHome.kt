@@ -40,7 +40,7 @@ internal fun HomeSettings() {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    SettingsGroup {
+    SettingsGroup(title = stringResource(R.string.rift_settings_home)) {
         InfoRow(
             title = stringResource(R.string.rift_settings_home_status),
             value = stringResource(

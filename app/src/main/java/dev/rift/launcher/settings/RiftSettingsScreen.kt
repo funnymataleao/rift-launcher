@@ -85,6 +85,9 @@ import dev.rift.launcher.ui.theme.RiftSizes
 import dev.rift.launcher.ui.theme.RiftTheme
 
 internal val RailInset = 8.dp
+
+/** Section names in the list are set light (Denis: the bold list was too heavy); the chosen one a step bolder. */
+internal val RailSelectedWeight = FontWeight.Medium
 internal val RailItemHeight = 52.dp
 internal val RailGap = 14.dp
 internal val RailDot = 8.dp
@@ -228,7 +231,7 @@ private fun SectionRail(
     val density = LocalDensity.current
     // Set in the style the rows are drawn in (the theme's font, not the default one), so the width is exact.
     val base = LocalTextStyle.current
-    val rowStyle = base.merge(TextStyle(fontSize = 18.5.sp, fontWeight = FontWeight.ExtraBold))
+    val rowStyle = base.merge(TextStyle(fontSize = 18.5.sp, fontWeight = RailSelectedWeight))
     val captionStyle = base.merge(GroupTitleStyle)
     val titles = sections.map { stringResource(it.titleRes) }
     val captions = sections.map { stringResource(it.group.titleRes) }
@@ -328,7 +331,7 @@ internal fun RailItem(
             text = title,
             color = if (focused) plateText(true) else if (selected) RiftColors.OnSurface else RiftColors.OnSurfaceVariant,
             fontSize = 18.5.sp,
-            fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
+            fontWeight = if (selected) RailSelectedWeight else FontWeight.Normal,
             maxLines = 1,
             // Never wrapped onto a line that is then cut: the rail is as wide as the longest name.
             softWrap = false,

@@ -308,7 +308,8 @@ private fun IpDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
         containerColor = RiftColors.SurfaceContainer,
         title = { Text(stringResource(R.string.rift_stream_ip_title), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = RiftColors.OnSurface) },
         text = {
-            // Two states like every Rift control: accent fill while typing, grey otherwise; no outline.
+            // A field is never filled with the accent: dark grey, a lighter grey while typing, an accent cursor;
+            // no outline. The colour belongs to the Add button.
             TextField(
                 value = text,
                 onValueChange = { text = it },
@@ -317,13 +318,13 @@ private fun IpDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                 shape = dev.rift.launcher.ui.theme.RiftShapes.card,
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = RiftColors.Primary,
+                    focusedContainerColor = Color(0xFF333333),
                     unfocusedContainerColor = RiftColors.SurfaceContainerHigh,
-                    focusedTextColor = RiftColors.OnPrimary,
+                    focusedTextColor = RiftColors.OnSurface,
                     unfocusedTextColor = RiftColors.OnSurface,
-                    focusedPlaceholderColor = RiftColors.OnPrimary.copy(alpha = 0.5f),
+                    focusedPlaceholderColor = RiftColors.OnSurfaceVariant,
                     unfocusedPlaceholderColor = RiftColors.OnSurfaceVariant,
-                    cursorColor = RiftColors.OnPrimary,
+                    cursorColor = RiftColors.Primary,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
                 ),
@@ -331,10 +332,10 @@ private fun IpDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
             )
         },
         confirmButton = {
-            StreamPillButton(stringResource(R.string.rift_stream_ip_add), onClick = { onConfirm(text) })
+            dev.rift.launcher.settings.RiftPillButton(text = stringResource(R.string.rift_stream_ip_add), onClick = { onConfirm(text) }, primary = true)
         },
         dismissButton = {
-            StreamPillButton(stringResource(R.string.rift_stream_cancel), onClick = onDismiss)
+            dev.rift.launcher.settings.RiftPillButton(text = stringResource(R.string.rift_stream_cancel), onClick = onDismiss)
         },
     )
 }

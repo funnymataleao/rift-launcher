@@ -313,23 +313,24 @@ private fun PickerSearchField(query: String, onChange: (String) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .plateFill(focused)
+            .clip(PlateShape)
+            .background(if (focused) FieldFocusedFill else RiftColors.SurfaceContainer)
             .heightIn(min = RowMinHeight)
             .padding(horizontal = 18.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(Icons.Rounded.Search, contentDescription = null, tint = plateSubtext(focused), modifier = Modifier.size(22.dp))
+        Icon(Icons.Rounded.Search, contentDescription = null, tint = FieldHint, modifier = Modifier.size(22.dp))
         Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
             if (query.isEmpty()) {
-                Text(stringResource(R.string.rift_emulator_search_hint), color = plateSubtext(focused), fontSize = 16.sp)
+                Text(stringResource(R.string.rift_emulator_search_hint), color = FieldHint, fontSize = 16.sp)
             }
             BasicTextField(
                 value = query,
                 onValueChange = { onChange(it.take(40)) },
                 singleLine = true,
-                textStyle = TextStyle(color = plateText(focused), fontSize = 16.sp),
-                cursorBrush = SolidColor(plateText(focused)),
+                textStyle = TextStyle(color = FieldText, fontSize = 16.sp),
+                cursorBrush = fieldCursor(),
                 modifier = Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused },
             )
         }

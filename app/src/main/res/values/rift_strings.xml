@@ -638,4 +638,9 @@
         <item quantity="one">Found %d game</item>
         <item quantity="other">Found %d games</item>
     </plurals>
+    <plurals name="rift_settings_pc_found_where">
+        <item quantity="one">Found %d game. It is on Home, on the PC tab.</item>
+        <item quantity="other">Found %d games. They are on Home, on the PC tab.</item>
+    </plurals>
+    <string name="rift_settings_pc_found_none">No games found. A game is a folder with an .exe in it.</string>
 </resources>

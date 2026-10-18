@@ -95,6 +95,7 @@ internal fun StreamingSettings(onOpenPcPairing: (() -> Unit)?) {
     }
     // Two tabs: the stream settings, in Artemis' order, and the PCs with their games.
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    PageHeading(stringResource(R.string.rift_settings_streaming))
     SectionTabs(
         tabs = listOf(stringResource(R.string.rift_settings_stream_tab_settings), stringResource(R.string.rift_settings_stream_tab_games)),
         selectedIndex = tab,

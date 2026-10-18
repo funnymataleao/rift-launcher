@@ -165,7 +165,7 @@ private fun Rail(
     // As wide as the longest title, like the list in Settings.
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val rowStyle = LocalTextStyle.current.merge(TextStyle(fontSize = 18.5.sp, fontWeight = FontWeight.ExtraBold))
+    val rowStyle = LocalTextStyle.current.merge(TextStyle(fontSize = 18.5.sp, fontWeight = RailSelectedWeight))
     val railWidth = with(density) {
         val rows = entries.maxOf { measurer.measure(it.title, rowStyle, maxLines = 1, softWrap = false).size.width.toDp() }
         RailInset + (RailItemHeight - RailInset * 2) + RailGap + rows + RailGap + RailDot + RailEndInset

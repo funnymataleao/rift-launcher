@@ -53,6 +53,7 @@ internal fun AndroidGamesSettings() {
 
     val all = apps
     if (all == null) {
+        PageHeading(stringResource(R.string.rift_settings_android_group_games))
         NoteText(stringResource(R.string.rift_settings_android_loading))
         return
     }
@@ -63,6 +64,9 @@ internal fun AndroidGamesSettings() {
         SettingsGroup(title = stringResource(R.string.rift_settings_android_group_games)) {
             games.forEach { app -> AppRow(app, app.packageName in selected) { toggle(app.packageName, it) } }
         }
+    } else {
+        // The page always starts with its heading, never with a note above it.
+        PageHeading(stringResource(R.string.rift_settings_android_group_games))
     }
     NoteText(
         if (selected.isEmpty()) {
@@ -82,6 +86,7 @@ internal fun AndroidGamesSettings() {
                 subtitle = stringResource(R.string.rift_settings_android_others_summary),
                 icon = if (showOthers) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                 value = others.size.toString(),
+                chevron = false,
                 onClick = { showOthers = !showOthers },
             )
             if (showOthers) {

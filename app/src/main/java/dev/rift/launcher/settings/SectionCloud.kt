@@ -33,6 +33,7 @@ import dev.rift.launcher.cloud.XcloudActivity
 @Composable
 internal fun CloudSettings() {
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    PageHeading(stringResource(R.string.rift_settings_cloud))
     SectionTabs(
         tabs = listOf(
             stringResource(R.string.rift_cloud_tab_account),

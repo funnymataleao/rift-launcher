@@ -108,7 +108,7 @@ private fun SoundBody(holdFocus: () -> Unit) {
         return
     }
 
-    SettingsGroup {
+    SettingsGroup(title = stringResource(R.string.rift_settings_sound)) {
         SwitchRow(
             title = stringResource(R.string.rift_settings_ui_sounds),
             subtitle = stringResource(R.string.rift_settings_ui_sounds_summary),

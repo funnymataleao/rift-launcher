@@ -108,7 +108,7 @@ internal fun plateSubtext(focused: Boolean): Color =
 internal val GroupGap = 32.dp
 
 /** One size and weight for every group name: on the pages (Storage, Network) and in the sidebar (Sources, Rift). */
-internal val GroupTitleStyle = TextStyle(fontSize = 21.sp, fontWeight = FontWeight.ExtraBold)
+internal val GroupTitleStyle = TextStyle(fontSize = 21.sp, fontWeight = FontWeight.Bold)
 
 /**
  * The last thing on a page, so a gamepad can always reach the bottom: rows that cannot take focus (a size, a
@@ -261,19 +261,11 @@ private fun RowChrome(
     interactive: Modifier,
     leading: (@Composable () -> Unit)? = null,
     iconPainter: Painter? = null,
+    actions: List<RowAction> = emptyList(),
     trailing: @Composable RowScope.() -> Unit,
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .alpha(if (enabled) 1f else 0.45f)
-            .plateFill(focused)
-            .then(interactive)
-            .heightIn(min = RowMinHeight)
-            .padding(horizontal = 18.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
+    @Composable
+    fun RowScope.body() {
         if (leading != null) {
             leading()
         } else if (icon != null) {
@@ -283,6 +275,43 @@ private fun RowChrome(
         }
         RowTexts(title, subtitle, danger, focused, Modifier.weight(1f))
         trailing()
+    }
+    if (actions.isEmpty()) {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .alpha(if (enabled) 1f else 0.45f)
+                .plateFill(focused)
+                .then(interactive)
+                .heightIn(min = RowMinHeight)
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) { body() }
+        return
+    }
+    // With actions the plate is split: the part that takes focus and the actions are side by side inside one
+    // plate, so D-pad right reaches an action and left comes back, and the plate keeps one size.
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .alpha(if (enabled) 1f else 0.45f)
+            .plateFill(focused)
+            .heightIn(min = RowMinHeight),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .then(interactive)
+                .heightIn(min = RowMinHeight)
+                .padding(start = 18.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) { body() }
+        Box(modifier = Modifier.padding(end = 18.dp)) {
+            RowActions(actions, plateFocused = focused)
+        }
     }
 }
 
@@ -478,6 +507,7 @@ internal fun LinkRow(
         icon = icon,
         iconPainter = iconPainter,
         leading = leading,
+        actions = actions,
         focused = focused,
         enabled = enabled,
         danger = danger,
@@ -512,7 +542,6 @@ internal fun LinkRow(
                 modifier = Modifier.widthIn(max = 260.dp),
             )
         }
-        RowActions(actions, plateFocused = focused)
         // An arrow only where the row opens another screen; an action (add, scan, delete) has none.
         if (chevron) {
             Icon(
@@ -705,14 +734,22 @@ internal fun RiftChip(
     }
 }
 
+/** The fill of a text field while it has focus: a lighter grey than at rest, never the accent. */
+internal val FieldFocusedFill = Color(0xFF333333)
+
+/** Text, placeholder and cursor colours of a text field on a [RiftInputPlate]: light text, accent cursor. */
+internal val FieldText: Color get() = RiftColors.OnSurface
+internal val FieldHint: Color get() = RiftColors.OnSurfaceVariant
+
 /**
- * The plate a text field sits on. Two states like every other plate: grey at rest, filled with the accent while
- * the field has focus, with dark text and a dark cursor ([content] gets the focus state to colour them).
+ * The plate a text field sits on. A field is never filled with the accent (Denis: the colour goes on the button,
+ * not in the field): dark grey at rest, a lighter grey while it has focus, light text and an accent cursor
+ * ([fieldCursor]). No outline.
  */
 @Composable
 internal fun RiftInputPlate(
     modifier: Modifier = Modifier,
-    content: @Composable RowScope.(focused: Boolean) -> Unit,
+    content: @Composable RowScope.() -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
     Row(
@@ -720,17 +757,22 @@ internal fun RiftInputPlate(
             .onFocusChanged { focused = it.hasFocus }
             .fillMaxWidth()
             .heightIn(min = RiftSizes.button)
-            .plateFill(focused, RiftShapes.full, rest = RiftColors.SurfaceContainerHigh)
+            .clip(RiftShapes.full)
+            .background(if (focused) FieldFocusedFill else RiftColors.SurfaceContainerHigh)
             .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        content(focused)
+        content()
     }
 }
 
+/** The cursor of every text field: the accent colour (a gradient accent shows as its main colour). */
+@Composable
+internal fun fieldCursor(): SolidColor = SolidColor(RiftAccent.current.main)
+
 /**
- * A Material 3 Expressive button for dialogs and calls to action. Primary is white with black text, like Play
- * on the home screen; its shape springs to a softer rectangle while pressed.
+ * A Material 3 Expressive button for dialogs and calls to action. Primary (Save, OK) is filled with the accent
+ * with dark text; the others (Cancel) are grey until they get focus.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -755,13 +797,11 @@ internal fun RiftPillButton(
         ),
         colors = ButtonDefaults.buttonColors(
             containerColor = when {
-                focused -> Color.Transparent
-                primary -> Color.White
+                focused || primary -> Color.Transparent
                 else -> RiftColors.SurfaceContainerHigh
             },
             contentColor = when {
-                focused -> accent.onAccent
-                primary -> RiftColors.OnPrimary
+                focused || primary -> accent.onAccent
                 else -> RiftColors.OnSurface
             },
             disabledContainerColor = RiftColors.SurfaceContainerHigh,
@@ -775,7 +815,14 @@ internal fun RiftPillButton(
                 scaleX = scale
                 scaleY = scale
             }
-            .then(if (focused) Modifier.clip(RiftShapes.full).background(accent.brush) else Modifier),
+            .then(
+                when {
+                    !enabled -> Modifier
+                    // The main button of a dialog is coloured at rest too; the one with the cursor is the larger.
+                    focused || primary -> Modifier.clip(RiftShapes.full).background(accent.brush)
+                    else -> Modifier
+                },
+            ),
     ) {
         if (icon != null) {
             Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(20.dp))
