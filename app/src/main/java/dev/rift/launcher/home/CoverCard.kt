@@ -93,7 +93,7 @@ fun CoverCard(
     onClick: () -> Unit,
     cover: @Composable BoxScope.() -> Unit,
     badge: @Composable BoxScope.() -> Unit = {},
-    reflection: Boolean = false,
+    reflection: Boolean = true,
     surface: Color = RiftColors.SurfaceContainer,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -149,16 +149,19 @@ fun CoverCard(
                     cameraDistance = 14f * density
                 }
                 .shadow(
-                    elevation = if (focused) 28.dp else 0.dp,
+                    elevation = if (focused) 20.dp else 0.dp,
                     shape = RiftShapes.card,
-                    ambientColor = palette.first().copy(alpha = 0.38f),
-                    spotColor = palette.first().copy(alpha = 0.52f),
+                    ambientColor = palette.first().copy(alpha = 0.22f),
+                    spotColor = palette.first().copy(alpha = 0.22f),
                 )
                 .clip(RiftShapes.card)
                 .background(surface)
                 .coverSheen(focused, tiltX, tiltY)
                 .coverFrame(focused, palette, RiftShapes.card)
-                .then(if (reflection) Modifier.drawWithContent { picture.record { this@drawWithContent.drawContent() }; drawLayer(picture) } else Modifier)
+                .drawWithContent {
+                    picture.record { this@drawWithContent.drawContent() }
+                    drawLayer(picture)
+                }
                 .focusRequester(focusRequester)
                 .onFocusChanged { if (it.isFocused) onFocused() }
                 .clickable(interactionSource = interaction, indication = null, onClick = onClick),
@@ -166,8 +169,8 @@ fun CoverCard(
             cover()
             badge()
         }
-        Spacer(modifier = Modifier.height(10.dp))
         if (reflection) {
+            Spacer(modifier = Modifier.height(10.dp))
             CoverReflection(
                 picture = picture,
                 coverHeight = height,
@@ -175,24 +178,6 @@ fun CoverCard(
                 focused = focused,
                 scale = scale,
                 surface = surface,
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .width(width * 0.82f)
-                    .height(height * REFLECTION_SHARE)
-                    .align(Alignment.CenterHorizontally)
-                    .drawBehind {
-                        if (focused) {
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    0f to palette.first().copy(alpha = 0.42f),
-                                    0.45f to palette.first().copy(alpha = 0.16f),
-                                    1f to Color.Transparent,
-                                ),
-                            )
-                        }
-                    },
             )
         }
     }
