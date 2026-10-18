@@ -552,58 +552,76 @@ private fun DxWrapperSection(state: ContainerConfigState) {
 @Composable
 private fun LsfgSection(state: ContainerConfigState) {
     val config = state.config.value
-    val lsfgSupported = config.containerVariant.equals(Container.BIONIC, ignoreCase = true)
-    if (!lsfgSupported) return
+    if (!config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) return
 
     var dllAvailable by rememberSaveable { mutableStateOf(LsfgVkManager.isDllAvailable()) }
     val ownsApp = LsfgVkManager.ownsLosslessScaling()
+    val modes = listOf("Global", "Custom", "Off")
+    val modeIndex = when (config.lsfgMode) { "custom" -> 1; "off" -> 2; else -> 0 }
 
     SettingsGroup {
-        when {
-            dllAvailable -> {
-                // State 1: DLL found — toggle works normally
-                SettingsSwitch(
-                    colors = settingsTileColorsAlt(),
-                    title = { Text(text = stringResource(R.string.lsfg_enable)) },
-                    subtitle = { Text(text = stringResource(R.string.lsfg_description)) },
-                    state = config.lsfgEnabled,
-                    onCheckedChange = {
-                        state.config.value = if (it) {
-                            config.copy(lsfgEnabled = true)
-                        } else {
-                            config.copy(lsfgEnabled = false)
-                        }
-                    },
+        SettingsListDropdown(
+            colors = settingsTileColors(),
+            title = { Text("Frame Generation") },
+            value = modeIndex,
+            items = modes,
+            onItemSelected = { idx ->
+                val mode = when (idx) { 1 -> "custom"; 2 -> "off"; else -> "global" }
+                state.config.value = config.copy(lsfgMode = mode, lsfgEnabled = mode == "custom")
+            },
+        )
+
+        if (config.lsfgMode == "custom") {
+            if (dllAvailable) {
+                SettingsListDropdown(
+                    colors = settingsTileColors(),
+                    title = { Text(stringResource(R.string.lsfg_multiplier)) },
+                    value = (config.lsfgMultiplier - 2).coerceIn(0, 2),
+                    items = listOf("2x", "3x", "4x"),
+                    onItemSelected = { state.config.value = config.copy(lsfgEnabled = true, lsfgMultiplier = it + 2) },
                 )
-            }
-            ownsApp -> {
-                // State 2: User owns Lossless Scaling but hasn't installed it yet
+                RiftSliderTile(
+                    title = stringResource(R.string.lsfg_flow_scale),
+                    valueText = String.format(java.util.Locale.US, "%.2f", config.lsfgFlowScale),
+                    value = config.lsfgFlowScale,
+                    onValueChange = { state.config.value = config.copy(lsfgFlowScale = it.coerceIn(0.25f, 1f)) },
+                    valueRange = 0.25f..1f,
+                    step = 0.05f,
+                    startText = "0.25", endText = "1.00",
+                )
                 SettingsSwitch(
                     colors = settingsTileColorsAlt(),
-                    title = { Text(text = stringResource(R.string.lsfg_enable)) },
-                    subtitle = { Text(text = stringResource(R.string.lsfg_install_prompt)) },
-                    state = false,
+                    title = { Text(stringResource(R.string.lsfg_performance_mode)) },
+                    subtitle = { Text(stringResource(R.string.lsfg_performance_mode_desc)) },
+                    state = config.lsfgPerformanceMode,
+                    onCheckedChange = { state.config.value = config.copy(lsfgPerformanceMode = it) },
+                )
+                SettingsListDropdown(
+                    colors = settingsTileColors(), title = { Text(stringResource(R.string.lsfg_present_mode)) },
+                    value = if (config.lsfgPresentMode == "fifo") 1 else 0,
+                    items = listOf("Mailbox", "FIFO"),
+                    onItemSelected = { state.config.value = config.copy(lsfgPresentMode = if (it == 1) "fifo" else "mailbox") },
+                )
+                SettingsListDropdown(
+                    colors = settingsTileColors(), title = { Text(stringResource(R.string.lsfg_backend)) },
+                    value = if (config.lsfgBackend == "legacy") 1 else 0,
+                    items = listOf("Native", "Legacy"),
+                    onItemSelected = { state.config.value = config.copy(lsfgBackend = if (it == 1) "legacy" else "native") },
+                )
+            } else if (ownsApp) {
+                SettingsSwitch(
+                    colors = settingsTileColorsAlt(), title = { Text(stringResource(R.string.lsfg_enable)) },
+                    subtitle = { Text(stringResource(R.string.lsfg_install_prompt)) }, state = false,
                     onCheckedChange = {
-                        state.launchSteamAppDownload(
-                            LsfgVkManager.LOSSLESS_SCALING_APP_ID,
-                            "Lossless Scaling",
-                        ) {
+                        state.launchSteamAppDownload(LsfgVkManager.LOSSLESS_SCALING_APP_ID, "Lossless Scaling") {
                             dllAvailable = LsfgVkManager.isDllAvailable()
-                            if (dllAvailable) {
-                                state.config.value = state.config.value.copy(lsfgEnabled = true)
-                            }
                         }
                     },
                 )
-            }
-            else -> {
-                // State 3: User doesn't own Lossless Scaling
+            } else {
                 SettingsSwitch(
-                    colors = settingsTileColorsAlt(),
-                    title = { Text(text = stringResource(R.string.lsfg_enable)) },
-                    subtitle = { Text(text = stringResource(R.string.lsfg_not_in_library)) },
-                    state = false,
-                    onCheckedChange = {},
+                    colors = settingsTileColorsAlt(), title = { Text(stringResource(R.string.lsfg_enable)) },
+                    subtitle = { Text(stringResource(R.string.lsfg_not_in_library)) }, state = false, onCheckedChange = {},
                 )
             }
         }

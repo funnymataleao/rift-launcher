@@ -7,6 +7,7 @@ import android.view.Choreographer
 import android.view.WindowManager
 import java.util.concurrent.Executors
 import app.gamenative.BuildConfig
+import app.gamenative.PrefManager
 import app.gamenative.service.SteamService
 import com.winlator.container.Container
 import com.winlator.container.ContainerManager
@@ -78,6 +79,7 @@ object LsfgVkManager {
     const val EXTRA_PERFORMANCE_MODE = "lsfgPerformanceMode"
     const val EXTRA_PRESENT_MODE = "lsfgPresentMode"
     const val EXTRA_BACKEND = "lsfgBackend"
+    const val EXTRA_MODE = "lsfgMode" // global | custom | off
 
     const val BACKEND_LEGACY = "legacy"
     const val BACKEND_NATIVE = "native"
@@ -111,10 +113,18 @@ object LsfgVkManager {
 
     /** Whether LSFG is armed (enabled + Lossless.dll available in Steam dir) for this container. The DLL is copied into the container at launch time by ensureRuntimeInstalled(). */
     @JvmStatic
+    fun mode(container: Container): String = container.getExtra(EXTRA_MODE, "global")
+        .takeIf { it == "global" || it == "custom" || it == "off" } ?: "global"
+
+    fun enabled(container: Container): Boolean = when (mode(container)) {
+        "off" -> false
+        "global" -> PrefManager.globalLsfgEnabled
+        else -> parseBool(container.getExtra(EXTRA_ARMED, "false"))
+    }
+
+    @JvmStatic
     fun isArmed(container: Container): Boolean =
-        isSupported(container) &&
-            parseBool(container.getExtra(EXTRA_ARMED, "false")) &&
-            isDllAvailable()
+        isSupported(container) && enabled(container) && isDllAvailable()
 
     fun layerDir(context: Context, version: String): File = File(File(context.filesDir, LAYERS_DIR), version)
 
@@ -153,16 +163,17 @@ object LsfgVkManager {
 
     /** Get the multiplier (0=Off, 2-4, default 2). */
     fun multiplier(container: Container): Int {
+        if (mode(container) == "global") return PrefManager.globalLsfgMultiplier
         val raw = container.getExtra(EXTRA_MULTIPLIER, "2").toIntOrNull() ?: 2
         return if (raw == 0) 0 else raw.coerceIn(2, 4)
     }
 
     /** Get the flow scale (0.25-1.0, default 0.80). */
-    fun flowScale(container: Container): Float =
+    fun flowScale(container: Container): Float = if (mode(container) == "global") PrefManager.globalLsfgFlowScale else
         container.getExtra(EXTRA_FLOW_SCALE, "0.80").toFloatOrNull()?.coerceIn(0.25f, 1.0f) ?: 0.80f
 
     /** Get whether performance mode is enabled (default true). */
-    fun performanceMode(container: Container): Boolean =
+    fun performanceMode(container: Container): Boolean = if (mode(container) == "global") PrefManager.globalLsfgPerformanceMode else
         parseBool(container.getExtra(EXTRA_PERFORMANCE_MODE, "true"))
 
     /**
@@ -170,17 +181,15 @@ object LsfgVkManager {
      * "fifo"). Mailbox is the default: the layer already paces vsync-locked,
      * and mesa's FIFO queue underneath it breaks the display cadence.
      */
-    fun presentMode(container: Container): String =
-        container.getExtra(EXTRA_PRESENT_MODE, "mailbox")
-            .takeIf { it == "fifo" || it == "mailbox" } ?: "mailbox"
+    fun presentMode(container: Container): String = if (mode(container) == "global") PrefManager.globalLsfgPresentMode else
+        container.getExtra(EXTRA_PRESENT_MODE, "mailbox").takeIf { it == "fifo" || it == "mailbox" } ?: "mailbox"
 
     /**
      * Frame-generation backend: the legacy lsfg-vk Vulkan layer inside the
      * container, or the native pipeline in the host renderer.
      */
-    fun backend(container: Container): String =
-        container.getExtra(EXTRA_BACKEND, BACKEND_NATIVE)
-            .takeIf { it == BACKEND_LEGACY } ?: BACKEND_NATIVE
+    fun backend(container: Container): String = if (mode(container) == "global") PrefManager.globalLsfgBackend else
+        container.getExtra(EXTRA_BACKEND, BACKEND_NATIVE).takeIf { it == BACKEND_LEGACY } ?: BACKEND_NATIVE
 
     @JvmStatic
     fun isNativeBackend(container: Container): Boolean =
@@ -494,7 +503,7 @@ object LsfgVkManager {
         return try {
             val dllPath = containerDllPath(container)
             val savedMultiplier = multiplier(container)
-            val frameGenActive = parseBool(container.getExtra(EXTRA_ARMED, "false")) &&
+            val frameGenActive = enabled(container) &&
                 dllPath != null && savedMultiplier >= 2 && !isNativeBackend(container)
             val configFile = File(container.rootDir, CONFIG_RELATIVE_PATH)
             val configText = buildConfigToml(
@@ -534,7 +543,7 @@ object LsfgVkManager {
         }
 
         val dllPath = containerDllPath(container)
-        val armed = parseBool(container.getExtra(EXTRA_ARMED, "false")) && dllPath != null
+        val armed = enabled(container) && dllPath != null
 
         if (!armed) {
             // Remove the manifest so the Vulkan loader can't find the layer
