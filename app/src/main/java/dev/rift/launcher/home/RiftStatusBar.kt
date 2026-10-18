@@ -7,6 +7,27 @@ import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.os.BatteryManager
 import android.text.format.DateFormat
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
+import app.gamenative.R
+import app.gamenative.ui.data.DownloadItemStatus
+import app.gamenative.ui.model.DownloadsViewModel
+import dev.rift.launcher.ui.theme.RiftAccent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
@@ -35,12 +56,19 @@ import dev.rift.launcher.settings.RiftPrefs
 import dev.rift.launcher.ui.theme.RiftColors
 import java.util.Date
 
+/** The one gap between the pictures of the corner group (search, downloads, Wi-Fi, battery, clock). */
+internal val StatusGap = 22.dp
+
+/** The status texts (battery, clock): one size and weight. */
+private val StatusTextSize = 16.sp
+
 /**
- * The right corner of the home's top bar, like Steam Big Picture: the network and the battery when "Show network" /
- * "Show battery" are on in Settings → Appearance, then the clock. The profile and its status live in the right panel.
+ * The right corner of the home's top bar, like Steam Big Picture: the downloads while a game downloads, the network
+ * and the battery when "Show network" / "Show battery" are on in Settings → Appearance, then the clock. Every picture
+ * is measured by what it draws, so the gaps between them are all [StatusGap]. The profile lives in the right panel.
  */
 @Composable
-internal fun StatusIcons() {
+internal fun StatusIcons(onDownloadsClick: () -> Unit) {
     val context = LocalContext.current
     var showBattery by remember { mutableStateOf(RiftPrefs.of(context).showBattery) }
     var showNetwork by remember { mutableStateOf(RiftPrefs.of(context).showNetwork) }
@@ -55,13 +83,48 @@ internal fun StatusIcons() {
         prefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
+    val downloads: DownloadsViewModel = hiltViewModel()
+    val downloadsState by downloads.state.collectAsStateWithLifecycle()
+    val downloading = downloadsState.downloads.values.any { it.status == DownloadItemStatus.DOWNLOADING }
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(StatusGap),
     ) {
+        if (downloading) DownloadsIcon(onDownloadsClick)
         if (showNetwork) NetworkIcon()
         if (showBattery) BatteryStatus()
         Clock()
+    }
+}
+
+/**
+ * Shown while a game downloads: the download arrow gently sinking and rising, A opens the downloads. It takes the
+ * room of its picture only; the focus circle is drawn around it, like the search's.
+ */
+@Composable
+private fun DownloadsIcon(onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val accent = RiftAccent.current
+    val sink by rememberInfiniteTransition(label = "downloads").animateFloat(
+        initialValue = -2f,
+        targetValue = 2f,
+        animationSpec = infiniteRepeatable(tween(700, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "downloadsSink",
+    )
+    Box(
+        modifier = Modifier
+            .size(24.dp)
+            .drawBehind { if (focused) drawCircle(accent.brush, radius = 22.dp.toPx()) }
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            Icons.Rounded.Download,
+            contentDescription = stringResource(R.string.rift_downloads_active),
+            tint = if (focused) accent.onAccent else RiftColors.OnSurface,
+            modifier = Modifier.size(24.dp).graphicsLayer { translationY = sink.dp.toPx() },
+        )
     }
 }
 
@@ -90,7 +153,7 @@ private fun Clock() {
         time = now()
         onDispose { context.unregisterReceiver(receiver) }
     }
-    Text(time, color = RiftColors.OnSurface, fontSize = 18.sp, maxLines = 1, softWrap = false)
+    Text(time, color = RiftColors.OnSurface, fontSize = StatusTextSize, maxLines = 1, softWrap = false)
 }
 
 @Composable
@@ -128,12 +191,16 @@ private fun BatteryStatus() {
     }
     if (level < 0) return
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Icon(
-            if (charging) Icons.Rounded.BatteryChargingFull else Icons.Rounded.BatteryStd,
-            contentDescription = null,
-            tint = RiftColors.OnSurface,
-            modifier = Modifier.size(22.dp),
-        )
-        Text("$level%", color = RiftColors.OnSurface, fontSize = 14.sp)
+        // The battery picture is narrow inside its square; it takes only its own width, so the gap before it
+        // is the group's gap.
+        Box(modifier = Modifier.width(10.dp), contentAlignment = Alignment.Center) {
+            Icon(
+                if (charging) Icons.Rounded.BatteryChargingFull else Icons.Rounded.BatteryStd,
+                contentDescription = null,
+                tint = RiftColors.OnSurface,
+                modifier = Modifier.requiredSize(22.dp),
+            )
+        }
+        Text("$level%", color = RiftColors.OnSurface, fontSize = StatusTextSize, maxLines = 1, softWrap = false)
     }
 }

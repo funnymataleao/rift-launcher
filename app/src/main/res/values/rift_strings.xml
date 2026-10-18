@@ -571,6 +571,7 @@
     <string name="rift_install_item_sizes">%1$s download • %2$s on disk</string>
     <string name="rift_install_dlc">DLC</string>
     <string name="rift_downloads_title">Downloads</string>
+    <string name="rift_downloads_active">Downloads in progress</string>
     <string name="rift_downloads_hint">A pauses or resumes the download. Hold A to cancel it and delete its files.</string>
     <string name="rift_downloads_group_active">In progress</string>
     <string name="rift_downloads_group_finished">Finished</string>

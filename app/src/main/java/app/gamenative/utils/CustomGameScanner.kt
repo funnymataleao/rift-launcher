@@ -567,13 +567,13 @@ object CustomGameScanner {
         val existingAppIds = mutableSetOf<String>()
 
         for (folderPath in candidateFolders()) {
-            // Filter by query if provided
-            if (q.isNotEmpty()) {
-                val folderName = File(folderPath).name
-                if (!folderName.contains(q, ignoreCase = true)) continue
-            }
-
             val item = createLibraryItemFromFolder(folderPath)
+            // Filter by query if provided: the game's shown name or its folder's (Rift's search rules).
+            if (q.isNotEmpty() && item != null &&
+                !dev.rift.launcher.home.RiftSearch.matches(item.name, q) &&
+                !dev.rift.launcher.home.RiftSearch.matches(dev.rift.launcher.home.RiftGameNames.display(item.appId, item.name), q) &&
+                !dev.rift.launcher.home.RiftSearch.matches(File(folderPath).name, q)
+            ) continue
             if (item != null && existingAppIds.add(item.appId)) {
                 items.add(item.copy(index = indexCounter++))
             }
