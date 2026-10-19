@@ -2233,6 +2233,12 @@ fun XServerScreen(
                                         "\n\tchildrenSize: ${window.children.size}",
                             )
                             refreshFrameRatingTracking("map-window")
+                            if (window.name == dev.rift.launcher.platform.SteamClientAutoMode.STEAM_ERROR_WINDOW &&
+                                ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM &&
+                                dev.rift.launcher.platform.SteamClientAutoMode.onSteamDrmError(container, gameId)
+                            ) {
+                                app.gamenative.ui.util.SnackbarManager.show(context.getString(R.string.rift_steam_client_needed))
+                            }
                             ui.win32AppWorkarounds?.applyWindowWorkarounds(window)
                             onWindowMapped?.invoke(context, window)
                         }

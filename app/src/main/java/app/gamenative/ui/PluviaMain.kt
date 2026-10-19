@@ -2387,6 +2387,10 @@ fun preLaunchApp(
             Timber.tag("GameFixes").w(e, "Game fixes failed in preLaunchApp")
         }
 
+        if (ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM) {
+            dev.rift.launcher.platform.SteamClientAutoMode.applyBeforeLaunch(context, container, gameId)
+        }
+
         val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
         val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, appId)
 

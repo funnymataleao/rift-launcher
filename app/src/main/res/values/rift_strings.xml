@@ -655,4 +655,5 @@
         <item quantity="other">Found %d games. They are on Home, on the PC tab.</item>
     </plurals>
     <string name="rift_settings_pc_found_none">No games found. A game is a folder with an .exe in it.</string>
+    <string name="rift_steam_client_needed">This game needs the Steam client. Close it and start it again; Rift will use the Steam client.</string>
 </resources>

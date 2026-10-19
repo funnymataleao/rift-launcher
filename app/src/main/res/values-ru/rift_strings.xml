@@ -656,4 +656,5 @@
         <item quantity="other">Найдено %d игры. Они на главной, во вкладке ПК.</item>
     </plurals>
     <string name="rift_settings_pc_found_none">Игр не найдено. Игра — это папка, где лежит .exe.</string>
+    <string name="rift_steam_client_needed">Этой игре нужен клиент Steam. Закройте её и запустите снова — Rift включит клиент Steam.</string>
 </resources>
