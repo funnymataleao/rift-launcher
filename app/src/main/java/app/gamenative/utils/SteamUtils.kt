@@ -886,6 +886,7 @@ object SteamUtils {
             acfFile.writeText(acfContent)
 
             Timber.i("Created ACF manifest for ${appInfo.name} at ${acfFile.absolutePath}")
+            Timber.i("ACF for $steamAppId:\n$acfContent")
 
             val depotCacheDir = File(steamappsDir, "depotcache").apply { mkdirs() }
             regularDepots.forEach { (depotId, depotInfo) ->
@@ -944,6 +945,7 @@ object SteamUtils {
                 steamworksAcfFile.writeText(steamworksAcfContent)
 
                 Timber.i("Created Steamworks Common Redistributables ACF manifest at ${steamworksAcfFile.absolutePath}")
+                Timber.i("ACF for $STEAMWORKS_REDIST_APP_ID (app info known: ${redistInfo != null}):\n$steamworksAcfContent")
             }
 
         } catch (e: Exception) {
