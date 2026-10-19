@@ -62,6 +62,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -139,7 +140,8 @@ fun RiftSettingsScreen(
     val contentEntry = remember { FocusRequester() }
     var contentHasFocus by remember { mutableStateOf(false) }
     // Whether the focus is in the list or the page (not on the Back button), and whether a key was pressed yet.
-    var listOrPageFocused by remember { mutableStateOf(false) }
+    var railHasFocus by remember { mutableStateOf(false) }
+    fun listOrPageFocused() = railHasFocus || contentHasFocus
     var keyPressed by remember { mutableStateOf(false) }
 
     // Going to another app (a browser for a key, say) leaves a mark with this section: if the system drops
@@ -193,8 +195,20 @@ fun RiftSettingsScreen(
                     runCatching { railItems[next].requestFocus() }
                     true
                 },
+            pane = {
+                SectionPane(
+                    section = selected,
+                    contentEntry = contentEntry,
+                    returnTo = railItems[selectedIndex],
+                    onOpenPcPairing = onOpenPcPairing,
+                    onSteamSignIn = onSteamSignIn,
+                    onSteamSignOut = onSteamSignOut,
+                    onContentFocus = { contentHasFocus = it },
+                    modifier = Modifier.weight(1f),
+                )
+            },
         ) {
-            Row(modifier = Modifier.fillMaxSize().onFocusChanged { listOrPageFocused = it.hasFocus }) {
+            Box(modifier = Modifier.fillMaxHeight().onFocusChanged { railHasFocus = it.hasFocus }) {
                 SectionRail(
                     sections = sections,
                     selectedIndex = selectedIndex,
@@ -205,16 +219,6 @@ fun RiftSettingsScreen(
                         selectedOrdinal = sections[index].ordinal
                         runCatching { contentEntry.requestFocus() }
                     },
-                )
-                SectionPane(
-                    section = selected,
-                    contentEntry = contentEntry,
-                    returnTo = railItems[selectedIndex],
-                    onOpenPcPairing = onOpenPcPairing,
-                    onSteamSignIn = onSteamSignIn,
-                    onSteamSignOut = onSteamSignOut,
-                    onContentFocus = { contentHasFocus = it },
-                    modifier = Modifier.weight(1f),
                 )
             }
         }
@@ -231,7 +235,7 @@ fun RiftSettingsScreen(
         repeat(30) {
             androidx.compose.runtime.withFrameNanos { }
             if (keyPressed) return@LaunchedEffect
-            if (!listOrPageFocused) runCatching { target.requestFocus() }.onFailure { runCatching { railItems[selectedIndex].requestFocus() } }
+            if (!listOrPageFocused()) runCatching { target.requestFocus() }.onFailure { runCatching { railItems[selectedIndex].requestFocus() } }
             kotlinx.coroutines.delay(50)
         }
     }
@@ -370,6 +374,7 @@ internal fun RailItem(
     }
 }
 
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 private fun SectionPane(
     section: RiftSettingsSection,
@@ -384,7 +389,8 @@ private fun SectionPane(
     Column(
         modifier = modifier
             .fillMaxHeight()
-            .padding(start = PaneStart, end = SettingsEdge),
+            // Level with the title row (12 dp down, a button high): the page's first heading sits on its line.
+            .padding(start = PaneStart, end = SettingsEdge, top = 8.dp),
     ) {
         key(section) {
             Box(
@@ -393,10 +399,14 @@ private fun SectionPane(
                     .fillMaxWidth()
                     .focusRequester(contentEntry)
                     .onFocusChanged { onContentFocus(it.hasFocus) }
-                    .focusGroup()
-                    // After the group, so it reaches the rows inside: Left always goes back to the
-                    // selected section in the list, like B, not to whatever sits across from the row.
-                    .focusProperties { left = returnTo },
+                    // Left out of the page always goes back to the section it was entered from, like B, not to
+                    // whatever sits across from the row (Denis: from far down the Assistant page Left landed on
+                    // Appearance). On the group's exit, so rows inside nested groups follow it too.
+                    .focusProperties {
+                        @Suppress("DEPRECATION")
+                        exit = { direction -> if (direction == FocusDirection.Left) returnTo else FocusRequester.Default }
+                    }
+                    .focusGroup(),
             ) {
                 Column(
                     modifier = Modifier

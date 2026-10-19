@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -56,6 +58,8 @@ internal fun SettingsFrame(
     title: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    // A page beside the title column, from the very top: its first heading lines up with the title.
+    pane: (@Composable RowScope.() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     RiftTheme {
@@ -72,11 +76,12 @@ internal fun SettingsFrame(
                     .displayCutoutPadding()
                     .then(modifier),
             ) {
-                Column(modifier = Modifier.fillMaxSize()) {
+                Row(modifier = Modifier.fillMaxSize()) {
+                Column(modifier = if (pane == null) Modifier.weight(1f).fillMaxHeight() else Modifier.fillMaxHeight()) {
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = SettingsEdge, end = SettingsEdge, top = 12.dp, bottom = 4.dp),
+                            .then(if (pane == null) Modifier.fillMaxWidth() else Modifier)
+                            .padding(start = SettingsEdge, end = if (pane == null) SettingsEdge else 12.dp, top = 12.dp, bottom = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
@@ -93,6 +98,8 @@ internal fun SettingsFrame(
                         )
                     }
                     content()
+                }
+                pane?.invoke(this)
                 }
             }
         }

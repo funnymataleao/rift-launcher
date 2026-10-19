@@ -12,6 +12,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -63,6 +65,8 @@ import kotlin.math.sin
 
 // Rift: small enough that every colour (and every gradient) fits one row on the tablet.
 private val SwatchSize = 48.dp
+/** The least room between two circles: a focused one grows by a third and must not touch its neighbour. */
+private val SwatchMinGap = 20.dp
 private const val MIN_BRIGHTNESS = 0.4f
 
 /**
@@ -77,15 +81,11 @@ internal fun AccentSettings() {
     var wheelOpen by rememberSaveable { mutableStateOf(false) }
 
     SettingsGroup(title = stringResource(R.string.rift_settings_accent_title)) {
-        SwatchPlate(title = stringResource(R.string.rift_settings_accent_colors)) {
-            RiftAccent.solids.forEach { choice ->
-                Swatch(choice, selected = choice.id == current.id) { RiftAccent.select(context, choice) }
-            }
+        SwatchPlate(stringResource(R.string.rift_settings_accent_colors), RiftAccent.solids, current.id) {
+            RiftAccent.select(context, it)
         }
-        SwatchPlate(title = stringResource(R.string.rift_settings_accent_gradients)) {
-            RiftAccent.gradients.forEach { choice ->
-                Swatch(choice, selected = choice.id == current.id) { RiftAccent.select(context, choice) }
-            }
+        SwatchPlate(stringResource(R.string.rift_settings_accent_gradients), RiftAccent.gradients, current.id) {
+            RiftAccent.select(context, it)
         }
         LinkRow(
             title = stringResource(R.string.rift_settings_accent_custom),
@@ -107,9 +107,13 @@ internal fun AccentSettings() {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SwatchPlate(title: String, swatches: @Composable () -> Unit) {
+private fun SwatchPlate(
+    title: String,
+    choices: List<RiftAccent.Choice>,
+    selectedId: String,
+    onPick: (RiftAccent.Choice) -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -118,10 +122,19 @@ private fun SwatchPlate(title: String, swatches: @Composable () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Text(text = title, color = RiftColors.OnSurface, fontSize = 18.5.sp, fontWeight = FontWeight.SemiBold)
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) { swatches() }
+        // The circles share the plate's whole width in even columns (Denis: they bunched up on the left with
+        // empty room on the right); a short last row keeps the columns of the rows above it.
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val columns = ((maxWidth + SwatchMinGap) / (SwatchSize + SwatchMinGap)).toInt().coerceIn(1, choices.size.coerceAtLeast(1))
+            Column(verticalArrangement = Arrangement.spacedBy(SwatchMinGap)) {
+                choices.chunked(columns).forEach { row ->
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        row.forEach { choice -> Swatch(choice, selected = choice.id == selectedId) { onPick(choice) } }
+                        repeat(columns - row.size) { Spacer(modifier = Modifier.size(SwatchSize)) }
+                    }
+                }
+            }
+        }
     }
 }
 
