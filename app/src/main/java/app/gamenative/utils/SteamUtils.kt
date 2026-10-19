@@ -758,6 +758,8 @@ object SteamUtils {
         ).isNotEmpty()
     }
 
+    private const val STEAMWORKS_REDIST_APP_ID = 228980
+
     private fun createAppManifest(context: Context, steamAppId: Int, language: String) {
         try {
             Timber.i("Attempting to createAppManifest for appId: $steamAppId")
@@ -847,9 +849,20 @@ object SteamUtils {
                             ?: depotInfo.manifests.values.firstOrNull()
                         appendLine("\t\t\"$depotId\"")
                         appendLine("\t\t{")
-                        appendLine("\t\t\t\"manifest\"\t\t\"${manifest?.gid ?: "0"}\"")
+                        appendLine("\t\t\t\"manifest\"\t\t\"${manifest?.gid?.toULong() ?: 0UL}\"")
                         appendLine("\t\t\t\"size\"\t\t\"${manifest?.size ?: 0}\"")
                         appendLine("\t\t}")
+                    }
+                    appendLine("\t}")
+                }
+
+                // Shared redistributable depots (Steamworks Common Redistributables) the game uses.
+                if (sharedDepots.isNotEmpty()) {
+                    appendLine("\t\"SharedDepots\"")
+                    appendLine("\t{")
+                    sharedDepots.forEach { (depotId, depotInfo) ->
+                        val owner = if (depotInfo.depotFromApp > 0) depotInfo.depotFromApp else STEAMWORKS_REDIST_APP_ID
+                        appendLine("\t\t\"$depotId\"\t\t\"$owner\"")
                     }
                     appendLine("\t}")
                 }
@@ -889,20 +902,42 @@ object SteamUtils {
 
             // Create separate ACF for Steamworks Common Redistributables if we have shared depots
             if (sharedDepots.isNotEmpty()) {
+                // A placeholder build id makes Valve's client queue the redistributables (and the game
+                // with them) as an update. Use the real build and manifests when the app info is known.
+                val redistInfo = SteamService.getAppInfoOf(STEAMWORKS_REDIST_APP_ID)
+                val redistBuildId = redistInfo?.branches?.get("public")?.buildId?.takeIf { it > 0 } ?: 1L
+                val redistDepots = sharedDepots.keys.mapNotNull { depotId ->
+                    val manifest = redistInfo?.depots?.get(depotId)?.manifests?.get("public") ?: return@mapNotNull null
+                    if (manifest.gid == 0L) null else depotId to manifest
+                }
                 val steamworksAcfContent = buildString {
                     appendLine("\"AppState\"")
                     appendLine("{")
-                    appendLine("\t\"appid\"\t\t\"228980\"")
+                    appendLine("\t\"appid\"\t\t\"$STEAMWORKS_REDIST_APP_ID\"")
                     appendLine("\t\"Universe\"\t\t\"1\"")
                     appendLine("\t\"name\"\t\t\"Steamworks Common Redistributables\"")
                     appendLine("\t\"StateFlags\"\t\t\"4\"")
                     appendLine("\t\"installdir\"\t\t\"Steamworks Shared\"")
-                    appendLine("\t\"buildid\"\t\t\"1\"")
-
+                    appendLine("\t\"LastUpdated\"\t\t\"${System.currentTimeMillis() / 1000}\"")
+                    appendLine("\t\"buildid\"\t\t\"$redistBuildId\"")
                     appendLine("\t\"BytesToDownload\"\t\t\"0\"")
                     appendLine("\t\"BytesDownloaded\"\t\t\"0\"")
+                    appendLine("\t\"AutoUpdateBehavior\"\t\t\"0\"")
+                    if (redistDepots.isNotEmpty()) {
+                        appendLine("\t\"InstalledDepots\"")
+                        appendLine("\t{")
+                        redistDepots.forEach { (depotId, manifest) ->
+                            appendLine("\t\t\"$depotId\"")
+                            appendLine("\t\t{")
+                            appendLine("\t\t\t\"manifest\"\t\t\"${manifest.gid.toULong()}\"")
+                            appendLine("\t\t\t\"size\"\t\t\"${manifest.size}\"")
+                            appendLine("\t\t}")
+                        }
+                        appendLine("\t}")
+                    }
                     appendLine("}")
                 }
+                File(steamappsDir, "common/Steamworks Shared").mkdirs()
 
                 // Write Steamworks ACF file
                 val steamworksAcfFile = File(steamappsDir, "appmanifest_228980.acf")
