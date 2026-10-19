@@ -68,6 +68,7 @@ android {
         versionName = "1.3.0"
 
         buildConfigField("boolean", "GOLD", "false")
+        buildConfigField("boolean", "CLEAN_BUILD", "false")
         fun secret(name: String) =
             project.findProperty(name) as String? ?: System.getenv(name) ?: ""
 
@@ -126,6 +127,7 @@ android {
             dimension = "androidApi"
             // Clean test build: installs next to dev.rift.launcher.
             applicationIdSuffix = ".clean"
+            buildConfigField("boolean", "CLEAN_BUILD", "true")
             targetSdk = 28
             ndk.abiFilters += listOf("arm64-v8a", "armeabi-v7a")
             buildConfigField("boolean", "MODERN_ANDROID", "false")

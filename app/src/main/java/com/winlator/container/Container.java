@@ -394,7 +394,8 @@ public class Container {
     }
 
     public boolean isLaunchRealSteam() {
-        return launchRealSteam;
+        // Clean build has no Steam host binaries: always use the emulated Steam API.
+        return !app.gamenative.BuildConfig.CLEAN_BUILD && launchRealSteam;
     }
 
     public void setLaunchRealSteam(boolean launchRealSteam) {
@@ -403,11 +404,12 @@ public class Container {
 
     /** Real Steam through the headless steamhost rather than the Valve GUI client. */
     public boolean isLaunchHeadlessSteam() {
-        return launchRealSteam && STEAM_TYPE_HEADLESS.equals(steamType);
+        return isLaunchRealSteam() && STEAM_TYPE_HEADLESS.equals(steamType);
     }
 
     public boolean isLaunchBionicSteam() {
-        return launchBionicSteam;
+        // Clean build has no Steam host binaries: always use the emulated Steam API.
+        return !app.gamenative.BuildConfig.CLEAN_BUILD && launchBionicSteam;
     }
 
     public void setLaunchBionicSteam(boolean launchBionicSteam) {
