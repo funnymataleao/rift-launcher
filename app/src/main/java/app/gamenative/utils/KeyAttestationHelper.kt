@@ -29,6 +29,7 @@ object KeyAttestationHelper {
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
+        .addInterceptor(Net.gameNativeApiBlock)
         .build()
 
     suspend fun fetchNonce(baseUrl: String): String = withContext(Dispatchers.IO) {
