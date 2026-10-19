@@ -316,8 +316,8 @@
     <string name="rift_art_default">Как в магазине</string>
     <string name="rift_art_empty">На SteamGridDB для этой игры таких картинок нет.</string>
     <string name="rift_art_standard">Стандартные обложки</string>
-    <string name="rift_art_standard_done">Стандартные обложки Steam поставлены, игр: %1$d</string>
-    <string name="rift_art_standard_none">Steam не нашёл, что добавить</string>
+    <string name="rift_art_standard_done">Для игры поставлены стандартные картинки Steam</string>
+    <string name="rift_art_standard_none">У этой игры нет картинок в Steam</string>
     <string name="rift_art_not_found">SteamGridDB не знает эту игру.</string>
     <string name="rift_art_bad_key">SteamGridDB не принял ключ. Проверьте его в настройках.</string>
     <string name="rift_art_network">Не удалось связаться с SteamGridDB.</string>

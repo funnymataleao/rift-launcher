@@ -89,7 +89,6 @@ val LocalRiftArtPicker = staticCompositionLocalOf<((LibraryItem) -> Unit)?> { nu
 private val ScreenPadding = 48.dp
 private const val LOAD_MORE_THRESHOLD = 12
 private const val RESET_KEY = -1L
-private const val STEAM_OPTION_ID = -100L
 private const val FOCUS_TRIES = 20
 private const val RETRY_FEEDBACK_MS = 600L
 private const val FOCUS_RETRY_MS = 120L
@@ -177,7 +176,7 @@ private class ArtSession(val item: LibraryItem, val key: String) {
         val shown = urls.firstOrNull() ?: return emptyList()
         // The larger copy when Steam has one (a "_2x" file); ids below zero never clash with SteamGridDB's.
         val full = urls.firstOrNull { it.substringBefore('?').contains("_2x.") } ?: shown
-        return listOf(ArtOption(id = STEAM_OPTION_ID - kind.ordinal, thumb = shown, url = full, width = 0, height = 0))
+        return listOf(ArtOption(id = StandardArt.STEAM_OPTION_ID - kind.ordinal, thumb = shown, url = full, width = 0, height = 0))
     }
 
     private suspend fun fetch(kind: ArtKind, page: Int): List<ArtOption> {
@@ -245,17 +244,17 @@ fun RiftArtPicker(
         }
         val latestStep = rememberUpdatedState<(Int) -> Unit> { step(it) }
         val latestFocused = rememberUpdatedState(contentFocused)
-        // Y: Steam's default art for every game without a picture of its own (like SteamGridDB's "apply default art").
+        // Y: Steam's default art for this game only (like SteamGridDB's "apply default art").
         val scope = rememberCoroutineScope()
         var applyingStandard by remember { mutableStateOf(false) }
         fun applyStandard() {
             if (applyingStandard) return
             applyingStandard = true
             scope.launch {
-                val games = try { StandardArt.apply(context) } finally { applyingStandard = false }
-                RiftSounds.play(context, RiftSound.Apply)
+                val set = try { StandardArt.apply(context, current) } finally { applyingStandard = false }
+                if (set) RiftSounds.play(context, RiftSound.Apply)
                 app.gamenative.ui.util.SnackbarManager.show(
-                    if (games > 0) context.getString(R.string.rift_art_standard_done, games) else context.getString(R.string.rift_art_standard_none),
+                    context.getString(if (set) R.string.rift_art_standard_done else R.string.rift_art_standard_none),
                 )
             }
         }

@@ -51,11 +51,14 @@ object GameArtStore {
         prefs(context).getString(key(appId, kind), "").orEmpty()
 
     /** The picture shown for [appId] and [kind] in place of the store's: picked, else found; empty when neither. */
-    fun shown(context: Context, appId: String, kind: ArtKind): String =
-        get(context, appId, kind).ifEmpty { autoValue(autoPrefs(context), appId, kind) }
+    fun shown(context: Context, appId: String, kind: ArtKind): String {
+        undoBulkStandard(context)
+        return get(context, appId, kind).ifEmpty { autoValue(autoPrefs(context), appId, kind) }
+    }
 
     /** [item] with the pictures the user picked in place of the store's; for games with none, the ones [autoFill] found. */
     fun apply(context: Context, item: LibraryItem): LibraryItem {
+        undoBulkStandard(context)
         val p = prefs(context)
         val a = autoPrefs(context)
         fun picked(kind: ArtKind) = p.getString(key(item.appId, kind), "").orEmpty().ifEmpty { autoValue(a, item.appId, kind) }
@@ -79,7 +82,10 @@ object GameArtStore {
     private var pickCount = -1
 
     private fun pickedCount(context: Context): Int {
-        if (pickCount < 0) pickCount = prefs(context).all.size + autoPrefs(context).all.size
+        if (pickCount < 0) {
+            undoBulkStandard(context)
+            pickCount = prefs(context).all.size + autoPrefs(context).all.count { (k, _) -> k != BULK_STANDARD_UNDONE }
+        }
         return pickCount
     }
 
@@ -240,33 +246,31 @@ object GameArtStore {
         }
     }
 
+    private const val BULK_STANDARD_UNDONE = "bulk_standard_undone"
+
     /**
-     * Steam's own pictures (cover, wide picture, banner) for every game of [found] that has no picture of that
-     * kind picked by the user. They are kept as web addresses (Coil caches them), like pictures found by
-     * themselves, so "Clear found art" drops them too. Returns how many games got at least one.
+     * Undoes the one-off "default covers for every game" of an earlier build: it wrote Steam's addresses into the
+     * found pictures of every Steam game. Steam games never get found pictures otherwise, so all of them go; the
+     * pictures the user picked were never touched. Runs once.
      */
-    fun applyStandard(context: Context, found: Map<String, SteamStoreArt.Assets>): Int {
-        val p = prefs(context)
+    @Volatile
+    private var bulkChecked = false
+
+    private fun undoBulkStandard(context: Context) {
+        if (bulkChecked) return
+        bulkChecked = true
         val a = autoPrefs(context)
-        var games = 0
+        if (a.getBoolean(BULK_STANDARD_UNDONE, false)) return
+        val steam = a.all.filter { (k, v) -> k.startsWith("STEAM_") && (v as? String)?.contains("steamstatic.com") == true }.keys
         a.edit {
-            for ((appId, assets) in found) {
-                var any = false
-                for (kind in listOf(ArtKind.Capsule, ArtKind.Wide, ArtKind.Hero)) {
-                    val url = assets.of(kind).firstOrNull() ?: continue
-                    if (p.getString(key(appId, kind), "").orEmpty().isNotEmpty()) continue
-                    putString(autoKey(appId, kind), url)
-                    any = true
-                }
-                if (any) games++
-            }
+            steam.forEach { remove(it) }
+            putBoolean(BULK_STANDARD_UNDONE, true)
         }
-        idPrefs(context).edit {
-            found.keys.forEach { appId -> listOf(ArtKind.Capsule, ArtKind.Wide, ArtKind.Hero).forEach { remove("auto|" + autoKey(appId, it)) } }
+        if (steam.isNotEmpty()) {
+            Timber.tag(TAG).i("Dropped %d bulk default pictures", steam.size)
+            pickCount = -1
+            _version.value++
         }
-        pickCount = -1
-        _version.value++
-        return games
     }
 
     /** Bytes taken by the pictures found without being asked (the ones the user picked are not counted). */
