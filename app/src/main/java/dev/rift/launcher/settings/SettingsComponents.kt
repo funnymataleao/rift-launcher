@@ -1,5 +1,6 @@
 package dev.rift.launcher.settings
 
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Spacer
@@ -717,7 +718,7 @@ internal fun ChoiceChipsRow(
  * Material 3 Expressive toggle button: the chosen option is a full pill and the others are softer rounded
  * rectangles, and the shape springs between them when the choice changes.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
 internal fun RiftChip(
     text: String,
@@ -725,6 +726,8 @@ internal fun RiftChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    /** One line that slowly scrolls when it does not fit (a long game name), instead of a second line. */
+    marquee: Boolean = false,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
@@ -771,8 +774,9 @@ internal fun RiftChip(
             fontSize = 14.5.sp,
             fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
             // A long answer takes a second line, never an ellipsis.
-            maxLines = 2,
+            maxLines = if (marquee) 1 else 2,
             textAlign = TextAlign.Center,
+            modifier = if (marquee) Modifier.basicMarquee(iterations = Int.MAX_VALUE) else Modifier,
         )
     }
 }
@@ -839,12 +843,14 @@ internal fun RiftPillButton(
             pressedShape = RiftShapes.full,
         ),
         colors = ButtonDefaults.buttonColors(
+            // Rift: only the button with the focus is filled with the accent; every other one, the dialog's main one
+            // too, is grey, so it is always clear which one A presses (two filled buttons read as two cursors).
             containerColor = when {
-                focused || primary -> Color.Transparent
+                focused -> Color.Transparent
                 else -> RiftColors.SurfaceContainerHigh
             },
             contentColor = when {
-                focused || primary -> accent.onAccent
+                focused -> accent.onAccent
                 else -> RiftColors.OnSurface
             },
             disabledContainerColor = RiftColors.SurfaceContainerHigh,
@@ -861,8 +867,7 @@ internal fun RiftPillButton(
             .then(
                 when {
                     !enabled -> Modifier
-                    // The main button of a dialog is coloured at rest too; the one with the cursor is the larger.
-                    focused || primary -> Modifier.clip(RiftShapes.full).background(accent.brush)
+                    focused -> Modifier.clip(RiftShapes.full).background(accent.brush)
                     else -> Modifier
                 },
             ),

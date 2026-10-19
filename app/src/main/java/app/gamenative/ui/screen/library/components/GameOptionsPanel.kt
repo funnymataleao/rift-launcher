@@ -103,10 +103,11 @@ fun GameOptionsPanel(
     onProperties: (() -> Unit)? = null,
     onHide: (() -> Unit)? = null,
     compact: Boolean = false,
+    onUninstall: (() -> Unit)? = null,
 ) {
     // Rift: Start on the home (and the settings icon of an Android or emulator game's page) shows a small menu in the middle, not this side panel.
     if (compact || dev.rift.launcher.home.LocalRiftOptionsOnly.current != null || dev.rift.launcher.home.LocalRiftStreamAction.current?.showOptions == true) {
-        dev.rift.launcher.home.RiftGameStartMenu(isOpen, onDismiss, options, onPlay, onProperties, onHide)
+        dev.rift.launcher.home.RiftGameStartMenu(isOpen, onDismiss, options, onPlay, onProperties, onHide, onUninstall = onUninstall)
         return
     }
     val firstItemFocusRequester = remember { FocusRequester() }

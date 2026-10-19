@@ -117,6 +117,7 @@ import com.winlator.container.Container
 import com.winlator.renderer.GLRenderer
 import com.winlator.renderer.VulkanRenderer
 import com.winlator.winhandler.ProcessInfo
+import dev.rift.launcher.settings.LocalPlateRest
 import dev.rift.launcher.settings.PlateShape
 import dev.rift.launcher.settings.RiftSwitch
 import dev.rift.launcher.settings.plateFill
@@ -583,18 +584,11 @@ fun QuickMenu(
         mutableStateOf(container?.let { app.gamenative.utils.LsfgVkManager.backend(it) } ?: "native")
     }
 
-    var selectedTab by rememberSaveable {
-        mutableIntStateOf(
-            when {
-                // Rift: frame generation lives in the performance tab.
-                PrefManager.quickMenuLastTab == QuickMenuTab.LSFG -> QuickMenuTab.HUD
-                PrefManager.quickMenuLastTab == QuickMenuTab.INVITE && inviteMenu == null -> QuickMenuTab.HUD
-                PrefManager.quickMenuLastTab == QuickMenuTab.POWER -> QuickMenuTab.HUD
-                // Rift: no VR tab on a tablet.
-                PrefManager.quickMenuLastTab == QuickMenuTab.IMMERSIVE -> QuickMenuTab.HUD
-                else -> PrefManager.quickMenuLastTab
-            }
-        )
+    // Rift: the menu always opens on its top tab, Performance (Denis 2026-10-19: it reopened on the
+    // controller tab, the last one used). The tabs still switch while it is open.
+    var selectedTab by rememberSaveable { mutableIntStateOf(QuickMenuTab.HUD) }
+    LaunchedEffect(isVisible) {
+        if (isVisible) selectedTab = QuickMenuTab.HUD
     }
     val selectedTabLabelResId = when (selectedTab) {
         QuickMenuTab.HUD, QuickMenuTab.LSFG -> R.string.rift_quick_menu_performance
@@ -934,12 +928,14 @@ fun QuickMenu(
                                     null
                                 },
                                 frameGeneration = if (isLsfgAvailable) {
-                                    {
+                                    { firstFocus ->
                                         QuickMenuSectionHeader(
                                             title = stringResource(R.string.rift_quick_menu_frame_generation),
                                             subtitle = stringResource(R.string.lsfg_description),
+                                            prominent = true,
                                         )
                                         LsfgQuickMenuSection(
+                                            focusRequester = firstFocus,
                                             multiplier = lsfgMultiplier,
                                             flowScale = lsfgFlowScale,
                                             performanceMode = lsfgPerformanceMode,
@@ -1397,9 +1393,10 @@ private fun PerformanceHudQuickMenuTab(
     scrollState: ScrollState,
     focusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
-    // Rift: automatic FPS reduction and frame generation sit in this tab, under the FPS limiter.
+    // Rift: automatic FPS reduction sits under the FPS limiter; frame generation opens the tab and takes
+    // its first focus (the requester it is given).
     adaptiveFpsCap: (@Composable ColumnScope.() -> Unit)? = null,
-    frameGeneration: (@Composable ColumnScope.() -> Unit)? = null,
+    frameGeneration: (@Composable ColumnScope.(FocusRequester?) -> Unit)? = null,
 ) {
     val accentColor = PluviaTheme.colors.accentPurple
 
@@ -1409,8 +1406,13 @@ private fun PerformanceHudQuickMenuTab(
             .focusGroup(),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        // Rift order: the overlay first, then the FPS limiter and frame generation, then the
-        // overlay's look and metrics.
+        // Rift order: frame generation first (the most used, Denis 2026-10-19), then the overlay, the FPS
+        // limiter, and the overlay's look and metrics.
+        if (frameGeneration != null) {
+            frameGeneration(focusRequester)
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
         // ── Performance HUD ──────────────────────────────────────────────
         QuickMenuToggleRow(
             title = stringResource(R.string.performance_hud),
@@ -1418,7 +1420,7 @@ private fun PerformanceHudQuickMenuTab(
             enabled = isPerformanceHudEnabled,
             onToggle = onTogglePerformanceHud,
             accentColor = accentColor,
-            focusRequester = focusRequester,
+            focusRequester = if (frameGeneration == null) focusRequester else null,
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -1491,11 +1493,6 @@ private fun PerformanceHudQuickMenuTab(
         }
 
         adaptiveFpsCap?.invoke(this)
-
-        if (frameGeneration != null) {
-            Spacer(modifier = Modifier.height(8.dp))
-            frameGeneration()
-        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -2028,7 +2025,7 @@ private fun ImmersiveQuickMenuTab(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp, vertical = 2.dp)
-                    .plateFill(focused = resetIsFocused, shape = PlateShape, rest = Color.Transparent)
+                    .plateFill(focused = resetIsFocused, shape = PlateShape)
                     .selectable(
                         selected = false,
                         interactionSource = resetInteractionSource,
@@ -2061,16 +2058,27 @@ internal fun QuickMenuSectionHeader(
     title: String,
     subtitle: String? = null,
     modifier: Modifier = Modifier,
+    /** Rift: a section's own title (frame generation), as large as a row's, instead of a small caps label. */
+    prominent: Boolean = false,
 ) {
     Column(
         modifier = modifier.padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 4.dp),
     ) {
-        Text(
-            text = title.uppercase(),
-            style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.2.sp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.SemiBold,
-        )
+        if (prominent) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold,
+            )
+        } else {
+            Text(
+                text = title.uppercase(),
+                style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.2.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
         if (!subtitle.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(2.dp))
             Text(
@@ -2207,14 +2215,14 @@ internal fun QuickMenuChoiceChip(
         inputBypass.reportActivate(interactionSource, if (isFocused) onClick else null)
     }
 
-    // Rift: a pill. The chosen one is lighter glass, the focused one is filled with the accent.
+    // Rift: a pill on the panel's plate colour. The chosen one is lighter glass, the focused one is filled with the accent.
     Box(
         modifier = modifier
             .height(44.dp)
             .plateFill(
                 focused = isFocused,
                 shape = CircleShape,
-                rest = Color.White.copy(alpha = if (selected) 0.16f else 0.06f),
+                rest = if (selected) Color.White.copy(alpha = 0.18f) else LocalPlateRest.current,
             )
             .then(
                 if (focusRequester != null) {
@@ -2277,7 +2285,7 @@ internal fun QuickMenuAdjustmentRow(
         modifier = modifier
             .padding(horizontal = 8.dp, vertical = 2.dp)
             // Rift: the focused plate is filled with the accent, dark text on it, no frame.
-            .plateFill(focused = isFocused, shape = shape, rest = Color.Transparent)
+            .plateFill(focused = isFocused, shape = shape)
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
@@ -2534,7 +2542,7 @@ internal fun QuickMenuToggleRow(
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 2.dp)
             // Rift: the focused plate is filled with the accent, dark text on it, no frame.
-            .plateFill(focused = isFocused, shape = PlateShape, rest = Color.Transparent)
+            .plateFill(focused = isFocused, shape = PlateShape)
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
@@ -2616,7 +2624,7 @@ private fun QuickMenuDetailRow(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 2.dp)
-            .plateFill(focused = isFocused, shape = PlateShape, rest = Color.Transparent)
+            .plateFill(focused = isFocused, shape = PlateShape)
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
@@ -2727,7 +2735,7 @@ internal fun QuickMenuItemRow(
             modifier = Modifier
                 .weight(1f)
                 // Rift: the focused plate is filled with the accent, dark text and icon on it.
-                .plateFill(focused = isFocused && isEnabled, shape = shape, rest = Color.Transparent)
+                .plateFill(focused = isFocused && isEnabled, shape = shape)
                 .focusRequester(rowFocusRequester)
                 .onPreviewKeyEvent { keyEvent ->
                     if (keyEvent.nativeKeyEvent.action != KeyEvent.ACTION_DOWN || !isFocused) {

@@ -887,7 +887,7 @@ private fun MetadataChip(
     }
 }
 
-private fun inventorySummaryBytes(entries: List<ContainerStorageManager.Entry>): Long {
+internal fun inventorySummaryBytes(entries: List<ContainerStorageManager.Entry>): Long {
     val containerBytes = entries
         .filter { it.hasContainer }
         .sumOf { it.containerSizeBytes }
@@ -902,7 +902,7 @@ private fun inventorySummaryBytes(entries: List<ContainerStorageManager.Entry>):
     return containerBytes + gameBytes
 }
 
-private fun sizeBreakdown(entry: ContainerStorageManager.Entry): String {
+internal fun sizeBreakdown(entry: ContainerStorageManager.Entry): String {
     val parts = mutableListOf<String>()
 
     entry.gameInstallSizeBytes?.let {
@@ -923,7 +923,7 @@ private fun sizeBreakdown(entry: ContainerStorageManager.Entry): String {
 }
 
 @Composable
-private fun gameSourceLabel(gameSource: GameSource?): String = when (gameSource) {
+internal fun gameSourceLabel(gameSource: GameSource?): String = when (gameSource) {
     GameSource.STEAM -> stringResource(R.string.library_source_steam)
     GameSource.CUSTOM_GAME -> stringResource(R.string.library_source_custom)
     GameSource.GOG -> stringResource(R.string.tab_gog)
@@ -933,14 +933,14 @@ private fun gameSourceLabel(gameSource: GameSource?): String = when (gameSource)
 }
 
 @Composable
-private fun storageLocationLabel(location: ContainerStorageManager.StorageLocation): String = when (location) {
+internal fun storageLocationLabel(location: ContainerStorageManager.StorageLocation): String = when (location) {
     ContainerStorageManager.StorageLocation.INTERNAL -> stringResource(R.string.container_storage_location_internal)
     ContainerStorageManager.StorageLocation.EXTERNAL -> stringResource(R.string.container_storage_location_external)
     ContainerStorageManager.StorageLocation.UNKNOWN -> stringResource(R.string.container_storage_location_unknown)
 }
 
 @Composable
-private fun statusLabel(status: ContainerStorageManager.Status): String = when (status) {
+internal fun statusLabel(status: ContainerStorageManager.Status): String = when (status) {
     ContainerStorageManager.Status.READY -> stringResource(R.string.container_storage_status_ready)
     ContainerStorageManager.Status.NO_CONTAINER -> stringResource(R.string.container_storage_status_no_container)
     ContainerStorageManager.Status.GAME_FILES_MISSING -> stringResource(R.string.container_storage_status_game_files_missing)

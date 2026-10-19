@@ -114,6 +114,8 @@ fun RiftSettingsScreen(
     onSteamSignIn: (() -> Unit)? = null,
     onSteamSignOut: (() -> Unit)? = null,
 ) {
+    // Rift: the launcher music plays on in Settings (Denis 2026-10-19: it stopped on every visit).
+    dev.rift.launcher.sound.RiftMusicEffect()
     // Blocks as they are, and inside each block the sections by the name shown, in the alphabet of the
     // language in use, so the order follows a change of language.
     val locale = LocalConfiguration.current.locales[0]

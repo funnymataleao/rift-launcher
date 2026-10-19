@@ -46,6 +46,8 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -350,9 +352,43 @@ fun CommunityConfigsDialog(
             dismissOnClickOutside = false,
         ),
     ) {
-        // Rift: black OLED screen with the game, device and GPU as the header and round close/refresh buttons.
+        // Rift: black OLED screen with the game, device and GPU as the header, Back on the left and Refresh on the right.
+        val controlsEnabledOuter = !loading && !loadingMore
+        val scopeOptionsOuter = CommunityHardwareScope.entries.filter {
+            if (it == CommunityHardwareScope.CURRENT_DEVICE) detectedDevices.isNotEmpty() else detectedGpu.isNotBlank()
+        }
+        var backDown by remember { mutableStateOf(false) }
         Scaffold(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                // Rift: the gamepad keys work wherever the focus is (they used to only below the header, and the focus
+                // starts in it): LB/RB switch the hardware filter, Y the sort, B goes back.
+                .onPreviewKeyEvent { event ->
+                    val code = event.nativeKeyEvent.keyCode
+                    if (code == android.view.KeyEvent.KEYCODE_BUTTON_B) {
+                        if (event.type == KeyEventType.KeyDown) backDown = true
+                        if (event.type == KeyEventType.KeyUp && backDown) {
+                            backDown = false
+                            onDismissRequest()
+                        }
+                        return@onPreviewKeyEvent true
+                    }
+                    val handled = code == android.view.KeyEvent.KEYCODE_BUTTON_L1 || code == android.view.KeyEvent.KEYCODE_BUTTON_R1 ||
+                        code == android.view.KeyEvent.KEYCODE_BUTTON_Y
+                    if (!handled) return@onPreviewKeyEvent false
+                    if (event.type == KeyEventType.KeyDown && event.nativeKeyEvent.repeatCount == 0 && controlsEnabledOuter) {
+                        when (code) {
+                            android.view.KeyEvent.KEYCODE_BUTTON_Y ->
+                                sort = if (sort == CommunityConfigSort.HIGHEST_RATED) CommunityConfigSort.NEWEST else CommunityConfigSort.HIGHEST_RATED
+                            else -> {
+                                val index = scopeOptionsOuter.indexOf(hardwareScope)
+                                val step = if (code == android.view.KeyEvent.KEYCODE_BUTTON_R1) 1 else -1
+                                scopeOptionsOuter.getOrNull(index + step)?.let { hardwareScope = it }
+                            }
+                        }
+                    }
+                    true
+                },
             containerColor = RiftColors.Background,
             topBar = {
                 RiftConfigHeader(
@@ -378,24 +414,7 @@ fun CommunityConfigsDialog(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    // Rift: LB/RB switch the hardware filter, Y switches the sort.
-                    .onPreviewKeyEvent { event ->
-                        if (event.type != KeyEventType.KeyDown || !controlsEnabled) return@onPreviewKeyEvent false
-                        when (event.nativeKeyEvent.keyCode) {
-                            android.view.KeyEvent.KEYCODE_BUTTON_L1, android.view.KeyEvent.KEYCODE_BUTTON_R1 -> {
-                                val index = scopeOptions.indexOf(hardwareScope)
-                                val step = if (event.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_BUTTON_R1) 1 else -1
-                                scopeOptions.getOrNull(index + step)?.let { hardwareScope = it }
-                                true
-                            }
-                            android.view.KeyEvent.KEYCODE_BUTTON_Y -> {
-                                sort = if (sort == CommunityConfigSort.HIGHEST_RATED) CommunityConfigSort.NEWEST else CommunityConfigSort.HIGHEST_RATED
-                                true
-                            }
-                            else -> false
-                        }
-                    },
+                    .padding(paddingValues),
             ) {
                 if (riftService != null) {
                     RiftPillGroup(modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 4.dp)) {
@@ -1296,14 +1315,28 @@ private fun RiftConfigHeader(
     onRefresh: () -> Unit,
     onClose: () -> Unit,
 ) {
+    val backFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    LaunchedEffect(Unit) {
+        repeat(10) {
+            if (runCatching { backFocus.requestFocus() }.isSuccess) return@LaunchedEffect
+            kotlinx.coroutines.delay(50)
+        }
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.statusBars)
             .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        RiftHeaderButton(
+            Icons.AutoMirrored.Filled.ArrowBack,
+            stringResource(R.string.back),
+            true,
+            onClose,
+            Modifier.focusRequester(backFocus),
+        )
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = stringResource(R.string.community_config_title).uppercase(Locale.getDefault()),
@@ -1329,16 +1362,21 @@ private fun RiftConfigHeader(
             )
         }
         RiftHeaderButton(Icons.Default.Refresh, stringResource(R.string.community_config_refresh), refreshEnabled, onRefresh)
-        RiftHeaderButton(Icons.Default.Close, stringResource(R.string.community_config_close), true, onClose)
     }
 }
 
 @Composable
-private fun RiftHeaderButton(icon: androidx.compose.ui.graphics.vector.ImageVector, description: String, enabled: Boolean, onClick: () -> Unit) {
+private fun RiftHeaderButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    description: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(RiftSizes.button)
             .clip(RoundedCornerShape(50))
             .background(if (focused) dev.rift.launcher.ui.theme.RiftAccent.current.brush else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.1f)))

@@ -1023,7 +1023,7 @@ private fun ScreenEffectRadioRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 2.dp)
-            .plateFill(focused = isFocused, shape = PlateShape, rest = Color.Transparent)
+            .plateFill(focused = isFocused, shape = PlateShape)
             .then(
                 if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier,
             )

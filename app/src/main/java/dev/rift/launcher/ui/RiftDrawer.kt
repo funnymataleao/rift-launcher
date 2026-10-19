@@ -98,11 +98,18 @@ object RiftDrawer {
      */
     val Tint = Color.Black.copy(alpha = 0.88f)
 
+    /** The tint over a blurred copy of a game or a stream (darker pictures than the home's). */
+    val GameTint = Color.Black.copy(alpha = 0.62f)
+
     /** With nothing to blur. */
     val Solid = Color.Black.copy(alpha = 0.96f)
 
-    /** The plates in a panel (a profile, a row) without focus: black, not grey. */
-    val Plate = Color.Black
+    /**
+     * The plates in a panel (a profile, a row, a chip) without focus: a light glass over the black, so every
+     * row reads as a plate (Denis 2026-10-19: black plates melted into the panel and the rows' insets looked
+     * like broken padding). The chosen chip is lighter still, the focused plate takes the accent.
+     */
+    val Plate = Color.White.copy(alpha = 0.09f)
 
     val Blur = 40.dp
 
@@ -177,8 +184,11 @@ fun Modifier.drawerGlass(backdrop: DrawerBackdrop?): Modifier {
                     }
                 }
             }
-            drawLayer(blurred)
-            drawRect(RiftDrawer.Tint)
+            // Rift: the blur spreads past the layer's edges by its radius; clipped, or it lay as a blurred strip
+            // beside the panel (in games, on the left of the quick menu).
+            clipRect(0f, 0f, size.width, size.height) { drawLayer(blurred) }
+            // A copy of a game is mostly dark already: a lighter tint, or the glass read as plain black.
+            drawRect(if (backdrop is DrawerBackdrop.Picture) RiftDrawer.GameTint else RiftDrawer.Tint)
         }
 }
 

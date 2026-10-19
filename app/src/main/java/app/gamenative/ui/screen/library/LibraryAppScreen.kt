@@ -79,6 +79,11 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.ui.semantics.Role
@@ -775,6 +780,8 @@ private fun FullscreenStoreMediaDialog(
     videoFallback: String,
     autoplay: Boolean,
     onDismiss: (Int) -> Unit,
+    // Rift: whether the page on screen is a video, so the launcher music is quiet only for a trailer, not a screenshot.
+    onVideoShown: (Boolean) -> Unit = {},
 ) {
     if (media.isEmpty()) return
 
@@ -784,6 +791,7 @@ private fun FullscreenStoreMediaDialog(
     )
     val coroutineScope = rememberCoroutineScope()
     val dismiss = { onDismiss(pagerState.currentPage) }
+    LaunchedEffect(pagerState.currentPage) { onVideoShown(media.getOrNull(pagerState.currentPage)?.isVideo == true) }
     // Rift: the viewer holds focus itself, so the D-pad and the left stick page through every trailer and screenshot.
     val viewerFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { viewerFocus.requestFocus() } }
@@ -1180,20 +1188,73 @@ private fun GamePageStickyHeader(
 private fun GamePageOverview(info: GameDisplayInfo, wide: Boolean, facts: List<Pair<String, String>>) {
     val details = info.storeDetails
     var expanded by rememberSaveable(info.appId) { mutableStateOf(false) }
-    val about: @Composable (Modifier) -> Unit = { modifier ->
-        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (details.description.isNotBlank()) {
-                Text(
-                    text = details.description,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.88f),
-                    maxLines = if (expanded) Int.MAX_VALUE else 6,
-                    overflow = TextOverflow.Ellipsis,
-                )
+    // Rift: the description runs the whole width. Opened in full it is cut into short pieces the d-pad steps through,
+    // one after another, with the page scrolling along, so all of it can be read with the gamepad (Denis 18.10).
+    // Opened in full, the focus goes to the text's first piece (from the button under it, down went past all of it).
+    val firstPiece = remember { FocusRequester() }
+    var openedByPress by remember { mutableStateOf(false) }
+    LaunchedEffect(expanded) {
+        if (expanded && openedByPress) {
+            openedByPress = false
+            androidx.compose.runtime.withFrameNanos { }
+            runCatching { firstPiece.requestFocus() }
+        }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+        if (details.description.isNotBlank()) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // One text in both states, so nothing changes look when it opens. Opened, the d-pad steps through it a few
+                // lines at a time; the part being read gets a thin accent bar in the margin, the text itself never moves.
+                var layout by remember(details.description) { mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = details.description,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.88f),
+                        maxLines = if (expanded) Int.MAX_VALUE else 6,
+                        overflow = TextOverflow.Ellipsis,
+                        onTextLayout = { layout = it },
+                    )
+                    val lines = layout
+                    if (expanded && lines != null && lines.lineCount > 0) {
+                        val density = LocalDensity.current
+                        val accent = dev.rift.launcher.ui.theme.RiftAccent.current.brush
+                        (0 until lines.lineCount step READ_LINES).forEachIndexed { index, first ->
+                            val last = (first + READ_LINES - 1).coerceAtMost(lines.lineCount - 1)
+                            val top = lines.getLineTop(first)
+                            val height = lines.getLineBottom(last) - top
+                            val interaction = remember { MutableInteractionSource() }
+                            val focused by interaction.collectIsFocusedAsState()
+                            Box(
+                                modifier = Modifier
+                                    .offset { androidx.compose.ui.unit.IntOffset(0, top.toInt()) }
+                                    .fillMaxWidth()
+                                    .height(with(density) { height.toDp() })
+                                    .then(if (index == 0) Modifier.focusRequester(firstPiece) else Modifier)
+                                    .keepWholeOnFocus()
+                                    .focusable(interactionSource = interaction)
+                                    .drawBehind {
+                                        if (focused) {
+                                            val w = 4.dp.toPx()
+                                            drawRoundRect(
+                                                brush = accent,
+                                                topLeft = androidx.compose.ui.geometry.Offset(-16.dp.toPx(), 0f),
+                                                size = androidx.compose.ui.geometry.Size(w, size.height),
+                                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(w / 2, w / 2),
+                                            )
+                                        }
+                                    },
+                            )
+                        }
+                    }
+                }
                 ActionPillButton(
                     icon = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
                     text = stringResource(if (expanded) R.string.rift_game_read_less else R.string.rift_game_read_more),
-                    onClick = { expanded = !expanded },
+                    onClick = {
+                        if (!expanded) openedByPress = true
+                        expanded = !expanded
+                    },
                 )
                 // Rift: Wikipedia's text is CC BY-SA; the credit stays under it.
                 if (details.source == "wikipedia") {
@@ -1204,59 +1265,48 @@ private fun GamePageOverview(info: GameDisplayInfo, wide: Boolean, facts: List<P
                     )
                 }
             }
-            if (details.tags.isNotEmpty()) {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    details.tags.forEach { tag ->
-                        Text(
-                            text = tag,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50))
-                                .background(MaterialTheme.colorScheme.surfaceContainer)
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                        )
-                    }
+        }
+        // Rift: under the text, two columns: the game's facts (rating, developer, status, size, play time) on the left,
+        // its tags on the right, on dark grey plates that read on the black page.
+        val factsColumn: @Composable (Modifier) -> Unit = { modifier ->
+            Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                GamePageInfoCard(info, facts, Modifier.fillMaxWidth())
+                info.hltbStats?.let { GamePageHltbCard(it, Modifier.fillMaxWidth()) }
+            }
+        }
+        val tagsColumn: @Composable (Modifier) -> Unit = { modifier ->
+            FlowRow(
+                modifier = modifier,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                details.tags.forEach { tag ->
+                    Text(
+                        text = tag,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(Color.White.copy(alpha = 0.1f))
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                    )
                 }
             }
         }
-    }
-    val hasAbout = details.description.isNotBlank() || details.tags.isNotEmpty()
-    // Rift: one side column, the rating and the game's facts in one card with HowLongToBeat under it.
-    val side: @Composable (Modifier, Boolean) -> Unit = { modifier, stretch ->
-        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            GamePageInfoCard(info, facts, if (stretch) Modifier.fillMaxWidth().weight(1f) else Modifier.fillMaxWidth())
-            info.hltbStats?.let { GamePageHltbCard(it, Modifier.fillMaxWidth()) }
-        }
-    }
-    if (wide && hasAbout) {
-        // About on the left, the side column on the right, both as tall as the taller one.
-        Layout(
-            contents = listOf({ about(Modifier) }, { side(Modifier, true) }),
-            modifier = Modifier.fillMaxWidth(),
-        ) { (aboutMeasurables, sideMeasurables), constraints ->
-            val gap = 24.dp.roundToPx()
-            val sideWidth = 400.dp.roundToPx().coerceAtMost(constraints.maxWidth / 2)
-            val aboutWidth = (constraints.maxWidth - sideWidth - gap).coerceAtLeast(0)
-            val aboutPlaceable = aboutMeasurables.first().measure(Constraints(minWidth = aboutWidth, maxWidth = aboutWidth))
-            val sideMeasurable = sideMeasurables.first()
-            val height = maxOf(aboutPlaceable.height, sideMeasurable.maxIntrinsicHeight(sideWidth))
-            val sidePlaceable = sideMeasurable.measure(Constraints.fixed(sideWidth, height))
-            layout(constraints.maxWidth, height) {
-                aboutPlaceable.place(0, 0)
-                sidePlaceable.place(aboutWidth + gap, 0)
+        if (wide) {
+            Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.Top) {
+                factsColumn(Modifier.weight(1f))
+                if (details.tags.isNotEmpty()) tagsColumn(Modifier.weight(1f)) else Spacer(Modifier.weight(1f))
             }
-        }
-    } else {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            if (hasAbout) about(Modifier.fillMaxWidth())
-            side(if (wide) Modifier.width(400.dp) else Modifier.fillMaxWidth(), false)
+        } else {
+            factsColumn(Modifier.fillMaxWidth())
+            if (details.tags.isNotEmpty()) tagsColumn(Modifier.fillMaxWidth())
         }
     }
 }
+
+/** Lines of the opened description the d-pad moves by. */
+private const val READ_LINES = 4
 
 /** Rift: Steam's review verdict ("Mostly Positive") as a string in the interface language, null when it is not Steam's. */
 private fun steamReviewVerdict(summary: String?): Int? = when (summary?.trim()?.lowercase(Locale.ROOT)) {
@@ -1483,6 +1533,11 @@ private fun GamePageMediaRow(
                     } else {
                         FocusRequester.Default
                     }
+                }
+                // Rift: sideways past the first or the last tile the focus stays put (left from the first one went
+                // up the page to whatever was nearest).
+                exit = { direction ->
+                    if (direction == FocusDirection.Left || direction == FocusDirection.Right) FocusRequester.Cancel else FocusRequester.Default
                 }
             }
             .focusGroup(),
@@ -1827,6 +1882,8 @@ internal fun AppScreenContent(
     val videoFallback = displayInfo.heroImageUrl
         ?: displayInfo.storeDetails.screenshots.firstOrNull().orEmpty()
     var fullscreenHeroPage by rememberSaveable(displayInfo.appId) { mutableStateOf<Int?>(null) }
+    // Rift: the full-screen viewer shows a video (not a screenshot) right now.
+    var fullscreenVideo by remember(displayInfo.appId) { mutableStateOf(false) }
     // Rift: the viewer opened from a Media tile hands focus back to the tile of the last page shown.
     var mediaOpenedFromRow by remember(displayInfo.appId) { mutableStateOf(false) }
     var mediaReturnFocus by remember(displayInfo.appId) { mutableStateOf<Int?>(null) }
@@ -1963,10 +2020,15 @@ internal fun AppScreenContent(
     // Restore focus when options menu, dialogs
     // Rift: not while Change Art or the game info picker is up over the page: they take the focus (and give it back on closing).
     val riftCovered = dev.rift.launcher.home.RiftPageCover.covered
+    // Rift: whether the focus is somewhere on the page itself (a button down in Compatibility, say).
+    var contentFocused by remember { mutableStateOf(false) }
     LaunchedEffect(optionsMenuVisible, propertiesOpen, dialogOpen, riftCovered) {
         if (!optionsMenuVisible && !propertiesOpen && !dialogOpen) {
             kotlinx.coroutines.delay(100) // Brief delay for menu/dialog animation
             if (dev.rift.launcher.home.RiftPageCover.covered) return@LaunchedEffect
+            // Rift: a window closed over the page (All reports, the profiles) gives the focus back to the button that
+            // opened it; sending it to Play scrolled the page back to the top.
+            if (contentFocused) return@LaunchedEffect
             try {
                 playButtonFocusRequester.requestFocus()
             } catch (_: IllegalStateException) {
@@ -2056,8 +2118,10 @@ internal fun AppScreenContent(
             when (event.keyCode) {
                 // SELECT button - open options menu
                 KeyEvent.KEYCODE_BUTTON_SELECT -> {
-                    // Rift: Select opens the game's menu (the gear's); its first line opens the full settings.
-                    if (riftStream == null || riftStream.showOptions) optionsMenuVisible = true
+                    // Rift: Select opens the game's full settings page; the gear opens the small menu. A game with no
+                    // settings page (Android, emulators, PC-only stream games) gets the menu on Select too.
+                    if (riftStream == null || riftStream.showLocalDetails) propertiesOpen = true
+                    else if (riftStream.showOptions) optionsMenuVisible = true
                     true
                 }
 
@@ -2134,8 +2198,20 @@ internal fun AppScreenContent(
                 handleKeyEvent(it.nativeKeyEvent)
             },
     ) {
+        // Rift: the page under the game's menu is blurred, and recorded for the menu's black glass (as on the home).
+        val pageGlass = androidx.compose.ui.graphics.rememberGraphicsLayer()
+        val menuBlur by animateDpAsState(if (optionsMenuVisible && riftOptionsOnly == null) 28.dp else 0.dp, tween(250), label = "menuBlur")
         // Rift: options-only mode shows just the options panel over the Rift home, no page.
         if (riftOptionsOnly == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .blur(menuBlur)
+                .drawWithContent {
+                    pageGlass.record { this@drawWithContent.drawContent() }
+                    drawLayer(pageGlass)
+                },
+        ) {
         // Rift: with the d-pad every focused element scrolls fully into view with 48 dp to spare, below the
         // sticky header at the top and above the screen edge at the bottom; nothing is cut off (Denis 17.10).
         val pageKeepInView = with(LocalDensity.current) {
@@ -2145,6 +2221,7 @@ internal fun AppScreenContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .onFocusChanged { contentFocused = it.hasFocus }
                 .verticalScroll(scrollState),
         ) {
             // Rift: the hero fills the screen (trailer or art) with the next section peeking under it;
@@ -2186,7 +2263,7 @@ internal fun AppScreenContent(
             val windowFocused = LocalWindowInfo.current.isWindowFocused
             val pageObscured = !windowFocused || optionsMenuVisible || propertiesOpen || dialogOpen ||
                 dev.rift.launcher.home.RiftPageCover.covered
-            val trailerAudible = fullscreenHeroPage != null ||
+            val trailerAudible = (fullscreenHeroPage != null && fullscreenVideo) ||
                 (heroBackground?.isVideo == true && trailerSound && trailerAllowed && heroPlaybackVisible && !pageObscured)
             val musicHold = remember { Any() }
             LaunchedEffect(trailerAudible) {
@@ -2460,22 +2537,6 @@ internal fun AppScreenContent(
                             )
                         }
 
-                        if (firstVideoPage >= 0) {
-                            ActionPillButton(
-                                icon = Icons.Filled.Theaters,
-                                text = stringResource(R.string.rift_game_trailer),
-                                onClick = { fullscreenHeroPage = firstVideoPage },
-                            )
-                        }
-
-                        // A streamed game has no local options.
-                        if (riftStream == null || riftStream.showOptions) {
-                            ActionIconButton(
-                                icon = Icons.Default.Settings,
-                                contentDescription = stringResource(R.string.options),
-                                onClick = { optionsMenuVisible = true },
-                            )
-                        }
 
                         val favoriteIds by app.gamenative.data.FavoritesManager.favorites.collectAsState()
                         val isFavorite = displayInfo.appId in favoriteIds
@@ -2497,8 +2558,39 @@ internal fun AppScreenContent(
                                 contentDescription = stringResource(R.string.rift_settings_assistant),
                                 onClick = {
                                     dev.rift.launcher.assistant.optimize.RiftOptimizeRequest.current.value =
-                                        dev.rift.launcher.assistant.optimize.RiftOptimizeRequest.Target(displayInfo.appId, displayInfo.name, optimize = riftStream == null)
+                                        dev.rift.launcher.assistant.optimize.RiftOptimizeRequest.Target(
+                                            displayInfo.appId,
+                                            displayInfo.name,
+                                            optimize = riftStream == null,
+                                            kind = when {
+                                                riftStream == null -> dev.rift.launcher.assistant.chat.ChatKind.Pc
+                                                displayInfo.appId.startsWith("ANDROID_") -> dev.rift.launcher.assistant.chat.ChatKind.Android
+                                                dev.rift.launcher.emulators.EmulatorLibrary.isEmulatorGame(displayInfo.appId) -> dev.rift.launcher.assistant.chat.ChatKind.Emulator
+                                                dev.rift.launcher.cloud.CloudLibrary.isCloud(displayInfo.appId) -> dev.rift.launcher.assistant.chat.ChatKind.Cloud
+                                                else -> dev.rift.launcher.assistant.chat.ChatKind.PcStream
+                                            },
+                                        )
                                 },
+                            )
+                        }
+
+                        // Rift: the game's menu after the assistant (Denis 18.10).
+                        if (riftStream == null || riftStream.showOptions) {
+                            ActionIconButton(
+                                icon = Icons.Default.Settings,
+                                contentDescription = stringResource(R.string.options),
+                                onClick = { optionsMenuVisible = true },
+                            )
+                        }
+
+                        // Rift: the trailer and its sound come last: they show up once the trailer is known, and in front
+                        // they pushed every other button along.
+                        // Rift: a round icon like the others, no label (Denis 18.10): narrower, nothing moves when it shows up.
+                        if (firstVideoPage >= 0) {
+                            ActionIconButton(
+                                icon = Icons.Filled.Theaters,
+                                contentDescription = stringResource(R.string.rift_game_trailer),
+                                onClick = { fullscreenHeroPage = firstVideoPage },
                             )
                         }
 
@@ -2511,14 +2603,6 @@ internal fun AppScreenContent(
                                     trailerSound = !trailerSound
                                     pagePrefs.gamePageTrailerSound = trailerSound
                                 },
-                            )
-                        }
-
-                        if (riftStream == null && (isInstalled || hasPartialDownload || hasLeftoverInstall)) {
-                            ActionIconButton(
-                                icon = Icons.Default.Delete,
-                                contentDescription = if (isInstalled || hasLeftoverInstall) stringResource(R.string.uninstall) else stringResource(R.string.delete_app),
-                                onClick = onDeleteDownloadClick,
                             )
                         }
 
@@ -2692,8 +2776,10 @@ internal fun AppScreenContent(
                     gameName = displayInfo.name,
                     videoFallback = videoFallback,
                     autoplay = hasWifiOrEthernet,
+                    onVideoShown = { fullscreenVideo = it },
                     onDismiss = { lastPage ->
                         fullscreenHeroPage = null
+                        fullscreenVideo = false
                         val heroPage = heroMedia.indexOf(gallery.getOrNull(lastPage)).coerceAtLeast(0)
                         if (mediaOpenedFromRow) mediaReturnFocus = heroPage
                         mediaOpenedFromRow = false
@@ -2873,10 +2959,14 @@ internal fun AppScreenContent(
             )
         }
         }
+        }
 
         // Rift: no button-hint footer on the game page (Denis 17.10); hints that matter sit inside the screens.
 
         // Options panel - slides in from right
+        androidx.compose.runtime.CompositionLocalProvider(
+            dev.rift.launcher.ui.LocalGlassBackdrop provides (if (riftOptionsOnly == null) pageGlass else dev.rift.launcher.ui.LocalGlassBackdrop.current),
+        ) {
         GameOptionsPanel(
             isOpen = optionsMenuVisible,
             onDismiss = { optionsMenuVisible = false },
@@ -2884,8 +2974,10 @@ internal fun AppScreenContent(
             modifier = Modifier.align(Alignment.CenterEnd),
             onPlay = if (isInstalled && riftStream == null) onStartAction else null,
             // Only GameNative's own games have a full settings page; the others' menu is all they have.
-            onProperties = if (riftStream == null) ({ propertiesOpen = true }) else null,
+            onProperties = if (riftStream == null || riftStream.showLocalDetails) ({ propertiesOpen = true }) else null,
             compact = true,
+            // Rift: Uninstall lives in the game's menu, not in the page's button row.
+            onUninstall = if (riftOptionsOnly == null && riftStream == null && (isInstalled || hasPartialDownload || hasLeftoverInstall)) onDeleteDownloadClick else null,
             onHide = if (riftOptionsOnly != null || riftStream?.showOptions == true) {
                 {
                     val hide = riftOptionsOnly?.onHide
@@ -2901,6 +2993,7 @@ internal fun AppScreenContent(
                 null
             },
         )
+        }
         dev.rift.launcher.home.RiftGameProperties(
             isOpen = propertiesOpen,
             title = displayInfo.name,

@@ -739,7 +739,7 @@ private fun SelectorRow(
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 2.dp)
                 // Rift: the focused plate is filled with the accent, dark text on it, no frame.
-                .plateFill(focused = isFocused, shape = PlateShape, rest = Color.Transparent)
+                .plateFill(focused = isFocused, shape = PlateShape)
                 .then(
                     if (focusRequester != null) {
                         Modifier.focusRequester(focusRequester)

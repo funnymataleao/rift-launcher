@@ -143,6 +143,8 @@ fun LibraryOptionsPanel(
     // Rift: a tab other than PC games has its own short list of groups instead of GameNative's.
     tabGroups: List<TabFilterGroup>? = null,
     extraGroup: TabFilterGroup? = null,
+    // Rift: PC games' store filter (Steam, GOG, Epic...), right under the sort.
+    storeGroup: TabFilterGroup? = null,
     // Rift: a counter the home bumps when gamepad input arrives while the panel has no focus, and a report of
     // whether the panel holds focus, so input never leaks to the covers under the blur.
     focusAsk: Int = 0,
@@ -153,6 +155,8 @@ fun LibraryOptionsPanel(
     val firstItemFocusRequester = remember { FocusRequester() }
     // Accordion: only one group is open at a time. B closes the open group first, then the panel.
     var openGroup by rememberSaveable { mutableStateOf<String?>(null) }
+    // Rift: a tab with only a group or two shows them all open, nothing to unroll (Denis 2026-10-19).
+    val allOpen = tabGroups != null && tabGroups.size <= 2
     val headerFocus = remember { mutableMapOf("sort" to firstItemFocusRequester) }
     fun headerRequester(key: String) = headerFocus.getOrPut(key) { FocusRequester() }
     fun toggleGroup(key: String) {
@@ -248,8 +252,8 @@ fun LibraryOptionsPanel(
                                 label = group.label,
                                 value = group.value,
                                 icon = group.icon,
-                                expanded = openGroup == key,
-                                onToggle = { toggleGroup(key) },
+                                expanded = allOpen || openGroup == key,
+                                onToggle = { if (!allOpen) toggleGroup(key) },
                                 headerFocus = if (index == 0) firstItemFocusRequester else headerRequester(key),
                             ) {
                                 group.options.forEach { option ->
@@ -285,6 +289,28 @@ fun LibraryOptionsPanel(
                                         runCatching { headerRequester("sort").requestFocus() }
                                     },
                                 )
+                            }
+                        }
+                        if (storeGroup != null) {
+                            FilterGroup(
+                                label = storeGroup.label,
+                                value = storeGroup.value,
+                                icon = storeGroup.icon,
+                                expanded = openGroup == "store",
+                                onToggle = { toggleGroup("store") },
+                                headerFocus = headerRequester("store"),
+                            ) {
+                                storeGroup.options.forEach { option ->
+                                    FilterOption(
+                                        text = option.text,
+                                        selected = option.selected,
+                                        onClick = {
+                                            option.onPick()
+                                            openGroup = null
+                                            onDismiss()
+                                        },
+                                    )
+                                }
                             }
                         }
                         FilterGroup(
@@ -568,7 +594,7 @@ private fun FilterGroup(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .plateFill(isFocused, rest = Color.Transparent)
+                .plateFill(isFocused)
                 .focusRequester(headerFocus)
                 .clickable(interactionSource = interactionSource, indication = null, role = Role.Button, onClick = onToggle)
                 .heightIn(min = DrawerRowMinHeight)
@@ -615,7 +641,7 @@ private fun FilterOption(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .plateFill(isFocused, rest = Color.Transparent)
+            .plateFill(isFocused)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,

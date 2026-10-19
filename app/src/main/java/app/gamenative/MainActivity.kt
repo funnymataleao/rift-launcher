@@ -11,6 +11,7 @@ import android.graphics.Color.TRANSPARENT
 import android.hardware.input.InputManager
 import android.os.Build
 import android.os.Bundle
+import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.OrientationEventListener
@@ -278,6 +279,13 @@ class MainActivity : ComponentActivity() {
                 // val logger = if (BuildConfig.DEBUG) DebugLogger() else null
 
                 ImageLoader.Builder(context)
+                    // Rift: OkHttp's default allows 5 downloads per server at once; the art picker's grid of
+                    // SteamGridDB pictures (and a shelf of Steam covers) queued behind that for a long time.
+                    .okHttpClient {
+                        okhttp3.OkHttpClient.Builder()
+                            .dispatcher(okhttp3.Dispatcher().apply { maxRequestsPerHost = 16; maxRequests = 64 })
+                            .build()
+                    }
                     .memoryCachePolicy(CachePolicy.ENABLED)
                     .memoryCache(memoryCache)
                     .diskCachePolicy(CachePolicy.ENABLED)
@@ -691,6 +699,7 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         // Log.d("MainActivity$index", "dispatchKeyEvent(${event.keyCode}):\n$event")
+        leaveTouchModeForController(event)
 
         var eventDispatched = PluviaApp.events.emit(AndroidEvent.KeyEvent(event)) { keyEvent ->
             keyEvent.any { it }
@@ -717,6 +726,23 @@ class MainActivity : ComponentActivity() {
         }
 
         return if (!eventDispatched) super.dispatchKeyEvent(event) else true
+    }
+
+    // Rift: Android leaves touch mode only for d-pad and typing keys, never for A, B, Start or the
+    // shoulders. In touch mode Compose cannot focus a clickable and drops the focus it had at the
+    // first touch, so after any touch every controller button went nowhere (Denis: "the gamepad
+    // stops working after touch"). A controller press takes the window out of touch mode first.
+    private fun leaveTouchModeForController(event: KeyEvent) {
+        if (event.action != KeyEvent.ACTION_DOWN || event.repeatCount != 0) return
+        // Nothing focused: the screen's own safety net takes the focus back (from touch) itself.
+        val focused = currentFocus ?: return
+        if (!focused.isInTouchMode) return
+        val fromController = KeyEvent.isGamepadButton(event.keyCode) ||
+            event.isFromSource(InputDevice.SOURCE_GAMEPAD) ||
+            event.isFromSource(InputDevice.SOURCE_JOYSTICK) ||
+            event.isFromSource(InputDevice.SOURCE_DPAD)
+        if (!fromController) return
+        focused.requestFocusFromTouch()
     }
 
     override fun dispatchGenericMotionEvent(ev: MotionEvent?): Boolean {

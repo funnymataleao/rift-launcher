@@ -178,7 +178,7 @@ internal fun SystemMenuItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .plateFill(isFocused, rest = Color.Transparent)
+            .plateFill(isFocused)
             .focusRequester(focusRequester)
             .selectable(
                 selected = isFocused,
@@ -221,7 +221,7 @@ private fun StatusOption(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .plateFill(isFocused, rest = Color.Transparent)
+            .plateFill(isFocused)
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .selectable(
                 selected = isFocused,
