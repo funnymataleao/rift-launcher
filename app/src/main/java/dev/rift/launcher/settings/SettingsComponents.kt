@@ -104,8 +104,9 @@ internal val LocalPlateRest = compositionLocalOf { RiftColors.SurfaceContainer }
 
 /**
  * Whether plates are glass: the side panels' plates (Denis 2026-10-19: on the filters' blur they looked like
- * frosted glass, on the darker right panels like flat grey). A glass plate is lit from the top and fades
- * downwards, with a faint light edge, so it reads as glass over any backdrop, even plain black.
+ * frosted glass, on the darker right panels like flat grey). A glass plate is a touch lighter at the top
+ * than at the bottom (barely: Denis 2026-10-19, a strong gradient made the plates look rounded), with a faint
+ * light edge, so it reads as glass over any backdrop, even plain black.
  */
 internal val LocalPlateGlass = compositionLocalOf { false }
 
@@ -118,10 +119,10 @@ internal fun Modifier.plateFill(focused: Boolean, shape: Shape = PlateShape, res
             LocalPlateGlass.current && rest.alpha > 0f && rest.alpha < 1f -> Modifier
                 .background(
                     Brush.verticalGradient(
-                        listOf(rest.copy(alpha = (rest.alpha * 1.6f).coerceAtMost(1f)), rest.copy(alpha = rest.alpha * 0.55f)),
+                        listOf(rest.copy(alpha = (rest.alpha * 1.15f).coerceAtMost(1f)), rest.copy(alpha = rest.alpha * 0.88f)),
                     ),
                 )
-                .border(1.dp, Color.White.copy(alpha = 0.07f), shape)
+                .border(1.dp, Color.White.copy(alpha = 0.04f), shape)
             else -> Modifier.background(rest)
         },
     )
