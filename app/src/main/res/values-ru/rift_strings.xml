@@ -271,6 +271,8 @@
 
     <string name="rift_settings_sign_in">Войти</string>
     <string name="rift_settings_store_signed_in">Вы вошли</string>
+    <string name="rift_settings_stores_connected">Подключены</string>
+    <string name="rift_settings_stores_not_connected">Не подключены</string>
     <string name="rift_settings_sign_out_title">Выйти из %1$s?</string>
     <string name="rift_settings_sign_out_message">Чтобы снова видеть его игры, нужно будет войти заново.</string>
 

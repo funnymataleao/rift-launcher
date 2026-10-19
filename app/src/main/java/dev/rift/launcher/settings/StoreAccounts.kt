@@ -5,6 +5,21 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import dev.rift.launcher.ui.theme.RiftColors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.VideogameAsset
@@ -171,25 +186,34 @@ internal fun StoreAccountsSettings(onSteamSignIn: (() -> Unit)?, onSteamSignOut:
         }
     }
 
-    // One group for all stores, so the plates are PlateGap apart like everywhere, not a group gap each.
+    // Rift: the stores signed in first, then the rest, each under a small heading (Denis: the two kinds
+    // looked the same). EA and Rockstar are left out for now: they had no way to sign in from here.
+    val shown = listOf(Store.Steam, Store.Epic, Store.Gog, Store.Amazon)
+    val (connected, notConnected) = shown.partition { statuses.getValue(it).signedIn }
     SettingsGroup(title = stringResource(R.string.rift_settings_accounts)) {
-        Store.entries.forEach { store ->
-            val status = statuses.getValue(store)
-            val signIn: (() -> Unit)? = when (store) {
-                Store.Steam -> onSteamSignIn
-                Store.Epic -> epicLogin.launch
-                Store.Gog -> gogLogin.launch
-                Store.Amazon -> amazonLogin.launch
-                Store.Ea, Store.Rockstar -> null
+        listOf(
+            R.string.rift_settings_stores_connected to connected,
+            R.string.rift_settings_stores_not_connected to notConnected,
+        ).filter { it.second.isNotEmpty() }.forEachIndexed { index, (heading, stores) ->
+            StoreHeading(stringResource(heading), first = index == 0)
+            stores.forEach { store ->
+                val status = statuses.getValue(store)
+                val signIn: (() -> Unit)? = when (store) {
+                    Store.Steam -> onSteamSignIn
+                    Store.Epic -> epicLogin.launch
+                    Store.Gog -> gogLogin.launch
+                    Store.Amazon -> amazonLogin.launch
+                    Store.Ea, Store.Rockstar -> null
+                }
+                StoreCard(
+                    store = store,
+                    status = status,
+                    canSignIn = signIn != null,
+                    onClick = {
+                        if (status.signedIn) confirmSignOut = store.name else signIn?.invoke()
+                    },
+                )
             }
-            StoreCard(
-                store = store,
-                status = status,
-                canSignIn = signIn != null,
-                onClick = {
-                    if (status.signedIn) confirmSignOut = store.name else signIn?.invoke()
-                },
-            )
         }
     }
 
@@ -233,28 +257,62 @@ private fun StoreCard(store: Store, status: StoreStatus, canSignIn: Boolean, onC
         Store.Gog -> painterResource(R.drawable.ic_gog)
         else -> null
     }
-    run {
-        LinkRow(
-            title = storeTitle(store),
-            subtitle = when {
-                !status.signedIn -> stringResource(R.string.settings_accounts_signed_out)
-                status.account != null -> status.account
-                else -> stringResource(R.string.rift_settings_store_signed_in)
-            },
-            icon = vector,
-            iconPainter = painter,
-            value = when {
-                status.signedIn -> stringResource(R.string.rift_settings_sign_out)
-                canSignIn -> stringResource(R.string.rift_settings_sign_in)
-                else -> null
-            },
-            enabled = status.signedIn || canSignIn,
-            // Signing in opens the store's page; signing out only asks here, so it has no arrow.
-            chevron = !status.signedIn && canSignIn,
-            onClick = onClick,
+    val action = stringResource(if (status.signedIn) R.string.rift_settings_sign_out else R.string.rift_settings_sign_in)
+    LinkRow(
+        title = storeTitle(store),
+        // Every row has the same two lines, so icon, name and subtitle sit at the same height in all of them.
+        subtitle = when {
+            !status.signedIn -> stringResource(R.string.settings_accounts_signed_out)
+            status.account != null -> status.account
+            else -> stringResource(R.string.rift_settings_store_signed_in)
+        },
+        icon = vector,
+        iconPainter = painter,
+        enabled = status.signedIn || canSignIn,
+        dimmed = !status.signedIn,
+        onClick = onClick,
+        // One pill of one size for Sign in and Sign out, no arrows: the right edge lines up on every row.
+        trailing = { focused -> StoreActionPill(action, focused) },
+    )
+}
+
+/** A small heading over a run of store rows, in the style of the panels' section names (PRESETS). */
+@Composable
+private fun StoreHeading(text: String, first: Boolean) {
+    Text(
+        text = text.uppercase(),
+        color = RiftColors.OnSurfaceVariant,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 1.2.sp,
+        modifier = Modifier.padding(start = 6.dp, top = if (first) 0.dp else 14.dp),
+    )
+}
+
+/** The row's action drawn as a button: the whole row is what takes the press, so it is not focusable itself. */
+@Composable
+private fun StoreActionPill(text: String, focused: Boolean) {
+    Box(
+        modifier = Modifier
+            .width(StorePillWidth)
+            .height(40.dp)
+            .clip(CircleShape)
+            .background(if (focused) plateText(true).copy(alpha = 0.16f) else RiftColors.OnSurface.copy(alpha = 0.10f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            color = plateText(focused),
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 12.dp),
         )
     }
 }
+
+private val StorePillWidth = 120.dp
 
 private fun loadStatuses(context: Context): Map<Store, StoreStatus> {
     val steamIn = SteamService.isLoggedIn

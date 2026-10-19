@@ -293,8 +293,15 @@ private fun RowChrome(
     leading: (@Composable () -> Unit)? = null,
     iconPainter: Painter? = null,
     actions: List<RowAction> = emptyList(),
+    // Faint at rest (a store not signed in, say) but still reachable; full strength while focused.
+    dimmed: Boolean = false,
     trailing: @Composable RowScope.() -> Unit,
 ) {
+    val restAlpha = when {
+        !enabled -> 0.45f
+        dimmed && !focused -> 0.55f
+        else -> 1f
+    }
     @Composable
     fun RowScope.body() {
         if (leading != null) {
@@ -311,7 +318,7 @@ private fun RowChrome(
         Row(
             modifier = modifier
                 .fillMaxWidth()
-                .alpha(if (enabled) 1f else 0.45f)
+                .alpha(restAlpha)
                 .then(if (selected && !focused) Modifier.plateFill(focused = false, rest = RiftColors.Success.copy(alpha = 0.13f)) else Modifier.plateFill(focused))
                 .then(interactive)
                 .heightIn(min = RowMinHeight)
@@ -326,7 +333,7 @@ private fun RowChrome(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .alpha(if (enabled) 1f else 0.45f)
+            .alpha(restAlpha)
             .then(if (selected && !focused) Modifier.plateFill(focused = false, rest = RiftColors.Success.copy(alpha = 0.13f)) else Modifier.plateFill(focused))
             .heightIn(min = RowMinHeight),
         verticalAlignment = Alignment.CenterVertically,
@@ -562,6 +569,9 @@ internal fun LinkRow(
     selected: Boolean = false,
     selectionMark: Boolean? = null,
     valueColor: Color? = null,
+    dimmed: Boolean = false,
+    // In place of the value and the arrow: the row's own end (a button-like pill, say), told whether it is focused.
+    trailing: (@Composable (focused: Boolean) -> Unit)? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
@@ -577,6 +587,7 @@ internal fun LinkRow(
         danger = danger,
         modifier = modifier,
         selected = selected,
+        dimmed = dimmed,
         interactive = if (onLongClick != null) {
             Modifier.combinedClickable(
                 interactionSource = interaction,
@@ -596,6 +607,10 @@ internal fun LinkRow(
             )
         },
     ) {
+        if (trailing != null) {
+            trailing(focused)
+            return@RowChrome
+        }
         if (!value.isNullOrBlank()) {
             Text(
                 text = value,
