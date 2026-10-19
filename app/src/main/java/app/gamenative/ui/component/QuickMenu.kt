@@ -99,6 +99,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextAlign
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
@@ -932,7 +933,6 @@ fun QuickMenu(
                                         QuickMenuSectionHeader(
                                             title = stringResource(R.string.rift_quick_menu_frame_generation),
                                             subtitle = stringResource(R.string.lsfg_description),
-                                            prominent = true,
                                         )
                                         LsfgQuickMenuSection(
                                             focusRequester = firstFocus,
@@ -1337,7 +1337,7 @@ private fun ToolsQuickMenuTab(
                 text = stringResource(R.string.tools_wine_processes_empty),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                modifier = Modifier.padding(horizontal = QuickMenuTextInset, vertical = 4.dp),
             )
         } else {
             processes.forEachIndexed { index, process ->
@@ -1429,29 +1429,18 @@ private fun PerformanceHudQuickMenuTab(
             title = stringResource(R.string.performance_hud_presets),
         )
 
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 8.dp)
-                // Immersive only: groups the chips so directional focus enters the row as a
-                // unit. Flat mode keeps master's traversal.
-                .then(if (LocalImmersiveInputBypass.current.active) Modifier.focusGroup() else Modifier),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            PerformanceHudPreset.values().forEach { preset ->
-                QuickMenuChoiceChip(
-                    text = stringResource(preset.labelResId),
-                    selected = matchesPerformanceHudPreset(performanceHudConfig, preset),
-                    accentColor = accentColor,
-                    onClick = {
-                        onPerformanceHudConfigChanged(applyPerformanceHudPreset(performanceHudConfig, preset))
-                        if (!isPerformanceHudEnabled) {
-                            onTogglePerformanceHud()
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
+        QuickMenuChoiceRow(
+            choices = PerformanceHudPreset.values().toList(),
+            label = { stringResource(it.labelResId) },
+            selected = { matchesPerformanceHudPreset(performanceHudConfig, it) },
+            onPick = { preset ->
+                onPerformanceHudConfigChanged(applyPerformanceHudPreset(performanceHudConfig, preset))
+                if (!isPerformanceHudEnabled) {
+                    onTogglePerformanceHud()
+                }
+            },
+            accentColor = accentColor,
+        )
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -1505,33 +1494,20 @@ private fun PerformanceHudQuickMenuTab(
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            modifier = Modifier.padding(horizontal = QuickMenuTextInset, vertical = 2.dp),
         )
 
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 8.dp)
-                // Immersive only: groups the chips so directional focus enters the row as a
-                // unit. Flat mode keeps master's traversal.
-                .then(if (LocalImmersiveInputBypass.current.active) Modifier.focusGroup() else Modifier),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            listOf(
+        QuickMenuChoiceRow(
+            choices = listOf(
                 PerformanceHudSize.SMALL to R.string.performance_hud_size_small,
                 PerformanceHudSize.MEDIUM to R.string.performance_hud_size_medium,
                 PerformanceHudSize.LARGE to R.string.performance_hud_size_large,
-            ).forEach { (size, labelResId) ->
-                QuickMenuChoiceChip(
-                    text = stringResource(labelResId),
-                    selected = performanceHudConfig.size == size,
-                    accentColor = accentColor,
-                    onClick = {
-                        onPerformanceHudConfigChanged(performanceHudConfig.copy(size = size))
-                    },
-                    modifier = Modifier.width(56.dp),
-                )
-            }
-        }
+            ),
+            label = { stringResource(it.second) },
+            selected = { performanceHudConfig.size == it.first },
+            onPick = { onPerformanceHudConfigChanged(performanceHudConfig.copy(size = it.first)) },
+            accentColor = accentColor,
+        )
 
         QuickMenuAdjustmentRow(
             title = stringResource(R.string.performance_hud_background_opacity),
@@ -1829,25 +1805,14 @@ private fun ColumnScope.LsfgQuickMenuSection(
     QuickMenuSectionHeader(
         title = stringResource(R.string.lsfg_multiplier),
     )
-    Row(
-        modifier = Modifier
-            .padding(horizontal = 8.dp)
-            // Immersive only: groups the chips so directional focus enters the row as a
-            // unit. Flat mode keeps master's traversal.
-            .then(if (LocalImmersiveInputBypass.current.active) Modifier.focusGroup() else Modifier),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        listOf(0, 2, 3, 4).forEach { value ->
-            QuickMenuChoiceChip(
-                text = if (value == 0) stringResource(R.string.rift_off) else "${value}x",
-                selected = multiplier == value || (value == 0 && multiplier < 2),
-                accentColor = accentColor,
-                onClick = { onMultiplierChanged(value) },
-                modifier = Modifier.weight(1f),
-                focusRequester = if (value == 0) focusRequester else null,
-            )
-        }
-    }
+    QuickMenuChoiceRow(
+        choices = listOf(0, 2, 3, 4),
+        label = { if (it == 0) stringResource(R.string.rift_off) else "${it}x" },
+        selected = { multiplier == it || (it == 0 && multiplier < 2) },
+        onPick = onMultiplierChanged,
+        accentColor = accentColor,
+        focusRequester = { if (it == 0) focusRequester else null },
+    )
 
     AnimatedVisibility(
         visible = isEnabled,
@@ -1892,20 +1857,13 @@ private fun ColumnScope.LsfgQuickMenuSection(
                 title = stringResource(R.string.lsfg_present_mode),
                 subtitle = stringResource(R.string.lsfg_present_mode_desc),
             )
-            Row(
-                modifier = Modifier.padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                listOf("mailbox" to "Mailbox", "fifo" to "FIFO").forEach { (value, label) ->
-                    QuickMenuChoiceChip(
-                        text = label,
-                        selected = presentMode == value,
-                        accentColor = accentColor,
-                        onClick = { onPresentModeChanged(value) },
-                        modifier = Modifier.width(96.dp),
-                    )
-                }
-            }
+            QuickMenuChoiceRow(
+                choices = listOf("mailbox" to "Mailbox", "fifo" to "FIFO"),
+                label = { it.second },
+                selected = { presentMode == it.first },
+                onPick = { onPresentModeChanged(it.first) },
+                accentColor = accentColor,
+            )
 
             Spacer(modifier = Modifier.height(4.dp))
 
@@ -1914,23 +1872,16 @@ private fun ColumnScope.LsfgQuickMenuSection(
                 title = stringResource(R.string.lsfg_backend),
                 subtitle = stringResource(R.string.lsfg_backend_desc),
             )
-            Row(
-                modifier = Modifier.padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                listOf(
+            QuickMenuChoiceRow(
+                choices = listOf(
                     "native" to stringResource(R.string.lsfg_backend_native),
                     "legacy" to stringResource(R.string.lsfg_backend_legacy),
-                ).forEach { (value, label) ->
-                    QuickMenuChoiceChip(
-                        text = label,
-                        selected = backend == value,
-                        accentColor = accentColor,
-                        onClick = { onBackendChanged(value) },
-                        modifier = Modifier.width(120.dp),
-                    )
-                }
-            }
+                ),
+                label = { it.second },
+                selected = { backend == it.first },
+                onPick = { onBackendChanged(it.first) },
+                accentColor = accentColor,
+            )
         }
     }
 }
@@ -1972,7 +1923,7 @@ private fun ImmersiveQuickMenuTab(
             text = stringResource(R.string.immersive_windows_vr_restart_required),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = QuickMenuTextInset, vertical = 4.dp),
         )
         QuickMenuDetailRow(
             title = stringResource(R.string.immersive_windows_vr_export),
@@ -2024,7 +1975,7 @@ private fun ImmersiveQuickMenuTab(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                    .padding(horizontal = QuickMenuRowInset, vertical = 2.dp)
                     .plateFill(focused = resetIsFocused, shape = PlateShape)
                     .selectable(
                         selected = false,
@@ -2032,7 +1983,7 @@ private fun ImmersiveQuickMenuTab(
                         indication = null,
                         onClick = controls.onResetScreenEffects,
                     )
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                    .padding(horizontal = QuickMenuPlatePadding, vertical = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
@@ -2053,38 +2004,71 @@ private fun ImmersiveQuickMenuTab(
     }
 }
 
+/**
+ * Rift's one horizontal grid for the quick menu (Denis 2026-10-19): plates and chip rows stand [QuickMenuRowInset]
+ * from the column's sides, and every text, a section's title and description as well as a plate's own lines,
+ * starts and ends [QuickMenuTextInset] from them.
+ */
+internal val QuickMenuRowInset = 8.dp
+internal val QuickMenuPlatePadding = 16.dp
+internal val QuickMenuTextInset = QuickMenuRowInset + QuickMenuPlatePadding
+
 @Composable
 internal fun QuickMenuSectionHeader(
     title: String,
     subtitle: String? = null,
     modifier: Modifier = Modifier,
-    /** Rift: a section's own title (frame generation), as large as a row's, instead of a small caps label. */
-    prominent: Boolean = false,
 ) {
     Column(
-        modifier = modifier.padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 4.dp),
+        modifier = modifier.padding(start = QuickMenuTextInset, end = QuickMenuTextInset, top = 8.dp, bottom = 4.dp),
     ) {
-        if (prominent) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Bold,
-            )
-        } else {
-            Text(
-                text = title.uppercase(),
-                style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.2.sp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
+        Text(
+            text = title.uppercase(),
+            style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.2.sp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold,
+        )
         if (!subtitle.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/**
+ * One row of choice chips (presets, frame multiplier, present mode, backend...): on the plates' line, the chips
+ * share the row's width equally.
+ */
+@Composable
+internal fun <T> QuickMenuChoiceRow(
+    choices: List<T>,
+    label: @Composable (T) -> String,
+    selected: (T) -> Boolean,
+    onPick: (T) -> Unit,
+    accentColor: Color,
+    focusRequester: (T) -> FocusRequester? = { null },
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = QuickMenuRowInset)
+            // Immersive only: groups the chips so directional focus enters the row as a
+            // unit. Flat mode keeps master's traversal.
+            .then(if (LocalImmersiveInputBypass.current.active) Modifier.focusGroup() else Modifier),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        choices.forEach { choice ->
+            QuickMenuChoiceChip(
+                text = label(choice),
+                selected = selected(choice),
+                accentColor = accentColor,
+                onClick = { onPick(choice) },
+                modifier = Modifier.weight(1f),
+                focusRequester = focusRequester(choice),
             )
         }
     }
@@ -2246,6 +2230,9 @@ internal fun QuickMenuChoiceChip(
     ) {
         Text(
             text = text,
+            textAlign = TextAlign.Center,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
             style = MaterialTheme.typography.labelLarge,
             color = when {
                 isFocused -> plateText(true)
@@ -2283,7 +2270,7 @@ internal fun QuickMenuAdjustmentRow(
 
     Column(
         modifier = modifier
-            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .padding(horizontal = QuickMenuRowInset, vertical = 2.dp)
             // Rift: the focused plate is filled with the accent, dark text on it, no frame.
             .plateFill(focused = isFocused, shape = shape)
             .then(
@@ -2341,7 +2328,7 @@ internal fun QuickMenuAdjustmentRow(
                 indication = null,
                 onClick = {},
             )
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = QuickMenuPlatePadding, vertical = 14.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -2540,7 +2527,7 @@ internal fun QuickMenuToggleRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .padding(horizontal = QuickMenuRowInset, vertical = 2.dp)
             // Rift: the focused plate is filled with the accent, dark text on it, no frame.
             .plateFill(focused = isFocused, shape = PlateShape)
             .then(
@@ -2560,7 +2547,7 @@ internal fun QuickMenuToggleRow(
                 // Flat mode keeps master's second focus target; immersive drops it.
                 if (inputBypass.active) Modifier else Modifier.focusable(interactionSource = interactionSource),
             )
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = QuickMenuPlatePadding, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -2623,7 +2610,7 @@ private fun QuickMenuDetailRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .padding(horizontal = QuickMenuRowInset, vertical = 2.dp)
             .plateFill(focused = isFocused, shape = PlateShape)
             .then(
                 if (focusRequester != null) {
@@ -2655,7 +2642,7 @@ private fun QuickMenuDetailRow(
                 indication = null,
                 onClick = onActivate,
             )
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = QuickMenuPlatePadding, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -2769,7 +2756,7 @@ internal fun QuickMenuItemRow(
                     if (inputBypass.active) Modifier
                     else Modifier.focusable(enabled = isEnabled, interactionSource = interactionSource)
                 )
-                .padding(horizontal = 12.dp, vertical = 14.dp),
+                .padding(horizontal = QuickMenuPlatePadding, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {

@@ -3,6 +3,9 @@ package app.gamenative.ui.screen.library.components
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -83,6 +86,11 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import dev.rift.launcher.settings.RiftRadioMark
+import dev.rift.launcher.settings.RiftCheckMark
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.draw.rotate
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
@@ -203,53 +211,72 @@ internal fun SystemMenuItem(
     }
 }
 
+/** The chevron at the end of an accordion's header: down while closed, turned up while open. */
+@Composable
+internal fun DrawerChevron(expanded: Boolean, focused: Boolean) {
+    val turn by animateFloatAsState(if (expanded) 180f else 0f, label = "drawerChevron")
+    Icon(
+        imageVector = Icons.Default.KeyboardArrowDown,
+        contentDescription = null,
+        tint = plateSubtext(focused),
+        modifier = Modifier.size(24.dp).rotate(turn),
+    )
+}
+
 /**
- * Status option item for the dropdown
+ * One choice an accordion unrolls (a sort, a filter, a Steam status): a dimmer plate than its header, the radio
+ * (one choice) or check box (several) on the left in the header's icon column, the name where the header's name
+ * starts. [icon] stands in the column instead for an action (clear).
  */
 @Composable
-private fun StatusOption(
+internal fun DrawerChoiceRow(
     text: String,
-    statusColor: Color,
-    isSelected: Boolean,
+    selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    focusRequester: FocusRequester? = null,
+    multiple: Boolean = false,
+    icon: ImageVector? = null,
+    trailingText: String? = null,
+    leading: (@Composable () -> Unit)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .plateFill(isFocused)
-            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-            .selectable(
-                selected = isFocused,
+            .plateFill(isFocused, rest = RiftDrawer.PlateMuted)
+            .clickable(
                 interactionSource = interactionSource,
                 indication = null,
+                role = when {
+                    icon != null -> Role.Button
+                    multiple -> Role.Checkbox
+                    else -> Role.RadioButton
+                },
                 onClick = onClick,
             )
-            .heightIn(min = 60.dp)
-            .padding(horizontal = 18.dp, vertical = 12.dp),
+            .heightIn(min = DrawerChoiceMinHeight)
+            .padding(horizontal = DrawerRowPadding, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(DrawerRowGap),
     ) {
-        Box(
-            modifier = Modifier
-                .size(12.dp)
-                .background(statusColor, CircleShape),
-        )
+        Box(modifier = Modifier.size(RowIconSize), contentAlignment = Alignment.Center) {
+            when {
+                icon != null -> Icon(imageVector = icon, contentDescription = null, tint = plateSubtext(isFocused), modifier = Modifier.size(24.dp))
+                multiple -> RiftCheckMark(selected, isFocused)
+                else -> RiftRadioMark(selected, isFocused)
+            }
+        }
+        if (leading != null) leading()
         RowTexts(text, null, danger = false, focused = isFocused, modifier = Modifier.weight(1f))
-        if (isSelected) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = null,
-                tint = if (isFocused) plateText(true) else RiftAccent.current.main,
-                modifier = Modifier.size(22.dp),
-            )
+        if (trailingText != null) {
+            Text(text = trailingText, color = plateSubtext(isFocused), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
+
+/** A choice row: shorter than a header. */
+internal val DrawerChoiceMinHeight = 56.dp
 
 /** The colour of a Steam status dot: green Online, yellow Away, grey Invisible/Offline. */
 @Composable
@@ -257,59 +284,6 @@ internal fun statusDotColor(state: EPersonaState): Color = when (state) {
     EPersonaState.Away -> PluviaTheme.colors.statusAway
     EPersonaState.Invisible, EPersonaState.Offline -> PluviaTheme.colors.statusOffline
     else -> PluviaTheme.colors.statusInstalled
-}
-
-/**
- * The status dropdown (Online / Away / Invisible) of the System menu's profile plate; the home's avatar
- * opens the same one. Picking a status sets it on Steam through [onSelect].
- */
-@Composable
-internal fun StatusPickerMenu(
-    expanded: Boolean,
-    onDismiss: () -> Unit,
-    selected: EPersonaState,
-    onSelect: (EPersonaState) -> Unit,
-    width: androidx.compose.ui.unit.Dp,
-    focusRequester: FocusRequester,
-    modifier: Modifier = Modifier,
-) {
-    // As wide as the profile plate, near-opaque black glass, accent focus like the rows.
-    androidx.compose.material3.DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = onDismiss,
-        modifier = modifier.width(width),
-        shape = PlateShape,
-        containerColor = BlackGlass.Solid.copy(alpha = 0.96f),
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(horizontal = 8.dp, vertical = 4.dp)
-                .focusGroup(),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.status),
-                style = MaterialTheme.typography.labelLarge,
-                color = RiftColors.OnSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
-            )
-            listOf(
-                EPersonaState.Online to R.string.status_online,
-                EPersonaState.Away to R.string.status_away,
-                EPersonaState.Invisible to R.string.status_invisible,
-            ).forEach { (state, label) ->
-                StatusOption(
-                    text = stringResource(label),
-                    statusColor = statusDotColor(state),
-                    isSelected = selected == state,
-                    focusRequester = if (selected == state) focusRequester else null,
-                    onClick = { onSelect(state) },
-                )
-            }
-        }
-    }
 }
 
 /** The signed-in user's Steam status, kept live from the persona events (Online until Steam says otherwise). */
@@ -368,7 +342,6 @@ fun SystemMenu(
     val firstItemFocusRequester = remember { FocusRequester() }
     val profileFocusRequester = remember { FocusRequester() }
     val statusFocusRequester = remember { FocusRequester() }
-    var profileWidth by remember { mutableStateOf(0.dp) }
     val density = LocalDensity.current
 
     var persona by remember { mutableStateOf<SteamFriend?>(null) }
@@ -406,6 +379,7 @@ fun SystemMenu(
 
     BackHandler(enabled = isOpen && showStatusPicker) {
         showStatusPicker = false
+        runCatching { profileFocusRequester.requestFocus() }
     }
     BackHandler(enabled = isOpen && !showStatusPicker) {
         onDismiss()
@@ -492,31 +466,39 @@ fun SystemMenu(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Profile section
-                val profileInteractionSource = remember { MutableInteractionSource() }
-                val isProfileFocused by profileInteractionSource.collectIsFocusedAsState()
-
-                Box {
+                // Menu items. The profile is the first plate, an accordion of Steam statuses (Denis 2026-10-19: not a
+                // dropdown, closed by default), with the same gap as every other plate.
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .focusGroup(),
+                    verticalArrangement = Arrangement.spacedBy(PlateGap),
+                ) {
+                    val profileInteractionSource = remember { MutableInteractionSource() }
+                    val isProfileFocused by profileInteractionSource.collectIsFocusedAsState()
+                    val canPickStatus = !isOffline && SteamService.isLoggedIn
+                    Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .onGloballyPositioned { profileWidth = with(density) { it.size.width.toDp() } }
                             .plateFill(isProfileFocused)
                             .focusRequester(profileFocusRequester)
                             .selectable(
                                 selected = isProfileFocused,
                                 interactionSource = profileInteractionSource,
                                 indication = null,
-                                onClick = { if (!isOffline && SteamService.isLoggedIn) showStatusPicker = !showStatusPicker },
+                                onClick = { if (canPickStatus) showStatusPicker = !showStatusPicker },
                             )
-                            .padding(12.dp),
+                            .heightIn(min = DrawerRowMinHeight)
+                            .padding(horizontal = DrawerRowPadding, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(DrawerRowGap),
                     ) {
                         // Avatar
                         Box(
                             modifier = Modifier
-                                .size(48.dp)
+                                .size(RowIconSize)
                                 .clip(CircleShape)
                                 .background(Color.Black.copy(alpha = 0.55f)),
                             contentAlignment = Alignment.Center,
@@ -526,7 +508,7 @@ fun SystemMenu(
                             val avatarHash = persona?.avatarHash?.takeIf { it.isNotEmpty() } ?: PrefManager.steamUserAvatarHash
                             if (avatarHash.isNotEmpty()) {
                                 SteamIconImage(
-                                    size = 48.dp,
+                                    size = RowIconSize,
                                     image = { avatarHash.getAvatarURL() },
                                 )
                             } else {
@@ -571,49 +553,41 @@ fun SystemMenu(
                             }
                         }
 
-                        // Dropdown indicator (only when online)
-                        if (!isOffline && SteamService.isLoggedIn) {
-                            Icon(
-                                imageVector = if (showStatusPicker) {
-                                    Icons.Default.KeyboardArrowUp
-                                } else {
-                                    Icons.Default.KeyboardArrowDown
-                                },
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp),
-                                tint = plateSubtext(isProfileFocused),
-                            )
+                        if (canPickStatus) DrawerChevron(expanded = showStatusPicker, focused = isProfileFocused)
+                    }
+                    AnimatedVisibility(
+                        visible = showStatusPicker && canPickStatus,
+                        enter = expandVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(),
+                        exit = shrinkVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)) + fadeOut(),
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().focusGroup().padding(top = PlateGap),
+                            verticalArrangement = Arrangement.spacedBy(PlateGap),
+                        ) {
+                            listOf(
+                                EPersonaState.Online to R.string.status_online,
+                                EPersonaState.Away to R.string.status_away,
+                                EPersonaState.Invisible to R.string.status_invisible,
+                            ).forEach { (state, label) ->
+                                DrawerChoiceRow(
+                                    text = stringResource(label),
+                                    selected = selectedStatus == state,
+                                    modifier = if (selectedStatus == state) Modifier.focusRequester(statusFocusRequester) else Modifier,
+                                    leading = {
+                                        Box(modifier = Modifier.size(10.dp).background(statusDotColor(state), CircleShape))
+                                    },
+                                    onClick = {
+                                        selectedStatus = state
+                                        showStatusPicker = false
+                                        runCatching { profileFocusRequester.requestFocus() }
+                                        scope.launch { SteamService.setPersonaState(state) }
+                                    },
+                                )
+                            }
                         }
                     }
+                    }
 
-                    // Status picker dropdown
-                    // As wide as the profile plate, near-opaque black glass, accent focus like the rows.
-                    StatusPickerMenu(
-                        expanded = showStatusPicker,
-                        onDismiss = { showStatusPicker = false },
-                        selected = selectedStatus,
-                        width = profileWidth.coerceAtLeast(280.dp),
-                        focusRequester = statusFocusRequester,
-                        onSelect = { state ->
-                            selectedStatus = state
-                            showStatusPicker = false
-                            scope.launch {
-                                SteamService.setPersonaState(state)
-                            }
-                        },
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Menu items
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .focusGroup(),
-                    verticalArrangement = Arrangement.spacedBy(PlateGap),
-                ) {
                     SystemMenuItem(
                         text = stringResource(R.string.settings_text),
                         icon = Icons.Default.Settings,
@@ -775,6 +749,7 @@ fun SystemMenu(
     val view = LocalView.current
     LaunchedEffect(isOpen) {
         if (!isOpen) return@LaunchedEffect
+        showStatusPicker = false
         repeat(15) {
             if (view.isInTouchMode) view.requestFocusFromTouch()
             if (runCatching { firstItemFocusRequester.requestFocus() }.isSuccess) return@LaunchedEffect

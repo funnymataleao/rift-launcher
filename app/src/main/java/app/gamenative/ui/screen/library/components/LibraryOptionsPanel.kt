@@ -155,12 +155,18 @@ fun LibraryOptionsPanel(
     val firstItemFocusRequester = remember { FocusRequester() }
     // Accordion: only one group is open at a time. B closes the open group first, then the panel.
     var openGroup by rememberSaveable { mutableStateOf<String?>(null) }
-    // Rift: a tab with only a group or two shows them all open, nothing to unroll (Denis 2026-10-19).
+    // Rift: a tab with only a group or two opens with them all unrolled (Denis 2026-10-19); A still closes
+    // and opens each one.
     val allOpen = tabGroups != null && tabGroups.size <= 2
+    var closedGroups by remember { mutableStateOf(emptySet<String>()) }
     val headerFocus = remember { mutableMapOf("sort" to firstItemFocusRequester) }
     fun headerRequester(key: String) = headerFocus.getOrPut(key) { FocusRequester() }
     fun toggleGroup(key: String) {
-        openGroup = if (openGroup == key) null else key
+        if (allOpen) {
+            closedGroups = if (key in closedGroups) closedGroups - key else closedGroups + key
+        } else {
+            openGroup = if (openGroup == key) null else key
+        }
     }
 
     BackHandler(enabled = isOpen) {
@@ -252,8 +258,8 @@ fun LibraryOptionsPanel(
                                 label = group.label,
                                 value = group.value,
                                 icon = group.icon,
-                                expanded = allOpen || openGroup == key,
-                                onToggle = { if (!allOpen) toggleGroup(key) },
+                                expanded = if (allOpen) key !in closedGroups else openGroup == key,
+                                onToggle = { toggleGroup(key) },
                                 headerFocus = if (index == 0) firstItemFocusRequester else headerRequester(key),
                             ) {
                                 group.options.forEach { option ->
@@ -395,38 +401,24 @@ fun LibraryOptionsPanel(
                                 onClear = onClearSteamCollections,
                             )
                         }
-                        if (isSteamConnected || hasSteamCredentials) {
-                            CollectionFilterSection(
-                                collections = curatedLists,
-                                selectedIds = selectedCuratedListIds,
-                                counts = curatedListCounts,
-                                titleRes = R.string.curated_lists_title,
-                                icon = Icons.Default.Star,
-                                loadingRes = R.string.curated_lists_loading,
-                                clearRes = R.string.curated_lists_clear,
-                                emptyRes = R.string.curated_lists_empty,
-                                messageRes = if (isOffline) {
-                                    listOf(R.string.curated_lists_offline)
-                                } else {
-                                    emptyList()
-                                },
-                                expanded = openGroup == "curated",
-                                onExpandedChange = { toggleGroup("curated") },
-                                headerFocus = headerRequester("curated"),
-                                onToggle = onCuratedListToggle,
-                                onClear = onClearCuratedLists,
-                            )
-                        }
                     }
                 }
             }
         }
     }
 
+    // Rift: the curated lists are gone from the panel (Denis 2026-10-19: only one 4:3 list, nobody uses it); a
+    // list picked before would filter the library with nothing left to unpick it.
+    LaunchedEffect(selectedCuratedListIds.isNotEmpty()) {
+        if (selectedCuratedListIds.isNotEmpty()) onClearCuratedLists()
+    }
     // Every group is closed when the panel opens, each line shows its current choice (Denis 2026-10-18: the open
     // sort list was too long).
     LaunchedEffect(isOpen) {
-        if (isOpen) openGroup = null
+        if (isOpen) {
+            openGroup = null
+            closedGroups = emptySet()
+        }
     }
     // After a touch the window is in touch mode, where nothing takes gamepad focus: leave it, and retry while the
     // panel is still sliding in and the first header is not attached yet.
@@ -568,7 +560,7 @@ private fun summarize(options: List<AppFilter>, selected: EnumSet<AppFilter>): S
 }
 
 /** A choice row: shorter than a group's line. */
-private val OptionMinHeight = 56.dp
+private val OptionMinHeight = DrawerChoiceMinHeight
 
 /** Where a choice's name starts: under the group's name, the mark sits under the group's icon. */
 private val OptionTextStart = DrawerRowPadding + RowIconSize + DrawerRowGap
@@ -604,6 +596,7 @@ private fun FilterGroup(
         ) {
             RowIcon(icon, isFocused)
             RowTexts(label, value, danger = false, focused = isFocused, modifier = Modifier.weight(1f))
+            DrawerChevron(expanded = expanded, focused = isFocused)
         }
 
         AnimatedVisibility(
@@ -615,18 +608,15 @@ private fun FilterGroup(
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusGroup()
-                    .padding(top = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                    .padding(top = PlateGap),
+                verticalArrangement = Arrangement.spacedBy(PlateGap),
                 content = content,
             )
         }
     }
 }
 
-/**
- * One choice of a group. Its mark stands in the icon column: a tick on the picked one of a single choice, a
- * check box where several can be picked, or [icon] for an action (clear).
- */
+/** One choice of a group: a radio for a single choice, a check box where several can be picked, or [icon] for an action. */
 @Composable
 private fun FilterOption(
     text: String,
@@ -635,46 +625,7 @@ private fun FilterOption(
     multiple: Boolean = false,
     icon: ImageVector? = null,
     trailingText: String? = null,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .plateFill(isFocused)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                role = when {
-                    icon != null -> Role.Button
-                    multiple -> Role.Checkbox
-                    else -> Role.RadioButton
-                },
-                onClick = onClick,
-            )
-            .heightIn(min = OptionMinHeight)
-            .padding(horizontal = DrawerRowPadding, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(DrawerRowGap),
-    ) {
-        Box(modifier = Modifier.size(RowIconSize), contentAlignment = Alignment.Center) {
-            when {
-                icon != null -> Icon(imageVector = icon, contentDescription = null, tint = plateSubtext(isFocused), modifier = Modifier.size(24.dp))
-                multiple -> RiftCheckMark(selected, isFocused)
-                selected -> Icon(
-                    imageVector = Icons.Rounded.Check,
-                    contentDescription = null,
-                    tint = if (isFocused) plateText(true) else RiftAccent.current.main,
-                    modifier = Modifier.size(24.dp),
-                )
-            }
-        }
-        RowTexts(text, null, danger = false, focused = isFocused, modifier = Modifier.weight(1f))
-        if (trailingText != null) {
-            Text(text = trailingText, color = plateSubtext(isFocused), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-        }
-    }
-}
+) = DrawerChoiceRow(text = text, selected = selected, onClick = onClick, multiple = multiple, icon = icon, trailingText = trailingText)
 
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
 @Preview(

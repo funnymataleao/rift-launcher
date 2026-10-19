@@ -483,6 +483,23 @@ internal fun RiftCheckMark(checked: Boolean, focused: Boolean) {
     }
 }
 
+/** The radio of a single-choice row, beside [RiftCheckMark]: an accent ring with a dot when picked, a grey ring when not. */
+@Composable
+internal fun RiftRadioMark(selected: Boolean, focused: Boolean) {
+    val accent = RiftAccent.current
+    val ring = when {
+        focused -> accent.onAccent
+        selected -> accent.main
+        else -> RiftColors.Outline
+    }
+    Box(
+        modifier = Modifier.size(24.dp).border(2.dp, ring, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (selected) Box(Modifier.size(12.dp).clip(CircleShape).background(ring))
+    }
+}
+
 /** A radio mark (one of several is chosen); provider rows use it instead of a navigation chevron. */
 @Composable
 private fun ProviderSelectionMark(checked: Boolean) {

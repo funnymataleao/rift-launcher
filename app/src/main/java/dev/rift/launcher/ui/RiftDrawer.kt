@@ -106,10 +106,13 @@ object RiftDrawer {
 
     /**
      * The plates in a panel (a profile, a row, a chip) without focus: a light glass over the black, so every
-     * row reads as a plate (Denis 2026-10-19: black plates melted into the panel and the rows' insets looked
-     * like broken padding). The chosen chip is lighter still, the focused plate takes the accent.
+     * row reads as a plate (Denis 2026-10-19: black plates melted into the panel). The chosen chip is lighter
+     * still, the focused plate takes the accent.
      */
     val Plate = Color.White.copy(alpha = 0.09f)
+
+    /** The choices an accordion unrolls under its header: dimmer than the header (Denis 2026-10-19). */
+    val PlateMuted = Color.White.copy(alpha = 0.04f)
 
     val Blur = 40.dp
 
