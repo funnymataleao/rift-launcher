@@ -29,6 +29,7 @@ import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
@@ -102,6 +103,8 @@ class XcloudActivity : ComponentActivity() {
     private var fullScreenView: View? = null
     private var fullScreenCallback: WebChromeClient.CustomViewCallback? = null
     private var menuOpen by mutableStateOf(false)
+    // A controller press after a touch on the panel: the panel takes its focus back (a touch drops it).
+    private var menuRefocus by mutableIntStateOf(0)
     private var signInMode = false
     private val handler = Handler(Looper.getMainLooper())
     private val hideHint = Runnable { hintText.visibility = View.GONE }
@@ -194,6 +197,7 @@ class XcloudActivity : ComponentActivity() {
                         extraSettings = if (signInMode) null else { requester -> CloudQuickSettings(requester, ::openXboxMenu, ::applyLive) },
                         // The page behind the panel, copied as it opens, for the panel's glass to blur.
                         backdrop = rememberWindowBackdrop(menuOpen),
+                        refocus = menuRefocus,
                     )
                 }
             }
@@ -472,6 +476,7 @@ class XcloudActivity : ComponentActivity() {
         // With the panel open the pad drives the panel: B closes it, A and the d-pad reach Compose.
         if (menuOpen) {
             if (event.action == KeyEvent.ACTION_UP && pressedInPage.remove(event.keyCode)) (fullScreenView ?: webView).dispatchKeyEvent(event)
+            if (gamepad && event.action == KeyEvent.ACTION_DOWN && ::menuView.isInitialized && menuView.isInTouchMode) menuRefocus++
             if (event.keyCode == KeyEvent.KEYCODE_BUTTON_B) {
                 if (event.action == KeyEvent.ACTION_UP) closeMenu()
                 return true

@@ -1244,6 +1244,8 @@ fun RiftHomeScreen(
     // focus is left alone, anything else goes to a cover (the library's grid picks one in view).
     val latestScreenFocusLost = rememberUpdatedState<() -> Boolean> {
         when {
+            // Downloads and Storage lie over the home (it stays composed under them) with their own focus.
+            downloadsShown || leavingHome -> false
             gameOptionsOpen || startMenuItems != null || systemMenuOpen || searchOpen -> false
             panelOpen -> { panelFocusAsk++; true }
             else -> { refocusCover(); true }

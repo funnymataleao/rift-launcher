@@ -1,5 +1,6 @@
 package dev.rift.launcher.settings
 
+import dev.rift.launcher.ui.RiftFocusNet
 import dev.rift.launcher.sound.riftKeySounds
 import dev.rift.launcher.ui.theme.RiftAccent
 import androidx.compose.ui.graphics.SolidColor
@@ -172,47 +173,50 @@ fun RiftSettingsScreen(
         }
     }
 
-    SettingsFrame(
-        title = stringResource(R.string.rift_settings),
-        onBack = onBack,
-        modifier = Modifier
-            .riftKeySounds(panelKeys = false, touch = true)
-            .onPreviewKeyEvent { event ->
-                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                keyPressed = true
-                val step = when (event.key.nativeKeyCode) {
-                    KeyEvent.KEYCODE_BUTTON_L1 -> -1
-                    KeyEvent.KEYCODE_BUTTON_R1 -> 1
-                    else -> return@onPreviewKeyEvent false
-                }
-                val next = (selectedIndex + step).mod(sections.size)
-                selectedOrdinal = sections[next].ordinal
-                runCatching { railItems[next].requestFocus() }
-                true
-            },
-    ) {
-        Row(modifier = Modifier.fillMaxSize().onFocusChanged { listOrPageFocused = it.hasFocus }) {
-            SectionRail(
-                sections = sections,
-                selectedIndex = selectedIndex,
-                railItems = railItems,
-                contentEntry = contentEntry,
-                onFocused = { selectedOrdinal = sections[it].ordinal },
-                onSelect = { index ->
-                    selectedOrdinal = sections[index].ordinal
-                    runCatching { contentEntry.requestFocus() }
+    // Rift: after a touch (or opened by a tap) nothing here is focused; the first controller press goes to the list.
+    RiftFocusNet(Modifier.fillMaxSize(), fallback = railItems[selectedIndex]) {
+        SettingsFrame(
+            title = stringResource(R.string.rift_settings),
+            onBack = onBack,
+            modifier = Modifier
+                .riftKeySounds(panelKeys = false, touch = true)
+                .onPreviewKeyEvent { event ->
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    keyPressed = true
+                    val step = when (event.key.nativeKeyCode) {
+                        KeyEvent.KEYCODE_BUTTON_L1 -> -1
+                        KeyEvent.KEYCODE_BUTTON_R1 -> 1
+                        else -> return@onPreviewKeyEvent false
+                    }
+                    val next = (selectedIndex + step).mod(sections.size)
+                    selectedOrdinal = sections[next].ordinal
+                    runCatching { railItems[next].requestFocus() }
+                    true
                 },
-            )
-            SectionPane(
-                section = selected,
-                contentEntry = contentEntry,
-                returnTo = railItems[selectedIndex],
-                onOpenPcPairing = onOpenPcPairing,
-                onSteamSignIn = onSteamSignIn,
-                onSteamSignOut = onSteamSignOut,
-                onContentFocus = { contentHasFocus = it },
-                modifier = Modifier.weight(1f),
-            )
+        ) {
+            Row(modifier = Modifier.fillMaxSize().onFocusChanged { listOrPageFocused = it.hasFocus }) {
+                SectionRail(
+                    sections = sections,
+                    selectedIndex = selectedIndex,
+                    railItems = railItems,
+                    contentEntry = contentEntry,
+                    onFocused = { selectedOrdinal = sections[it].ordinal },
+                    onSelect = { index ->
+                        selectedOrdinal = sections[index].ordinal
+                        runCatching { contentEntry.requestFocus() }
+                    },
+                )
+                SectionPane(
+                    section = selected,
+                    contentEntry = contentEntry,
+                    returnTo = railItems[selectedIndex],
+                    onOpenPcPairing = onOpenPcPairing,
+                    onSteamSignIn = onSteamSignIn,
+                    onSteamSignOut = onSteamSignOut,
+                    onContentFocus = { contentHasFocus = it },
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 

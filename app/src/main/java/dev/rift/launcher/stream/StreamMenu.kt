@@ -119,6 +119,8 @@ fun StreamMenu(
     extraSettings: (@Composable (requester: (String) -> FocusRequester) -> Unit)? = null,
     coverUrls: List<String> = emptyList(),
     backdrop: DrawerBackdrop? = null,
+    // Bumped by the activity when a controller press comes after a touch: the panel takes its focus again.
+    refocus: Int = 0,
 ) = RiftGlassTheme {
     Box(modifier = Modifier.fillMaxSize()) {
         // In a window of its own the window is the glass, slides in and closes on a tap outside.
@@ -232,9 +234,10 @@ fun StreamMenu(
                 }
             }
             val view = LocalView.current
-            LaunchedEffect(Unit) {
+            LaunchedEffect(refocus) {
                 // The panel is composed a frame after it opens; until a row holds the focus, the view
-                // leaves touch mode and the row asks for it again, frame by frame.
+                // leaves touch mode and the row asks for it again, frame by frame. A touch drops the focus,
+                // and the next controller press asks again.
                 repeat(FOCUS_ATTEMPTS) { attempt ->
                     withFrameNanos { }
                     if (focused) return@LaunchedEffect

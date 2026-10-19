@@ -2266,7 +2266,10 @@ fun PluviaMain(
 
                 // Rift: its own assistant page ("AI Help" in the side panel), with the user's own AI provider.
                 composable(route = RIFT_ASSISTANT_ROUTE) {
-                    RiftAssistantScreen(onBack = { navController.navigateUp() })
+                    // Rift: a controller press with nothing focused (after a touch) gives the page its focus back.
+                    dev.rift.launcher.ui.RiftFocusNet(Modifier.fillMaxSize()) {
+                        RiftAssistantScreen(onBack = { navController.navigateUp() })
+                    }
                 }
 
                 composable(route = PluviaScreen.Support.route) {

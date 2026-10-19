@@ -70,10 +70,14 @@ fun HomeScreen(
         if (showDownloads && showStorage) {
             BackHandler { showStorage = false }
             // Rift: the storage manager as a Rift page (GameNative's own screen had no working B and its own look).
-            dev.rift.launcher.home.RiftStorageScreen(onBack = { showStorage = false })
+            dev.rift.launcher.ui.RiftFocusNet(Modifier.fillMaxSize()) {
+                dev.rift.launcher.home.RiftStorageScreen(onBack = { showStorage = false })
+            }
         } else if (showDownloads) {
             BackHandler { showDownloads = false }
-            RiftDownloadsScreen(onBack = { showDownloads = false }, onOpenStorage = { showStorage = true })
+            dev.rift.launcher.ui.RiftFocusNet(Modifier.fillMaxSize()) {
+                RiftDownloadsScreen(onBack = { showDownloads = false }, onOpenStorage = { showStorage = true })
+            }
         }
     }
 }

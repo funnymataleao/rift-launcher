@@ -28,6 +28,7 @@ import androidx.activity.ComponentDialog
 import androidx.activity.addCallback
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
@@ -150,6 +151,8 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
     private var screenSize by mutableStateOf<Pair<Int, Int>?>(null)
     private var changedRow = StreamMenuRow.END
     private var bTaken = false
+    // A controller press after a touch on the panel: the panel takes its focus back (a touch drops it).
+    private var panelRefocus by mutableIntStateOf(0)
     private val applyPicture = Runnable { restartStream(changedRow) }
 
     /** Why the stream broke, shown in the panel; null while it runs. */
@@ -676,6 +679,7 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
             return true
         }
         Log.i(TAG, "panel key ${KeyEvent.keyCodeToString(event.keyCode)} action=${event.action} focus=${panel.content.hasFocus()}")
+        if (event.action == KeyEvent.ACTION_DOWN && panel.content.isInTouchMode && isGamepad(event.source)) panelRefocus++
         if (event.keyCode == KeyEvent.KEYCODE_BUTTON_B) {
             // A slider that holds the pad lets go on B first; only a free B closes the panel.
             if (event.action == KeyEvent.ACTION_DOWN) bTaken = dispatch(event)
@@ -732,6 +736,7 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
                         maxFps = maxFps,
                         screenSize = screenSize,
                         ownWindow = true,
+                        refocus = panelRefocus,
                         coverUrls = intent.getStringArrayExtra(EXTRA_COVER_URLS)?.toList().orEmpty(),
                         backdrop = rememberSurfaceBackdrop(surfaceView, panelOpen),
                     )
