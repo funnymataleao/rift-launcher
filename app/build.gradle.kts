@@ -69,6 +69,11 @@ android {
 
         buildConfigField("boolean", "GOLD", "false")
         buildConfigField("boolean", "CLEAN_BUILD", "false")
+        // Where runtime files (Wine, drivers, Steam client, DRM helpers) are fetched from.
+        // Override with -PRIFT_DOWNLOAD_BASE_URL=https://your.server/path to use a mirror.
+        val downloadBase = (project.findProperty("RIFT_DOWNLOAD_BASE_URL") as String?)
+            ?: System.getenv("RIFT_DOWNLOAD_BASE_URL") ?: "https://downloads.gamenative.app"
+        buildConfigField("String", "DOWNLOAD_BASE_URL", "\"${downloadBase.trimEnd('/')}\"")
         fun secret(name: String) =
             project.findProperty(name) as String? ?: System.getenv(name) ?: ""
 

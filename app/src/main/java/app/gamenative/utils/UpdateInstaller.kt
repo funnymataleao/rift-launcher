@@ -25,7 +25,7 @@ object UpdateInstaller {
 
             // Extract filename from URL for fetchFileWithFallback
             // The URL should be like: https://downloads.gamenative.app/gamenative-v0.5.3.apk
-            val fileName = downloadUrl.substringAfterLast("https://downloads.gamenative.app/")
+            val fileName = downloadUrl.substringAfterLast("${app.gamenative.BuildConfig.DOWNLOAD_BASE_URL}/")
 
             Timber.i("Downloading update: $fileName from URL: $downloadUrl")
             Timber.i("Saving to: ${destFile.absolutePath}")

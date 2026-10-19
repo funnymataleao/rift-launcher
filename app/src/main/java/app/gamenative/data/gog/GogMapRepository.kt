@@ -17,7 +17,7 @@ import timber.log.Timber
  */
 object GogMapRepository {
 
-    private const val MAP_URL = "https://downloads.gamenative.app/gog-map.json.gz"
+    private val MAP_URL = "${app.gamenative.BuildConfig.DOWNLOAD_BASE_URL}/gog-map.json.gz"
     private const val CACHE_FILE = "gog-map.json"
     private const val CACHE_TTL_MS = 7L * 24 * 60 * 60 * 1000
 

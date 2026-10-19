@@ -1041,7 +1041,7 @@ private suspend fun loadWineProtonManifest(
     onError: suspend (String) -> Unit
 ) {
     try {
-        val manifestUrl = "https://downloads.gamenative.app/component-manifest.json"
+        val manifestUrl = "${app.gamenative.BuildConfig.DOWNLOAD_BASE_URL}/component-manifest.json"
         val request = Request.Builder()
             .url(manifestUrl)
             .build()

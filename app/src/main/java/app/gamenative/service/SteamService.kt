@@ -2295,8 +2295,13 @@ class SteamService : Service(), IChallengeUrlChanged {
             context: Context,
             onProgress: (Float) -> Unit,
         ) = withContext(Dispatchers.IO) {
-            val primaryUrl = "https://downloads.gamenative.app/$fileName"
-            val fallbackUrl = "https://pub-9fcd5294bd0d4b85a9d73615bf98f3b5.r2.dev/$fileName"
+            val primaryUrl = "${BuildConfig.DOWNLOAD_BASE_URL}/$fileName"
+            // GameNative's R2 bucket only mirrors GameNative's own server.
+            val fallbackUrl = if (BuildConfig.DOWNLOAD_BASE_URL == "https://downloads.gamenative.app") {
+                "https://pub-9fcd5294bd0d4b85a9d73615bf98f3b5.r2.dev/$fileName"
+            } else {
+                primaryUrl
+            }
             try {
                 fetchFile(primaryUrl, dest, onProgress)
             } catch (e: Exception) {

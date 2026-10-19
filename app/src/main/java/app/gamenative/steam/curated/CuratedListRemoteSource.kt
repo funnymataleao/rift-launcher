@@ -20,7 +20,7 @@ internal object CuratedListRemoteSource {
 
     private val json = Json { ignoreUnknownKeys = true }
     private val listUrl =
-        "https://downloads.gamenative.app/curated_lists/steam/four_three_games.json".toHttpUrl()
+        "${app.gamenative.BuildConfig.DOWNLOAD_BASE_URL}/curated_lists/steam/four_three_games.json".toHttpUrl()
 
     @Serializable
     private data class ListDocument(
