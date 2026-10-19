@@ -1,5 +1,11 @@
 package dev.rift.launcher.settings
 
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.focusable
@@ -117,12 +123,32 @@ internal val GroupTitleStyle = TextStyle(fontSize = 21.sp, fontWeight = FontWeig
 
 /**
  * The last thing on a page, so a gamepad can always reach the bottom: rows that cannot take focus (a size, a
- * note) after the last one that can would otherwise never scroll into view. It is invisible; Up goes back to
- * the last row.
+ * note) after the last one that can would otherwise never scroll into view. It is invisible, so it never keeps
+ * the focus: Down onto it hands the focus straight back to the last row and then scrolls the page to its end
+ * (Denis: the focus vanished at the bottom of every page).
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun PageEnd() {
-    Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).focusable())
+    val focusManager = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
+    val bringIntoView = remember { BringIntoViewRequester() }
+    Spacer(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .bringIntoViewRequester(bringIntoView)
+            .onFocusChanged { state ->
+                if (state.isFocused) {
+                    // Out of the focus change in progress, then the page goes on to its end.
+                    scope.launch {
+                        focusManager.moveFocus(FocusDirection.Up)
+                        bringIntoView.bringIntoView()
+                    }
+                }
+            }
+            .focusable(),
+    )
 }
 
 /**
