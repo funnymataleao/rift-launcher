@@ -15,6 +15,7 @@ import dev.rift.launcher.assistant.ai.AiSettings
 import dev.rift.launcher.assistant.optimize.CheckedAnswer
 import dev.rift.launcher.assistant.optimize.OptimizeGoal
 import dev.rift.launcher.assistant.optimize.OptimizeProposal
+import dev.rift.launcher.assistant.optimize.OptimizeResult
 import dev.rift.launcher.assistant.optimize.Optimizer
 import dev.rift.launcher.assistant.optimize.OptimizerPrompt
 import dev.rift.launcher.assistant.optimize.SuggestionCheck
@@ -160,8 +161,65 @@ object AssistantChat {
         _state.update { current ->
             current.copy(games = (listOf(game) + current.games).distinctBy { it.appId }, game = game)
         }
-        if (prompt != null) send(context, prompt)
+        if (prompt == null) return
+        if (game.kind == ChatKind.Pc) optimize(context, game, prompt) else send(context, prompt)
     }
+
+    /**
+     * "Optimize this game" goes through [Optimizer.propose]: a JSON-only prompt, Rift's checks and one retry, so the
+     * answer is always a card or a reason. In free chat a small model often answers in prose and leaves the card out.
+     */
+    private fun optimize(context: Context, game: ChatGame, prompt: String) {
+        if (_state.value.sending) return
+        val app = context.applicationContext
+        append(ChatEntry(nextId++, fromUser = true, text = prompt))
+        _state.update { it.copy(phase = ChatState.Phase.Thinking) }
+        job = scope.launch {
+            val entry = try {
+                optimizeEntry(app, game)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.w(e, "AssistantChat: optimize failed")
+                notice(app.getString(R.string.rift_assistant_error_other, e.javaClass.simpleName))
+            }
+            append(entry)
+            _state.update { it.copy(phase = null) }
+            save(app)
+        }
+    }
+
+    private suspend fun optimizeEntry(app: Context, game: ChatGame): ChatEntry =
+        when (val result = Optimizer.propose(app, game.appId, OptimizeGoal.Balanced)) {
+            is OptimizeResult.Proposed -> {
+                val proposal = result.proposal
+                Optimizer.History.record(app, proposal)
+                ChatEntry(
+                    id = nextId++,
+                    fromUser = false,
+                    text = proposal.summary,
+                    wire = Optimizer.History.toJson(proposal).toString(),
+                    proposal = proposal,
+                    model = proposal.model,
+                )
+            }
+            is OptimizeResult.NothingToChange -> ChatEntry(
+                id = nextId++,
+                fromUser = false,
+                text = listOf(app.getString(R.string.rift_optimize_nothing), result.summary).filter { it.isNotBlank() }.joinToString("\n\n"),
+            )
+            OptimizeResult.NotConfigured -> notice(app.getString(R.string.rift_chat_not_configured))
+            OptimizeResult.MonthlyLimitReached -> notice(app.getString(R.string.rift_optimize_limit))
+            OptimizeResult.NoContainer -> notice(app.getString(R.string.rift_optimize_no_container))
+            is OptimizeResult.ProviderError ->
+                notice(AiSettings.of(app).active?.type?.let { errorText(app, it, result.error) } ?: result.error.kind.name)
+            is OptimizeResult.InvalidAnswer -> ChatEntry(
+                id = nextId++,
+                fromUser = false,
+                text = app.getString(R.string.rift_optimize_invalid),
+                problems = result.problems,
+            )
+        }
 
     private fun save(context: Context) {
         val current = _state.value
@@ -257,6 +315,10 @@ object AssistantChat {
             return notice(errorText(app, provider, e))
         }
         val (prose, block) = ChatPrompt.splitProposal(reply.text)
+        Timber.i(
+            "AssistantChat: reply chars=%d truncated=%s proposalBlock=%s model=%s",
+            reply.text.length, reply.truncated, block != null, reply.model,
+        )
         var proposal: OptimizeProposal? = null
         var problems = emptyList<String>()
         if (block != null && game != null && game.kind == ChatKind.Pc && gameData != null) {
@@ -285,7 +347,10 @@ object AssistantChat {
                     )
                     Optimizer.History.record(app, proposal)
                 }
-                is CheckedAnswer.Rejected -> problems = checked.problems
+                is CheckedAnswer.Rejected -> {
+                    problems = checked.problems
+                    Timber.i("AssistantChat: proposal rejected for %s: %s", game.appId, problems)
+                }
                 is CheckedAnswer.NothingToChange -> Unit
             }
         }

@@ -92,6 +92,7 @@ object Optimizer {
                 is CheckedAnswer.NothingToChange -> return OptimizeResult.NothingToChange(answer.summary)
                 is CheckedAnswer.Rejected -> {
                     problems = answer.problems
+                    Timber.i("Optimizer: attempt rejected for $appId (chars=${reply.text.length}, truncated=${reply.truncated}): $problems")
                     messages += AiMessage(AiMessage.Role.ASSISTANT, reply.text.ifBlank { "{}" })
                     messages += AiMessage(AiMessage.Role.USER, OptimizerPrompt.retryMessage(answer.problems))
                 }
