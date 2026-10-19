@@ -16,25 +16,36 @@ import java.io.File
 object RiftMusic {
     private var player: MediaPlayer? = null
     private var playing: File? = null
+    // Whether [player] finished preparing: start() before that puts a MediaPlayer in its error state.
+    private var prepared = false
 
     // Screens that play their own sound (the game page trailer) hold the music: it fades out and pauses,
     // and fades back in once nobody holds it.
     private val holds = mutableSetOf<Any>()
-    // Screens the music plays on (the home, the assistant). Going from one to the other, the one left may pause
-    // after the next has resumed: the music only stops once none is in front.
+    // Screens the music plays on (the home, the assistant, Settings). Going from one to the next, the one left
+    // pauses before the next resumes: for that moment none is in front. Stopping then released the player and
+    // the next screen started the track over (Denis 2026-10-19). So the music only stops when no screen has
+    // come back after [LEAVE_GRACE_MS] (the app left, a game or a stream started); between screens it plays on.
     private val screens = mutableSetOf<Any>()
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val stopIfLeft = Runnable { synchronized(this) { if (screens.isEmpty()) stop() } }
+    private const val LEAVE_GRACE_MS = 1500L
 
-    /** [screen] is in front: the music plays. Call from the main thread. */
+    /** [screen] is in front: the music plays on (or starts). Call from the main thread. */
     @Synchronized
     fun show(screen: Any, context: Context) {
+        handler.removeCallbacks(stopIfLeft)
         screens.add(screen)
         apply(context)
     }
 
-    /** [screen] is left or covered: the music stops unless another screen it plays on is in front. */
+    /** [screen] is left or covered: the music stops unless another screen it plays on comes to the front. */
     @Synchronized
     fun hide(screen: Any) {
-        if (screens.remove(screen) && screens.isEmpty()) stop()
+        if (screens.remove(screen) && screens.isEmpty()) {
+            handler.removeCallbacks(stopIfLeft)
+            handler.postDelayed(stopIfLeft, LEAVE_GRACE_MS)
+        }
     }
     private var fade: android.animation.ValueAnimator? = null
     private var level = 1f
@@ -70,7 +81,7 @@ object RiftMusic {
     @Synchronized
     fun release(owner: Any) {
         if (!holds.remove(owner) || holds.isNotEmpty()) return
-        runCatching { player?.takeIf { !it.isPlaying }?.start() }
+        if (prepared) runCatching { player?.takeIf { !it.isPlaying }?.start() }
         fadeTo(1f)
     }
 
@@ -91,7 +102,9 @@ object RiftMusic {
         target = volume
         level = if (holds.isEmpty()) 1f else 0f
         if (playing == track && player != null) {
+            // The same track is already on: keep it going where it is, never from the start.
             setLevel(level)
+            if (holds.isEmpty() && prepared) runCatching { player?.takeIf { !it.isPlaying }?.start() }
             return
         }
         stop()
@@ -106,7 +119,10 @@ object RiftMusic {
                 setDataSource(track.path)
                 isLooping = true
                 setVolume(volume * level, volume * level)
-                setOnPreparedListener { if (holds.isEmpty()) it.start() }
+                setOnPreparedListener {
+                    prepared = true
+                    if (holds.isEmpty()) it.start()
+                }
                 prepareAsync()
             }
             playing = track
@@ -121,6 +137,7 @@ object RiftMusic {
         runCatching { player?.release() }
         player = null
         playing = null
+        prepared = false
     }
 }
 
