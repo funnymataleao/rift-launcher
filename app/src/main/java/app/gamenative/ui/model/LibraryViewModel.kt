@@ -489,6 +489,23 @@ class LibraryViewModel @Inject constructor(
         onFilterApps(paginationCurrentPage)
     }
 
+    /** Rift: puts a whole saved sort and filter set in place at once (the home's or the library's). */
+    fun applyView(sort: SortOption, filters: EnumSet<AppFilter>, collections: Set<String>, curated: Set<String>) {
+        PrefManager.librarySortOption = sort
+        PrefManager.libraryFilter = filters
+        PrefManager.librarySteamCollections = collections
+        PrefManager.libraryCuratedLists = curated
+        _state.update {
+            it.copy(
+                currentSortOption = sort,
+                appInfoSortType = filters,
+                selectedSteamCollectionIds = collections,
+                selectedCuratedListIds = curated,
+            )
+        }
+        onFilterApps(0)
+    }
+
     fun onSortOptionChanged(sortOption: SortOption) {
         PrefManager.librarySortOption = sortOption
         _state.update { it.copy(currentSortOption = sortOption) }

@@ -135,6 +135,9 @@ class StreamActivity : ComponentActivity(), SurfaceHolder.Callback, NvConnection
         set(value) {
             panelOpen = value
             if (value) panel.show() else panel.dismiss()
+            // Rift: a reconnect opens the panel on the row that was changed; once closed, the next Home opens
+            // it on the top tab again.
+            if (!value) panelRow = StreamMenuRow.RESOLUTION
         }
 
     private val mainHandler = Handler(Looper.getMainLooper())

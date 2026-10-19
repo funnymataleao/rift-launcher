@@ -90,6 +90,8 @@ import app.gamenative.data.FavoritesManager
 import app.gamenative.ui.screen.library.components.toggleFavorite
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -337,6 +339,10 @@ fun RiftHomeScreen(
     // While GameNative reloads the list (it empties it first), keep showing the last one: no flashes.
     var lastLibrary by remember { mutableStateOf(emptyList<LibraryItem>()) }
     val library = if (loadedLibrary.isEmpty() && libraryState.isLoading) lastLibrary else loadedLibrary
+    // Rift: the store the PC games row shows (the filters panel), null for all; a store with no games left counts as all.
+    var pcView by remember { mutableStateOf(RiftTabFilters.get(context, RiftSection.PcGames)) }
+    val pcStores = remember(library) { GameSource.entries.filter { s -> library.any { it.gameSource == s } } }
+    val pcStore = pcStores.firstOrNull { it.name == pcView.group }
     SideEffect { if (loadedLibrary.isNotEmpty() || !libraryState.isLoading) lastLibrary = loadedLibrary }
     // Android games the user added in settings; reloads when that list changes.
     val allAndroidGames by produceState(emptyList<AndroidGame>()) {
@@ -483,7 +489,9 @@ fun RiftHomeScreen(
     var openedForStream by rememberSaveable { mutableStateOf(false) }
     // The open game page is a cloud game's: its main button plays it in the cloud.
     var openedForCloud by rememberSaveable { mutableStateOf(false) }
-    var lastOpenedItem by remember { mutableStateOf<LibraryItem?>(null) }
+    // Rift: kept for the whole run, not the composition: the assistant opened from a game's page takes the home down,
+    // and coming back the page must find its game even when it is not in the PC library (a PC streaming game, say).
+    var lastOpenedItem by RiftOpenedPage.item
     // The art picker (SteamGridDB) for one game; opened from the game's options or Y on a streamed game.
     var artItem by remember { mutableStateOf<LibraryItem?>(null) }
     var artToken by remember { mutableIntStateOf(0) }
@@ -499,7 +507,7 @@ fun RiftHomeScreen(
     val streamRowState = rememberLazyListState()
     val cloudRowState = rememberLazyListState()
     val emulatorRowState = rememberLazyListState()
-    val filterKey = listOf(libraryState.appInfoSortType.toList(), libraryState.currentSortOption, streamView, streamUninstalledMode, uninstalledMode, androidView, cloudView, emulatorView)
+    val filterKey = listOf(libraryState.appInfoSortType.toList(), libraryState.currentSortOption, streamView, streamUninstalledMode, uninstalledMode, androidView, cloudView, emulatorView, pcView)
     var lastFilterKey by remember { mutableStateOf(filterKey) }
     LaunchedEffect(filterKey) {
         if (filterKey != lastFilterKey) {
@@ -510,7 +518,9 @@ fun RiftHomeScreen(
 
     // Big Picture: the home row has only the latest games and ends in a card that opens the whole
     // library, a grid with the tab's sources (the stores) as tabs.
-    val homeRow = library.take(HOME_ROW_COUNT)
+    val homeRow = remember(library, pcStore) {
+        (if (pcStore == null) library else library.filter { it.gameSource == pcStore }).take(HOME_ROW_COUNT)
+    }
     var libraryOpen by rememberSaveable { mutableStateOf(false) }
     var librarySearchOpen by rememberSaveable { mutableStateOf(false) }
     var librarySearchTyping by remember { mutableStateOf(false) }
@@ -541,6 +551,8 @@ fun RiftHomeScreen(
         }
     }
     var libraryPending by remember { mutableStateOf<String?>(null) }
+    // Whether the PC library's own sort and filters are in place (see openLibrary).
+    var pcLibraryViewActive by rememberSaveable { mutableStateOf(false) }
     var libraryTabSwitch by remember { mutableIntStateOf(0) }
     val focusedItem = homeRow.firstOrNull { it.appId == focusedAppId } ?: homeRow.firstOrNull()
     val androidShown = remember(androidGames, androidView, searchText, gameNames) {
@@ -598,17 +610,22 @@ fun RiftHomeScreen(
     val focusedStream = streamHomeRow.firstOrNull { it.appId == focusedStreamId } ?: streamHomeRow.firstOrNull()
     val cloudHomeRow = cloudItems.take(HOME_ROW_COUNT)
     val focusedCloud = cloudHomeRow.firstOrNull { it.appId == focusedCloudId } ?: cloudHomeRow.firstOrNull()
-    val emulatorHomeRow = emulatorItems.take(HOME_ROW_COUNT)
-    val focusedEmulator = emulatorHomeRow.firstOrNull { it.appId == focusedEmulatorId } ?: emulatorHomeRow.firstOrNull()
-    // Warm every home shelf before its tab is opened. Otherwise the first composition of a tab races
-    // the image decoder and briefly exposes CoverCard's grey surface.
-    LaunchedEffect(homeRow, streamHomeRow, cloudHomeRow, emulatorHomeRow) {
-        coroutineScope {
-            listOf(homeRow, streamHomeRow, cloudHomeRow, emulatorHomeRow).map { row ->
-                async(Dispatchers.IO) { preloadShelfCovers(context, row) }
-            }.awaitAll()
+    // Rift: the system the Emulators row shows (the filters panel), null for all; the library keeps its own tabs.
+    val emulatorPlatforms = remember(emulatorGames) { emulatorGames.map { it.platformId }.distinct() }
+    val emulatorPlatform = emulatorView.group?.takeIf { it in emulatorPlatforms }
+    val emulatorRowItems = remember(emulatorItems, emulatorGames, emulatorPlatform) {
+        if (emulatorPlatform == null) {
+            emulatorItems
+        } else {
+            val ids = emulatorGames.filter { it.platformId == emulatorPlatform }.map { it.appId }.toSet()
+            emulatorItems.filter { it.appId in ids }
         }
     }
+    val emulatorHomeRow = emulatorRowItems.take(HOME_ROW_COUNT)
+    val focusedEmulator = emulatorHomeRow.firstOrNull { it.appId == focusedEmulatorId } ?: emulatorHomeRow.firstOrNull()
+    // Rift: no prefetching of covers (Denis 18.10): it ran again on every change of any row, asked for the first
+    // address of each cover (often a dead one) at another size than the cards use, and took the few connections
+    // to Steam's image server that the covers on screen then queued behind for minutes.
     // Coming back (from Settings, a game page, AI Help...) the lists load again, and the cover that had focus may
     // not be in the first batch. Until it shows up the focus waits instead of landing on whatever is first (and
     // then being remembered as the place); if it never shows up (the game is gone) the first cover takes over.
@@ -747,6 +764,13 @@ fun RiftHomeScreen(
     pageState.targetState = opened != null
     // Once the page fully covers the home, the home is not drawn at all.
     val homeCovered = pageState.currentState && pageState.isIdle
+    // Rift: a page that is "open" but cannot be shown (its game is gone from every list) would take every key and
+    // show nothing: after a moment the home lets it go and the covers take the focus.
+    LaunchedEffect(openedAppId, opened == null) {
+        if (openedAppId == null || opened != null) return@LaunchedEffect
+        delay(1_500)
+        if (opened == null) openedAppId = null
+    }
     val pageFocus = remember { FocusRequester() }
     var pageFocused by remember { mutableStateOf(false) }
     val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
@@ -780,6 +804,14 @@ fun RiftHomeScreen(
 
     // The library always opens on "All games" and the home row is always all of them.
     fun openLibrary() {
+        // Rift: the library has its own sort and filters; the home's are kept and come back when it closes.
+        val homeView = RiftPcViews.of(viewModel.state.value)
+        RiftPcViews.save(context, RiftPcViews.HOME, homeView)
+        val libraryView = RiftPcViews.load(context, RiftPcViews.LIBRARY)
+        if (libraryView != null && libraryView != homeView) {
+            viewModel.applyView(libraryView.sort, libraryView.filters, libraryView.collections, libraryView.curated)
+        }
+        pcLibraryViewActive = true
         if (libraryState.currentTab != LibraryTab.ALL) viewModel.onTabChanged(LibraryTab.ALL)
         libraryFocusedId = null
         libraryOpen = true
@@ -849,6 +881,14 @@ fun RiftHomeScreen(
     fun closeLibrary() {
         closeLibrarySearch()
         libraryOpen = false
+        if (pcLibraryViewActive) {
+            pcLibraryViewActive = false
+            val libraryView = RiftPcViews.of(viewModel.state.value)
+            RiftPcViews.save(context, RiftPcViews.LIBRARY, libraryView)
+            RiftPcViews.load(context, RiftPcViews.HOME)?.takeIf { it != libraryView }?.let {
+                viewModel.applyView(it.sort, it.filters, it.collections, it.curated)
+            }
+        }
         if (viewModel.state.value.currentTab != LibraryTab.ALL) viewModel.onTabChanged(LibraryTab.ALL)
     }
 
@@ -914,6 +954,10 @@ fun RiftHomeScreen(
     // Select: GameNative's library filter panel. Start: its system menu. Both over a blurred screen.
     val panelOpen = libraryState.isOptionsPanelOpen
     var systemMenuOpen by rememberSaveable { mutableStateOf(false) }
+    // Rift: the panel closes because another screen opens from it (Settings, the assistant, Downloads): the home must
+    // not take the focus back to its cover then, it would take it from that screen (the focus blinked, B went home).
+    var leavingHome by remember { mutableStateOf(false) }
+    val downloadsShown by RiftHomeCover.downloads
     // Start: the focused game's options, GameNative's panel alone over the home (see RiftOptionsOnly).
     // It stays attached after closing while one of its dialogs may be up, until the next key here.
     var optionsItem by remember { mutableStateOf<LibraryItem?>(null) }
@@ -1142,11 +1186,15 @@ fun RiftHomeScreen(
     // itself takes focus instead of nothing.
     val rootFocus = remember { FocusRequester() }
     var rootFocused by remember { mutableStateOf(false) }
+    // Anything in this screen (covers, library, game page, panels) holds the focus.
+    var screenHasFocus by remember { mutableStateOf(false) }
     val composeView = LocalView.current
     fun refocusCover() {
         // Compose can hand focus back to the window (Back at the top of the focus tree), and then no
         // key reaches the screen at all: take the view's focus back first.
-        if (!composeView.hasFocus()) composeView.requestFocus()
+        if (!composeView.hasFocus()) {
+            if (composeView.isInTouchMode) composeView.requestFocusFromTouch() else composeView.requestFocus()
+        }
         // Back from a stream the game's page is still open: the focus goes into it.
         if (openedAppId != null && (artItem == null && metaItem == null) && !appsOpen) {
             if (!pageFocused) runCatching { pageFocus.requestFocus() }
@@ -1163,6 +1211,16 @@ fun RiftHomeScreen(
         }
     }
     LaunchedEffect(Unit) { if (openedAppId == null) runCatching { rootFocus.requestFocus() } }
+    var downloadsWereShown by remember { mutableStateOf(false) }
+    LaunchedEffect(downloadsShown) {
+        if (downloadsShown) {
+            downloadsWereShown = true
+        } else if (downloadsWereShown) {
+            downloadsWereShown = false
+            withFrameNanos { }
+            refocusCover()
+        }
+    }
     // The window got its focus back (on start a system overlay, Nubia's game assistant say, may hold it first)
     // with nothing in it focused: a cover takes it at once, not on the first press of the d-pad.
     val windowFocused = LocalWindowInfo.current.isWindowFocused
@@ -1178,6 +1236,18 @@ fun RiftHomeScreen(
     val latestRefocus = rememberUpdatedState<() -> Unit> { refocusCover() }
     val latestLayerOpen = rememberUpdatedState<() -> Boolean> {
         systemMenuOpen || searchOpen || viewModel.state.value.isOptionsPanelOpen
+    }
+    // The window keeps its focus while nothing inside the screen has any: a touch drops the focus of a
+    // cover, and a finger scroll disposes the focused tile of a grid (Denis: after scrolling the library to
+    // its end LB, RB and the d-pad did nothing, only Start woke it). Keys then reach no handler at all, so
+    // the first press gives the focus back: the open filters panel asks for it, a layer that drives its own
+    // focus is left alone, anything else goes to a cover (the library's grid picks one in view).
+    val latestScreenFocusLost = rememberUpdatedState<() -> Boolean> {
+        when {
+            gameOptionsOpen || startMenuItems != null || systemMenuOpen || searchOpen -> false
+            panelOpen -> { panelFocusAsk++; true }
+            else -> { refocusCover(); true }
+        }
     }
     DisposableEffect(composeView) {
         val listener: (AndroidEvent.KeyEvent) -> Boolean = { androidEvent ->
@@ -1215,6 +1285,8 @@ fun RiftHomeScreen(
             } else if (ev.action == KeyEvent.ACTION_DOWN && !composeView.hasFocus() && composeView.hasWindowFocus()) {
                 latestRefocus.value()
                 true
+            } else if (ev.action == KeyEvent.ACTION_DOWN && !screenHasFocus && composeView.hasWindowFocus()) {
+                latestScreenFocusLost.value()
             } else {
                 false
             }
@@ -1312,6 +1384,10 @@ fun RiftHomeScreen(
     }
     LaunchedEffect(overlayOpen) {
         if (!overlayOpen) {
+            if (leavingHome || downloadsShown) {
+                leavingHome = false
+                return@LaunchedEffect
+            }
             // A layer closed over the game page: focus goes back into the page, not to the hidden covers.
             if (openedAppId != null) {
                 runCatching { pageFocus.requestFocus() }
@@ -1344,6 +1420,7 @@ fun RiftHomeScreen(
             // The panel's glass blurs what is behind it: the home, or the game page it opened over.
             glassBackdrop = if (openedAppId != null) pageGlass else homeGlass,
             onNavigateRoute = { route ->
+                leavingHome = true
                 systemMenuOpen = false
                 if (route == PluviaScreen.Support.route) {
                     // "AI Help" opens Rift's assistant (the user's own provider) instead of GameNative's support,
@@ -1356,6 +1433,7 @@ fun RiftHomeScreen(
                 }
             },
             onDownloadsClick = {
+                leavingHome = true
                 systemMenuOpen = false
                 onDownloadsClick()
             },
@@ -1365,7 +1443,7 @@ fun RiftHomeScreen(
         )
     }
     val rightStick = rememberRightStick()
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black).onFocusChanged { screenHasFocus = it.hasFocus }) {
     RiftTheme {
       CompositionLocalProvider(LocalRightStick provides rightStick) {
         BoxWithConstraints(
@@ -2012,7 +2090,23 @@ fun RiftHomeScreen(
                     curatedListCounts = libraryState.curatedListCounts,
                     onCuratedListToggle = viewModel::onCuratedListToggle,
                     onClearCuratedLists = viewModel::onClearCuratedLists,
-                    tabGroups = tabGroups,
+                    // Rift: the Emulators panel also picks the system its row shows (not the library's menu: it has tabs).
+                    tabGroups = if (section == RiftSection.Emulators && emulatorPlatforms.size > 1) {
+                        tabGroups.orEmpty() + emulatorPlatformGroup(emulatorPlatforms, emulatorPlatform) {
+                            emulatorView = emulatorView.copy(group = it)
+                            RiftTabFilters.set(context, RiftSection.Emulators, emulatorView)
+                        }
+                    } else {
+                        tabGroups
+                    },
+                    storeGroup = if (section == RiftSection.PcGames && pcStores.size > 1) {
+                        pcStoreGroup(pcStores, pcStore) {
+                            pcView = pcView.copy(group = it)
+                            RiftTabFilters.set(context, RiftSection.PcGames, pcView)
+                        }
+                    } else {
+                        null
+                    },
                     focusAsk = panelFocusAsk,
                     onFocusChanged = { panelHasFocus = it },
                     extraGroup = when (section) {
@@ -2106,7 +2200,8 @@ fun RiftHomeScreen(
             // ends back on the game's page, and B from there returns to the same cover.
             val streamAction = remember(item.appId, openedForStream, streamTab) {
                 if (openedForStream && streamTab != null) {
-                    RiftStreamAction {
+                    // Rift: a streamed Steam game keeps its gear, the menu and the game's full settings, like every game.
+                    RiftStreamAction(showOptions = true) {
                         sounds.play(RiftSound.Launch)
                         streamTab.launch(context, item)
                     }
@@ -2367,6 +2462,16 @@ private fun PcLibraryGrid(
         gridState.scrollToItem(0)
         onWantFocus(first.appId)
     }
+    // A finger scroll can carry the remembered game out of view, and its tile (with its focus) is gone: a
+    // focus asked for then goes to the first game fully in view, not to a tile that is not there.
+    LaunchedEffect(pendingFocusKey) {
+        val key = pendingFocusKey ?: return@LaunchedEffect
+        withFrameNanos { }
+        val visible = gridState.layoutInfo.visibleItemsInfo
+        if (visible.isEmpty() || visible.any { it.key == key }) return@LaunchedEffect
+        val inView = visible.firstOrNull { it.offset.y >= 0 } ?: visible.first()
+        (inView.key as? String)?.let(onWantFocus)
+    }
     if (items.isEmpty()) {
         if (!loading) {
             Text(
@@ -2554,17 +2659,6 @@ private fun PcGamesShelf(
     val clock = rememberShelfClock(entry, entryStarted)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    // Keep a small runway of covers warm. DPAD can move focus faster than a newly composed CoilImage
-    // can decode from disk/network; prefetching the next few into the same ImageLoader avoids grey flashes.
-    LaunchedEffect(shown, listState.firstVisibleItemIndex) {
-        val start = (listState.firstVisibleItemIndex + 1).coerceAtMost(shown.size)
-        val end = (start + 7).coerceAtMost(shown.size)
-        for (index in start until end) {
-            val urls = if (index == 0) wideCoverUrls(shown[index]) else portraitCoverUrls(shown[index])
-            val url = urls.firstOrNull { it.isNotBlank() } ?: continue
-            context.imageLoader.enqueue(ImageRequest.Builder(context).data(url).size(PRELOAD_COVER_PX).build())
-        }
-    }
     if (shown.isEmpty()) {
         Box(
             modifier = Modifier
@@ -3548,14 +3642,6 @@ private fun RiftRow(
     }
 }
 
-/** Pre-decodes the visible part of a shelf into the shared Coil memory cache before its tab opens. */
-private suspend fun preloadShelfCovers(context: android.content.Context, row: List<LibraryItem>) = coroutineScope {
-    row.take(10).mapIndexedNotNull { index, item ->
-        val url = (if (index == 0) wideCoverUrls(item) else portraitCoverUrls(item)).firstOrNull { it.isNotBlank() }
-        url?.let { async(Dispatchers.IO) { runCatching { context.imageLoader.execute(ImageRequest.Builder(context).data(it).size(PRELOAD_COVER_PX).build()) } } }
-    }.awaitAll()
-}
-
 /** Loads what the home shows first (backdrop, the first covers) into Coil's cache, in parallel. */
 private suspend fun preloadFirstImages(context: android.content.Context, library: List<LibraryItem>) = coroutineScope {
     val first = library.take(FIRST_IMAGES_COUNT)
@@ -3587,6 +3673,35 @@ private fun tabFilterGroups(view: TabView, onChange: (TabView) -> Unit): List<Ta
                 TabFilterOption(stringResource(sort.titleRes), view.sort == sort) { onChange(view.copy(sort = sort)) }
             },
         ),
+    )
+}
+
+/** The PC games filters group that picks the one store the row shows ([GameSource.name]), or all of them (null). */
+@Composable
+private fun pcStoreGroup(stores: List<GameSource>, current: GameSource?, onChange: (String?) -> Unit): TabFilterGroup {
+    val all = stringResource(R.string.rift_filter_all)
+    return TabFilterGroup(
+        label = stringResource(R.string.rift_filter_store),
+        value = current?.let { sourceLabel(it) } ?: all,
+        icon = Icons.Outlined.Storefront,
+        options = listOf(TabFilterOption(all, current == null) { onChange(null) }) +
+            stores.map { store -> TabFilterOption(sourceLabel(store), current == store) { onChange(store.name) } },
+    )
+}
+
+/** The Emulators filters group that picks the one system the row shows, or all of them (null). */
+@Composable
+private fun emulatorPlatformGroup(platforms: List<String>, current: String?, onChange: (String?) -> Unit): TabFilterGroup {
+    val all = stringResource(R.string.rift_filter_all)
+    val named = platforms.map { id ->
+        id to (dev.rift.launcher.settings.EmulatorCatalog.platform(id)?.let { stringResource(it.nameRes) } ?: id)
+    }.sortedBy { it.second.lowercase() }
+    return TabFilterGroup(
+        label = stringResource(R.string.rift_filter_platform),
+        value = named.firstOrNull { it.first == current }?.second ?: all,
+        icon = Icons.Outlined.SportsEsports,
+        options = listOf(TabFilterOption(all, current == null) { onChange(null) }) +
+            named.map { (id, name) -> TabFilterOption(name, current == id) { onChange(id) } },
     )
 }
 
@@ -3624,4 +3739,14 @@ private const val FIRST_COVER_KEY = "first-cover"
 /** Lives as long as the process: tells a fresh start of Rift from a return inside one run. */
 private object RiftFocusMemory {
     var processStarted = false
+}
+
+/** The game whose page is open, for the whole run (see lastOpenedItem). */
+private object RiftOpenedPage {
+    val item = androidx.compose.runtime.mutableStateOf<LibraryItem?>(null)
+}
+
+/** Whether Downloads (or its storage page) is shown over the home, which stays mounted under it. */
+object RiftHomeCover {
+    val downloads = androidx.compose.runtime.mutableStateOf(false)
 }

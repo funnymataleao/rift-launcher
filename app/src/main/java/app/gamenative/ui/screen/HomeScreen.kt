@@ -44,6 +44,7 @@ fun HomeScreen(
     LaunchedEffect(Unit) {
         RiftDownloadsNav.requests.collect { showDownloads = true }
     }
+    androidx.compose.runtime.SideEffect { dev.rift.launcher.home.RiftHomeCover.downloads.value = showDownloads }
     Box(modifier = Modifier.fillMaxSize()) {
         // Keep RiftHomeScreen mounted while Downloads/Storage is on top. Besides preserving the exact tab,
         // row scroll and focused game, this keeps RiftMusicEffect alive: Downloads is part of the launcher,
@@ -68,13 +69,8 @@ fun HomeScreen(
 
         if (showDownloads && showStorage) {
             BackHandler { showStorage = false }
-            HomeDownloadsScreen(
-                onBack = { showStorage = false },
-                onClickPlay = onClickPlay,
-                onTestGraphics = onTestGraphics,
-                onPlayWithDiagnostics = onPlayWithDiagnostics,
-                onAiDebugRun = onAiDebugRun,
-            )
+            // Rift: the storage manager as a Rift page (GameNative's own screen had no working B and its own look).
+            dev.rift.launcher.home.RiftStorageScreen(onBack = { showStorage = false })
         } else if (showDownloads) {
             BackHandler { showDownloads = false }
             RiftDownloadsScreen(onBack = { showDownloads = false }, onOpenStorage = { showStorage = true })

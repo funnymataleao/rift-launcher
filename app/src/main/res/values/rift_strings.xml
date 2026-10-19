@@ -264,6 +264,9 @@
     <string name="rift_filters_title">Filters</string>
     <string name="rift_filter_any">Any</string>
     <string name="rift_filter_sort">Sort</string>
+    <string name="rift_filter_store">Store</string>
+    <string name="rift_filter_platform">Platform</string>
+    <string name="rift_filter_all">All</string>
     <string name="rift_menu_go_online">Go online (Steam)</string>
     <string name="rift_menu_go_offline">Go offline (Steam)</string>
 

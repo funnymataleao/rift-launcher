@@ -7,6 +7,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -191,7 +192,23 @@ class PcStreamingTab internal constructor(internal val hosts: PcHosts) {
 fun rememberPcStreamingTab(): PcStreamingTab {
     val context = LocalContext.current
     val hosts = rememberPcHosts()
-    val tab = remember(hosts) { PcStreamingTab(hosts) }
+    val tab = remember(hosts) {
+        PcStreamingTab(hosts).apply {
+            // Rift: the home is built again after Settings or the assistant; the tab starts from what this run already
+            // knew (each PC's games, their Steam match and dates). Starting empty, the games first showed as the PC's
+            // entries, then turned into the Steam games one by one: a card vanished and the row moved along.
+            apps.putAll(PcStreamingTabMemory.apps)
+            steamByName = PcStreamingTabMemory.steamByName
+            addedAt = PcStreamingTabMemory.addedAt
+            refreshed += PcStreamingTabMemory.refreshed
+        }
+    }
+    SideEffect {
+        PcStreamingTabMemory.apps = tab.apps.toMap()
+        if (tab.steamByName.isNotEmpty()) PcStreamingTabMemory.steamByName = tab.steamByName
+        if (tab.addedAt.isNotEmpty()) PcStreamingTabMemory.addedAt = tab.addedAt
+        PcStreamingTabMemory.refreshed = tab.refreshed.toSet()
+    }
 
     LaunchedEffect(tab) {
         tab.addedAt = withContext(Dispatchers.IO) {
@@ -266,3 +283,11 @@ private fun normalizedTitle(title: String?): String =
     Normalizer.normalize(title.orEmpty().replace(Regex("[™®©]"), ""), Normalizer.Form.NFKD)
         .lowercase()
         .replace(Regex("[^\\p{L}\\p{N}]+"), "")
+
+/** What the PC streaming tab knew, for the whole run (see rememberPcStreamingTab). */
+private object PcStreamingTabMemory {
+    var apps: Map<String, List<NvApp>> = emptyMap()
+    var steamByName: Map<String, SteamApp> = emptyMap()
+    var addedAt: Map<String, Long> = emptyMap()
+    var refreshed: Set<String> = emptySet()
+}

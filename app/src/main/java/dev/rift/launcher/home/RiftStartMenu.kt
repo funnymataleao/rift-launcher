@@ -29,6 +29,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
@@ -217,6 +218,7 @@ fun RiftGameStartMenu(
     onProperties: (() -> Unit)?,
     onHide: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    onUninstall: (() -> Unit)? = null,
 ) {
     val main = listOf(
         AppOptionMenuType.ChangeArt,
@@ -241,6 +243,9 @@ fun RiftGameStartMenu(
         }
         if (onHide != null) {
             add(RiftStartMenuItem(stringResource(R.string.rift_menu_hide), icon = Icons.Default.VisibilityOff) { onHide(); onDismiss() })
+        }
+        if (onUninstall != null) {
+            add(RiftStartMenuItem(stringResource(R.string.uninstall), icon = Icons.Default.Delete) { onDismiss(); onUninstall() })
         }
         add(RiftStartMenuItem(stringResource(R.string.rift_menu_cancel), icon = Icons.Default.Close) { onDismiss() })
     }

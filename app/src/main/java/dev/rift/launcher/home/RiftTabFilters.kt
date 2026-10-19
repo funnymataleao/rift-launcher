@@ -18,8 +18,11 @@ enum class TabSort(val key: String, @StringRes val titleRes: Int) {
     }
 }
 
-/** A tab's own sort and scope; [showAll] is the PC streaming "all games, not only the ones on the PC". */
-data class TabView(val sort: TabSort = TabSort.NAME_ASC, val showAll: Boolean = false)
+/**
+ * A tab's own sort and scope; [showAll] is the PC streaming "all games, not only the ones on the PC", [group] the
+ * one store (PC games) or system (Emulators) the home row shows, null for all of them.
+ */
+data class TabView(val sort: TabSort = TabSort.NAME_ASC, val showAll: Boolean = false, val group: String? = null)
 
 /**
  * Every tab remembers its own sort and filter (the filters panel works on the tab that is open).
@@ -35,6 +38,7 @@ object RiftTabFilters {
         return TabView(
             sort = prefs.getString("tab_sort_${section.key}", null)?.let(TabSort::fromKey) ?: defaultSort,
             showAll = prefs.getBoolean("tab_show_all_${section.key}", false),
+            group = prefs.getString("tab_group_${section.key}", null),
         )
     }
 
@@ -42,6 +46,7 @@ object RiftTabFilters {
         prefs(context).edit {
             putString("tab_sort_${section.key}", view.sort.key)
             putBoolean("tab_show_all_${section.key}", view.showAll)
+            putString("tab_group_${section.key}", view.group)
         }
     }
 }

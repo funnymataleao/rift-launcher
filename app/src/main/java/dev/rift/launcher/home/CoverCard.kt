@@ -118,8 +118,12 @@ fun CoverCard(
     }
     val palette = loaded ?: FallbackPalette
 
+    val view = androidx.compose.ui.platform.LocalView.current
     LaunchedEffect(requestFocus) {
         if (requestFocus) {
+            // Rift: after touches the window is in touch mode, where a plain request gives no focus (the library
+            // opened with a tap had none, and the gamepad drove nothing); the system menu does the same.
+            if (view.isInTouchMode) view.requestFocusFromTouch()
             runCatching { focusRequester.requestFocus() }
             onFocusRequested()
         }

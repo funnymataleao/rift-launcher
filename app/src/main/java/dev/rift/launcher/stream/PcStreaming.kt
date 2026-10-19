@@ -247,7 +247,10 @@ private object PcPolling {
     val listener = ComputerManagerListener { details ->
         val uuid = details.uuid ?: return@ComputerManagerListener
         // The service calls back from its polling threads.
-        android.os.Handler(android.os.Looper.getMainLooper()).post { watchers.forEach { it.hosts[uuid] = details } }
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            watchers.forEach { it.hosts[uuid] = details }
+            PcHostsMemory.known = PcHostsMemory.known + (uuid to details)
+        }
     }
 
     fun start(hosts: PcHosts, binder: ComputerManagerService.ComputerManagerBinder) {
@@ -264,7 +267,10 @@ private object PcPolling {
 fun rememberPcHosts(): PcHosts {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val pcHosts = remember { PcHosts() }
+    // Rift: starts with the PCs this run already knew. Empty, the tab first showed only the Steam games, then the
+    // PC's own games came in when the PC was found and pushed the row along (Hellraiser over Silent Hill).
+    val pcHosts = remember { PcHosts().apply { hosts.putAll(PcHostsMemory.known) } }
+    androidx.compose.runtime.SideEffect { if (pcHosts.hosts.isNotEmpty()) PcHostsMemory.known = pcHosts.hosts.toMap() }
 
     DisposableEffect(context, lifecycleOwner) {
         var resumed = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
@@ -319,3 +325,9 @@ class StreamArt(
     val logoUrl: String = "",
     val steamAppId: Int = 0,
 )
+
+/** The PCs seen this run, by UUID (see rememberPcHosts). */
+internal object PcHostsMemory {
+    @Volatile
+    var known: Map<String, ComputerDetails> = emptyMap()
+}

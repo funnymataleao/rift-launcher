@@ -27,6 +27,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -94,17 +96,38 @@ private class ArtFeed {
     var page = 0
 }
 
+/**
+ * Rift: what SteamGridDB answered, for the whole run: each game's path and each tab's pictures so far. Its API is
+ * slow (about two seconds an answer), so a picker opened again for the same game shows them at once.
+ */
+private object ArtMemory {
+    class Saved(val options: List<ArtOption>, val page: Int, val done: Boolean)
+    val paths = java.util.concurrent.ConcurrentHashMap<String, String>()
+    val feeds = java.util.concurrent.ConcurrentHashMap<String, Saved>()
+    fun key(appId: String, kind: ArtKind) = "$appId|${kind.name}"
+}
+
 /** One open picker: the key, the game as SteamGridDB knows it, and the feeds of the tabs visited so far. */
 private class ArtSession(val item: LibraryItem, val key: String) {
     private val feeds = mutableMapOf<ArtKind, ArtFeed>()
-    private var path: String? = null
+    private var path: String? = ArtMemory.paths[item.appId]
+    // The game is looked up once, however many tabs ask at the same time.
+    private val pathLock = kotlinx.coroutines.sync.Mutex()
     private var triedByName = false
     private val game = SteamGridDbClient.Game(
         steamAppId = item.gameId.takeIf { item.gameSource == GameSource.STEAM && it > 0 },
         name = item.name,
     )
 
-    fun feed(kind: ArtKind): ArtFeed = feeds.getOrPut(kind) { ArtFeed() }
+    fun feed(kind: ArtKind): ArtFeed = feeds.getOrPut(kind) {
+        ArtFeed().apply {
+            ArtMemory.feeds[ArtMemory.key(item.appId, kind)]?.let { saved ->
+                options = saved.options
+                page = saved.page
+                done = saved.done
+            }
+        }
+    }
 
     suspend fun loadMore(kind: ArtKind) {
         val feed = feed(kind)
@@ -119,6 +142,7 @@ private class ArtSession(val item: LibraryItem, val key: String) {
             if (loaded.isEmpty()) feed.done = true
             feed.options = feed.options + fresh
             feed.page++
+            ArtMemory.feeds[ArtMemory.key(item.appId, kind)] = ArtMemory.Saved(feed.options, feed.page, feed.done)
         } catch (e: ArtError) {
             // A failure that comes back at once would look like a retry that did nothing.
             delay((RETRY_FEEDBACK_MS - (System.currentTimeMillis() - started)).coerceAtLeast(0))
@@ -129,16 +153,26 @@ private class ArtSession(val item: LibraryItem, val key: String) {
     }
 
     private suspend fun fetch(kind: ArtKind, page: Int): List<ArtOption> {
-        val first = path ?: SteamGridDbClient.resolve(key, game).also { path = it }
+        val first = pathLock.withLock { path ?: SteamGridDbClient.resolve(key, game).also { remember(it) } }
         return try {
             SteamGridDbClient.options(key, first, kind, page)
         } catch (e: ArtError) {
             // A Steam game SteamGridDB does not list by its id may still be there under its name.
-            if (e !== ArtError.NotFound || triedByName || game.steamAppId == null) throw e
-            triedByName = true
-            val byName = SteamGridDbClient.resolve(key, game, byName = true).also { path = it }
+            if (e !== ArtError.NotFound || game.steamAppId == null) throw e
+            val byName = pathLock.withLock {
+                if (triedByName) path ?: throw e
+                else {
+                    triedByName = true
+                    SteamGridDbClient.resolve(key, game, byName = true).also { remember(it) }
+                }
+            }
             SteamGridDbClient.options(key, byName, kind, page)
         }
+    }
+
+    private fun remember(found: String) {
+        path = found
+        ArtMemory.paths[item.appId] = found
     }
 }
 
@@ -169,6 +203,10 @@ fun RiftArtPicker(
         val session = remember { ArtSession(current, dev.rift.launcher.settings.RiftPrefs.of(context).steamGridDbKey) }
         var kindIndex by remember { mutableIntStateOf(0) }
         val kinds = ArtKind.entries
+        // Rift: every tab's first page at once, in parallel, so switching tabs does not wait for SteamGridDB.
+        LaunchedEffect(session) {
+            kotlinx.coroutines.coroutineScope { kinds.forEach { kind -> launch { session.loadMore(kind) } } }
+        }
         val tabs = kinds.map { LibraryTabSpec(it.key, stringResource(it.titleRes)) }
         // Whether a picture (or the status below the tabs) holds focus, and a counter that asks the grid to take it.
         var contentFocused by remember { mutableStateOf(false) }

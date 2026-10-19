@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEventType
@@ -115,12 +116,37 @@ fun RiftDownloadsScreen(
     val firstFocus = remember { FocusRequester() }
     // Rift: with nothing downloading the screen still has the gamepad's focus: on the Back button.
     val backFocus = remember { FocusRequester() }
+    var screenFocused by remember { mutableStateOf(false) }
+    var keyPressed by remember { mutableStateOf(false) }
     LaunchedEffect(all.isNotEmpty()) {
         val target = if (all.isEmpty()) backFocus else firstFocus
-        repeat(6) {
-            if (runCatching { target.requestFocus() }.isSuccess) return@LaunchedEffect
-            delay(60)
+        // Kept here for the first moment, until a key is pressed: the quick access panel that opened Downloads
+        // closes meanwhile, and the home under this screen takes its cover's focus back (B then went to the home).
+        repeat(30) {
+            if (keyPressed) return@LaunchedEffect
+            if (!screenFocused) runCatching { target.requestFocus() }
+            delay(50)
         }
+    }
+    // B leaves Downloads wherever the focus is, even when it is not on this screen at all.
+    val latestBack = androidx.compose.runtime.rememberUpdatedState(onBack)
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        var down = false
+        val listener: (app.gamenative.events.AndroidEvent.KeyEvent) -> Boolean = { e ->
+            val code = e.event.keyCode
+            if (screenFocused || (code != KeyEvent.KEYCODE_BUTTON_B && code != KeyEvent.KEYCODE_ESCAPE)) {
+                false
+            } else {
+                if (e.event.action == KeyEvent.ACTION_DOWN) down = true
+                if (e.event.action == KeyEvent.ACTION_UP && down) {
+                    down = false
+                    latestBack.value()
+                }
+                true
+            }
+        }
+        app.gamenative.PluviaApp.events.on<app.gamenative.events.AndroidEvent.KeyEvent, Boolean>(listener)
+        onDispose { app.gamenative.PluviaApp.events.off<app.gamenative.events.AndroidEvent.KeyEvent, Boolean>(listener) }
     }
 
     Column(
@@ -128,7 +154,9 @@ fun RiftDownloadsScreen(
             .fillMaxSize()
             .background(RiftColors.Background)
             .statusBarsPadding()
+            .onFocusChanged { screenFocused = it.hasFocus }
             .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown) keyPressed = true
                 val code = event.nativeKeyEvent.keyCode
                 if (code != KeyEvent.KEYCODE_BUTTON_B && code != KeyEvent.KEYCODE_BACK && code != KeyEvent.KEYCODE_ESCAPE) {
                     return@onPreviewKeyEvent false
