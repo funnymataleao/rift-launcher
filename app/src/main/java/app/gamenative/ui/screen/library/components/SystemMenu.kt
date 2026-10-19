@@ -664,16 +664,6 @@ fun SystemMenu(
                                 onDismiss()
                             },
                         )
-
-                        SystemMenuItem(
-                            text = stringResource(R.string.steam_sign_out),
-                            icon = Icons.AutoMirrored.Filled.Logout,
-                            onClick = {
-                                onLogout()
-                                onDismiss()
-                            },
-                            isDestructive = true,
-                        )
                     }
 
                     if (showStoreAccounts) {
@@ -733,20 +723,19 @@ fun SystemMenu(
                     }
                 }
 
-                // Gamepad hint at bottom (only on expanded screens)
-                if (shouldShowGamepadUI()) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = stringResource(R.string.press_b_to_close),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        )
-                    }
+                // Rift: signing out of Steam stands apart at the very bottom of the panel, and no "Press B to close"
+                // line (Denis 2026-10-19).
+                if (!isOffline && SteamService.isLoggedIn) {
+                    Spacer(modifier = Modifier.height(PlateGap))
+                    SystemMenuItem(
+                        text = stringResource(R.string.steam_sign_out),
+                        icon = Icons.AutoMirrored.Filled.Logout,
+                        onClick = {
+                            onLogout()
+                            onDismiss()
+                        },
+                        isDestructive = true,
+                    )
                 }
             }
         }
