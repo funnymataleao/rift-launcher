@@ -329,6 +329,8 @@ internal fun SuggestionCard(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var live by remember(message.id) { mutableStateOf<List<String?>?>(null) }
+    // Rift: what the settings were before this suggestion was applied; null while it is not applied.
+    var applied by remember(message.id) { mutableStateOf<List<String?>?>(null) }
     var hasContainer by remember(message.id) { mutableStateOf(true) }
     var hasSnapshot by remember(message.id) { mutableStateOf(false) }
     var busy by remember(message.id) { mutableStateOf(false) }
@@ -346,6 +348,7 @@ internal fun SuggestionCard(
         hasContainer = values != null
         live = values
         hasSnapshot = SupportSuggestionApplier.hasSnapshot(context, appId, message.id)
+        applied = SupportSuggestionApplier.readBefore(context, appId, message.id, suggestion)
     }
 
     val canAct = suggestion.applicable && appId != null && hasContainer && !busy
@@ -438,11 +441,13 @@ internal fun SuggestionCard(
             suggestion.changes.forEachIndexed { index, change ->
                 val before = live?.getOrNull(index)
                 val after = if (change.isUnset) null else change.to
+                // Rift: once applied, "before" is the value the change replaced, not the live one (now the new value).
+                val shownBefore = applied?.let { it.getOrNull(index) } ?: before
                 Text(
                     text = stringResource(
                         R.string.support_suggestion_change,
                         changeLabel(change),
-                        if (live == null) (change.from?.let { displayValue(change, it) } ?: "…") else displayValue(change, before),
+                        if (live == null && applied == null) (change.from?.let { displayValue(change, it) } ?: "…") else displayValue(change, shownBefore),
                         displayValue(change, after),
                     ),
                     style = MaterialTheme.typography.bodyMedium,

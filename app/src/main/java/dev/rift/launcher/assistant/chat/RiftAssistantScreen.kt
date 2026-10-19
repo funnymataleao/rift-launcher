@@ -41,6 +41,13 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ScreenRotation
+import androidx.compose.material.icons.rounded.Menu
+import androidx.compose.material.icons.automirrored.rounded.MenuOpen
+import androidx.compose.ui.draw.drawBehind
+import dev.rift.launcher.ui.blackGlass
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.material.icons.rounded.AddPhotoAlternate
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.foundation.layout.width
@@ -85,6 +92,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
@@ -161,6 +169,13 @@ fun RiftAssistantScreen(onBack: () -> Unit) {
     var pickingModel by remember { mutableStateOf(false) }
     var voiceNote by remember { mutableStateOf<String?>(null) }
     val voice = rememberVoiceInput()
+    // Rift: the launcher music plays on in the assistant (Denis 2026-10-19) and is quiet only while the mic listens.
+    dev.rift.launcher.sound.RiftMusicEffect()
+    val musicHold = remember { Any() }
+    LaunchedEffect(voice.listening) {
+        if (voice.listening) dev.rift.launcher.sound.RiftMusic.hold(musicHold) else dev.rift.launcher.sound.RiftMusic.release(musicHold)
+    }
+    DisposableEffect(Unit) { onDispose { dev.rift.launcher.sound.RiftMusic.release(musicHold) } }
 
     val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         voiceNote = if (granted) null else context.getString(R.string.rift_chat_voice_permission)
@@ -214,8 +229,44 @@ fun RiftAssistantScreen(onBack: () -> Unit) {
     }
 
     val inChat = !showSetup && ready
+    // Rift: the assistant's settings open at their top with the focus on Back (Denis 2026-10-19: it landed on Limits).
+    val headerBackFocus = remember { FocusRequester() }
+    LaunchedEffect(inChat) {
+        if (inChat) return@LaunchedEffect
+        repeat(10) {
+            if (runCatching { headerBackFocus.requestFocus() }.isSuccess) return@LaunchedEffect
+            kotlinx.coroutines.delay(50)
+        }
+    }
+    // Rift: the chats on the left can be folded away, and the page can turn upright (to type, say); upright the
+    // chats start folded. Leaving the page puts the launcher back in landscape.
+    var portrait by rememberSaveable { mutableStateOf(false) }
+    var railShown by rememberSaveable { mutableStateOf(true) }
+    LaunchedEffect(portrait) {
+        if (portrait) railShown = false
+        app.gamenative.PluviaApp.events.emit(
+            app.gamenative.events.AndroidEvent.SetAllowedOrientation(
+                if (portrait) {
+                    java.util.EnumSet.of(app.gamenative.ui.enums.Orientation.PORTRAIT, app.gamenative.ui.enums.Orientation.REVERSE_PORTRAIT)
+                } else {
+                    java.util.EnumSet.of(app.gamenative.ui.enums.Orientation.LANDSCAPE)
+                },
+            ),
+        )
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            app.gamenative.PluviaApp.events.emit(
+                app.gamenative.events.AndroidEvent.SetAllowedOrientation(java.util.EnumSet.of(app.gamenative.ui.enums.Orientation.LANDSCAPE)),
+            )
+        }
+    }
+    @OptIn(ExperimentalLayoutApi::class)
+    val imeVisible = WindowInsets.isImeVisible
+    val keyboard = LocalSoftwareKeyboardController.current
     BackHandler {
         when {
+            imeVisible -> keyboard?.hide()
             voice.listening -> voice.stop()
             showSetup && ready -> showSetup = false
             else -> onBack()
@@ -231,6 +282,19 @@ fun RiftAssistantScreen(onBack: () -> Unit) {
                 .displayCutoutPadding()
                 .imePadding()
                 .onPreviewKeyEvent { event ->
+                    // Rift: B goes back from anywhere on the page, the message field included.
+                    if (event.key.nativeKeyCode == KeyEvent.KEYCODE_BUTTON_B) {
+                        if (event.type == KeyEventType.KeyUp) {
+                            when {
+                                // With the keyboard up, B only closes it; the page stays.
+                                imeVisible -> keyboard?.hide()
+                                voice.listening -> voice.stop()
+                                showSetup && ready -> showSetup = false
+                                else -> onBack()
+                            }
+                        }
+                        return@onPreviewKeyEvent true
+                    }
                     if (!inChat || event.key.nativeKeyCode != KeyEvent.KEYCODE_BUTTON_Y) return@onPreviewKeyEvent false
                     // Hold to talk: down starts, up stops and sends; the repeats while holding are swallowed.
                     when (event.type) {
@@ -241,10 +305,11 @@ fun RiftAssistantScreen(onBack: () -> Unit) {
                 },
         ) {
           Row(modifier = Modifier.fillMaxSize()) {
-            if (inChat) {
+            if (inChat && railShown) {
                 HistoryRail(
                     history = history,
                     currentId = chat.chatId,
+                    onBack = onBack,
                     onNewChat = {
                         voice.stop()
                         AssistantChat.newChat(context)
@@ -253,8 +318,12 @@ fun RiftAssistantScreen(onBack: () -> Unit) {
                 )
             }
           Box(modifier = Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.TopCenter) {
-            Column(modifier = Modifier.widthIn(max = ContentMaxWidth).fillMaxHeight()) {
+            // Rift: beside the chats the page takes all the room left; alone (the setup) it keeps its reading width.
+            Column(modifier = (if (inChat) Modifier.fillMaxWidth() else Modifier.widthIn(max = ContentMaxWidth)).fillMaxHeight()) {
                 Header(
+                    // Rift: Back sits at the top of the chats beside New chat; here only when the chats are hidden.
+                    showBack = !(inChat && railShown),
+                    backFocus = headerBackFocus,
                     subtitle = if (ready && active != null) "${connectionName(active)} · $model" else stringResource(R.string.rift_assistant_not_set),
                     onSubtitle = if (inChat && active != null) {
                         { if (connections.size > 1) switching = true else pickingModel = true }
@@ -266,10 +335,10 @@ fun RiftAssistantScreen(onBack: () -> Unit) {
                     onBack = onBack,
                     onPickGame = { pickingGame = true },
                     onSetup = { showSetup = true },
-                    onNewChat = {
-                        voice.stop()
-                        AssistantChat.newChat(context)
-                    },
+                    railShown = railShown,
+                    onToggleRail = { railShown = !railShown },
+                    portrait = portrait,
+                    onRotate = { portrait = !portrait },
                 )
                 if (inChat) {
                     ChatPane(
@@ -328,6 +397,8 @@ fun RiftAssistantScreen(onBack: () -> Unit) {
 
 @Composable
 private fun Header(
+    showBack: Boolean,
+    backFocus: FocusRequester,
     subtitle: String,
     onSubtitle: (() -> Unit)?,
     inChat: Boolean,
@@ -335,7 +406,10 @@ private fun Header(
     onBack: () -> Unit,
     onPickGame: () -> Unit,
     onSetup: () -> Unit,
-    onNewChat: () -> Unit,
+    railShown: Boolean,
+    onToggleRail: () -> Unit,
+    portrait: Boolean,
+    onRotate: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -345,7 +419,21 @@ private fun Header(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        RiftRoundButton(icon = Icons.AutoMirrored.Rounded.ArrowBack, description = stringResource(R.string.back), onClick = onBack)
+        if (showBack) {
+            RiftRoundButton(
+                icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                description = stringResource(R.string.back),
+                onClick = onBack,
+                modifier = Modifier.focusRequester(backFocus),
+            )
+        }
+        if (inChat) {
+            RiftRoundButton(
+                icon = if (railShown) Icons.AutoMirrored.Rounded.MenuOpen else Icons.Rounded.Menu,
+                description = stringResource(if (railShown) R.string.rift_chat_hide_chats else R.string.rift_chat_show_chats),
+                onClick = onToggleRail,
+            )
+        }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = stringResource(R.string.rift_settings_assistant),
@@ -367,15 +455,21 @@ private fun Header(
             }
         }
         if (inChat) {
+            // Rift: just the game's name (the list it opens says what it is), a long one scrolls slowly.
             RiftChip(
-                text = game?.let { stringResource(R.string.rift_chat_game, it.name) } ?: stringResource(R.string.rift_chat_game_none),
+                text = game?.name ?: stringResource(R.string.rift_chat_game_none),
                 selected = false,
                 onClick = onPickGame,
-                modifier = Modifier.widthIn(max = 360.dp),
+                marquee = true,
+                modifier = Modifier.widthIn(max = 300.dp),
             )
             RiftRoundButton(icon = Icons.Rounded.Key, description = stringResource(R.string.rift_chat_setup), onClick = onSetup)
-            RiftRoundButton(icon = Icons.Rounded.AddComment, description = stringResource(R.string.rift_chat_new), onClick = onNewChat)
         }
+        RiftRoundButton(
+            icon = Icons.Rounded.ScreenRotation,
+            description = stringResource(if (portrait) R.string.rift_chat_landscape else R.string.rift_chat_portrait),
+            onClick = onRotate,
+        )
     }
 }
 
@@ -417,12 +511,10 @@ private fun ModelLine(text: String, onClick: () -> Unit) {
 
 @Composable
 private fun SetupPane(ready: Boolean, onDone: () -> Unit, modifier: Modifier = Modifier) {
-    val entry = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { entry.requestFocus() } }
+    // The focus starts on the header's Back (see headerBackFocus), the page at its top.
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .focusRequester(entry)
             .focusGroup()
             .verticalScroll(rememberScrollState())
             .padding(start = 32.dp, end = 32.dp, top = 6.dp, bottom = 32.dp),
@@ -453,7 +545,6 @@ private fun ChatPane(
 ) {
     val listState = rememberLazyListState()
     val field = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { field.requestFocus() } }
     LaunchedEffect(chat.entries.size, chat.sending) {
         val last = listState.layoutInfo.totalItemsCount - 1
         if (last >= 0) listState.animateScrollToItem(last)
@@ -488,15 +579,17 @@ private fun ChatPane(
             }
         }
 
-        val chips = buildList {
-            if (chat.game != null) {
-                add(stringResource(R.string.rift_chat_chip_optimize))
-                add(stringResource(R.string.rift_chat_chip_slow))
-                add(stringResource(R.string.rift_chat_chip_crash))
-                add(stringResource(R.string.rift_chat_chip_community))
-            }
-            add(stringResource(R.string.rift_chat_chip_drivers))
-        }
+        // Rift: the questions follow where the game runs; without a game, the device's.
+        val chips = stringArrayResource(
+            when (chat.game?.kind) {
+                null -> R.array.rift_chat_chips_none
+                ChatKind.Pc -> R.array.rift_chat_chips_pc
+                ChatKind.PcStream -> R.array.rift_chat_chips_stream
+                ChatKind.Cloud -> R.array.rift_chat_chips_cloud
+                ChatKind.Android -> R.array.rift_chat_chips_android
+                ChatKind.Emulator -> R.array.rift_chat_chips_emulator
+            },
+        ).toList()
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -565,6 +658,12 @@ private fun Composer(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // Rift: the picture button on the left of the field, where people look for it.
+        RiftRoundButton(
+            icon = Icons.Rounded.AddPhotoAlternate,
+            description = stringResource(R.string.rift_chat_attach),
+            onClick = onAttach,
+        )
         NoExtractOutlinedTextField(
             value = text,
             onValueChange = onText,
@@ -603,6 +702,7 @@ private fun Composer(
                     when (event.key) {
                         Key.DirectionUp -> focusManager.moveFocus(FocusDirection.Up)
                         Key.DirectionDown -> focusManager.moveFocus(FocusDirection.Down)
+                        Key.DirectionLeft -> focusManager.moveFocus(FocusDirection.Left)
                         Key.DirectionRight -> focusManager.moveFocus(FocusDirection.Right)
                         Key.DirectionCenter, Key.ButtonA -> {
                             keyboard?.show()
@@ -611,11 +711,6 @@ private fun Composer(
                         else -> false
                     }
                 },
-        )
-        RiftRoundButton(
-            icon = Icons.Rounded.AddPhotoAlternate,
-            description = stringResource(R.string.rift_chat_attach),
-            onClick = onAttach,
         )
         RiftRoundButton(
             icon = if (listening) Icons.Rounded.Stop else Icons.Rounded.Mic,
@@ -732,6 +827,7 @@ private fun AttachedThumb(data: String, onRemove: (() -> Unit)?) {
 private fun HistoryRail(
     history: List<SavedChat>,
     currentId: Long,
+    onBack: () -> Unit,
     onNewChat: () -> Unit,
     onOpen: (SavedChat) -> Unit,
 ) {
@@ -739,17 +835,48 @@ private fun HistoryRail(
         modifier = Modifier
             .width(280.dp)
             .fillMaxHeight()
-            .background(RiftColors.SurfaceContainer)
+            // Rift: the side panels' black glass (nothing lies behind it to blur), a hairline on its right edge.
+            .blackGlass(androidx.compose.ui.graphics.RectangleShape, rim = false, backdrop = null)
+            .drawBehind {
+                drawLine(
+                    Color.White.copy(alpha = 0.08f),
+                    androidx.compose.ui.geometry.Offset(size.width, 0f),
+                    androidx.compose.ui.geometry.Offset(size.width, size.height),
+                    strokeWidth = 1.dp.toPx(),
+                )
+            }
             .focusGroup()
             .padding(horizontal = 14.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        dev.rift.launcher.settings.RiftPillButton(
-            text = stringResource(R.string.rift_chat_new),
-            onClick = onNewChat,
-            icon = Icons.Rounded.AddComment,
-            primary = true,
-        )
+        // Rift: Back and New chat in one block as wide as the chats below; the page opens with the focus on Back
+        // (Denis 2026-10-19), not in the message field.
+        val backFocus = remember { FocusRequester() }
+        LaunchedEffect(Unit) {
+            repeat(10) {
+                if (runCatching { backFocus.requestFocus() }.isSuccess) return@LaunchedEffect
+                kotlinx.coroutines.delay(50)
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().focusGroup(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            RiftRoundButton(
+                icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                description = stringResource(R.string.back),
+                onClick = onBack,
+                modifier = Modifier.focusRequester(backFocus),
+            )
+            dev.rift.launcher.settings.RiftPillButton(
+                text = stringResource(R.string.rift_chat_new),
+                onClick = onNewChat,
+                icon = Icons.Rounded.AddComment,
+                primary = true,
+                modifier = Modifier.weight(1f),
+            )
+        }
         Text(
             text = stringResource(R.string.rift_chat_history),
             color = RiftColors.OnSurfaceVariant,

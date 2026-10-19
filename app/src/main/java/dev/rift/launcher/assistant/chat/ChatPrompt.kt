@@ -33,6 +33,13 @@ object ChatPrompt {
         - Answer in the player's language given in the context, short and concrete, in plain Markdown without tables.
         - You cannot run anything or change files. Never say a setting was changed; the player applies a proposal with a button.
         - Use only versions listed under "components" (ready or downloadable). Never invent a version or a key.
+        - Community configs are a starting point, not the answer: they are often months old, made with drivers and
+          components that newer versions have long overtaken. Prefer the newest listed versions that suit the GPU (Turnip
+          or the system driver, DXVK, VKD3D, Box64 or FEX, Wine or Proton) and propose a better configuration than the
+          community's when newer versions are available; say what is newer and why it should run better.
+        - The context says where the game runs. Only a local PC game has container settings and a proposal block; for a
+          game streamed from the player's PC, from the cloud, an Android game or an emulator game, help with what applies
+          there and never write the block.
         - Runs shorter than two minutes and runs that throttled say little about speed; say so instead of over-reading them.
         - When a game is attached and changing its settings would help, end the answer with one ```json block holding a
           proposal with at most ${OptimizerPrompt.MAX_CHANGES} changes. Rift checks it and shows it as a card with Apply and Restore.
@@ -57,8 +64,21 @@ object ChatPrompt {
         game: GameContext?,
         allowEnvAndArgs: Boolean,
         locale: Locale = Locale.getDefault(),
+        kind: ChatKind = ChatKind.Pc,
     ): String = buildString {
         appendLine("<rift-context>")
+        appendLine(
+            "Where the attached game runs: " + when (kind) {
+                ChatKind.Pc -> "a Windows game run on this device in a GameNative container."
+                ChatKind.PcStream -> "streamed from the player's own PC (Moonlight/Artemis). What helps is the stream: resolution, " +
+                    "frame rate, bitrate, codec (H.264, HEVC, AV1), HDR, frame pacing, Wi-Fi and the PC's own settings. No container."
+                ChatKind.Cloud -> "Xbox Cloud Gaming (Game Pass) in Rift's player with Better xCloud. What helps is Better xCloud's " +
+                    "settings: resolution, bitrate, codec, clarity boost, controller and touch layout, and the network. No container."
+                ChatKind.Android -> "a native Android game. Help with playing it: walkthroughs, levels, tips, controller mapping. No container."
+                ChatKind.Emulator -> "a game in an emulator app on this device (RetroArch and the like). Help with the emulator: " +
+                    "setup, BIOS or firmware the player owns, controller mapping, graphics and speed settings, saves. No container."
+            },
+        )
         appendLine("Player's language: ${locale.getDisplayLanguage(Locale.ENGLISH).ifEmpty { "English" }}")
         appendLine("envVars and execArgs may be changed: ${if (allowEnvAndArgs) "yes" else "no"}")
         if (profile != null) {

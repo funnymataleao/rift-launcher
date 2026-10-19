@@ -46,7 +46,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 object RiftOptimizeRequest {
 
     /** [optimize]: the chat starts by asking for the game's best settings (PC games with a container). */
-    data class Target(val appId: String, val gameName: String, val optimize: Boolean = true)
+    data class Target(
+        val appId: String,
+        val gameName: String,
+        val optimize: Boolean = true,
+        val kind: dev.rift.launcher.assistant.chat.ChatKind = dev.rift.launcher.assistant.chat.ChatKind.Pc,
+    )
 
     val current = MutableStateFlow<Target?>(null)
 
@@ -70,7 +75,7 @@ fun RiftOptimizeHost(onOpenAssistant: () -> Unit) {
         RiftOptimizeRequest.current.value = null
         dev.rift.launcher.assistant.chat.AssistantChat.startFor(
             context,
-            dev.rift.launcher.assistant.chat.ChatGame(game.appId, game.gameName),
+            dev.rift.launcher.assistant.chat.ChatGame(game.appId, game.gameName, game.kind),
             if (game.optimize) context.getString(R.string.rift_assistant_optimize_prompt, game.gameName) else null,
         )
         onOpenAssistant()

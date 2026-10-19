@@ -168,4 +168,56 @@
     <string name="rift_chat_attach">Add screenshot</string>
     <string name="rift_chat_history">Chats</string>
     <string name="rift_assistant_optimize_prompt">Optimize %1$s for this device: pick the best settings and explain what you change.</string>
+    <string-array name="rift_chat_chips_none">
+        <item>Any newer drivers?</item>
+        <item>How do I connect a controller?</item>
+        <item>How do I get more performance?</item>
+        <item>How do I save battery?</item>
+    </string-array>
+    <string-array name="rift_chat_chips_pc">
+        <item>Optimize this game</item>
+        <item>Find newer drivers</item>
+        <item>Why is it slow?</item>
+        <item>Why does it crash?</item>
+        <item>How do I get more FPS?</item>
+        <item>Compare with the community</item>
+        <item>No sound</item>
+        <item>Controller not working</item>
+    </string-array>
+    <string-array name="rift_chat_chips_stream">
+        <item>Optimize the stream</item>
+        <item>Why does the stream lag?</item>
+        <item>Which bitrate should I use?</item>
+        <item>Resolution and FPS for the stream</item>
+        <item>H.264, HEVC or AV1?</item>
+        <item>How do I lower latency?</item>
+        <item>Why is the picture blurry?</item>
+        <item>How do I set up HDR?</item>
+    </string-array>
+    <string-array name="rift_chat_chips_cloud">
+        <item>Improve Game Pass quality</item>
+        <item>Why does the cloud lag?</item>
+        <item>Best Better xCloud settings</item>
+        <item>Which bitrate should I use?</item>
+        <item>How do I lower latency?</item>
+        <item>Controller not working</item>
+    </string-array>
+    <string-array name="rift_chat_chips_android">
+        <item>How do I beat this level?</item>
+        <item>Tips for beginners</item>
+        <item>Secrets and easter eggs</item>
+        <item>How do I set up a controller?</item>
+    </string-array>
+    <string-array name="rift_chat_chips_emulator">
+        <item>How do I set up the emulator?</item>
+        <item>Where do I get the BIOS or firmware?</item>
+        <item>How do I map my controller?</item>
+        <item>Why is it slow?</item>
+        <item>Best graphics settings</item>
+        <item>How do saves work?</item>
+    </string-array>
+    <string name="rift_chat_hide_chats">Hide chats</string>
+    <string name="rift_chat_show_chats">Show chats</string>
+    <string name="rift_chat_portrait">Turn upright</string>
+    <string name="rift_chat_landscape">Turn to landscape</string>
 </resources>

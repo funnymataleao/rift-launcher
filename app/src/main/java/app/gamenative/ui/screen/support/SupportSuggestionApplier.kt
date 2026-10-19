@@ -328,6 +328,31 @@ object SupportSuggestionApplier {
         }
     }
 
+    /**
+     * Rift: the values each change found before it was applied (from the snapshot kept for Restore), or null when
+     * the suggestion is not applied. After applying, the live value is the new one, so "before → after" read
+     * "new → new" (Denis 2026-10-19).
+     */
+    suspend fun readBefore(context: Context, appId: String, messageId: Long, suggestion: SupportSuggestion): List<String?>? =
+        withContext(Dispatchers.IO) {
+            try {
+                if (!ContainerUtils.hasContainer(context, appId)) return@withContext null
+                val file = snapshotFile(ContainerUtils.getContainer(context, appId), messageId)
+                if (!file.exists()) return@withContext null
+                val entries = JSONObject(file.readText()).optJSONArray("entries") ?: return@withContext null
+                val byKey = HashMap<Pair<String, String?>, String?>()
+                for (i in 0 until entries.length()) {
+                    val entry = entries.optJSONObject(i) ?: continue
+                    val name = if (entry.isNull("name")) null else entry.optString("name").ifEmpty { null }
+                    byKey[entry.optString("key", "") to name] = if (entry.isNull("before")) null else entry.optString("before")
+                }
+                suggestion.changes.map { byKey[it.key to it.name] }
+            } catch (e: Exception) {
+                Timber.w(e, "Reading the settings before a support suggestion failed")
+                null
+            }
+        }
+
     suspend fun readLive(context: Context, appId: String, suggestion: SupportSuggestion): List<String?>? =
         withContext(Dispatchers.IO) {
             try {

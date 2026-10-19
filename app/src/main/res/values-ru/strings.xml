@@ -1215,7 +1215,7 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="gamenative_sign_in_failed">Вход сейчас недоступен. Проверьте подключение и повторите попытку.</string>
     <string name="gamenative_sign_in_try_again">Повторить</string>
     <string name="gamenative_sign_in_no_browser">Не найден браузер для открытия страницы входа. Отсканируйте код другим устройством.</string>
-    <string name="support_title">Помощь AI</string>
+    <string name="support_title">AI-помощник</string>
     <string name="support_refresh">Обновить</string>
     <string name="support_signed_out_title">Помощь с вашими играми</string>
     <string name="support_signed_out_discord">Помощь также можно получить в нашем Discord</string>

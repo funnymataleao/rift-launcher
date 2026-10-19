@@ -30,8 +30,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
+/** Where a game runs: what the assistant can help with, and the questions it suggests, follow it. */
+enum class ChatKind { Pc, PcStream, Cloud, Android, Emulator }
+
 /** A game the chat can be about. */
-data class ChatGame(val appId: String, val name: String)
+data class ChatGame(val appId: String, val name: String, val kind: ChatKind = ChatKind.Pc)
 
 /**
  * One message on the page. [text] is what the player sees; [wire] is what goes back to the model in later requests
@@ -243,7 +246,7 @@ object AssistantChat {
         val turns = _state.value.entries.filterNot { it.notice }.map {
             AiMessage(if (it.fromUser) AiMessage.Role.USER else AiMessage.Role.ASSISTANT, it.wire, it.images)
         }
-        val messages = ChatPrompt.window(turns, ChatPrompt.context(device, game?.name, gameData, allowEnv))
+        val messages = ChatPrompt.window(turns, ChatPrompt.context(device, game?.name, gameData, allowEnv, kind = game?.kind ?: ChatKind.Pc))
         _state.update { it.copy(phase = ChatState.Phase.Thinking) }
 
         val reply = try {
@@ -256,7 +259,7 @@ object AssistantChat {
         val (prose, block) = ChatPrompt.splitProposal(reply.text)
         var proposal: OptimizeProposal? = null
         var problems = emptyList<String>()
-        if (block != null && game != null && gameData != null) {
+        if (block != null && game != null && game.kind == ChatKind.Pc && gameData != null) {
             var checked = SuggestionCheck.check(block, device, gameData.settings, allowEnv)
             if (checked is CheckedAnswer.Rejected) {
                 // One retry with the reasons, as "Optimize" does; only the corrected block is asked for.

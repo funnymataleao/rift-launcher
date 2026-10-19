@@ -20,7 +20,9 @@ internal object ChatHistoryStore {
         val array = JSONArray(raw)
         List(array.length()) { i ->
             val chat = array.getJSONObject(i)
-            val game = chat.optJSONObject("game")?.let { ChatGame(it.getString("appId"), it.getString("name")) }
+            val game = chat.optJSONObject("game")?.let {
+                ChatGame(it.getString("appId"), it.getString("name"), runCatching { ChatKind.valueOf(it.optString("kind")) }.getOrDefault(ChatKind.Pc))
+            }
             val entries = chat.getJSONArray("entries").let { list ->
                 List(list.length()) { j ->
                     val e = list.getJSONObject(j)
@@ -44,7 +46,7 @@ internal object ChatHistoryStore {
                 JSONObject()
                     .put("id", chat.id)
                     .put("title", chat.title)
-                    .put("game", chat.game?.let { JSONObject().put("appId", it.appId).put("name", it.name) })
+                    .put("game", chat.game?.let { JSONObject().put("appId", it.appId).put("name", it.name).put("kind", it.kind.name) })
                     .put(
                         "entries",
                         JSONArray().apply {

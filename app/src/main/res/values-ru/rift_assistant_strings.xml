@@ -167,4 +167,56 @@
     <string name="rift_chat_attach">Добавить скриншот</string>
     <string name="rift_chat_history">Чаты</string>
     <string name="rift_assistant_optimize_prompt">Оптимизируй %1$s под это устройство: подбери лучшие настройки и объясни, что меняешь.</string>
+    <string-array name="rift_chat_chips_none">
+        <item>Есть ли новые драйверы?</item>
+        <item>Как подключить геймпад?</item>
+        <item>Как поднять производительность?</item>
+        <item>Как сэкономить батарею?</item>
+    </string-array>
+    <string-array name="rift_chat_chips_pc">
+        <item>Оптимизируй эту игру</item>
+        <item>Подбери свежие драйверы</item>
+        <item>Почему тормозит?</item>
+        <item>Почему вылетает?</item>
+        <item>Как поднять FPS?</item>
+        <item>Сравни с сообществом</item>
+        <item>Нет звука</item>
+        <item>Не работает геймпад</item>
+    </string-array>
+    <string-array name="rift_chat_chips_stream">
+        <item>Оптимизируй стриминг</item>
+        <item>Почему лагает стрим?</item>
+        <item>Какой битрейт поставить?</item>
+        <item>Разрешение и FPS для стрима</item>
+        <item>H.264, HEVC или AV1?</item>
+        <item>Как уменьшить задержку?</item>
+        <item>Почему картинка мыльная?</item>
+        <item>Как настроить HDR?</item>
+    </string-array>
+    <string-array name="rift_chat_chips_cloud">
+        <item>Улучши качество Game Pass</item>
+        <item>Почему лагает облако?</item>
+        <item>Лучшие настройки Better xCloud</item>
+        <item>Какой битрейт поставить?</item>
+        <item>Как уменьшить задержку?</item>
+        <item>Не работает геймпад</item>
+    </string-array>
+    <string-array name="rift_chat_chips_android">
+        <item>Как пройти этот уровень?</item>
+        <item>Советы для новичка</item>
+        <item>Секреты и пасхалки</item>
+        <item>Как настроить геймпад?</item>
+    </string-array>
+    <string-array name="rift_chat_chips_emulator">
+        <item>Как настроить эмулятор?</item>
+        <item>Где взять BIOS или прошивку?</item>
+        <item>Как замапить геймпад?</item>
+        <item>Почему тормозит?</item>
+        <item>Лучшие настройки графики</item>
+        <item>Как работают сохранения?</item>
+    </string-array>
+    <string name="rift_chat_hide_chats">Скрыть чаты</string>
+    <string name="rift_chat_show_chats">Показать чаты</string>
+    <string name="rift_chat_portrait">Повернуть вертикально</string>
+    <string name="rift_chat_landscape">Повернуть горизонтально</string>
 </resources>
