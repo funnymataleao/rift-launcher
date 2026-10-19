@@ -118,6 +118,7 @@ import dev.rift.launcher.settings.plateText
 import dev.rift.launcher.ui.BlackGlass
 import dev.rift.launcher.ui.DrawerBackdrop
 import dev.rift.launcher.ui.RiftDrawer
+import dev.rift.launcher.ui.rememberDrawerAccordionOpen
 import dev.rift.launcher.ui.RiftDrawerPanel
 import dev.rift.launcher.ui.theme.RiftAccent
 import dev.rift.launcher.ui.theme.RiftColors
@@ -347,7 +348,9 @@ fun SystemMenu(
     var persona by remember { mutableStateOf<SteamFriend?>(null) }
     var selectedStatus by remember(persona) { mutableStateOf(persona?.state ?: EPersonaState.Online) }
     var showSupporters by remember { mutableStateOf(false) }
-    var showStatusPicker by remember { mutableStateOf(false) }
+    // The profile's accordion of statuses: closed the first time, then as it was left (Denis 2026-10-19).
+    var showStatusPicker by rememberDrawerAccordionOpen("system:profile")
+    var statusAsk by remember { mutableStateOf(0) }
 
     LaunchedEffect(Unit) {
         persona = SteamService.instance?.localPersona?.value
@@ -488,7 +491,12 @@ fun SystemMenu(
                                 selected = isProfileFocused,
                                 interactionSource = profileInteractionSource,
                                 indication = null,
-                                onClick = { if (canPickStatus) showStatusPicker = !showStatusPicker },
+                                onClick = {
+                                    if (canPickStatus) {
+                                        showStatusPicker = !showStatusPicker
+                                        if (showStatusPicker) statusAsk++
+                                    }
+                                },
                             )
                             .heightIn(min = DrawerRowMinHeight)
                             .padding(horizontal = DrawerRowPadding, vertical = 12.dp),
@@ -749,15 +757,15 @@ fun SystemMenu(
     val view = LocalView.current
     LaunchedEffect(isOpen) {
         if (!isOpen) return@LaunchedEffect
-        showStatusPicker = false
         repeat(15) {
             if (view.isInTouchMode) view.requestFocusFromTouch()
             if (runCatching { firstItemFocusRequester.requestFocus() }.isSuccess) return@LaunchedEffect
             delay(60)
         }
     }
-    LaunchedEffect(showStatusPicker) {
-        if (!showStatusPicker) return@LaunchedEffect
+    // Opening the statuses with A moves focus onto the chosen one; an accordion left open does not take it.
+    LaunchedEffect(statusAsk) {
+        if (statusAsk == 0) return@LaunchedEffect
         repeat(15) {
             if (runCatching { statusFocusRequester.requestFocus() }.isSuccess) return@LaunchedEffect
             delay(40)

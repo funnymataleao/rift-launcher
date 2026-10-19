@@ -73,6 +73,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.sp
 import dev.rift.launcher.ui.theme.RiftAccent
 import dev.rift.launcher.ui.theme.RiftColors
@@ -101,11 +102,28 @@ internal val RowTitleStyle = TextStyle(fontSize = 18.5.sp, fontWeight = FontWeig
  */
 internal val LocalPlateRest = compositionLocalOf { RiftColors.SurfaceContainer }
 
+/**
+ * Whether plates are glass: the side panels' plates (Denis 2026-10-19: on the filters' blur they looked like
+ * frosted glass, on the darker right panels like flat grey). A glass plate is lit from the top and fades
+ * downwards, with a faint light edge, so it reads as glass over any backdrop, even plain black.
+ */
+internal val LocalPlateGlass = compositionLocalOf { false }
+
 /** The fill of a plate: the accent colour (or gradient) while it has focus, otherwise [rest]. */
 @Composable
 internal fun Modifier.plateFill(focused: Boolean, shape: Shape = PlateShape, rest: Color = LocalPlateRest.current): Modifier =
     clip(shape).then(
-        if (focused) Modifier.background(RiftAccent.current.brush) else Modifier.background(rest),
+        when {
+            focused -> Modifier.background(RiftAccent.current.brush)
+            LocalPlateGlass.current && rest.alpha > 0f && rest.alpha < 1f -> Modifier
+                .background(
+                    Brush.verticalGradient(
+                        listOf(rest.copy(alpha = (rest.alpha * 1.6f).coerceAtMost(1f)), rest.copy(alpha = rest.alpha * 0.55f)),
+                    ),
+                )
+                .border(1.dp, Color.White.copy(alpha = 0.07f), shape)
+            else -> Modifier.background(rest)
+        },
     )
 
 /** Main text colour on a plate. */

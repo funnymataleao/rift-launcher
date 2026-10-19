@@ -101,6 +101,7 @@ import dev.rift.launcher.settings.plateSubtext
 import dev.rift.launcher.settings.plateText
 import dev.rift.launcher.ui.DrawerBackdrop
 import dev.rift.launcher.ui.RiftDrawer
+import dev.rift.launcher.ui.rememberDrawerAccordion
 import dev.rift.launcher.ui.RiftDrawerPanel
 import dev.rift.launcher.ui.theme.RiftAccent
 import dev.rift.launcher.ui.theme.RiftColors
@@ -153,31 +154,27 @@ fun LibraryOptionsPanel(
     glassBackdrop: DrawerBackdrop? = null,
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
-    // Accordion: only one group is open at a time. B closes the open group first, then the panel.
-    var openGroup by rememberSaveable { mutableStateOf<String?>(null) }
-    // Rift: a tab with only a group or two opens with them all unrolled (Denis 2026-10-19); A still closes
-    // and opens each one.
+    // Accordion: one group open at a time, except a tab with only a group or two, which opens with them all
+    // unrolled (Denis 2026-10-19). Which groups are open is kept across openings and restarts (Denis 2026-10-19:
+    // all closed stays closed); the defaults are only for the first time.
     val allOpen = tabGroups != null && tabGroups.size <= 2
-    var closedGroups by remember { mutableStateOf(emptySet<String>()) }
+    val tabKeys = tabGroups?.map { "tab:" + it.label }.orEmpty()
+    var openGroups by rememberDrawerAccordion(
+        key = if (tabGroups != null) "filters:" + tabKeys.joinToString("|") else "filters",
+        default = if (allOpen) tabKeys.toSet() else emptySet(),
+    )
     val headerFocus = remember { mutableMapOf("sort" to firstItemFocusRequester) }
     fun headerRequester(key: String) = headerFocus.getOrPut(key) { FocusRequester() }
     fun toggleGroup(key: String) {
-        if (allOpen) {
-            closedGroups = if (key in closedGroups) closedGroups - key else closedGroups + key
-        } else {
-            openGroup = if (openGroup == key) null else key
+        openGroups = when {
+            key in openGroups -> openGroups - key
+            allOpen -> openGroups + key
+            else -> setOf(key)
         }
     }
 
-    BackHandler(enabled = isOpen) {
-        val open = openGroup
-        if (open != null) {
-            openGroup = null
-            runCatching { headerRequester(open).requestFocus() }
-        } else {
-            onDismiss()
-        }
-    }
+    // B closes the panel; the open groups stay as they are for the next time.
+    BackHandler(enabled = isOpen) { onDismiss() }
 
     // As wide as the System panel on the right.
     val panelWidth = adaptivePanelWidth(rememberHomePanelWidth())
@@ -253,12 +250,12 @@ fun LibraryOptionsPanel(
                 ) {
                     if (tabGroups != null) {
                         tabGroups.forEachIndexed { index, group ->
-                            val key = "tab$index"
+                            val key = "tab:" + group.label
                             FilterGroup(
                                 label = group.label,
                                 value = group.value,
                                 icon = group.icon,
-                                expanded = if (allOpen) key !in closedGroups else openGroup == key,
+                                expanded = key in openGroups,
                                 onToggle = { toggleGroup(key) },
                                 headerFocus = if (index == 0) firstItemFocusRequester else headerRequester(key),
                             ) {
@@ -269,7 +266,6 @@ fun LibraryOptionsPanel(
                                         // Picking applies the filter and closes the panel; the home puts focus back on the row.
                                         onClick = {
                                             option.onPick()
-                                            openGroup = null
                                             onDismiss()
                                         },
                                     )
@@ -281,7 +277,7 @@ fun LibraryOptionsPanel(
                             label = stringResource(R.string.rift_filter_sort),
                             value = stringResource(currentSortOption.displayTextRes),
                             icon = currentSortOption.icon(),
-                            expanded = openGroup == "sort",
+                            expanded = "sort" in openGroups,
                             onToggle = { toggleGroup("sort") },
                             headerFocus = headerRequester("sort"),
                         ) {
@@ -291,7 +287,7 @@ fun LibraryOptionsPanel(
                                     selected = currentSortOption == option,
                                     onClick = {
                                         onSortOptionChanged(option)
-                                        openGroup = null
+                                        openGroups = openGroups - "sort"
                                         runCatching { headerRequester("sort").requestFocus() }
                                     },
                                 )
@@ -302,7 +298,7 @@ fun LibraryOptionsPanel(
                                 label = storeGroup.label,
                                 value = storeGroup.value,
                                 icon = storeGroup.icon,
-                                expanded = openGroup == "store",
+                                expanded = "store" in openGroups,
                                 onToggle = { toggleGroup("store") },
                                 headerFocus = headerRequester("store"),
                             ) {
@@ -312,7 +308,6 @@ fun LibraryOptionsPanel(
                                         selected = option.selected,
                                         onClick = {
                                             option.onPick()
-                                            openGroup = null
                                             onDismiss()
                                         },
                                     )
@@ -323,7 +318,7 @@ fun LibraryOptionsPanel(
                             label = stringResource(R.string.library_app_type),
                             value = summarize(TYPE_FILTERS, selectedFilters),
                             icon = Icons.Default.Category,
-                            expanded = openGroup == "type",
+                            expanded = "type" in openGroups,
                             onToggle = { toggleGroup("type") },
                             headerFocus = headerRequester("type"),
                         ) {
@@ -340,7 +335,7 @@ fun LibraryOptionsPanel(
                             label = stringResource(R.string.library_app_status),
                             value = summarize(STATUS_FILTERS, selectedFilters),
                             icon = Icons.Default.FilterList,
-                            expanded = openGroup == "status",
+                            expanded = "status" in openGroups,
                             onToggle = { toggleGroup("status") },
                             headerFocus = headerRequester("status"),
                         ) {
@@ -358,7 +353,7 @@ fun LibraryOptionsPanel(
                                 label = extraGroup.label,
                                 value = extraGroup.value,
                                 icon = extraGroup.icon,
-                                expanded = openGroup == "extra",
+                                expanded = "extra" in openGroups,
                                 onToggle = { toggleGroup("extra") },
                                 headerFocus = headerRequester("extra"),
                             ) {
@@ -368,7 +363,6 @@ fun LibraryOptionsPanel(
                                         selected = option.selected,
                                         onClick = {
                                             option.onPick()
-                                            openGroup = null
                                             onDismiss()
                                         },
                                     )
@@ -394,7 +388,7 @@ fun LibraryOptionsPanel(
                                         add(R.string.steam_collections_smart_unsupported)
                                     }
                                 },
-                                expanded = openGroup == "steam",
+                                expanded = "steam" in openGroups,
                                 onExpandedChange = { toggleGroup("steam") },
                                 headerFocus = headerRequester("steam"),
                                 onToggle = onSteamCollectionToggle,
@@ -411,14 +405,6 @@ fun LibraryOptionsPanel(
     // list picked before would filter the library with nothing left to unpick it.
     LaunchedEffect(selectedCuratedListIds.isNotEmpty()) {
         if (selectedCuratedListIds.isNotEmpty()) onClearCuratedLists()
-    }
-    // Every group is closed when the panel opens, each line shows its current choice (Denis 2026-10-18: the open
-    // sort list was too long).
-    LaunchedEffect(isOpen) {
-        if (isOpen) {
-            openGroup = null
-            closedGroups = emptySet()
-        }
     }
     // After a touch the window is in touch mode, where nothing takes gamepad focus: leave it, and retry while the
     // panel is still sliding in and the first header is not attached yet.

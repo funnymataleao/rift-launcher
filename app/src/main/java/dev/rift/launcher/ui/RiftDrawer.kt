@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +59,7 @@ import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -65,6 +67,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.utils.BrightnessManager
+import dev.rift.launcher.settings.LocalPlateGlass
 import dev.rift.launcher.settings.LocalPlateRest
 import kotlin.coroutines.resume
 import kotlin.math.min
@@ -210,7 +213,7 @@ fun RiftDrawerPanel(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Box(modifier = modifier.drawerGlass(backdrop)) {
-      CompositionLocalProvider(LocalPlateRest provides RiftDrawer.Plate) {
+      CompositionLocalProvider(LocalPlateRest provides RiftDrawer.Plate, LocalPlateGlass provides true) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
@@ -360,4 +363,27 @@ fun Window.layOutAsDrawer(context: Context, onWindowBlur: (Boolean) -> Unit) {
             }
         },
     )
+}
+
+private const val ACCORDION_PREFS = "rift_drawer_accordions"
+
+/**
+ * The open groups of a panel's accordions under [key], kept across openings and restarts (Denis 2026-10-19:
+ * groups he closed came back open). [default] is only for the first time.
+ */
+@Composable
+fun rememberDrawerAccordion(key: String, default: Set<String> = emptySet()): MutableState<Set<String>> {
+    val prefs = LocalContext.current.applicationContext.getSharedPreferences(ACCORDION_PREFS, Context.MODE_PRIVATE)
+    val state = remember(key) { mutableStateOf(prefs.getStringSet(key, null)?.toSet() ?: default) }
+    LaunchedEffect(key, state.value) { prefs.edit().putStringSet(key, state.value).apply() }
+    return state
+}
+
+/** One accordion's open or closed, kept like [rememberDrawerAccordion]. */
+@Composable
+fun rememberDrawerAccordionOpen(key: String, default: Boolean = false): MutableState<Boolean> {
+    val prefs = LocalContext.current.applicationContext.getSharedPreferences(ACCORDION_PREFS, Context.MODE_PRIVATE)
+    val state = remember(key) { mutableStateOf(prefs.getBoolean(key, default)) }
+    LaunchedEffect(key, state.value) { prefs.edit().putBoolean(key, state.value).apply() }
+    return state
 }
