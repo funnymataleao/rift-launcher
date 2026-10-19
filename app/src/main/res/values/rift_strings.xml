@@ -320,6 +320,9 @@
     <string name="rift_art_icon">Icons</string>
     <string name="rift_art_default">As in the store</string>
     <string name="rift_art_empty">SteamGridDB has nothing of this kind for the game.</string>
+    <string name="rift_art_standard">Default covers</string>
+    <string name="rift_art_standard_done">Steam\'s default art set for %1$d games</string>
+    <string name="rift_art_standard_none">Steam had no art to add</string>
     <string name="rift_art_not_found">SteamGridDB does not know this game.</string>
     <string name="rift_art_bad_key">SteamGridDB did not accept the key. Check it in the settings.</string>
     <string name="rift_art_network">Could not reach SteamGridDB.</string>

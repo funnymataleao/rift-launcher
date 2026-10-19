@@ -240,6 +240,35 @@ object GameArtStore {
         }
     }
 
+    /**
+     * Steam's own pictures (cover, wide picture, banner) for every game of [found] that has no picture of that
+     * kind picked by the user. They are kept as web addresses (Coil caches them), like pictures found by
+     * themselves, so "Clear found art" drops them too. Returns how many games got at least one.
+     */
+    fun applyStandard(context: Context, found: Map<String, SteamStoreArt.Assets>): Int {
+        val p = prefs(context)
+        val a = autoPrefs(context)
+        var games = 0
+        a.edit {
+            for ((appId, assets) in found) {
+                var any = false
+                for (kind in listOf(ArtKind.Capsule, ArtKind.Wide, ArtKind.Hero)) {
+                    val url = assets.of(kind).firstOrNull() ?: continue
+                    if (p.getString(key(appId, kind), "").orEmpty().isNotEmpty()) continue
+                    putString(autoKey(appId, kind), url)
+                    any = true
+                }
+                if (any) games++
+            }
+        }
+        idPrefs(context).edit {
+            found.keys.forEach { appId -> listOf(ArtKind.Capsule, ArtKind.Wide, ArtKind.Hero).forEach { remove("auto|" + autoKey(appId, it)) } }
+        }
+        pickCount = -1
+        _version.value++
+        return games
+    }
+
     /** Bytes taken by the pictures found without being asked (the ones the user picked are not counted). */
     fun autoBytes(context: Context): Long =
         autoFiles(context).sumOf { it.length() }

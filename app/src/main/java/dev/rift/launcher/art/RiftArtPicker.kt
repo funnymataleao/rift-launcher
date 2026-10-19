@@ -3,6 +3,7 @@ package dev.rift.launcher.art
 import android.view.KeyEvent
 import dev.rift.launcher.ui.theme.RiftAccent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -42,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -71,8 +74,11 @@ import dev.rift.launcher.settings.RiftPillButton
 import dev.rift.launcher.sound.RiftSound
 import dev.rift.launcher.sound.RiftSounds
 import dev.rift.launcher.ui.theme.RiftColors
+import dev.rift.launcher.ui.theme.RiftSizes
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Set by the home screen while it can show the art picker: GameNative's game options then get a
@@ -83,6 +89,7 @@ val LocalRiftArtPicker = staticCompositionLocalOf<((LibraryItem) -> Unit)?> { nu
 private val ScreenPadding = 48.dp
 private const val LOAD_MORE_THRESHOLD = 12
 private const val RESET_KEY = -1L
+private const val STEAM_OPTION_ID = -100L
 private const val FOCUS_TRIES = 20
 private const val RETRY_FEEDBACK_MS = 600L
 private const val FOCUS_RETRY_MS = 120L
@@ -136,9 +143,20 @@ private class ArtSession(val item: LibraryItem, val key: String) {
         feed.error = null
         val started = System.currentTimeMillis()
         try {
-            val loaded = fetch(kind, feed.page)
+            // Steam's own picture first: a game too new for SteamGridDB still has it.
+            val steam = if (feed.page == 0) steamOptions(kind) else emptyList()
+            val loaded = try {
+                fetch(kind, feed.page)
+            } catch (e: ArtError) {
+                if (steam.isEmpty()) throw e
+                // Steam's picture is shown; SteamGridDB's are only missing (no key, game unknown) or come on a retry.
+                if (e !== ArtError.Network) feed.done = true
+                feed.options = (steam + feed.options).distinctBy { it.id }
+                ArtMemory.feeds[ArtMemory.key(item.appId, kind)] = ArtMemory.Saved(feed.options, feed.page, feed.done)
+                return
+            }
             val known = feed.options.mapTo(HashSet()) { it.id }
-            val fresh = loaded.filter { it.id !in known }
+            val fresh = (steam + loaded).filter { it.id !in known }
             if (loaded.isEmpty()) feed.done = true
             feed.options = feed.options + fresh
             feed.page++
@@ -150,6 +168,16 @@ private class ArtSession(val item: LibraryItem, val key: String) {
         } finally {
             feed.loading = false
         }
+    }
+
+    /** Steam's own picture of [kind] for a Steam game, as a pick (its full size saved, the small one shown). */
+    private suspend fun steamOptions(kind: ArtKind): List<ArtOption> {
+        val steamId = game.steamAppId ?: return emptyList()
+        val urls = withContext(Dispatchers.IO) { SteamStoreArt.assets(steamId) }?.of(kind).orEmpty()
+        val shown = urls.firstOrNull() ?: return emptyList()
+        // The larger copy when Steam has one (a "_2x" file); ids below zero never clash with SteamGridDB's.
+        val full = urls.firstOrNull { it.substringBefore('?').contains("_2x.") } ?: shown
+        return listOf(ArtOption(id = STEAM_OPTION_ID - kind.ordinal, thumb = shown, url = full, width = 0, height = 0))
     }
 
     private suspend fun fetch(kind: ArtKind, page: Int): List<ArtOption> {
@@ -217,6 +245,21 @@ fun RiftArtPicker(
         }
         val latestStep = rememberUpdatedState<(Int) -> Unit> { step(it) }
         val latestFocused = rememberUpdatedState(contentFocused)
+        // Y: Steam's default art for every game without a picture of its own (like SteamGridDB's "apply default art").
+        val scope = rememberCoroutineScope()
+        var applyingStandard by remember { mutableStateOf(false) }
+        fun applyStandard() {
+            if (applyingStandard) return
+            applyingStandard = true
+            scope.launch {
+                val games = try { StandardArt.apply(context) } finally { applyingStandard = false }
+                RiftSounds.play(context, RiftSound.Apply)
+                app.gamenative.ui.util.SnackbarManager.show(
+                    if (games > 0) context.getString(R.string.rift_art_standard_done, games) else context.getString(R.string.rift_art_standard_none),
+                )
+            }
+        }
+        val latestStandard = rememberUpdatedState<() -> Unit> { applyStandard() }
         // The picker reads the gamepad itself, before Compose: a screen that was last touched has no focus,
         // and without focus no key would ever reach it. LB/RB switch the tabs and B closes whatever has focus;
         // a direction or A with nothing focused brings focus to the first picture.
@@ -229,6 +272,10 @@ fun RiftArtPicker(
                 when (ev.keyCode) {
                     KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_R1 -> {
                         if (down && ev.repeatCount == 0) latestStep.value(if (ev.keyCode == KeyEvent.KEYCODE_BUTTON_L1) -1 else 1)
+                        true
+                    }
+                    KeyEvent.KEYCODE_BUTTON_Y -> {
+                        if (down && ev.repeatCount == 0) latestStandard.value()
                         true
                     }
                     KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_ESCAPE -> {
@@ -261,6 +308,7 @@ fun RiftArtPicker(
             onSelectTab = { key -> kinds.indexOfFirst { it.key == key }.takeIf { it >= 0 }?.let { kindIndex = it } },
             onDismiss = onDismiss,
             keepFocusInside = { true },
+            headerAction = { StandardArtPill(busy = applyingStandard, onClick = ::applyStandard) },
         ) {
             ArtGrid(
                 session = session,
@@ -542,5 +590,48 @@ private fun ArtStatus(feed: ArtFeed, focusAsk: Int, onRetry: () -> Unit, onOpenS
                 else -> Box(modifier = Modifier.focusRequester(focus).focusable())
             }
         }
+    }
+}
+
+/**
+ * The header's "Default covers" pill, in the game page's hint style: a translucent half-round pill with the
+ * Y button and its label. The gamepad uses Y itself, so the pill is for touch only and never takes focus.
+ */
+@Composable
+private fun StandardArtPill(busy: Boolean, onClick: () -> Unit) {
+    val button = if (app.gamenative.PrefManager.swapFaceButtons) app.gamenative.ui.component.GamepadButton.X else app.gamenative.ui.component.GamepadButton.Y
+    androidx.compose.foundation.layout.Row(
+        modifier = Modifier
+            .height(RiftSizes.button)
+            .clip(CircleShape)
+            .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.08f))
+            .focusProperties { canFocus = false }
+            .clickable(
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(start = 12.dp, end = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(modifier = Modifier.size(30.dp), contentAlignment = Alignment.Center) {
+            if (busy) {
+                CircularProgressIndicator(color = RiftColors.OnSurface, strokeWidth = 2.5.dp, modifier = Modifier.size(22.dp))
+            } else {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(button.iconRes),
+                    contentDescription = null,
+                    modifier = Modifier.size(30.dp),
+                )
+            }
+        }
+        Text(
+            text = stringResource(R.string.rift_art_standard),
+            color = RiftColors.OnSurface,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
     }
 }
