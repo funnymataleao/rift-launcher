@@ -33,11 +33,26 @@ object SteamClientAutoMode {
 
     /** Switches the container to the Steam client when the game needs it. Call before launch dependencies. */
     fun applyBeforeLaunch(context: Context, container: Container, steamAppId: Int) {
-        if (!BuildConfig.CLEAN_BUILD || steamAppId <= 0 || container.isLaunchRealSteam) return
-        val reason = reasonFor(context, steamAppId) ?: return
-        Timber.tag(TAG).i("Using the Steam client for $steamAppId: $reason")
-        container.setLaunchRealSteam(true)
+        if (!BuildConfig.CLEAN_BUILD || steamAppId <= 0) return
+        if (!container.isLaunchRealSteam) {
+            val reason = reasonFor(context, steamAppId) ?: return
+            Timber.tag(TAG).i("Using the Steam client for $steamAppId: $reason")
+            container.setLaunchRealSteam(true)
+        }
+        useX64Wine(container, steamAppId)
         container.saveData()
+    }
+
+    /**
+     * Valve's steamclient64.dll cannot reach the Steam client from an ARM64EC game process (it loads and
+     * unloads at once, and the game reports "Steam Initialization Failed"); under x86_64 Wine it connects.
+     */
+    private fun useX64Wine(container: Container, steamAppId: Int) {
+        val wine = container.wineVersion ?: return
+        if (!wine.endsWith("-arm64ec")) return
+        val x64 = wine.removeSuffix("-arm64ec") + "-x86_64"
+        Timber.tag(TAG).i("Steam client game $steamAppId: Wine $wine -> $x64")
+        container.setWineVersion(x64)
     }
 
     /** Remembers that the emulated launch failed on Steam DRM, so the next launch uses the Steam client. */

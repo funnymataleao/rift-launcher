@@ -5075,6 +5075,8 @@ private fun getWineStartCommand(
         } else if (container.isLaunchRealSteam && !container.isLaunchHeadlessSteam) {
             // Valve GUI client boots and starts the game itself
             "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" -silent -vgui -tcp " +
+                    // Steam's web helper crash-loops under Box64 when it uses the GPU or its sandbox.
+                    "-cef-disable-gpu -cef-disable-gpu-compositing -no-cef-sandbox " +
                     "-nobigpicture -nofriendsui -nochatui -nointro -applaunch $gameId"
         } else if (container.isLaunchHeadlessSteam) {
             val appDirPath = SteamService.getAppDirPath(gameId)
