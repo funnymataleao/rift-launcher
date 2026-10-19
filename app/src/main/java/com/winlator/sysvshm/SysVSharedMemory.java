@@ -80,13 +80,17 @@ public class SysVSharedMemory {
     }
 
     public void delete(int shmid) {
-        SHMemory shmemory = shmemories.get(shmid);
-        if (shmemory != null) {
-            if (SHMemory.access$000(shmemory) != -1) {
-                XConnectorEpoll.closeFd(SHMemory.access$000(shmemory));
-                SHMemory.access$002(shmemory, -1);
+        // Locked like attach/detach: an unlocked remove raced detach's valueAt, which then saw
+        // SparseArray's DELETED marker and crashed the app with a ClassCastException.
+        synchronized (shmemories) {
+            SHMemory shmemory = shmemories.get(shmid);
+            if (shmemory != null) {
+                if (SHMemory.access$000(shmemory) != -1) {
+                    XConnectorEpoll.closeFd(SHMemory.access$000(shmemory));
+                    SHMemory.access$002(shmemory, -1);
+                }
+                shmemories.remove(shmid);
             }
-            shmemories.remove(shmid);
         }
     }
 
