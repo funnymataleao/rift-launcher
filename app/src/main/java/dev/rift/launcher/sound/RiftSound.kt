@@ -22,8 +22,11 @@ enum class RiftSound(val id: String, val rawRes: Int, val deckNames: List<String
     SidebarOpen("open", R.raw.rift_ui_open, listOf("deck_ui_side_menu_fly_in")),
     SidebarClose("close", R.raw.rift_ui_close, listOf("deck_ui_side_menu_fly_out")),
     Launch("launch", R.raw.rift_ui_launch, listOf("deck_ui_launch_game")),
-    /** A choice was applied (Change Art, the game information picker): a soft two-note chime, or the pack's toast. */
-    Apply("apply", R.raw.rift_ui_apply, listOf("deck_ui_achievement_toast", "deck_ui_default_activation")),
+    /**
+     * A choice was applied (Change Art, the game information picker): a bright rising "done" chime, as loud as the other
+     * sounds, always Rift's own (a pack's toast sounded like an error, Denis 18.10).
+     */
+    Apply("apply", R.raw.rift_ui_apply, emptyList()),
 }
 
 /**

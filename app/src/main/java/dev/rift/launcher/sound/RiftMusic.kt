@@ -20,6 +20,22 @@ object RiftMusic {
     // Screens that play their own sound (the game page trailer) hold the music: it fades out and pauses,
     // and fades back in once nobody holds it.
     private val holds = mutableSetOf<Any>()
+    // Screens the music plays on (the home, the assistant). Going from one to the other, the one left may pause
+    // after the next has resumed: the music only stops once none is in front.
+    private val screens = mutableSetOf<Any>()
+
+    /** [screen] is in front: the music plays. Call from the main thread. */
+    @Synchronized
+    fun show(screen: Any, context: Context) {
+        screens.add(screen)
+        apply(context)
+    }
+
+    /** [screen] is left or covered: the music stops unless another screen it plays on is in front. */
+    @Synchronized
+    fun hide(screen: Any) {
+        if (screens.remove(screen) && screens.isEmpty()) stop()
+    }
     private var fade: android.animation.ValueAnimator? = null
     private var level = 1f
     private var target = 1f
@@ -113,18 +129,19 @@ object RiftMusic {
 fun RiftMusicEffect() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val owner = LocalLifecycleOwner.current
+    val screen = androidx.compose.runtime.remember { Any() }
     DisposableEffect(owner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> RiftMusic.apply(context)
-                Lifecycle.Event.ON_PAUSE -> RiftMusic.stop()
+                Lifecycle.Event.ON_RESUME -> RiftMusic.show(screen, context)
+                Lifecycle.Event.ON_PAUSE -> RiftMusic.hide(screen)
                 else -> Unit
             }
         }
         owner.lifecycle.addObserver(observer)
         onDispose {
             owner.lifecycle.removeObserver(observer)
-            RiftMusic.stop()
+            RiftMusic.hide(screen)
         }
     }
 }
