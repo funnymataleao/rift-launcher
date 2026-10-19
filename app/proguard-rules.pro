@@ -51,5 +51,3 @@
 -dontwarn com.meta.horizon.**
 
 # Samsung Performance SDK (bundled stub jar, referenced by powercontrol Samsung driver)
--keep class com.samsung.sdk.sperf.** { *; }
--dontwarn com.samsung.sdk.sperf.**

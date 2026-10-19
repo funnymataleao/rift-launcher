@@ -12,7 +12,6 @@ import app.gamenative.powercontrol.autotuning.PerformanceAutoTuner
 import app.gamenative.powercontrol.drivers.NoOpPerformanceDriver
 import app.gamenative.powercontrol.drivers.PServerDriver
 import app.gamenative.powercontrol.drivers.PerformanceDriver
-import app.gamenative.powercontrol.drivers.SamsungPerformanceDriver
 import app.gamenative.powercontrol.fan.FanController
 import app.gamenative.powercontrol.metrics.MetricsSnapshot
 import app.gamenative.powercontrol.metrics.PerformanceMetricsCollector
@@ -185,16 +184,6 @@ object PowerManager {
     fun initialize(context: Context) {
         appContext = context.applicationContext
         driver = when {
-            SamsungPerformanceDriver.isSamsungDevice() -> {
-                val samsungDriver = SamsungPerformanceDriver(appContext)
-                if (samsungDriver.isDriverSupported()) {
-                    Timber.tag("PowerManager").i("Using Samsung Performance Driver")
-                    samsungDriver
-                } else {
-                    Timber.tag("PowerManager").w("Samsung device detected but Performance SDK not available")
-                    NoOpPerformanceDriver()
-                }
-            }
             PServerDriver.checkPServerAvailability() -> {
                 Timber.tag("PowerManager").i("Using PServer Driver")
                 PServerDriver(appContext)
