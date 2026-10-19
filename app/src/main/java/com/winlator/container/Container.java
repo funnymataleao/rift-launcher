@@ -195,6 +195,8 @@ public class Container {
     }
 
     public String getSteamType() {
+        // Clean build: only Valve's own client in Wine; headless needs GameNative's closed steamhost.
+        if (app.gamenative.BuildConfig.CLEAN_BUILD) return STEAM_TYPE_NORMAL;
         return steamType;
     }
 
@@ -394,8 +396,7 @@ public class Container {
     }
 
     public boolean isLaunchRealSteam() {
-        // Clean build has no Steam host binaries: always use the emulated Steam API.
-        return !app.gamenative.BuildConfig.CLEAN_BUILD && launchRealSteam;
+        return launchRealSteam;
     }
 
     public void setLaunchRealSteam(boolean launchRealSteam) {
@@ -404,7 +405,7 @@ public class Container {
 
     /** Real Steam through the headless steamhost rather than the Valve GUI client. */
     public boolean isLaunchHeadlessSteam() {
-        return isLaunchRealSteam() && STEAM_TYPE_HEADLESS.equals(steamType);
+        return isLaunchRealSteam() && STEAM_TYPE_HEADLESS.equals(getSteamType());
     }
 
     public boolean isLaunchBionicSteam() {
