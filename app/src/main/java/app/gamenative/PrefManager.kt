@@ -663,7 +663,7 @@ object PrefManager {
 
     private val DISABLE_LIBREDIRECT = booleanPreferencesKey("disable_libredirect")
     var disableLibredirect: Boolean
-        get() = getPref(DISABLE_LIBREDIRECT, false)
+        get() = getPref(DISABLE_LIBREDIRECT, true)
         set(value) {
             setPref(DISABLE_LIBREDIRECT, value)
         }

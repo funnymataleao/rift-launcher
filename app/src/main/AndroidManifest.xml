@@ -281,7 +281,7 @@
             android:exported="false"
             android:excludeFromRecents="true"
             android:launchMode="singleTask"
-            android:taskAffinity="dev.rift.launcher.panel"
+            android:taskAffinity="${applicationId}.panel"
             android:theme="@style/Theme.Rift.Panel" />
 
         <service

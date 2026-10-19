@@ -124,6 +124,8 @@ android {
     productFlavors {
         create("legacy") {
             dimension = "androidApi"
+            // Clean test build: installs next to dev.rift.launcher.
+            applicationIdSuffix = ".clean"
             targetSdk = 28
             ndk.abiFilters += listOf("arm64-v8a", "armeabi-v7a")
             buildConfigField("boolean", "MODERN_ANDROID", "false")

@@ -132,7 +132,7 @@ public class Container {
     private String executablePath = ""; // Executable path for container
     private boolean sdlControllerAPI;
     private boolean fasterExternalLoading;
-    private boolean disableLibredirect;
+    private boolean disableLibredirect = true;
     private boolean disableEpicOverlay;
 
     // Preferred game language for Goldberg force_language.txt

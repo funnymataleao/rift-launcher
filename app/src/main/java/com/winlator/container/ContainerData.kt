@@ -73,7 +73,7 @@ data class ContainerData(
     val useGLSL: String = "enabled",
     val sdlControllerAPI: Boolean = true,
     val fasterExternalLoading: Boolean = false,
-    val disableLibredirect: Boolean = false,
+    val disableLibredirect: Boolean = true,
     /** Enable Steam Input **/
     val useSteamInput: Boolean = false,
     /** Enable XInput API **/

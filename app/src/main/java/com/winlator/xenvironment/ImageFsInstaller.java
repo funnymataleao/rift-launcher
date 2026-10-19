@@ -200,8 +200,8 @@ public abstract class ImageFsInstaller {
                     TarCompressorUtils.Type.ZSTD,      // you said .tzst
                     in, imagefs);                      // helper already exists in the project
         } catch (IOException e) {
-            Log.e("ImageFsInstaller", "redirect deploy failed", e);
-            return;
+            // Clean build ships no redirect.tzst; keep going so extras still install.
+            Log.w("ImageFsInstaller", "redirect deploy skipped", e);
         }
 
         // ➌  Make sure the new libs are world-readable / executable

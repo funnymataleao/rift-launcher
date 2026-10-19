@@ -97,7 +97,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             }
             return null;
         }
-        return imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
+        // Clean build: the closed redirect libs are not shipped, so never preload a missing file.
+        File preload = new File(imageFs.getLibDir(), BuildConfig.PRELOAD_BIONIC_SO);
+        return preload.exists() ? preload.getPath() : null;
     }
 
     /** Numeric Steam appid for the game in this container (e.g. "221380").
