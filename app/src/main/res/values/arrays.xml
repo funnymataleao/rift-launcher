@@ -183,7 +183,6 @@
     </string-array>
     <string-array name="box64_bionic_version_entries">
         <item>0.3.7 (Default)</item>
-        <item>0.4.4</item>
         <item>0.4.2</item>
         <item>0.4.0</item>
         <item>0.3.8</item>
