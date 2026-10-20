@@ -4598,11 +4598,30 @@ private fun setupXEnvironment(
         }
     }
 
+    // If GUI Steam signs in and syncs the game but never dispatches its first -applaunch,
+    // send one normal Steam URI request. No attempts unless Steam explicitly completed sync.
+    val steamGuiAppId = if (!bootToContainer && !testGraphics && gameSource == GameSource.STEAM &&
+        container.isLaunchRealSteam && !container.isLaunchHeadlessSteam &&
+        guestProgramLauncherComponent is BionicProgramLauncherComponent
+    ) ContainerUtils.extractGameIdFromContainerId(appId) else null
+    val steamLaunchCursor = steamGuiAppId?.let {
+        dev.rift.launcher.platform.SteamGuiLaunchRecovery.capture(File(imageFs.wineprefix))
+    }
     xServer.winHandler.start()
     try {
         immersiveHooks?.windowsVr?.beforeGuestProcessStart()
         environment.startEnvironmentComponents()
         immersiveHooks?.windowsVr?.onEnvironmentStarted()
+        if (steamGuiAppId != null && steamLaunchCursor != null) {
+            dev.rift.launcher.platform.SteamGuiLaunchRecovery.observe(
+                scope = CoroutineScope(Dispatchers.IO),
+                environment = environment,
+                launcher = guestProgramLauncherComponent,
+                winePrefix = File(imageFs.wineprefix),
+                appId = steamGuiAppId,
+                from = steamLaunchCursor,
+            )
+        }
         if (container != null && !bootToContainer) {
             CoroutineScope(Dispatchers.IO).launch { GameFileDetection.ensure(context, container) }
         }
@@ -5193,6 +5212,8 @@ private fun getSteamlessTarget(
     return "$drive:\\${executablePath}"
 }
 
+private const val STEAM_CLIENT_SHUTDOWN_MS = 6_000L
+
 private fun exit(
     winHandler: WinHandler?,
     frameRating: FrameRating?,
@@ -5249,7 +5270,25 @@ private fun exit(
     } catch (e: Exception) {
         Timber.e(e, "winHandler.stop() failed during exit")
     }
-    PluviaApp.shutdownEnvironment()
+    val steamClientSession = container.isLaunchRealSteam && !container.isLaunchHeadlessSteam
+    val environment = PluviaApp.xEnvironment
+    val steamLauncher = environment?.getComponent(GuestProgramLauncherComponent::class.java)
+    if (steamClientSession && environment != null && steamLauncher != null) {
+        // Let Valve's client exit on its own first: killed with the container, it leaves an incomplete
+        // cloud sync and the next start waits on a conflict dialog instead of launching the game.
+        CoroutineScope(Dispatchers.IO).launch {
+            runCatching {
+                dev.rift.launcher.platform.SteamClientCommand.shutdown(steamLauncher, File(container.rootDir, ".wine"))
+            }.onFailure { Timber.w(it, "Steam client shutdown request failed") }
+            delay(STEAM_CLIENT_SHUTDOWN_MS)
+            withContext(Dispatchers.Main) {
+                // A new game may have started meanwhile; only tear down the session this exit belongs to.
+                if (PluviaApp.xEnvironment === environment) PluviaApp.shutdownEnvironment()
+            }
+        }
+    } else {
+        PluviaApp.shutdownEnvironment()
+    }
     EaLaunchSupport.stop()
 
     // Bionic-Steam mode brought up libsteamclient.so inside this Android process
