@@ -78,13 +78,9 @@ class MainViewModel @Inject constructor(
 
     companion object {
         private const val KEY_CURRENT_SCREEN_ROUTE = "current_screen_route"
-        private const val MIN_WARM_PITCH_SESSION_MS = 7 * 60 * 1000L
-        private const val WARM_PITCH_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000L
         private const val SHORT_SESSION_MS = 90 * 1000L
         private const val AI_DEBUG_OFFER_INTERVAL_MS = 3 * 24 * 60 * 60 * 1000L
         private const val BOOT_GAME_SEEN_GRACE_MS = 15_000L
-        private const val LOW_RATING_MAX = 3
-        private val FAILURE_TAGS = setOf("does_not_open", "no_graphics", "directx_error")
         private const val BOOT_AD_REUSE_WINDOW_MS = 2 * 60 * 1000L
 
         var gamePlayedThisSession = false
@@ -98,30 +94,6 @@ class MainViewModel @Inject constructor(
     private var bootAdDwellReported = false
     private var bootAwaitingGameWindow = false
     private var gameWindowSeen = false
-    private var pendingWarmPitch: Pair<String, Boolean>? = null
-
-    private fun warmPitchAllowed(): Boolean {
-        if (Constants.Misc.HIDE_UPSTREAM_SERVICES || PrefManager.tipped || BuildConfig.GOLD) return false
-        return System.currentTimeMillis() - PrefManager.lastWarmPitchTime >= WARM_PITCH_COOLDOWN_MS
-    }
-
-    fun onGameFeedbackResolved(context: Context, rating: Int?, tags: Set<String> = emptySet()) {
-        val (appId, sessionLongEnough) = pendingWarmPitch ?: return
-        pendingWarmPitch = null
-        if (rating != null && (rating <= LOW_RATING_MAX || tags.any { it in FAILURE_TAGS })) {
-            viewModelScope.launch { offerAiDebugRun(context, appId, "low_rating") }
-            return
-        }
-        val trigger = when {
-            rating == 5 -> "five_star"
-            rating == null && sessionLongEnough -> "long_session"
-            else -> return
-        }
-        if (!warmPitchAllowed()) return
-        viewModelScope.launch {
-            _uiEvent.send(MainUiEvent.ShowMembershipPitch(appId, trigger))
-        }
-    }
 
     sealed class MainUiEvent {
         data object OnBackPressed : MainUiEvent()
@@ -131,7 +103,6 @@ class MainViewModel @Inject constructor(
         data class OnLogonEnded(val result: LoginResult) : MainUiEvent()
         data class SteamDisconnected(val isTerminal: Boolean) : MainUiEvent()
         data object ShowDiscordSupportDialog : MainUiEvent()
-        data class ShowGameFeedbackDialog(val appId: String) : MainUiEvent()
         data class ShowMembershipPitch(val appId: String, val trigger: String) : MainUiEvent()
         data class ShowDebugReportDialog(val appId: String) : MainUiEvent()
         data class ShowAiDebugOffer(val appId: String, val trigger: String) : MainUiEvent()
@@ -754,62 +725,6 @@ class MainViewModel @Inject constructor(
                     // Dialog handler in PluviaMain manages the save/discard logic
                 }
 
-                // After app closes, check if we need to show the feedback dialog
-                // Show feedback if: first time running this game OR config was changed
-                val sessionLengthMs = if (gameSessionStartTime > 0) {
-                    System.currentTimeMillis() - gameSessionStartTime
-                } else {
-                    0L
-                }
-                val sessionLongEnough = sessionLengthMs >= MIN_WARM_PITCH_SESSION_MS
-                gameSessionStartTime = 0L
-
-                if (debugRun) {
-                    return@launch
-                }
-
-                val aiOfferRequested = maybeOfferAiDebugRun(context, appId, sessionLengthMs)
-                if (aiOfferRequested) {
-                    return@launch
-                }
-
-                var feedbackRequested = false
-                try {
-                    // Show feedback for all stores except custom games.
-                    val feedbackGameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
-                    if (feedbackGameSource != GameSource.CUSTOM_GAME) {
-                        val container = ContainerUtils.getContainer(context, appId)
-
-                        val shown = container.getExtra("discord_support_prompt_shown", "false") == "true"
-                        val configChanged = container.getExtra("config_changed", "false") == "true"
-                        if (!shown) {
-                            container.putExtra("discord_support_prompt_shown", "true")
-                            container.saveData()
-                            feedbackRequested = true
-                            _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
-                        }
-
-                        // Only show feedback if container config was changed before this game run
-                        if (configChanged) {
-                            // Clear the flag
-                            container.putExtra("config_changed", "false")
-                            container.saveData()
-                            // Show the feedback dialog
-                            feedbackRequested = true
-                            _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
-                        }
-                    } else {
-                        Timber.d("Custom game detected, not showing feedback")
-                    }
-                } catch (e: Exception) {
-                    Timber.w(e, "Failed to check/update feedback dialog state for $appId")
-                }
-
-                if (feedbackRequested) {
-                    pendingWarmPitch = appId to sessionLongEnough
-                } else if (sessionLongEnough && warmPitchAllowed()) {
-                    _uiEvent.send(MainUiEvent.ShowMembershipPitch(appId, "long_session"))
-                }
             } finally {
                 onComplete?.invoke()
             }

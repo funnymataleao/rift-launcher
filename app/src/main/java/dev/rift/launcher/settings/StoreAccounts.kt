@@ -48,9 +48,11 @@ import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonAuthManager
 import app.gamenative.service.ea.EaAuthManager
+import app.gamenative.service.ea.EaLoginGate
 import app.gamenative.service.epic.EpicAuthManager
 import app.gamenative.service.gog.GOGAuthManager
 import app.gamenative.service.rockstar.RockstarAuthManager
+import app.gamenative.service.rockstar.RockstarLoginGate
 import app.gamenative.ui.icons.Amazon
 import app.gamenative.ui.icons.Steam
 import app.gamenative.ui.screen.auth.AmazonOAuthActivity
@@ -186,9 +188,26 @@ internal fun StoreAccountsSettings(onSteamSignIn: (() -> Unit)?, onSteamSignOut:
         }
     }
 
-    // Rift: the stores signed in first, then the rest, each under a small heading (Denis: the two kinds
-    // looked the same). EA and Rockstar are left out for now: they had no way to sign in from here.
-    val shown = listOf(Store.Steam, Store.Epic, Store.Gog, Store.Amazon)
+    // EA and Rockstar already have their own secure login activities and session caches.
+    // Expose those flows directly here, so sign-in can happen before the first game launch.
+    // GTA's linked Steam ownership/title activation is verified when the game actually launches.
+    val signInEa: () -> Unit = {
+        lifecycleScope.launch {
+            EaLoginGate.ensureSignedIn(context)
+                .onSuccess { SnackbarManager.show(context.getString(R.string.ea_login_success, EaAuthManager.displayName(context) ?: "EA")) }
+                .onFailure { Timber.tag("RiftAccounts").w(it, "EA sign-in cancelled or failed") }
+            refresh++
+        }
+    }
+    val signInRockstar: () -> Unit = {
+        lifecycleScope.launch {
+            RockstarLoginGate.ensureSignedIn(context, activeTitle = "launcher")
+                .onSuccess { SnackbarManager.show(context.getString(R.string.rift_settings_store_signed_in)) }
+                .onFailure { Timber.tag("RiftAccounts").w(it, "Rockstar sign-in cancelled or failed") }
+            refresh++
+        }
+    }
+    val shown = listOf(Store.Steam, Store.Epic, Store.Gog, Store.Amazon, Store.Ea, Store.Rockstar)
     val (connected, notConnected) = shown.partition { statuses.getValue(it).signedIn }
     SettingsGroup(title = stringResource(R.string.rift_settings_accounts)) {
         listOf(
@@ -203,7 +222,8 @@ internal fun StoreAccountsSettings(onSteamSignIn: (() -> Unit)?, onSteamSignOut:
                     Store.Epic -> epicLogin.launch
                     Store.Gog -> gogLogin.launch
                     Store.Amazon -> amazonLogin.launch
-                    Store.Ea, Store.Rockstar -> null
+                    Store.Ea -> signInEa
+                    Store.Rockstar -> signInRockstar
                 }
                 StoreCard(
                     store = store,

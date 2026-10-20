@@ -103,11 +103,9 @@ import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.DebugPreRunDialog
 import app.gamenative.ui.component.dialog.DebugReportDialog
 import app.gamenative.ui.component.dialog.debugReportUsesApp
-import app.gamenative.ui.component.dialog.GameFeedbackDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.MessageDialog
 import app.gamenative.ui.component.dialog.state.DebugReportDialogState
-import app.gamenative.ui.component.dialog.state.GameFeedbackDialogState
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.components.BootingSplash
 import app.gamenative.ui.enums.AppOptionMenuType
@@ -147,7 +145,6 @@ import app.gamenative.utils.HardwareUtils
 import app.gamenative.utils.PlatformAuthUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ManifestInstaller
-import app.gamenative.utils.GameFeedbackUtils
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.UpdateChecker
@@ -419,10 +416,6 @@ fun PluviaMain(
     }
     val setMessageDialogState: (MessageDialogState) -> Unit = { msgDialogState = it }
     var membershipPitchTrigger by rememberSaveable { mutableStateOf("launch") }
-
-    var gameFeedbackState by rememberSaveable(stateSaver = GameFeedbackDialogState.Saver) {
-        mutableStateOf(GameFeedbackDialogState(false))
-    }
 
     var debugReportState by rememberSaveable(stateSaver = DebugReportDialogState.Saver) {
         mutableStateOf(DebugReportDialogState(false))
@@ -775,13 +768,6 @@ fun PluviaMain(
                     )
                 }
 
-                is MainViewModel.MainUiEvent.ShowGameFeedbackDialog -> {
-                    gameFeedbackState = GameFeedbackDialogState(
-                        visible = true,
-                        appId = event.appId,
-                    )
-                }
-
                 is MainViewModel.MainUiEvent.ShowMembershipPitch -> {
                     val gameName = ContainerUtils.resolveGameName(event.appId)
                     PrefManager.lastWarmPitchTime = System.currentTimeMillis()
@@ -975,14 +961,6 @@ fun PluviaMain(
         )
     }
 
-    // Listen for game feedback request
-    val onShowGameFeedback: (AndroidEvent.ShowGameFeedback) -> Unit = { event ->
-        gameFeedbackState = GameFeedbackDialogState(
-            visible = true,
-            appId = event.appId,
-        )
-    }
-
     // Rift as the home app: Home from Settings or Support goes back to the main screen, which opens its right
     // panel (Home always opens it). A running game opens its own panel; the sign-in screen is left alone.
     val onHomePressed: (AndroidEvent.HomePressed) -> Unit = {
@@ -995,14 +973,12 @@ fun PluviaMain(
 
     LaunchedEffect(Unit) {
         PluviaApp.events.on<AndroidEvent.PromptSaveContainerConfig, Unit>(onPromptSaveConfig)
-        PluviaApp.events.on<AndroidEvent.ShowGameFeedback, Unit>(onShowGameFeedback)
         PluviaApp.events.on<AndroidEvent.HomePressed, Unit>(onHomePressed)
     }
 
     DisposableEffect(Unit) {
         onDispose {
             PluviaApp.events.off<AndroidEvent.PromptSaveContainerConfig, Unit>(onPromptSaveConfig)
-            PluviaApp.events.off<AndroidEvent.ShowGameFeedback, Unit>(onShowGameFeedback)
             PluviaApp.events.off<AndroidEvent.HomePressed, Unit>(onHomePressed)
         }
     }
@@ -1558,67 +1534,6 @@ fun PluviaMain(
                 }
             }
 
-            GameFeedbackDialog(
-                state = gameFeedbackState,
-                onStateChange = { gameFeedbackState = it },
-                onSubmit = { feedbackState ->
-                    Timber.d(
-                        "GameFeedback: onSubmit called with rating=${feedbackState.rating}, tags=${feedbackState.selectedTags}, text=${
-                            feedbackState.feedbackText.take(
-                                20,
-                            )
-                        }",
-                    )
-                    try {
-                        // Get the container for the app
-                        val appId = feedbackState.appId
-                        Timber.d("GameFeedback: Got appId=$appId")
-
-                        // Submit feedback via worker API
-                        Timber.d("GameFeedback: Starting coroutine for submission")
-                        viewModel.viewModelScope.launch {
-                            Timber.d("GameFeedback: Inside coroutine scope")
-                            try {
-                                Timber.d("GameFeedback: Calling submitGameFeedback with rating=${feedbackState.rating}")
-                                val result = GameFeedbackUtils.submitGameFeedback(
-                                    context = context,
-                                    appId = appId,
-                                    rating = feedbackState.rating,
-                                    tags = feedbackState.selectedTags.toList(),
-                                    notes = feedbackState.feedbackText.takeIf { it.isNotBlank() },
-                                )
-
-                                Timber.d("GameFeedback: Submission returned $result")
-                                if (result) {
-                                    Timber.d("GameFeedback: Showing success snackbar")
-                                    SnackbarManager.show("Thank you for your feedback!")
-                                } else {
-                                    Timber.d("GameFeedback: Showing failure snackbar")
-                                    SnackbarManager.show("Failed to submit feedback")
-                                }
-                            } catch (e: Exception) {
-                                Timber.e(e, "GameFeedback: Error submitting game feedback")
-                                SnackbarManager.show("Error submitting feedback")
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Timber.e(e, "GameFeedback: Error preparing game feedback")
-                        SnackbarManager.show("Failed to submit feedback")
-                    } finally {
-                        // Close the dialog regardless of success
-                        Timber.d("GameFeedback: Closing dialog")
-                        gameFeedbackState = GameFeedbackDialogState(visible = false)
-                        viewModel.onGameFeedbackResolved(context, feedbackState.rating, feedbackState.selectedTags)
-                    }
-                },
-                onDismiss = {
-                    gameFeedbackState = GameFeedbackDialogState(visible = false)
-                    viewModel.onGameFeedbackResolved(context, null)
-                },
-                onDiscordSupport = {
-                    uriHandler.openUri("https://discord.gg/2hKv4VfZfE")
-                },
-            )
 
             val openDiscordConnect: () -> Unit = {
                 val nonce = ByteArray(16).also { SecureRandom().nextBytes(it) }
