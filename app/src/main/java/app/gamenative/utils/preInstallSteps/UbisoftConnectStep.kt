@@ -24,12 +24,25 @@ object UbisoftConnectStep : PreInstallStep {
 
     override val marker: Marker = Marker.UBISOFT_CONNECT_INSTALLED
 
+    /** Check the actual Wine prefix, not just a marker left behind by a failed setup. */
+    fun isInstalled(container: Container): Boolean = runCatching {
+        val root = container.rootDir ?: return@runCatching false
+        File(
+            root,
+            ".wine/drive_c/Program Files (x86)/Ubisoft/Ubisoft Game Launcher/UbisoftConnect.exe",
+        ).isFile
+    }.getOrDefault(false)
+
     override fun appliesTo(
         container: Container,
         gameSource: GameSource,
         gameDirPath: String,
     ): Boolean {
-        if (MarkerUtils.hasMarker(gameDirPath, Marker.UBISOFT_CONNECT_INSTALLED)) return false
+        if (isInstalled(container)) return false
+        // A previous setup may have left its marker even when the EXE was not installed.
+        if (MarkerUtils.hasMarker(gameDirPath, Marker.UBISOFT_CONNECT_INSTALLED)) {
+            MarkerUtils.removeMarker(gameDirPath, Marker.UBISOFT_CONNECT_INSTALLED)
+        }
         // Ubisoft's setup only runs for games which actually ship its redistributable.
         // Otherwise an unrelated game's startup must never be marked Ubisoft-installed.
         return findInstaller(File(gameDirPath)) != null

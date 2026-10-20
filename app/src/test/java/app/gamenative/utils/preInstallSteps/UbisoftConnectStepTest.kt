@@ -38,6 +38,16 @@ class UbisoftConnectStepTest {
     }
 
     @Test
+    fun appliesTo_recoversWhenMarkerExistsButInstalledClientIsMissing() {
+        val installer = File(gameDir, "_CommonRedist/UbisoftConnect/UbisoftConnectInstaller.exe")
+        installer.parentFile!!.mkdirs()
+        installer.writeBytes(byteArrayOf(1, 2, 3))
+        MarkerUtils.addMarker(gameDir.absolutePath, Marker.UBISOFT_CONNECT_INSTALLED)
+        assertTrue(UbisoftConnectStep.appliesTo(container, GameSource.EPIC, gameDir.absolutePath))
+        assertFalse(MarkerUtils.hasMarker(gameDir.absolutePath, Marker.UBISOFT_CONNECT_INSTALLED))
+    }
+
+    @Test
     fun appliesTo_returnsTrue_forGameContainingKnownUbisoftInstaller() {
         File(gameDir, "Support/UbisoftConnectInstaller.exe").apply {
             parentFile.mkdirs()

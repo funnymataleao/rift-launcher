@@ -4499,6 +4499,16 @@ private fun setupXEnvironment(
         guestProgramLauncherComponent.setGuestExecutable(remaining.first().executable)
         guestProgramLauncherComponent.setTerminationCallback { _ ->
             val current = remaining.first()
+            // Wine installers sometimes exit before successfully writing their client files.
+            // Never turn a failed Ubisoft install into a permanent "installed" marker.
+            if (current.marker == Marker.UBISOFT_CONNECT_INSTALLED &&
+                !app.gamenative.utils.UbisoftConnectStep.isInstalled(container)
+            ) {
+                Timber.tag("PublisherLauncher").e("Ubisoft Connect EXE missing after installer completed")
+                onGameLaunchError?.invoke("Ubisoft Connect installation did not finish; check the Wine logs")
+                PluviaApp.events.emit(AndroidEvent.GuestProgramTerminated)
+                return@setTerminationCallback
+            }
             PreInstallSteps.markStepDone(container, current.marker)
             guestProgramLauncherComponent.setPreUnpack(null)
             try {

@@ -2446,6 +2446,40 @@ fun preLaunchApp(
             }
         }
 
+        // Heroic-style publisher provisioning: download the official installer only once,
+        // then let UbisoftConnectStep install it into this game's existing Wine prefix.
+        // Never replace the game executable, and never fake an authenticated session.
+        if (gameSource == GameSource.EPIC && !bootToContainer) {
+            val epicGame = EpicService.getInstance()?.epicManager?.getGameById(gameId)
+            if (epicGame != null) {
+                try {
+                    if (dev.rift.launcher.platform.PublisherLauncherSetup.publisherForEpic(epicGame) ==
+                        dev.rift.launcher.platform.PublisherLauncherSetup.Publisher.UBISOFT &&
+                        !app.gamenative.utils.UbisoftConnectStep.isInstalled(container)
+                    ) {
+                        setLoadingMessage("Preparing official Ubisoft Connect...")
+                        setLoadingProgress(-1f)
+                    }
+                    dev.rift.launcher.platform.PublisherLauncherSetup.prepareForEpic(
+                        context, epicGame, container, setLoadingProgress,
+                    )
+                } catch (e: Exception) {
+                    Timber.tag("PublisherLauncher").e(e, "Official Ubisoft Connect preparation failed")
+                    setLoadingDialogVisible(false)
+                    setMessageDialogState(
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.SYNC_FAIL,
+                            title = context.getString(R.string.install_failed_title),
+                            message = e.message ?: context.getString(R.string.install_failed_message),
+                            dismissBtnText = context.getString(R.string.ok),
+                        ),
+                    )
+                    return@launch
+                }
+            }
+        }
+
         if (gameSource == GameSource.CUSTOM_GAME && !bootToContainer) {
             withContext(Dispatchers.IO) { app.gamenative.utils.CustomGameInstaller.markRunStart(container) }
         }
