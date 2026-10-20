@@ -30,6 +30,8 @@ data class GameContext(
     /** Error lines from the last debug run's Wine log, if one was recorded. */
     val wineErrors: List<String> = emptyList(),
     val community: CommunityDigest? = null,
+    /** Locally measured configurations, with reliability flags; never treated as guaranteed FPS. */
+    val autoTune: dev.rift.launcher.assistant.optimize.AutoTuneEvidence? = null,
 ) {
     fun toJson(): String = json.encodeToString(serializer(), this)
 
@@ -82,6 +84,9 @@ object GameContextCollector {
                 lastChange = RunHistory.compareLatest(runs),
                 wineErrors = wineErrors(DebugReportUtils.wineLogFile(context, appId)),
                 community = profile?.let { community(gameName, it) },
+                autoTune = dev.rift.launcher.assistant.optimize.AutoTuneAnalyzer.analyze(
+                    runs, GameSettings.fromContainerData(ContainerUtils.toContainerData(container)),
+                ),
             )
         }
 

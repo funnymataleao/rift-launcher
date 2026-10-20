@@ -7,6 +7,7 @@ import app.gamenative.service.ea.EaLaunchSupport
 import app.gamenative.service.rockstar.RockstarLaunchSupport
 import app.gamenative.utils.Net
 import com.winlator.container.Container
+import com.winlator.xenvironment.ImageFs
 import java.io.File
 import java.util.concurrent.TimeUnit
 import okhttp3.Request
@@ -39,20 +40,43 @@ object SteamClientAutoMode {
             Timber.tag(TAG).i("Using the Steam client for $steamAppId: $reason")
             container.setLaunchRealSteam(true)
         }
-        useX64Wine(container, steamAppId)
+        useX64Wine(context, container, steamAppId)
         container.saveData()
     }
 
     /**
-     * Valve's steamclient64.dll cannot reach the Steam client from an ARM64EC game process (it loads and
-     * unloads at once, and the game reports "Steam Initialization Failed"); under x86_64 Wine it connects.
+     * Valve's steamclient64.dll cannot reach the real Steam client from an ARM64EC
+     * game process (the DLL briefly loads then unloads and SteamAPI_Init fails).
+     * Prefer an installed x86_64 build matching the current Proton major version.
+     * Never synthesize an identifier that the device cannot actually launch.
      */
-    private fun useX64Wine(container: Container, steamAppId: Int) {
+    private fun useX64Wine(context: Context, container: Container, steamAppId: Int) {
         val wine = container.wineVersion ?: return
-        if (!wine.endsWith("-arm64ec")) return
-        val x64 = wine.removeSuffix("-arm64ec") + "-x86_64"
-        Timber.tag(TAG).i("Steam client game $steamAppId: Wine $wine -> $x64")
+        if (!wine.contains("-arm64ec")) return
+        val protonDir = ImageFs.getSharedProtonDir(context)
+        val installed = protonDir.listFiles()
+            ?.filter { it.isDirectory && File(it, "bin/wine").isFile }
+            ?.map { it.name }
+            .orEmpty()
+        val x64 = selectX64Wine(wine, installed)
+        if (x64 == null) {
+            Timber.tag(TAG).w("No installed x86_64 Proton for Steam client game $steamAppId; staying on $wine")
+            return
+        }
+        Timber.tag(TAG).i("Steam client game $steamAppId: Wine $wine -> $x64 (installed)")
         container.setWineVersion(x64)
+    }
+
+    /** Pure decision logic to keep the architecture fallback testable. */
+    internal fun selectX64Wine(current: String, installed: Collection<String>): String? {
+        if (!current.contains("-arm64ec")) return null
+        val x64 = installed.filter { it.contains("-x86_64") }
+        val exact = current.replace("-arm64ec", "-x86_64")
+        if (exact in x64) return exact
+        val major = Regex("^proton-([0-9]+)").find(current)?.groupValues?.getOrNull(1)
+        val sameMajor = x64.filter { major != null && it.startsWith("proton-$major.") }
+        if (sameMajor.isNotEmpty()) return sameMajor.sortedDescending().first()
+        return x64.firstOrNull { it == "proton-9.0-x86_64" } ?: x64.sortedDescending().firstOrNull()
     }
 
     /** Remembers that the emulated launch failed on Steam DRM, so the next launch uses the Steam client. */

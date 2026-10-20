@@ -2328,7 +2328,6 @@ fun RiftHomeScreen(
             )
         }
     }
-
     // Focus a cover once the section has something to show, so a gamepad works without touching the screen.
     LaunchedEffect(section, library.isNotEmpty(), androidGames.isNotEmpty(), streamItems.isNotEmpty(), cloudItems.isNotEmpty(), emulatorItems.isNotEmpty(), pcSaved, androidSaved, streamSaved, cloudSaved, emulatorSaved) {
         if (pendingFocusKey == null) focusSection(section)

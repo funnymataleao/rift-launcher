@@ -57,6 +57,29 @@ class StoreDetailsRepositoryTest {
     }
 
     @Test
+    fun `steam parser accepts modern HLS trailers without MP4 and retains poster`() {
+        val details = """
+            {
+              "990080": {
+                "success": true,
+                "data": {
+                  "screenshots": [{"path_full":"https://cdn.example/shot1.jpg"}],
+                  "movies": [{
+                    "hls_h264":"https://cdn.example/master.m3u8?t=123",
+                    "dash_h264":"https://cdn.example/master.mpd?t=123",
+                    "thumbnail":"https://cdn.example/movie.jpg"
+                  }]
+                }
+              }
+            }
+        """.trimIndent()
+        val parsed = parseSteamStoreDetails(990080, details, null)
+        assertEquals(listOf("https://cdn.example/master.m3u8?t=123"), parsed.videos)
+        assertEquals("https://cdn.example/movie.jpg", parsed.videoThumbnails[parsed.videos.first()])
+        assertEquals(1, parsed.screenshots.size)
+    }
+
+    @Test
     fun `gog parser normalizes image URLs and five star rating`() {
         val details =
             """

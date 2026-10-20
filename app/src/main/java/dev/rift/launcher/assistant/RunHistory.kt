@@ -17,6 +17,9 @@ data class RunRecord(
     val endedAt: Long,
     val sessionSeconds: Long? = null,
     val avgFps: Double? = null,
+    /** Window actually measured by the renderer. Steam/explorer FPS is not gameplay FPS. */
+    val mainWindowClass: String? = null,
+    val mainWindowActiveSeconds: Long? = null,
     val frameP50Ms: Double? = null,
     val frameP99Ms: Double? = null,
     val fpsBy5Min: List<Int> = emptyList(),
@@ -28,6 +31,14 @@ data class RunRecord(
     val configSource: String? = null,
     val settings: Map<String, String> = emptyMap(),
 ) {
+    /** Only use measured FPS if a non-launcher game window held focus during the session. */
+    val hasGameWindowEvidence: Boolean
+        get() {
+            val name = mainWindowClass?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return false
+            if (name in setOf("steam.exe", "steamwebhelper.exe", "explorer.exe", "wine.exe", "wfm.exe")) return false
+            return (mainWindowActiveSeconds ?: 0L) >= 15L
+        }
+
     /** The game closed by itself within a minute: most often a crash on start. */
     val endedEarly: Boolean
         get() = exitReason == "guest_terminated" && (sessionSeconds ?: 0) < EARLY_EXIT_SECONDS
@@ -108,6 +119,8 @@ object RunHistory {
             endedAt = endedAt,
             sessionSeconds = json.longOrNull("session_length"),
             avgFps = json.doubleOrNull("avg_fps")?.takeIf { it > 0 },
+            mainWindowClass = json.optString("main_window_class").ifEmpty { null },
+            mainWindowActiveSeconds = json.longOrNull("main_window_active_seconds"),
             frameP50Ms = json.doubleOrNull("frame_p50_ms"),
             frameP99Ms = json.doubleOrNull("frame_p99_ms"),
             fpsBy5Min = json.optJSONArray("fps_by_5min").ints(),
@@ -122,7 +135,9 @@ object RunHistory {
     }
 
     fun summarize(runs: List<RunRecord>): RunSummary {
-        val measured = runs.filter { (it.sessionSeconds ?: 0) >= MIN_MEASURED_SECONDS }
+        val measured = runs.filter {
+            (it.sessionSeconds ?: 0) >= MIN_MEASURED_SECONDS && it.hasGameWindowEvidence
+        }
         val throttled = runs.filter { (it.thermalPeak ?: 0) >= THERMAL_THROTTLING }
         return RunSummary(
             runs = runs.size,

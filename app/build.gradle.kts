@@ -173,7 +173,9 @@ android {
     buildTypes {
         debug {
             isDebuggable = true
-            isMinifyEnabled = false
+            // The unoptimized giant Compose home method fails Android 16 dex verification.
+            // Keep R8 enabled for Rift Clean device builds; verify with on-device smoke test.
+            isMinifyEnabled = true
             isShrinkResources = false
             signingConfig = signingConfigs.getByName("debug")
         }

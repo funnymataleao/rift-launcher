@@ -14,6 +14,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import okhttp3.Dns
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
@@ -31,6 +32,7 @@ object StoreDetailsRepository {
     }
 
     private const val CACHE_TTL_MS = 6L * 60 * 60 * 1000
+    private const val INCOMPLETE_MEDIA_TTL_MS = 60L * 1000
     private const val MAX_CACHE_ENTRIES = 256
     private const val TAG = "StoreDetails"
 
@@ -43,6 +45,9 @@ object StoreDetailsRepository {
 
     private val httpClient: OkHttpClient by lazy {
         Net.http.newBuilder()
+            // Android's system resolver works for store.steampowered.com on Astra; DoH
+            // bootstrap failures should not make every game's Media silently disappear.
+            .dns(Dns.SYSTEM)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .callTimeout(25, TimeUnit.SECONDS)
@@ -74,7 +79,12 @@ object StoreDetailsRepository {
             }
         }
         cache[cacheKey]
-            ?.takeIf { now - it.loadedAt in 0..CACHE_TTL_MS }
+            ?.takeIf { entry ->
+                val ttl = if (libraryItem.gameSource == GameSource.STEAM &&
+                    (entry.details.videos.isEmpty() || entry.details.screenshots.isEmpty())
+                ) INCOMPLETE_MEDIA_TTL_MS else CACHE_TTL_MS
+                now - entry.loadedAt in 0..ttl
+            }
             ?.let {
                 return@withContext mergeStoreDetails(
                     source = libraryItem.gameSource,
@@ -115,6 +125,8 @@ object StoreDetailsRepository {
             }
             cache[cacheKey] = CacheEntry(now, fetched)
         }
+        Timber.tag(TAG).i("Details %s/%s: videos=%d images=%d",
+            libraryItem.appId, libraryItem.gameSource, fetched.videos.size, fetched.screenshots.size)
         mergeStoreDetails(
             source = libraryItem.gameSource,
             fetched = fetched,
@@ -141,7 +153,13 @@ object StoreDetailsRepository {
             Timber.tag(TAG).w(e, "Store media lookup failed for $title")
             StoreGameDetails()
         }
-        cache[cacheKey] = CacheEntry(now, media)
+        if (media.videos.isNotEmpty() || media.screenshots.isNotEmpty()) {
+            cache[cacheKey] = CacheEntry(now, media)
+        }
+        Timber.tag(TAG).i(
+            "Media by title %s: trailers=%d screenshots=%d",
+            title, media.videos.size, media.screenshots.size,
+        )
         media
     }
 
@@ -228,11 +246,24 @@ object StoreDetailsRepository {
                     "?json=1&language=all&purchase_type=all&num_per_page=0&l=$language",
             )
         }
-        parseSteamStoreDetails(
+        val localized = parseSteamStoreDetails(
             appId = appId,
             detailsJson = detailsRequest.await(),
             reviewsJson = reviewsRequest.await(),
         )
+        // Steam sometimes omits gallery data from localized storefront responses.
+        // Preserve that description but restore trailers/screenshots from the English listing.
+        val details = if (localized.videos.isEmpty() || localized.screenshots.isEmpty()) {
+            val englishBody = getBody("https://store.steampowered.com/api/appdetails?appids=$appId&cc=us&l=english")
+            localized.mergedWith(parseSteamStoreDetails(appId, englishBody, null))
+        } else {
+            localized
+        }
+        Timber.tag(TAG).i(
+            "Steam media appId=%d language=%s trailers=%d screenshots=%d",
+            appId, language, details.videos.size, details.screenshots.size,
+        )
+        details
     }
 
     private suspend fun fetchGog(

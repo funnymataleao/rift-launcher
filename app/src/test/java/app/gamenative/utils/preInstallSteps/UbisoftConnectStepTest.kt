@@ -33,7 +33,16 @@ class UbisoftConnectStepTest {
     }
 
     @Test
-    fun appliesTo_returnsTrue_whenMarkerMissing() {
+    fun appliesTo_returnsFalse_forGameWithoutUbisoftInstaller() {
+        assertFalse(UbisoftConnectStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
+    }
+
+    @Test
+    fun appliesTo_returnsTrue_forGameContainingKnownUbisoftInstaller() {
+        File(gameDir, "Support/UbisoftConnectInstaller.exe").apply {
+            parentFile.mkdirs()
+            writeBytes(byteArrayOf(1))
+        }
         assertTrue(UbisoftConnectStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
     }
 
@@ -48,6 +57,18 @@ class UbisoftConnectStepTest {
         )
 
         assertNull(cmd)
+    }
+
+    @Test
+    fun buildCommand_detectsUbisoftInstallerInInstallersFolder() {
+        val file = File(gameDir, "__Installer/Uplay/UplayInstaller.exe")
+        file.parentFile!!.mkdirs()
+        file.writeBytes(byteArrayOf(1,2,3))
+        val cmd = UbisoftConnectStep.buildCommand(
+            container, "STEAM_1", GameSource.STEAM, gameDir, gameDir.absolutePath,
+        )
+        assertEquals("A:\\_CommonRedist\\UbisoftConnect\\UplayInstaller.exe /S", cmd)
+        assertTrue(File(gameDir, "_CommonRedist/UbisoftConnect/UplayInstaller.exe").isFile)
     }
 
     @Test
