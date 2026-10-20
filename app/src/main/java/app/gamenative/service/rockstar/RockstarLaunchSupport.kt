@@ -8,6 +8,19 @@ import timber.log.Timber
 /** Installed-file detection and credential handoff. Deployment lives in RockstarHelperDeployment. */
 object RockstarLaunchSupport {
 
+    /**
+     * A Steam game using Rift's emulated Steam API still needs publisher sign-in.
+     * Previously the prelaunch gate only handled explicit bionic/headless flags and silently
+     * skipped containers with launchRealSteam=false even when steamType was "headless".
+     * Full desktop Steam runs its own publisher integration and is left alone.
+     */
+    internal fun requiresPublisherPreflight(
+        launchRealSteam: Boolean,
+        launchHeadlessSteam: Boolean,
+        launchBionicSteam: Boolean,
+    ): Boolean = !launchRealSteam || launchHeadlessSteam || launchBionicSteam
+
+
     fun isRockstarTitle(gameDir: File) = RockstarHelperArchive.usesRockstar(gameDir)
 
     /**

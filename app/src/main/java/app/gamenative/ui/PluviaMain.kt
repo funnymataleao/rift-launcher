@@ -2553,7 +2553,12 @@ fun preLaunchApp(
              * Steam ownership instead was tried and refused by the server, so the account sign-in
              * is required rather than a convenience.
              */
-            if (gameSource == GameSource.STEAM && (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) &&
+            if (gameSource == GameSource.STEAM &&
+                RockstarLaunchSupport.requiresPublisherPreflight(
+                    container.isLaunchRealSteam,
+                    container.isLaunchHeadlessSteam,
+                    container.isLaunchBionicSteam,
+                ) &&
                 RockstarLaunchSupport.isRockstarTitle(File(SteamService.getAppDirPath(gameId)))
             ) {
                 val rockstarGameDir = File(SteamService.getAppDirPath(gameId))
