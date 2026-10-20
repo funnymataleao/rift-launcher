@@ -5272,7 +5272,8 @@ private fun exit(
     }
     val steamClientSession = container.isLaunchRealSteam && !container.isLaunchHeadlessSteam
     val environment = PluviaApp.xEnvironment
-    val steamLauncher = environment?.getComponent(GuestProgramLauncherComponent::class.java)
+    // getComponent() matches the exact class; the launcher here is a Bionic or Glibc subclass.
+    val steamLauncher = environment?.firstOrNull { it is GuestProgramLauncherComponent } as GuestProgramLauncherComponent?
     if (steamClientSession && environment != null && steamLauncher != null) {
         // Let Valve's client exit on its own first: killed with the container, it leaves an incomplete
         // cloud sync and the next start waits on a conflict dialog instead of launching the game.
